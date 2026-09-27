@@ -156,6 +156,14 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 .ctbl.gtbl th,.ctbl.gtbl td{height:30px !important;font-size:10.5px !important;padding:2px 3px !important;box-sizing:border-box;}
 .ctbl.gtbl td.namecell,.ctbl.gtbl th.namehead{padding:2px 8px !important;font-size:11px !important;}
 .ctbl.gtbl td.daycell{width:30px !important;}
+/* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
+.cmbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+.cmbWrap .panel{margin-bottom:0;padding:14px;}
+.cmbLeft{flex:0 0 auto;max-width:100%;}
+.cmbRight{flex:1 1 360px;min-width:0;}
+.cmbCtrl{height:104px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:10px;}
+.cmbCtrl h3{margin:0;}
+.ctbl.gtbl thead th{height:34px !important;}
 
 .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);align-items:center;}
 .legend .sw{display:inline-flex;align-items:center;gap:4px;}
@@ -1671,32 +1679,37 @@ function pageCombined(){
 
   return `
   <h2 class="pgttl">근태관리</h2>
-  <p class="pgsub">위는 선택한 기간(시작일~종료일)의 집계, 아래는 월별 근태코드 표입니다.</p>
+  <p class="pgsub">왼쪽은 선택한 기간(시작일~종료일)의 집계, 오른쪽은 월별 근태코드 표입니다. 두 표는 각각 따로 움직입니다.</p>
   ${teamBtns}
-  <div class="panel">
-    <h3>근태 집계 <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(${esc(rangeStart)} ~ ${esc(rangeEnd)})</span></h3>
-    <div class="row" style="margin-bottom:12px;align-items:flex-end;">
-      <div class="field"><label>시작일</label><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"></div>
-      <div class="field"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;height:38px;">
-        <input type="checkbox" id="codeStatsMealChk" ${codeStatsIncludeMeal?'checked':''}>평일OT 식사연장 포함
-      </label>
+  <div class="cmbWrap">
+    <div class="panel cmbLeft">
+      <div class="cmbCtrl">
+        <h3>근태 집계 <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(${esc(rangeStart)} ~ ${esc(rangeEnd)})</span></h3>
+        <div class="row" style="align-items:flex-end;flex-wrap:nowrap;">
+          <div class="field" style="min-width:auto;"><label>시작일</label><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"></div>
+          <div class="field" style="min-width:auto;"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;height:38px;white-space:nowrap;">
+            <input type="checkbox" id="codeStatsMealChk" ${codeStatsIncludeMeal?'checked':''}>식사연장 포함
+          </label>
+        </div>
+      </div>
+      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead>${statHead}</thead><tbody>${statRows}</tbody></table></div>`
+        : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
-    ${sortedEmployees.length? `<div class="scrollx gridwrap" style="display:inline-block;vertical-align:top;"><table class="gtbl"><thead>${statHead}</thead><tbody>${statRows}</tbody></table></div>`
-      : `<div class="empty">등록된 직원이 없습니다.</div>`}
-  </div>
-  <div class="panel">
-    <div class="row" style="margin-bottom:12px;align-items:center;">
-      <h3 style="margin:0;">월별 근태코드</h3>
-      <span style="flex:1 1 auto;"></span>
-      <button class="btn ghost sm" id="cmbPrevMonth">◀ 이전달</button>
-      <b style="font-size:15px;">${cy}년 ${cm}월</b>
-      <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
+    <div class="panel cmbRight">
+      <div class="cmbCtrl">
+        <h3>월별 근태코드</h3>
+        <div class="row" style="align-items:center;flex-wrap:nowrap;height:58px;">
+          <button class="btn ghost sm" id="cmbPrevMonth">◀ 이전달</button>
+          <b style="font-size:15px;white-space:nowrap;">${cy}년 ${cm}월</b>
+          <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
+        </div>
+      </div>
+      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th><th colspan="${monthDays.length}">일자별</th></tr><tr>${dayHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
+        : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
-    ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl"><thead><tr><th class="namehead">성명</th>${dayHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
-      : `<div class="empty">등록된 직원이 없습니다.</div>`}
-    <p class="hint">날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(편집자). 근태코드 참조에 있는 코드만 표시됩니다.</p>
   </div>
+  <p class="hint">월별 근태코드의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(편집자). 근태코드 참조에 있는 코드만 표시됩니다.</p>
   ${modal}
   `;
 }
