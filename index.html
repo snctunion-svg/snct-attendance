@@ -728,6 +728,10 @@ function appConfirm(message, onConfirm){
   document.getElementById('appConfirmCancel').onclick = cleanup;
   document.getElementById('appConfirmOk').onclick = ()=>{ cleanup(); onConfirm(); };
 }
+// 근태관리 순번 제외: 'all' = 모든 순번 제외, 'ot' = 휴일·평일 OT 순번만 제외, '' = 포함
+// 조편성 관리에서 바꿀 수 있고, 따로 정하지 않은 사람은 아래 기본값을 따름
+const DEFAULT_RANK_EXCLUDE = {'오원일':'all', '선종화':'all', '서인기':'ot', '우창기':'ot'};
+function rankExcl(e){ return (e && e.rankExclude!==undefined && e.rankExclude!==null) ? e.rankExclude : (DEFAULT_RANK_EXCLUDE[e && e.name] || ''); }
 function empName(id){ const e = employees.find(x=>x.id===id); return e ? e.name : '(알수없음)'; }
 function statusLabel(code){
   if(!code) return '';
@@ -1701,10 +1705,16 @@ function pageCombined(){
     const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0);
     return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday, otWeekdayFinal, supDays};
   });
-  function rankByAsc(getVal){ const x=perEmp.map((r,i)=>({i,v:getVal(r)||0})).sort((a,b)=>a.v-b.v || a.i-b.i); const arr=new Array(perEmp.length); x.forEach((q,idx)=>arr[q.i]=idx+1); return arr; }
-  function rankByDesc(getVal){ const x=perEmp.map((r,i)=>({i,v:getVal(r)||0})).sort((a,b)=>b.v-a.v || a.i-b.i); const arr=new Array(perEmp.length); x.forEach((q,idx)=>arr[q.i]=idx+1); return arr; }
-  const rankSup=rankByAsc(r=>r.supDays), rankGyeHol=rankByAsc(r=>r.gyeHol), rankMCS=rankByAsc(r=>r.codeCnt.MCS);
-  const rankGyeWk=rankByAsc(r=>r.gyeWk), rankOtHol=rankByDesc(r=>r.otHoliday), rankOtWk=rankByDesc(r=>r.otWeekdayFinal);
+  // 순번 제외 대상은 순위 계산에서 빼고 칸을 비움(null)
+  const inAll = r => rankExcl(r.emp)!=='all';
+  const inOt = r => rankExcl(r.emp)==='';
+  function rankBy(getVal, desc, ok){
+    const x = perEmp.map((r,i)=>({i,v:getVal(r)||0,ok:ok(r)})).filter(q=>q.ok).sort((a,b)=>(desc? b.v-a.v : a.v-b.v) || a.i-b.i);
+    const arr = new Array(perEmp.length).fill(null); x.forEach((q,idx)=>arr[q.i]=idx+1); return arr;
+  }
+  const rankSup=rankBy(r=>r.supDays,false,inAll), rankGyeHol=rankBy(r=>r.gyeHol,false,inAll), rankMCS=rankBy(r=>r.codeCnt.MCS,false,inAll);
+  const rankGyeWk=rankBy(r=>r.gyeWk,false,inAll), rankOtHol=rankBy(r=>r.otHoliday,true,inOt), rankOtWk=rankBy(r=>r.otWeekdayFinal,true,inOt);
+  const nAll = perEmp.filter(inAll).length, nOt = perEmp.filter(inOt).length;
 
   const statHead = `<tr>
     <th class="namehead" rowspan="2">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
@@ -1719,18 +1729,18 @@ function pageCombined(){
   const c0 = v => v||'';
   const nEmp = perEmp.length;
   // 순번 배지: 1~3위 진하게, 상위 절반 연하게, 나머지는 글자색만
-  const rk = (n, g) => `<span class="rk ${n<=3?'t1':(n<=Math.ceil(nEmp/2)?'t2':'t3')} g-${g}">${n}</span>`;
+  const rk = (n, g, tot) => n==null ? '' : `<span class="rk ${n<=3?'t1':(n<=Math.ceil((tot||nEmp)/2)?'t2':'t3')} g-${g}">${n}</span>`;
   const statRows = perEmp.map((r,idx)=>`<tr>
       <td style="text-align:center;">${idx+1}</td>
       <td class="namecell" style="left:34px;">${esc(r.emp.name)}</td>
-      <td style="text-align:center;">${c0(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk')}</td>
+      <td style="text-align:center;">${c0(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
       <td style="text-align:center;">${c0(r.codeCnt.FCH)}</td><td style="text-align:center;">${c0(r.codeCnt.MCH)}</td>
-      <td style="text-align:center;">${c0(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue')}</td>
-      <td style="text-align:center;">${c0(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'red')}</td>
-      <td style="text-align:center;min-width:52px;">${fmtH(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel')}</td>
+      <td style="text-align:center;">${c0(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
+      <td style="text-align:center;">${c0(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'red',nAll)}</td>
+      <td style="text-align:center;min-width:52px;">${fmtH(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel',nOt)}</td>
       <td style="text-align:center;">${c0(r.codeCnt.FC)}</td><td style="text-align:center;">${c0(r.codeCnt.MC)}</td>
-      <td style="text-align:center;">${c0(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk')}</td>
-      <td style="text-align:center;min-width:52px;">${fmtH(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'pur')}</td>
+      <td style="text-align:center;">${c0(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
+      <td style="text-align:center;min-width:52px;">${fmtH(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
     </tr>`).join('');
 
   // 월별 근태코드 표
@@ -2419,12 +2429,17 @@ function teamPanel(teamKey, title){
     </td>
     <td><input type="text" data-team-emp="${esc(e.id)}" data-team-field="part" value="${esc(e.part||'')}" style="width:80px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);"></td>
     <td class="namecell">${esc(e.name)}</td>
+    <td><select data-team-emp="${esc(e.id)}" data-team-field="rankExclude" title="근태관리 순번 계산에서 제외" style="border:1px solid var(--border);border-radius:5px;padding:3px 4px;background:var(--bg);color:var(--text);font-size:12px;">
+      <option value=""${rankExcl(e)===''?' selected':''}>포함</option>
+      <option value="ot"${rankExcl(e)==='ot'?' selected':''}>OT순번 제외</option>
+      <option value="all"${rankExcl(e)==='all'?' selected':''}>전체 제외</option>
+    </select></td>
     <td><button class="btn warn ghost sm" data-act="del-emp" data-id="${esc(e.id)}">삭제</button></td>
   </tr>`).join('');
   return `
   <div data-team-drop="${esc(teamKey)}" style="flex:1 1 320px;min-width:260px;border-radius:10px;">
     <h3 style="margin-bottom:8px;">${esc(title)} (${list.length}명)</h3>
-    ${list.length? `<div class="scrollx"><table class="tbl"><thead><tr><th>순번</th><th>파트</th><th>성명</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+    ${list.length? `<div class="scrollx"><table class="tbl"><thead><tr><th>순번</th><th>파트</th><th>성명</th><th>근태관리 순번</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
       : `<div class="empty">배정된 직원이 없습니다. 다른 조에서 끌어다 놓을 수 있어요.</div>`}
   </div>`;
 }
