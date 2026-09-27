@@ -222,6 +222,7 @@ let unsub = { emp:null, hol:null, code:null, att:null, dispatch:null, splan:null
 let prefill = null; // {date, employeeId} - 그리드에서 셀 클릭 시 입력화면 프리필
 let inputViewDate = null, inputViewEmp = null; // 출퇴근 입력화면에서 마지막으로 보던 날짜/직원 (재렌더 시에도 유지)
 let combinedTeamFilter = ''; // 근태관리 표: '' (전체), '1', '2'
+let combinedYm = null; // 근태관리 아래 '월별 근태코드' 표의 연/월 {y,m}
 let teamOtFilter = ''; // 조별 월간집계: '' (전체), '1', '2'
 let otMatrixStart = null, otMatrixEnd = null; // 월별 OT현황: 작업기간
 let otPayYear = null, otPayMonth = null; // 월별 OT현황: 임금월(예: "10월"=9/26~10/25) 기준 연/월
@@ -1111,7 +1112,10 @@ function ensureForView(){
   if(!dbReady) return;
   if(VIEW==='input'){ const d = (prefill && prefill.date) || inputViewDate || todayStr(); ensureAttendanceRange(d, d); }
   else if(VIEW==='grid'){ const d = dstr(curYear,curMonth,1); ensureAttendanceRange(d, d); }
-  else if(VIEW==='combined' || VIEW==='codestats'){ if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }
+  else if(VIEW==='combined' || VIEW==='codestats'){
+    if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd);
+    if(VIEW==='combined' && combinedYm){ const d = dstr(combinedYm.y, combinedYm.m, 1); ensureAttendanceRange(d, d); }
+  }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); }
 }
@@ -1573,21 +1577,20 @@ function renderGridEditModal(){
 
 /* ========================= 근태관리(통합: 집계+표) ========================= */
 function pageCombined(){
-  // 집계 기간(코드 집계 + 일자별 표 공통) 준비
+  // ① 근태 집계: 시작일~종료일 기간 기준
   if(!codeStatsStart || !codeStatsEnd){
     const t = new Date();
     codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1);
     codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1));
   }
+  // ② 월별 근태코드: 달력 한 달 기준
+  if(!combinedYm){ const t = new Date(); combinedYm = {y:t.getFullYear(), m:t.getMonth()+1}; }
   const rangeStart = codeStatsStart, rangeEnd = codeStatsEnd;
-  const days = [];
-  for(let ds=rangeStart; ds<=rangeEnd; ds=addDays(ds,1)) days.push(ds);
   const sortedEmployees = employees.slice().filter(e=> !combinedTeamFilter || (e.team||'')===combinedTeamFilter).sort((a,b)=>{
     const ta = a.team||'9', tb = b.team||'9';
     if(ta!==tb) return ta<tb?-1:1;
     return (a.teamOrder||999)-(b.teamOrder||999);
   });
-
 
   const perEmp = sortedEmployees.map(e=>{
     let codeCnt = {FCH:0,MCH:0,MCS:0,FC:0,MC:0};
@@ -1598,102 +1601,102 @@ function pageCombined(){
       if(rec.statusCode && codeCnt.hasOwnProperty(rec.statusCode)) codeCnt[rec.statusCode]++;
       const c = computeDaily(rec, ds);
       if(c.valid){ if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else otWeekday+=c.premium; }
-      const s = computeSupportDaily(rec, ds);
-      if(s.valid) supDays++;
+      const sp = computeSupportDaily(rec, ds);
+      if(sp.valid) supDays++;
       mealAllow += computeMealAllowance(rec);
     }
     const gyeHol = codeCnt.FCH+codeCnt.MCH, gyeWk = codeCnt.FC+codeCnt.MC;
     const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0);
     return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday, otWeekdayFinal, supDays};
   });
-  function rankByAsc(getVal){ const s=perEmp.map((r,i)=>({i,v:getVal(r)||0})).sort((a,b)=>a.v-b.v || a.i-b.i); const arr=new Array(perEmp.length); s.forEach((x,idx)=>arr[x.i]=idx+1); return arr; }
-  function rankByDesc(getVal){ const s=perEmp.map((r,i)=>({i,v:getVal(r)||0})).sort((a,b)=>b.v-a.v || a.i-b.i); const arr=new Array(perEmp.length); s.forEach((x,idx)=>arr[x.i]=idx+1); return arr; }
+  function rankByAsc(getVal){ const x=perEmp.map((r,i)=>({i,v:getVal(r)||0})).sort((a,b)=>a.v-b.v || a.i-b.i); const arr=new Array(perEmp.length); x.forEach((q,idx)=>arr[q.i]=idx+1); return arr; }
+  function rankByDesc(getVal){ const x=perEmp.map((r,i)=>({i,v:getVal(r)||0})).sort((a,b)=>b.v-a.v || a.i-b.i); const arr=new Array(perEmp.length); x.forEach((q,idx)=>arr[q.i]=idx+1); return arr; }
   const rankSup=rankByAsc(r=>r.supDays), rankGyeHol=rankByAsc(r=>r.gyeHol), rankMCS=rankByAsc(r=>r.codeCnt.MCS);
   const rankGyeWk=rankByAsc(r=>r.gyeWk), rankOtHol=rankByDesc(r=>r.otHoliday), rankOtWk=rankByDesc(r=>r.otWeekdayFinal);
 
-  const dayHead = days.map(ds=>{
-    const [y,m,d] = ds.split('-').map(Number);
-    const cls = dayCellClass(ds, y, m, d);
-    return `<th class="${cls}" title="${esc(holidays[ds]||'')}">${m}/${d}<br>${weekdayKr(y,m,d)}</th>`;
-  }).join('');
-
-  const head = `<tr>
+  const statHead = `<tr>
     <th class="namehead" rowspan="2">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
     <th colspan="2" style="background:var(--accent-soft);">지원근무</th>
     <th colspan="8" style="background:var(--amber-soft);">휴일,주야간</th>
     <th colspan="6" style="background:var(--ok-soft);">평일,주야간</th>
-    <th class="namehead" rowspan="2">성명</th>
-    <th colspan="${days.length}">일자별</th>
   </tr><tr>
-    <th style="width:40px;">지원</th><th style="width:40px;">순번</th>
-    <th style="width:40px;">FCH</th><th style="width:40px;">MCH</th><th style="width:40px;">계</th><th style="width:40px;">순번</th><th style="width:40px;">MCS</th><th style="width:40px;">순번</th><th style="width:70px;">OT</th><th style="width:40px;">순번</th>
-    <th style="width:40px;">FC</th><th style="width:40px;">MC</th><th style="width:40px;">계</th><th style="width:40px;">순번</th><th style="width:70px;">OT</th><th style="width:40px;">순번</th>
-    ${dayHead}
+    <th>지원</th><th>순번</th>
+    <th>FCH</th><th>MCH</th><th>계</th><th>순번</th><th>MCS</th><th>순번</th><th>OT</th><th>순번</th>
+    <th>FC</th><th>MC</th><th>계</th><th>순번</th><th>OT</th><th>순번</th>
   </tr>`;
+  const c0 = v => v||'';
+  const statRows = perEmp.map((r,idx)=>`<tr>
+      <td style="text-align:center;">${idx+1}</td>
+      <td class="namecell" style="left:34px;">${esc(r.emp.name)}</td>
+      <td style="text-align:center;">${c0(r.supDays)}</td><td style="text-align:center;font-weight:700;">${rankSup[idx]}</td>
+      <td style="text-align:center;">${c0(r.codeCnt.FCH)}</td><td style="text-align:center;">${c0(r.codeCnt.MCH)}</td>
+      <td style="text-align:center;">${c0(r.gyeHol)}</td><td style="text-align:center;font-weight:700;">${rankGyeHol[idx]}</td>
+      <td style="text-align:center;">${c0(r.codeCnt.MCS)}</td><td style="text-align:center;font-weight:700;">${rankMCS[idx]}</td>
+      <td style="text-align:center;min-width:52px;">${fmtH(r.otHoliday)}</td><td style="text-align:center;font-weight:700;">${rankOtHol[idx]}</td>
+      <td style="text-align:center;">${c0(r.codeCnt.FC)}</td><td style="text-align:center;">${c0(r.codeCnt.MC)}</td>
+      <td style="text-align:center;">${c0(r.gyeWk)}</td><td style="text-align:center;font-weight:700;">${rankGyeWk[idx]}</td>
+      <td style="text-align:center;min-width:52px;">${fmtH(r.otWeekdayFinal)}</td><td style="text-align:center;font-weight:700;">${rankOtWk[idx]}</td>
+    </tr>`).join('');
 
-  const rows = perEmp.map((r,idx)=>{
-    const e = r.emp;
-    const dayCells = days.map(ds=>{
-      const [y,m,d] = ds.split('-').map(Number);
+  // 월별 근태코드 표
+  const {y:cy, m:cm} = combinedYm;
+  const monthDays = Array.from({length:daysInMonth(cy,cm)}, (_,i)=>dstr(cy,cm,i+1));
+  const dayHead = monthDays.map(ds=>{
+    const d = Number(ds.slice(8,10));
+    const cls = dayCellClass(ds, cy, cm, d);
+    return `<th class="${cls}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(cy,cm,d)}</th>`;
+  }).join('');
+  const codeRows = sortedEmployees.map(e=>{
+    const cells = monthDays.map(ds=>{
+      const d = Number(ds.slice(8,10));
       const rec = codeStatsAttendance[ds+'_'+e.id];
-      const cls = dayCellClass(ds, y, m, d);
+      const cls = dayCellClass(ds, cy, cm, d);
       let inner = '';
       if(rec){
         const dc = displayCode(rec);
         if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:700;">${esc(dc)}</span>`;
-        // 근태코드도 없고 근무코드도 OFF(또는 없음)면 빈칸
         if(rec.manguen) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
       }
       return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
     }).join('');
-    const noCell = idx+1;
-    return `<tr>
-      <td style="text-align:center;">${esc(noCell)}</td>
-      <td class="namecell">${esc(e.name)}</td>
-      <td style="text-align:center;">${r.supDays||''}</td>
-      <td style="text-align:center;font-weight:700;">${rankSup[idx]}</td>
-      <td style="text-align:center;">${r.codeCnt.FCH||''}</td>
-      <td style="text-align:center;">${r.codeCnt.MCH||''}</td>
-      <td style="text-align:center;">${r.gyeHol||''}</td>
-      <td style="text-align:center;font-weight:700;">${rankGyeHol[idx]}</td>
-      <td style="text-align:center;">${r.codeCnt.MCS||''}</td>
-      <td style="text-align:center;font-weight:700;">${rankMCS[idx]}</td>
-      <td style="text-align:center;width:70px;">${fmtH(r.otHoliday)}</td>
-      <td style="text-align:center;font-weight:700;">${rankOtHol[idx]}</td>
-      <td style="text-align:center;">${r.codeCnt.FC||''}</td>
-      <td style="text-align:center;">${r.codeCnt.MC||''}</td>
-      <td style="text-align:center;">${r.gyeWk||''}</td>
-      <td style="text-align:center;font-weight:700;">${rankGyeWk[idx]}</td>
-      <td style="text-align:center;width:70px;">${fmtH(r.otWeekdayFinal)}</td>
-      <td style="text-align:center;font-weight:700;">${rankOtWk[idx]}</td>
-      <td class="namecell">${esc(e.name)}</td>
-      ${dayCells}
-    </tr>`;
+    return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
   }).join('');
 
   const modal = gridEdit ? renderGridEditModal() : '';
-
-  return `
-  <h2 class="pgttl">근태관리</h2>
-  <p class="pgsub">근태코드 집계와 월별 근태관리표가 한 표로 합쳐져 있습니다. 날짜 칸을 클릭하면 근무코드·근태코드를 바로 입력할 수 있어요.</p>
-  <div class="row" style="margin-bottom:6px;align-items:center;">
-    <div class="field"><label>시작일</label><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"></div>
-    <div class="field"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;">
-      <input type="checkbox" id="codeStatsMealChk" ${codeStatsIncludeMeal?'checked':''}>평일OT 식사연장 포함
-    </label>
-    <span style="flex:1 1 auto;"></span>
-    <button class="btn ghost sm" id="prevMonth">◀ 이전달</button>
-    <div class="field" style="min-width:auto;"><b style="font-size:15px;">${esc(rangeStart)} ~ ${esc(rangeEnd)}</b></div>
-    <button class="btn ghost sm" id="nextMonth">다음달 ▶</button>
-  </div>
-  <div class="row" style="margin-bottom:14px;">
+  const teamBtns = `<div class="row" style="margin-bottom:14px;">
     <button class="btn ${combinedTeamFilter===''?'':'ghost'} sm" data-act="team-filter" data-team="">전체</button>
     <button class="btn ${combinedTeamFilter==='1'?'':'ghost'} sm" data-act="team-filter" data-team="1">1조</button>
     <button class="btn ${combinedTeamFilter==='2'?'':'ghost'} sm" data-act="team-filter" data-team="2">2조</button>
+  </div>`;
+
+  return `
+  <h2 class="pgttl">근태관리</h2>
+  <p class="pgsub">위는 선택한 기간(시작일~종료일)의 집계, 아래는 월별 근태코드 표입니다.</p>
+  ${teamBtns}
+  <div class="panel">
+    <h3>근태 집계 <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(${esc(rangeStart)} ~ ${esc(rangeEnd)})</span></h3>
+    <div class="row" style="margin-bottom:12px;align-items:flex-end;">
+      <div class="field"><label>시작일</label><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"></div>
+      <div class="field"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;height:38px;">
+        <input type="checkbox" id="codeStatsMealChk" ${codeStatsIncludeMeal?'checked':''}>평일OT 식사연장 포함
+      </label>
+    </div>
+    ${sortedEmployees.length? `<div class="scrollx gridwrap" style="display:inline-block;vertical-align:top;"><table class="gtbl"><thead>${statHead}</thead><tbody>${statRows}</tbody></table></div>`
+      : `<div class="empty">등록된 직원이 없습니다.</div>`}
   </div>
-  ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`
-    : `<div class="empty">등록된 직원이 없습니다.</div>`}
+  <div class="panel">
+    <div class="row" style="margin-bottom:12px;align-items:center;">
+      <h3 style="margin:0;">월별 근태코드</h3>
+      <span style="flex:1 1 auto;"></span>
+      <button class="btn ghost sm" id="cmbPrevMonth">◀ 이전달</button>
+      <b style="font-size:15px;">${cy}년 ${cm}월</b>
+      <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
+    </div>
+    ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl"><thead><tr><th class="namehead">성명</th>${dayHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
+      : `<div class="empty">등록된 직원이 없습니다.</div>`}
+    <p class="hint">날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(편집자). 근태코드 참조에 있는 코드만 표시됩니다.</p>
+  </div>
   ${modal}
   `;
 }
@@ -2555,6 +2558,9 @@ function afterRender(){
     }
     curMonth++; if(curMonth>12){curMonth=1;curYear++;} if(dbReady) subscribeAttendanceMonth(curYear,curMonth); render();
   };
+  const cmbPrev = document.getElementById('cmbPrevMonth'), cmbNext = document.getElementById('cmbNextMonth');
+  if(cmbPrev) cmbPrev.onclick = ()=>{ let {y,m} = combinedYm; m--; if(m<1){ m=12; y--; } combinedYm = {y,m}; render(); };
+  if(cmbNext) cmbNext.onclick = ()=>{ let {y,m} = combinedYm; m++; if(m>12){ m=1; y++; } combinedYm = {y,m}; render(); };
   const codeStatsMealChk = document.getElementById('codeStatsMealChk');
   if(codeStatsMealChk) codeStatsMealChk.onchange = ()=>{ codeStatsIncludeMeal = codeStatsMealChk.checked; render(); };
   const codeStatsStartInput = document.getElementById('codeStatsStartInput'), codeStatsEndInput = document.getElementById('codeStatsEndInput');
