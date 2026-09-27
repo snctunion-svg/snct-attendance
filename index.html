@@ -108,6 +108,14 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .btn.sm{padding:5px 10px;font-size:11.5px;border-radius:6px;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
 .gridCodeOpt:hover{background:var(--bg);}
+.dragHandle{display:inline-flex;align-items:center;justify-content:center;width:26px;height:28px;margin-right:4px;border-radius:6px;
+  cursor:grab;color:var(--text-muted);font-size:16px;touch-action:none;user-select:none;-webkit-user-select:none;}
+.dragHandle:hover{background:var(--accent-soft);color:var(--accent);}
+body.team-dragging, body.team-dragging *{cursor:grabbing !important;user-select:none;-webkit-user-select:none;}
+tr.dragging{opacity:.35;}
+tr.drop-before td{box-shadow:inset 0 3px 0 var(--accent);}
+tr.drop-after td{box-shadow:inset 0 -3px 0 var(--accent);}
+[data-team-drop].drop-into{outline:2px dashed var(--accent);outline-offset:4px;}
 
 .badge-code{display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
   border-radius:6px;padding:2px 7px;border:1px solid transparent;}
@@ -736,6 +744,10 @@ window.addEventListener('offline', ()=>{ isOnline = false; updateStatusBar(); })
 function updateStatusBar(){
   const statusEl = document.getElementById('dbStatus');
   if(!statusEl) return;
+  if(demoMode){
+    statusEl.innerHTML = '<span class="dot" style="background:var(--amber);"></span><span style="color:var(--amber);font-weight:700;">🧪 미리보기 모드 — 예시 데이터, 저장 안 됨</span>';
+    return;
+  }
   let conn;
   if(!db) conn = '<span class="dot off"></span><span>서버 연결 실패 — 인터넷 연결을 확인하세요</span>';
   else if(!isOnline) conn = '<span class="dot off"></span><span>오프라인 (연결되면 자동 반영)</span>';
@@ -810,6 +822,83 @@ function applyReadonly(el){
   el.querySelectorAll('[data-act="toggle-role"]').forEach(x=> x.disabled = true);
 }
 
+
+/* ========================= 미리보기 모드 (Claude 화면 등 Firebase 연결이 막힌 곳) ========================= */
+// 실제 앱 주소가 아닌 곳에서 서버 연결이 안 되면, 예시 데이터로 화면을 보여줌. 여기서 바꾼 내용은 저장되지 않음.
+const LIVE_HOSTS = ['snctunion-svg.github.io'];
+let demoMode = false;
+function createDemoDb(){
+  const store = {};
+  const listeners = new Set();
+  const clone = v => v==null ? v : JSON.parse(JSON.stringify(v));
+  const coll = n => (store[n] = store[n] || {});
+  const notify = ()=> setTimeout(()=> listeners.forEach(l=>l()), 0);
+  const wrapDoc = (c,id)=>{ const v = coll(c)[id]; return {exists: v!==undefined, id, data: ()=>clone(v)}; };
+  function runQuery(name, cons){
+    let e = Object.entries(coll(name));
+    cons.filter(k=>k.t==='w').forEach(k=>{
+      e = e.filter(([id,v])=>{ const f=v[k.f]; return k.op==='=='?f===k.v : k.op==='>='?f>=k.v : k.op==='<='?f<=k.v : true; });
+    });
+    const o = cons.find(k=>k.t==='o');
+    if(o){ e = e.filter(([id,v])=>v[o.f]!==undefined).sort((a,b)=> (a[1][o.f]<b[1][o.f]?-1:a[1][o.f]>b[1][o.f]?1:0) * (o.d==='desc'?-1:1)); }
+    return {docs: e.map(([id,v])=>({id, data:()=>clone(v)}))};
+  }
+  function docRef(c, id){
+    return {
+      async get(){ return wrapDoc(c,id); },
+      async set(val, opts){ coll(c)[id] = (opts && opts.merge) ? Object.assign({}, coll(c)[id]||{}, clone(val)) : clone(val); notify(); },
+      async update(val){ coll(c)[id] = Object.assign({}, coll(c)[id]||{}, clone(val)); notify(); },
+      async delete(){ delete coll(c)[id]; notify(); },
+      onSnapshot(cb){ const l=()=>cb(wrapDoc(c,id)); listeners.add(l); setTimeout(l,0); return ()=>listeners.delete(l); }
+    };
+  }
+  function collectionRef(name, cons){
+    cons = cons || [];
+    return {
+      doc(id){ return docRef(name, id); },
+      where(f,op,v){ return collectionRef(name, cons.concat([{t:'w',f,op,v}])); },
+      orderBy(f,d){ return collectionRef(name, cons.concat([{t:'o',f,d}])); },
+      async get(){ return runQuery(name, cons); },
+      onSnapshot(cb){ const l=()=>cb(runQuery(name, cons)); listeners.add(l); setTimeout(l,0); return ()=>listeners.delete(l); }
+    };
+  }
+  // 예시 데이터 채우기
+  SEED_EMPLOYEES.filter(n=>!SEED_EMPLOYEES_SKIP.has(n)).forEach((n,i)=>{
+    const team = i<8 ? '1' : '2';
+    coll('employees')['e'+pad2(i+1)] = {name:n, part:'STS', order:i+1, active:true, team, teamOrder: team==='1' ? i+1 : i-7};
+  });
+  SEED_HOLIDAYS_2026.forEach(([d,n])=>{ coll('holidays')[d] = {date:d, name:n}; });
+  STATUS_CODE_LIST.forEach(c=>{ coll('codeDefs')[c] = {code:c, label:CODE_LABELS[c]||''}; });
+  const t = new Date();
+  let ds = shiftMonth(dstr(t.getFullYear(), t.getMonth()+1, 1), -1);
+  const nx = shiftMonth(dstr(t.getFullYear(), t.getMonth()+1, 1), 1).split('-').map(Number);
+  const end = dstr(nx[0], nx[1], daysInMonth(nx[0], nx[1])); // 지난달~다음달까지 예시 기록
+  let k = 0;
+  while(ds <= end){
+    const [y,m,d] = ds.split('-').map(Number);
+    const w = new Date(y,m-1,d).getDay();
+    Object.entries(coll('employees')).forEach(([id,e],i)=>{
+      k++;
+      const night = (d + i) % 4 >= 2;
+      const off = (d + i*3) % 7 === 0;
+      const rec = {date:ds, employeeId:id};
+      if(off){ Object.assign(rec, {workCode:'OFF', statusCode: w===0 ? 'MCS' : (k%3 ? 'FC' : 'MC')}); }
+      else if(night){ Object.assign(rec, {workCode:'N', checkIn:'19:00', checkOut: k%3 ? '7:00' : '8:00', yasik: k%2===0}); }
+      else { Object.assign(rec, {workCode:'D', checkIn:'8:00', checkOut: k%4 ? '17:00' : '20:00', jungsik: k%5===0}); }
+      if(k%11===0){ rec.supportIn = '19:00'; rec.supportOut = '24:00'; }
+      coll('attendance')[ds+'_'+id] = rec;
+    });
+    ds = addDays(ds, 1);
+  }
+  coll('meta').seed = {seededAt:1};
+  return {
+    collection(name){ return collectionRef(name); },
+    doc(path){ const [c,id] = path.split('/'); return docRef(c,id); },
+    async exportAll(){ return clone(store); },
+    async importAll(data){ Object.entries(data||{}).forEach(([c,docs])=> Object.assign(coll(c), clone(docs))); notify(); return 0; }
+  };
+}
+
 async function initDb(){
   const statusEl = document.getElementById('dbStatus');
   statusEl.innerHTML = '<span class="dot off"></span><span>서버 연결 중…</span>';
@@ -817,6 +906,16 @@ async function initDb(){
     await loadFirebase();
     db = createFirebaseDb();
   }catch(e){ db = null; console.error(e); }
+  if(!db && !LIVE_HOSTS.includes(location.hostname)){
+    // 미리보기 모드: 예시 데이터 + 편집 가능(저장은 안 됨)
+    demoMode = true;
+    db = createDemoDb();
+    dbReady = true; authResolved = true; canEdit = true;
+    updateStatusBar(); updateNavForRole();
+    subscribeAll();
+    render();
+    return;
+  }
   if(!db){
     dbReady = false;
     updateStatusBar();
@@ -1539,11 +1638,10 @@ function pageCombined(){
       }
       return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
     }).join('');
-    const isLeader = e.teamRole==='조장';
-    const noCell = isLeader ? '조장' : (idx+1);
+    const noCell = idx+1;
     return `<tr>
       <td style="text-align:center;">${esc(noCell)}</td>
-      <td class="namecell">${isLeader?'조장 ':''}${esc(e.name)}</td>
+      <td class="namecell">${esc(e.name)}</td>
       <td style="text-align:center;">${r.supDays||''}</td>
       <td style="text-align:center;font-weight:700;">${rankSup[idx]}</td>
       <td style="text-align:center;">${r.codeCnt.FCH||''}</td>
@@ -1560,7 +1658,7 @@ function pageCombined(){
       <td style="text-align:center;font-weight:700;">${rankGyeWk[idx]}</td>
       <td style="text-align:center;width:70px;">${fmtH(r.otWeekdayFinal)}</td>
       <td style="text-align:center;font-weight:700;">${rankOtWk[idx]}</td>
-      <td class="namecell" style="">${isLeader?'조장 ':''}${esc(e.name)}</td>
+      <td class="namecell">${esc(e.name)}</td>
       ${dayCells}
     </tr>`;
   }).join('');
@@ -1638,7 +1736,7 @@ function pageOT(){
   }).join('');
 
   const rows = perEmp.map((r,idx)=>{
-    const noCell = r.emp.teamRole==='조장' ? '조장' : (idx+1);
+    const noCell = idx+1;
     const z = v => v ? fmtH(v) : '';
     const dayCells = days.map(ds=>{
       const [y,m,d] = ds.split('-').map(Number);
@@ -1768,7 +1866,7 @@ function pageTeamOT(){
   });
 
   const rows = perEmp.map((r,idx)=>{
-    const noCell = r.emp.teamRole==='조장' ? '조장' : (idx+1);
+    const noCell = idx+1;
     const z = v => v ? fmtH(v) : '';
     return `<tr>
       <td style="text-align:center;">${esc(noCell)}</td>
@@ -1884,7 +1982,7 @@ function pageCodeStats(){
   const rankOtWk = rankByDesc(r=>r.otWeekdayFinal);
 
   const rows = perEmp.map((r,idx)=>{
-    const noCell = r.emp.teamRole==='조장' ? '조장' : (idx+1);
+    const noCell = idx+1;
     return `<tr style="height:34px;">
       <td style="text-align:center;">${esc(noCell)}</td>
       <td class="namecell" style="height:34px;">${esc(r.emp.name)}</td>
@@ -2078,10 +2176,9 @@ function pageDispatch(){
       if(v){ paintedSlots++; slotCounts[si]++; }
       return slotCell(e.id, s, v);
     }).join('');
-    const isLeader = e.teamRole==='조장';
     return `<tr>
-      <td class="namecell" style="text-align:center;">${isLeader?'조장':idx+1}</td>
-      <td class="namecell" style="left:34px;">${isLeader?'조장 ':''}${esc(e.name)}</td>
+      <td class="namecell" style="text-align:center;">${idx+1}</td>
+      <td class="namecell" style="left:34px;">${esc(e.name)}</td>
       <td style="text-align:center;">${esc(rec.statusCode || rec.workCode || '')}</td>
       <td style="text-align:center;">${esc(rec.checkOut||'')}</td>
       <td style="text-align:center;" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
@@ -2199,34 +2296,91 @@ function pageSupportPlan(){
 
 /* ========================= 조편성 관리 ========================= */
 function teamPanel(teamKey, title){
-  const list = employees.filter(e=>(e.team||'')===teamKey).sort((a,b)=>(a.teamOrder||0)-(b.teamOrder||0));
-  const rows = list.map(e=>{
-    const isLeader = e.teamRole==='조장';
-    const orderCell = isLeader
-      ? `<span style="font-weight:800;color:var(--accent);">조장</span>`
-      : `<input type="number" data-team-emp="${esc(e.id)}" data-team-field="teamOrder" value="${e.teamOrder||''}" style="width:48px;border:1px solid var(--border);border-radius:5px;padding:3px;background:var(--bg);color:var(--text);text-align:center;">`;
-    return `<tr>
-    <td style="text-align:center;">${orderCell}</td>
-    <td><input type="text" data-team-emp="${esc(e.id)}" data-team-field="part" value="${esc(e.part||'')}" style="width:80px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);"></td>
-    <td class="namecell">${isLeader?'조장 ':''}${esc(e.name)}</td>
-    <td style="text-align:center;">
-      <button type="button" class="btn ${isLeader?'':'ghost'} sm" data-act="toggle-role" data-id="${esc(e.id)}" data-role="${isLeader?'조원':'조장'}">${isLeader?'조장':'조원'}</button>
+  const list = employees.filter(e=>(e.team||'')===teamKey).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
+  const rows = list.map((e,idx)=>`<tr data-emp-row="${esc(e.id)}">
+    <td style="text-align:center;white-space:nowrap;">
+      <span class="dragHandle" data-drag-emp="${esc(e.id)}" title="끌어서 순번 이동">⠿</span>
+      <b style="display:inline-block;min-width:18px;">${idx+1}</b>
     </td>
+    <td><input type="text" data-team-emp="${esc(e.id)}" data-team-field="part" value="${esc(e.part||'')}" style="width:80px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);"></td>
+    <td class="namecell">${esc(e.name)}</td>
     <td><button class="btn warn ghost sm" data-act="del-emp" data-id="${esc(e.id)}">삭제</button></td>
-  </tr>`;
-  }).join('');
+  </tr>`).join('');
   return `
-  <div style="flex:1 1 320px;min-width:260px;">
+  <div data-team-drop="${esc(teamKey)}" style="flex:1 1 320px;min-width:260px;border-radius:10px;">
     <h3 style="margin-bottom:8px;">${esc(title)} (${list.length}명)</h3>
-    ${list.length? `<div class="scrollx"><table class="tbl"><thead><tr><th>순번</th><th>파트</th><th>성명</th><th>직책</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
-      : `<div class="empty">배정된 직원이 없습니다.</div>`}
+    ${list.length? `<div class="scrollx"><table class="tbl"><thead><tr><th>순번</th><th>파트</th><th>성명</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+      : `<div class="empty">배정된 직원이 없습니다. 다른 조에서 끌어다 놓을 수 있어요.</div>`}
   </div>`;
+}
+// 드래그한 결과대로 조·순번을 한 번에 저장
+async function saveTeamOrders(updates){
+  if(!requireEdit() || !updates.length) return;
+  updates.forEach(u=>{ const e = employees.find(x=>x.id===u.id); if(e){ e.team = u.team; e.teamOrder = u.teamOrder; } }); // 낙관적 로컬 업데이트
+  render();
+  if(!db) return;
+  try{
+    await Promise.all(updates.map(u=> db.collection('employees').doc(u.id).set({team:u.team, teamOrder:u.teamOrder}, {merge:true})));
+    showToast('순번이 저장되었습니다.');
+  }catch(err){ console.error(err); showToast(saveErrMsg('순번 저장에 실패했습니다.', err)); }
+}
+let teamDrag = null; // {id, fromTeam, target:{team, beforeId|null}}
+function teamListOf(teamKey, excludeId){
+  return employees.filter(e=>(e.team||'')===teamKey && e.id!==excludeId).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
+}
+function clearTeamDropMarks(){
+  document.querySelectorAll('.drop-before,.drop-after,.drop-into').forEach(x=>x.classList.remove('drop-before','drop-after','drop-into'));
+}
+function teamDragMove(clientX, clientY){
+  if(!teamDrag) return;
+  // 화면 가장자리 근처면 자동 스크롤
+  const main = document.getElementById('content');
+  const r = main.getBoundingClientRect();
+  if(clientY < r.top + 50) main.scrollTop -= 12; else if(clientY > r.bottom - 50) main.scrollTop += 12;
+  clearTeamDropMarks();
+  const at = document.elementFromPoint(clientX, clientY);
+  if(!at){ teamDrag.target = null; return; }
+  const row = at.closest('tr[data-emp-row]');
+  const zone = at.closest('[data-team-drop]');
+  if(row && row.dataset.empRow !== teamDrag.id){
+    const rr = row.getBoundingClientRect();
+    const after = clientY > rr.top + rr.height/2;
+    row.classList.add(after ? 'drop-after' : 'drop-before');
+    const teamKey = row.closest('[data-team-drop]').dataset.teamDrop;
+    const list = teamListOf(teamKey, teamDrag.id);
+    const i = list.findIndex(e=>e.id===row.dataset.empRow);
+    teamDrag.target = {team: teamKey, index: after ? i+1 : i};
+  } else if(zone && !row){
+    zone.classList.add('drop-into');
+    teamDrag.target = {team: zone.dataset.teamDrop, index: teamListOf(zone.dataset.teamDrop, teamDrag.id).length};
+  } else if(!row){
+    teamDrag.target = null;
+  }
+}
+function teamDragEnd(){
+  if(!teamDrag) return;
+  const {id, fromTeam, target} = teamDrag;
+  teamDrag = null;
+  clearTeamDropMarks();
+  document.querySelectorAll('tr.dragging').forEach(x=>x.classList.remove('dragging'));
+  document.body.classList.remove('team-dragging');
+  if(!target) return;
+  const me = employees.find(e=>e.id===id);
+  if(!me) return;
+  const updates = [];
+  const dest = teamListOf(target.team, id);
+  dest.splice(Math.max(0, Math.min(target.index, dest.length)), 0, me);
+  dest.forEach((e,i)=>{ if((e.team||'')!==target.team || e.teamOrder!==i+1) updates.push({id:e.id, team:target.team, teamOrder:i+1}); });
+  if(target.team !== fromTeam){
+    teamListOf(fromTeam, id).forEach((e,i)=>{ if(e.teamOrder!==i+1) updates.push({id:e.id, team:fromTeam, teamOrder:i+1}); });
+  }
+  saveTeamOrders(updates);
 }
 function pageTeam(){
   const unassigned = employees.filter(e=>e.team!=='1' && e.team!=='2');
   return `
   <h2 class="pgttl">조편성 관리</h2>
-  <p class="pgsub">직원을 1조/2조로 배정하고 순번·직책을 관리합니다. (원본 시트의 NP/GP 순위 점수는 산출 근거가 파일에 없어 이 앱에는 포함하지 않았습니다 — 순번은 직접 입력해 주세요.)</p>
+  <p class="pgsub">순번 옆 <b>⠿</b> 손잡이를 잡고 위아래로 끌면 순번이 바뀝니다. 다른 조 칸으로 끌어다 놓으면 조도 함께 바뀌어요.</p>
   <div class="panel">
     <h3>직원 추가</h3>
     <form id="teamAddForm" class="row">
@@ -2593,21 +2747,20 @@ function afterRender(){
     };
     if(x.tagName==='SELECT') x.onchange = commit; else x.onblur = commit;
   });
-  el.querySelectorAll('[data-act="toggle-role"]').forEach(x=>{
-    x.onclick = ()=>{
-      const id = x.dataset.id, newRole = x.dataset.role;
-      if(newRole==='조장'){
-        // 같은 조에서 기존 조장은 조원으로 내림 (조장은 조당 한 명)
-        const me = employees.find(e=>e.id===id);
-        if(me){
-          employees.filter(e=>e.id!==id && e.team===me.team && e.teamRole==='조장')
-            .forEach(e=> updateEmployee(e.id, {teamRole:'조원'}));
-        }
-        updateEmployee(id, {teamRole:'조장'});
-      } else {
-        updateEmployee(id, {teamRole:'조원'});
-      }
+  el.querySelectorAll('.dragHandle').forEach(h=>{
+    h.onpointerdown = (e)=>{
+      if(!canEdit){ requireEdit(); return; }
+      e.preventDefault();
+      const row = h.closest('tr[data-emp-row]');
+      const zone = h.closest('[data-team-drop]');
+      teamDrag = {id: h.dataset.dragEmp, fromTeam: zone ? zone.dataset.teamDrop : '', target: null};
+      row.classList.add('dragging');
+      document.body.classList.add('team-dragging');
+      try{ h.setPointerCapture(e.pointerId); }catch(err){}
     };
+    h.onpointermove = (e)=>{ if(teamDrag) teamDragMove(e.clientX, e.clientY); };
+    h.onpointerup = ()=> teamDragEnd();
+    h.onpointercancel = ()=>{ if(teamDrag){ teamDrag.target = null; teamDragEnd(); } };
   });
 }
 
