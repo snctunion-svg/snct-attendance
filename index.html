@@ -1034,6 +1034,7 @@ function createDemoDb(){
       else if(night){ Object.assign(rec, {workCode:'N', checkIn:'19:00', checkOut: k%3 ? '7:00' : '8:00', yasik: k%2===0}); }
       else { Object.assign(rec, {workCode:'D', checkIn:'8:00', checkOut: k%4 ? '17:00' : '20:00', jungsik: k%5===0}); }
       if(k%11===0){ rec.supportIn = '19:00'; rec.supportOut = '24:00'; }
+      if(!off && k%9===0){ rec.attCode = night ? 'ND' : 'DN'; } // 예시: 근태코드 칸에 입력된 지원근무
       coll('attendance')[ds+'_'+id] = rec;
     });
     ds = addDays(ds, 1);
@@ -1752,13 +1753,21 @@ function pageCombined(){
   // 순번 제외 대상은 순위 계산에서 빼고 칸을 비움(null)
   const inAll = r => rankExcl(r.emp)!=='all';
   const inOt = r => rankExcl(r.emp)==='';
+  // 순번은 1조·2조 따로 매김(조가 없는 사람끼리도 따로)
+  const teamOf = r => r.emp.team || '';
   function rankBy(getVal, desc, ok){
-    const x = perEmp.map((r,i)=>({i,v:getVal(r)||0,ok:ok(r)})).filter(q=>q.ok).sort((a,b)=>(desc? b.v-a.v : a.v-b.v) || a.i-b.i);
-    const arr = new Array(perEmp.length).fill(null); x.forEach((q,idx)=>arr[q.i]=idx+1); return arr;
+    const arr = new Array(perEmp.length).fill(null);
+    const groups = {};
+    perEmp.forEach((r,i)=>{ if(ok(r)) (groups[teamOf(r)] = groups[teamOf(r)] || []).push({i, v:getVal(r)||0}); });
+    Object.values(groups).forEach(list=>{
+      list.sort((a,b)=>(desc? b.v-a.v : a.v-b.v) || a.i-b.i).forEach((q,idx)=>{ arr[q.i] = idx+1; });
+    });
+    return arr;
   }
   const rankSup=rankBy(r=>r.supDays,false,inAll), rankGyeHol=rankBy(r=>r.gyeHol,false,inAll), rankMCS=rankBy(r=>r.codeCnt.MCS,false,inAll);
   const rankGyeWk=rankBy(r=>r.gyeWk,false,inAll), rankOtHol=rankBy(r=>r.otHoliday,true,inOt), rankOtWk=rankBy(r=>r.otWeekdayFinal,true,inOt);
-  const nAll = perEmp.filter(inAll).length, nOt = perEmp.filter(inOt).length;
+  const cntBy = ok => { const m = {}; perEmp.forEach(r=>{ if(ok(r)) m[teamOf(r)] = (m[teamOf(r)]||0) + 1; }); return m; };
+  const nAllT = cntBy(inAll), nOtT = cntBy(inOt);
 
   const statHead = `<tr>
     <th class="namehead" rowspan="2">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
@@ -1777,6 +1786,7 @@ function pageCombined(){
   // 순번 제외 대상은 숫자도 숨김: 전체 제외 → 모든 숫자, OT순번 제외 → OT 숫자만
   const statRows = perEmp.map((r,idx)=>{
     const ex = rankExcl(r.emp), hA = ex==='all', hO = ex!=='';
+    const nAll = nAllT[teamOf(r)]||0, nOt = nOtT[teamOf(r)]||0;
     const v = x => hA ? '' : c0(x);
     const ot = x => hO ? '' : fmtH(x);
     return `<tr>
