@@ -113,14 +113,18 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .gridCodeOpt:hover{background:var(--bg);}
 /* 순번 배지: 그룹별 색 + 순위가 높을수록 진하게 */
 .g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);}
+.g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
+.g-yel{--g:#a16207;--g-soft:#fef9c3;--g-strong:#facc15;--g-on:#3f2a00;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .g-blue{--g:#60a5fa;--g-soft:#0f1f3d;} :root:not([data-theme="light"]) .g-red{--g:#f87171;--g-soft:#3b1113;} :root:not([data-theme="light"]) .g-yel{--g:#fde047;--g-soft:#332a05;} }
 .rk{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:21px;padding:0 6px;border-radius:11px;font-weight:800;font-size:11.5px;line-height:1;}
-.rk.t1{background:var(--g);color:#fff;box-shadow:0 0 0 2px var(--g-soft);}
+.rk.t1{background:var(--g-strong,var(--g));color:var(--g-on,#fff);box-shadow:0 0 0 2px var(--g-soft);}
 .rk.t2{background:var(--g-soft);color:var(--g);border:1px solid var(--g);}
 .rk.t3{color:var(--g);opacity:.75;}
 /* 그룹 색으로 칠한 칸 */
 td.gc,th.gc{background:var(--g-soft) !important;color:var(--g);}
 td.gc b,td.gc strong{color:var(--g);}
 th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
+:root th.gh.g-blk{background:#1f2937 !important;}
 .otSum td.gc,.otSum th.gc,.otSum td.otc{min-width:50px;padding:4px 6px !important;}
 .dragHandle{display:inline-flex;align-items:center;justify-content:center;width:26px;height:28px;margin-right:4px;border-radius:6px;
   cursor:grab;color:var(--text-muted);font-size:16px;touch-action:none;user-select:none;-webkit-user-select:none;}
@@ -1703,12 +1707,12 @@ function pageCombined(){
 
   const statHead = `<tr>
     <th class="namehead" rowspan="2">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
-    <th colspan="2" class="gh g-sup">지원근무</th>
+    <th colspan="2" class="gh g-blk">지원근무</th>
     <th colspan="8" class="gh g-hol">휴일,주야간</th>
     <th colspan="6" class="gh g-wk">평일,주야간</th>
   </tr><tr>
-    <th class="gc g-sup">지원</th><th class="gc g-sup">순번</th>
-    <th class="gc g-hol">FCH</th><th class="gc g-hol">MCH</th><th class="gc g-hol">계</th><th class="gc g-hol">순번</th><th class="gc g-hol">MCS</th><th class="gc g-hol">순번</th><th class="gc g-hol">OT</th><th class="gc g-hol">순번</th>
+    <th class="gc g-blk">지원</th><th class="gc g-blk">순번</th>
+    <th class="gc g-hol">FCH</th><th class="gc g-hol">MCH</th><th class="gc g-hol">계</th><th class="gc g-blue">순번</th><th class="gc g-hol">MCS</th><th class="gc g-red">순번</th><th class="gc g-hol">OT</th><th class="gc g-yel">순번</th>
     <th class="gc g-wk">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">계</th><th class="gc g-wk">순번</th><th class="gc g-wk">OT</th><th class="gc g-wk">순번</th>
   </tr>`;
   const c0 = v => v||'';
@@ -1718,11 +1722,11 @@ function pageCombined(){
   const statRows = perEmp.map((r,idx)=>`<tr>
       <td style="text-align:center;">${idx+1}</td>
       <td class="namecell" style="left:34px;">${esc(r.emp.name)}</td>
-      <td style="text-align:center;">${c0(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'sup')}</td>
+      <td style="text-align:center;">${c0(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk')}</td>
       <td style="text-align:center;">${c0(r.codeCnt.FCH)}</td><td style="text-align:center;">${c0(r.codeCnt.MCH)}</td>
-      <td style="text-align:center;">${c0(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'hol')}</td>
-      <td style="text-align:center;">${c0(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'hol')}</td>
-      <td style="text-align:center;min-width:52px;">${fmtH(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'hol')}</td>
+      <td style="text-align:center;">${c0(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue')}</td>
+      <td style="text-align:center;">${c0(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'red')}</td>
+      <td style="text-align:center;min-width:52px;">${fmtH(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel')}</td>
       <td style="text-align:center;">${c0(r.codeCnt.FC)}</td><td style="text-align:center;">${c0(r.codeCnt.MC)}</td>
       <td style="text-align:center;">${c0(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk')}</td>
       <td style="text-align:center;min-width:52px;">${fmtH(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'wk')}</td>
