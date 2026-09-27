@@ -31,9 +31,9 @@
     --text:#e5e9f0; --text-muted:#8b96a8; --border:#2c3646; --surface:#161d2b; --bg:#0c1119;
   }
 }
-:root{ --mc:#15803d; --fill-fc:#cfe0ff; --fill-mc:#c9f2d6; --fill-red:#fdd5d5; --fc:#1e3a8a; --wk:#047857; --wk-soft:#d1fae5; --sup:#1d4ed8; --sup-soft:#dbeafe; --hol:#c2410c; --hol-soft:#ffedd5; }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; } }
-:root[data-theme="dark"]{ --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; }
+:root{ --ot:#854d0e; --ot-soft:#fef9c3; --mc:#15803d; --fill-fc:#cfe0ff; --fill-mc:#c9f2d6; --fill-red:#fdd5d5; --fc:#1e3a8a; --wk:#047857; --wk-soft:#d1fae5; --sup:#1d4ed8; --sup-soft:#dbeafe; --hol:#c2410c; --hol-soft:#ffedd5; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --ot:#fde047; --ot-soft:#332a05; --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; } }
+:root[data-theme="dark"]{ --ot:#fde047; --ot-soft:#332a05; --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; }
 :root[data-theme="dark"]{
   --accent:#60a5fa; --accent-soft:#101d33; --accent-line:#1e3a5f;
   --warn:#f87171; --warn-soft:#341316; --warn-line:#7f1d1d;
@@ -112,7 +112,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
 .gridCodeOpt:hover{background:var(--bg);}
 /* 순번 배지: 그룹별 색 + 순위가 높을수록 진하게 */
-.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);}
+.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);}
 .rk{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:21px;padding:0 6px;border-radius:11px;font-weight:800;font-size:11.5px;line-height:1;}
 .rk.t1{background:var(--g);color:#fff;box-shadow:0 0 0 2px var(--g-soft);}
 .rk.t2{background:var(--g-soft);color:var(--g);border:1px solid var(--g);}
@@ -1859,8 +1859,8 @@ function pageOT(){
       <td class="gc g-sup" style="text-align:center;font-weight:800;">${z(r.spGuar)}</td>
       <td class="gc g-hol" style="text-align:center;">${z(r.hoTotal)}</td>
       <td class="gc g-hol" style="text-align:center;font-weight:800;">${z(r.hoGuar)}</td>
-      <td class="otc" style="text-align:center;background:var(--accent-soft);font-weight:800;">${fmtH(r.grand)}</td>
-      <td class="otc" style="text-align:center;background:var(--accent-soft);">${fmtH(r.otGuar)}</td>
+      <td class="otc gc g-ot" style="text-align:center;font-weight:800;">${fmtH(r.grand)}</td>
+      <td class="otc gc g-ot" style="text-align:center;font-weight:800;">${fmtH(r.otGuar)}</td>
       <td class="namecell">${esc(r.emp.name)}</td>
       ${dayCells}
     </tr>`;
@@ -1876,8 +1876,8 @@ function pageOT(){
     <td class="gc g-sup" style="text-align:center;">${avgOf('spGuar')}</td>
     <td class="gc g-hol" style="text-align:center;">${avgOf('hoTotal')}</td>
     <td class="gc g-hol" style="text-align:center;">${avgOf('hoGuar')}</td>
-    <td style="text-align:center;background:var(--accent-soft);">${avgOf('grand')}</td>
-    <td style="text-align:center;background:var(--accent-soft);">${avgOf('otGuar')}</td>
+    <td class="gc g-ot" style="text-align:center;">${avgOf('grand')}</td>
+    <td class="gc g-ot" style="text-align:center;">${avgOf('otGuar')}</td>
     <td></td>
     ${days.map(()=>'<td></td>').join('')}
   </tr>`;
@@ -1888,7 +1888,6 @@ function pageOT(){
   <div class="row" style="margin-bottom:6px;align-items:center;">
     <div class="field"><label>시작일</label><input type="date" id="otRangeStartInput" value="${esc(otMatrixStart)}"></div>
     <div class="field"><label>종료일</label><input type="date" id="otRangeEndInput" value="${esc(otMatrixEnd)}"></div>
-    <span style="background:#fff200;color:#3a2a00;font-weight:800;padding:6px 16px;border-radius:6px;">총OT</span>
     <span style="flex:1 1 auto;"></span>
     <button class="btn ghost sm" id="prevPayMonth">◀ 이전달</button>
     <div class="field" style="min-width:auto;"><b style="font-size:15px;">${otPayYear}년 ${otPayMonth}월 (${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)})</b></div>
@@ -1906,7 +1905,7 @@ function pageOT(){
       <th class="gh g-wk">평일</th>
       <th colspan="2" class="gh g-sup">지원</th>
       <th colspan="2" class="gh g-hol">휴일</th>
-      <th colspan="2">OT</th>
+      <th colspan="2" class="gc g-ot" style="font-weight:800;">OT</th>
       <th rowspan="2" class="namehead">성명</th>
       <th colspan="${days.length}">일자별</th>
     </tr>
@@ -1915,7 +1914,7 @@ function pageOT(){
       <th class="gc g-wk">계</th>
       <th class="gc g-sup">계</th><th class="gc g-sup">보전</th>
       <th class="gc g-hol">계</th><th class="gc g-hol">보전</th>
-      <th style="background:var(--accent-soft);">실</th><th style="background:var(--accent-soft);">보전</th>
+      <th class="gc g-ot">실</th><th class="gc g-ot">보전</th>
       ${dayHead}
     </tr>
   </thead><tbody>${rows}${avgRow}</tbody></table></div>`
