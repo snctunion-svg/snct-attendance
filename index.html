@@ -114,8 +114,9 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 순번 배지: 그룹별 색 + 순위가 높을수록 진하게 */
 .g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);}
 .g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
+.g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
 .g-yel{--g:#a16207;--g-soft:#fef9c3;--g-strong:#facc15;--g-on:#3f2a00;}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .g-blue{--g:#60a5fa;--g-soft:#0f1f3d;} :root:not([data-theme="light"]) .g-red{--g:#f87171;--g-soft:#3b1113;} :root:not([data-theme="light"]) .g-yel{--g:#fde047;--g-soft:#332a05;} }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .g-blue{--g:#60a5fa;--g-soft:#0f1f3d;} :root:not([data-theme="light"]) .g-red{--g:#f87171;--g-soft:#3b1113;} :root:not([data-theme="light"]) .g-yel{--g:#fde047;--g-soft:#332a05;} :root:not([data-theme="light"]) .g-pur{--g:#c4b5fd;--g-soft:#2a1a4a;} }
 .rk{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:21px;padding:0 6px;border-radius:11px;font-weight:800;font-size:11.5px;line-height:1;}
 .rk.t1{background:var(--g-strong,var(--g));color:var(--g-on,#fff);box-shadow:0 0 0 2px var(--g-soft);}
 .rk.t2{background:var(--g-soft);color:var(--g);border:1px solid var(--g);}
@@ -1712,8 +1713,8 @@ function pageCombined(){
     <th colspan="6" class="gh g-wk">평일,주야간</th>
   </tr><tr>
     <th class="gc g-blk">지원</th><th class="gc g-blk">순번</th>
-    <th class="gc g-hol">FCH</th><th class="gc g-hol">MCH</th><th class="gc g-hol">계</th><th class="gc g-blue">순번</th><th class="gc g-hol">MCS</th><th class="gc g-red">순번</th><th class="gc g-hol">OT</th><th class="gc g-yel">순번</th>
-    <th class="gc g-wk">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">계</th><th class="gc g-wk">순번</th><th class="gc g-wk">OT</th><th class="gc g-wk">순번</th>
+    <th class="gc g-blue">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel">OT</th><th class="gc g-yel">순번</th>
+    <th class="gc g-wk">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">계</th><th class="gc g-wk">순번</th><th class="gc g-pur">OT</th><th class="gc g-pur">순번</th>
   </tr>`;
   const c0 = v => v||'';
   const nEmp = perEmp.length;
@@ -1729,7 +1730,7 @@ function pageCombined(){
       <td style="text-align:center;min-width:52px;">${fmtH(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel')}</td>
       <td style="text-align:center;">${c0(r.codeCnt.FC)}</td><td style="text-align:center;">${c0(r.codeCnt.MC)}</td>
       <td style="text-align:center;">${c0(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk')}</td>
-      <td style="text-align:center;min-width:52px;">${fmtH(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'wk')}</td>
+      <td style="text-align:center;min-width:52px;">${fmtH(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'pur')}</td>
     </tr>`).join('');
 
   // 월별 근태코드 표
