@@ -369,6 +369,20 @@ const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 // 코드 색상 규칙: N,ND,NS,FCH,MCH,MCS,VP,VA는 빨간색, 나머지는 검은색
 const RED_CODES = new Set(['N','ND','NS','FCH','MCH','MCS','VP','VA']);
 function codeColor(code){ return RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'; }
+// 근태코드 참조에 있는(숨기지 않은) 코드만 유효 — 화면 표시와 가져오기에 공통 사용
+function refWorkCodes(){ return new Set(WORK_CODES.map(w=>w.code).filter(c=>!hiddenCodes.has(c))); }
+function refStatusCodes(){
+  const custom = Object.keys(codeDefs).filter(c=>!STATUS_CODE_LIST.includes(c) && !WORK_CODES.some(w=>w.code===c));
+  return new Set([...STATUS_CODE_LIST, ...custom].filter(c=>!hiddenCodes.has(c)));
+}
+function isRefCode(c){ return !!c && (refWorkCodes().has(c) || refStatusCodes().has(c)); }
+// 셀에 보여줄 코드: 근태코드(참조표에 있을 때) → 근무코드(OFF 제외, 참조표에 있을 때)
+function displayCode(rec){
+  if(!rec) return '';
+  if(rec.statusCode && isRefCode(rec.statusCode)) return rec.statusCode;
+  if(rec.workCode && rec.workCode!=='OFF' && isRefCode(rec.workCode)) return rec.workCode;
+  return '';
+}
 
 const OT_NOTE = 'DB.xlsx의 실제 데이터 2,587건(본연근무 2,094건 + 지원근무 493건) 전체를 원본 엑셀 수식과 대조하여 100% 일치를 확인했습니다: 표준 시업시각(체크인 6~14시→08:00 시업 / 14~24시→19:00 시업 고정), 휴일·일요일 퇴근보전(D코드 8~12시 퇴근시 12:00 보장, N코드 19~24시 퇴근시 24:00 보장), 야식 중복공제 방지까지 반영했습니다. 토요일 특근 여부는 원본처럼 "이번 주 평일(월~금) 개근" 여부로 판단하는데, 주간 출근 현황을 자동으로 집계하는 로직은 아직 없어서 우선 월별 근태관리표에서 토요일 셀을 열면 나오는 "만근" 체크박스로 직접 표시해 주세요(체크하면 특근/토요가산 적용, 안 하면 평일로 계산). 이 판단 규칙은 추후 다시 정리할 예정입니다. 연근(연속근무, 휴일 2배 가산)은 현재 입력 항목이 없어 항상 미적용으로 계산됩니다.';
 
@@ -1461,11 +1475,8 @@ function pageGrid(){
       const cls = dayCellClass(ds, curYear, curMonth, d);
       let inner = '';
       if(rec){
-        if(rec.statusCode){
-          inner = `<span class="mini" style="color:${codeColor(rec.statusCode)};font-weight:700;">${esc(rec.statusCode)}</span>`;
-        } else if(rec.workCode && rec.workCode!=='OFF'){
-          inner = `<span class="mini" style="color:${codeColor(rec.workCode)};font-weight:700;">${esc(rec.workCode)}</span>`;
-        }
+        const dc = displayCode(rec);
+        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:700;">${esc(dc)}</span>`;
         if(rec.manguen) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
       }
       return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
@@ -1628,12 +1639,8 @@ function pageCombined(){
       const cls = dayCellClass(ds, y, m, d);
       let inner = '';
       if(rec){
-        if(rec.statusCode){
-          // 근태코드(FC 등)가 있으면 OFF 배지는 숨기고 근태코드만 표시
-          inner = `<span class="mini" style="color:${codeColor(rec.statusCode)};font-weight:700;">${esc(rec.statusCode)}</span>`;
-        } else if(rec.workCode && rec.workCode!=='OFF'){
-          inner = `<span class="mini" style="color:${codeColor(rec.workCode)};font-weight:700;">${esc(rec.workCode)}</span>`;
-        }
+        const dc = displayCode(rec);
+        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:700;">${esc(dc)}</span>`;
         // 근태코드도 없고 근무코드도 OFF(또는 없음)면 빈칸
         if(rec.manguen) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
       }
@@ -2180,7 +2187,7 @@ function pageDispatch(){
     return `<tr>
       <td class="namecell" style="text-align:center;">${idx+1}</td>
       <td class="namecell" style="left:34px;">${esc(e.name)}</td>
-      <td style="text-align:center;">${esc(rec.statusCode || rec.workCode || '')}</td>
+      <td style="text-align:center;">${esc(displayCode(rec))}</td>
       <td style="text-align:center;">${esc(rec.checkOut||'')}</td>
       <td style="text-align:center;" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
       ${cells}
@@ -2598,10 +2605,10 @@ function afterRender(){
     const {date, employeeId} = gridEdit;
     const existing = attendance[date+'_'+employeeId] || {};
     const val = gCode.value.trim().toUpperCase() || 'OFF';
-    const isWorkCode = WORK_CODES.some(w=>w.code===val);
-    const isStatusCode = STATUS_CODE_LIST.includes(val) || !!codeDefs[val];
+    const isWorkCode = val==='OFF' || refWorkCodes().has(val);
+    const isStatusCode = refStatusCodes().has(val);
     if(!isWorkCode && !isStatusCode){
-      showToast('"'+val+'"은(는) 유효한 근무코드·근태코드가 아니에요.');
+      showToast('"'+val+'"은(는) 근태코드 참조에 없는 코드예요. 근태코드 참조에서 먼저 추가하세요.');
       return;
     }
     const rec = {
@@ -2830,20 +2837,32 @@ function importAttendanceByName(obj){
   const rows = Array.isArray(obj.rows) ? obj.rows : [];
   const byName = {};
   employees.forEach(e=>{ byName[String(e.name||'').trim()] = e.id; });
-  const docs = {}, missing = {};
-  let minD = null, maxD = null;
+  const workSet = refWorkCodes(), statusSet = refStatusCodes();
+  const docs = {}, missing = {}, skippedCodes = {};
+  let minD = null, maxD = null, nCode = 0;
   rows.forEach(r=>{
     const id = byName[String(r.name||'').trim()];
     if(!id){ missing[r.name] = (missing[r.name]||0) + 1; return; }
-    const {name, ...fields} = r;
+    const {name, code, workCheck, ...fields} = r;
+    // 근무코드·근태코드: 근태코드 참조에 있는 것만 반영
+    if(code){
+      if(workSet.has(code)){ fields.workCode = code; fields.statusCode = ''; nCode++; }
+      else if(statusSet.has(code)){ fields.statusCode = code; fields.workCode = (workCheck && workSet.has(workCheck)) ? workCheck : 'OFF'; nCode++; }
+      else { skippedCodes[code] = (skippedCodes[code]||0) + 1; }
+    } else if(workCheck && workSet.has(workCheck)){
+      fields.workCode = workCheck; fields.statusCode = ''; nCode++;
+    }
+    if(Object.keys(fields).length <= 1) return; // date만 남으면 넣을 게 없음
     docs[r.date+'_'+id] = Object.assign(fields, {employeeId:id, updatedAt:Date.now()});
     if(!minD || r.date<minD) minD = r.date;
     if(!maxD || r.date>maxD) maxD = r.date;
   });
   const n = Object.keys(docs).length;
   const missTxt = Object.keys(missing).length ? ` 직원 명단에 없는 이름(${Object.entries(missing).map(([k,v])=>k+' '+v+'건').join(', ')})은 건너뜁니다.` : '';
+  const skipTxt = Object.keys(skippedCodes).length ? ` 근태코드 참조에 없는 코드(${Object.entries(skippedCodes).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' '+v+'건').join(', ')})는 넣지 않습니다.` : '';
   if(!n){ showToast('넣을 기록이 없습니다.' + missTxt); return; }
-  appConfirm(`엑셀 DB입력의 출퇴근 기록 ${n.toLocaleString()}건(${minD} ~ ${maxD})을 넣을까요? 본출근·본퇴근·지원출근·지원퇴근·본조보상·타조보상·조출·중식·석출·야식 값만 바뀌고, 근무코드·근태코드는 그대로 둡니다.${missTxt}`,
+  const codeTxt = obj.includesCodes ? ` 근무코드·근태코드 ${nCode.toLocaleString()}건도 함께 넣습니다.` : ' 근무코드·근태코드는 그대로 둡니다.';
+  appConfirm(`엑셀 DB입력 기록 ${n.toLocaleString()}건(${minD} ~ ${maxD})을 넣을까요?${codeTxt}${skipTxt}${missTxt}`,
     ()=> uploadData({attendance: docs}));
 }
 document.addEventListener('click', (e)=>{
