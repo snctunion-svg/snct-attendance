@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SNCT 근태관리</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SNCT근태">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 :root{
   --accent:#1d4ed8; --accent-soft:#eff6ff; --accent-line:#bfdbfe;
@@ -23,6 +31,9 @@
     --text:#e5e9f0; --text-muted:#8b96a8; --border:#2c3646; --surface:#161d2b; --bg:#0c1119;
   }
 }
+:root{ --ot:#854d0e; --ot-soft:#fef9c3; --mc:#15803d; --fill-fc:#cfe0ff; --fill-mc:#c9f2d6; --fill-red:#fdd5d5; --fc:#1e3a8a; --wk:#047857; --wk-soft:#d1fae5; --sup:#1d4ed8; --sup-soft:#dbeafe; --hol:#c2410c; --hol-soft:#ffedd5; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --ot:#fde047; --ot-soft:#332a05; --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; } }
+:root[data-theme="dark"]{ --ot:#fde047; --ot-soft:#332a05; --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; }
 :root[data-theme="dark"]{
   --accent:#60a5fa; --accent-soft:#101d33; --accent-line:#1e3a5f;
   --warn:#f87171; --warn-soft:#341316; --warn-line:#7f1d1d;
@@ -40,13 +51,21 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;o
   font-family:'맑은 고딕','Malgun Gothic',Pretendard,-apple-system,sans-serif;font-size:14px;line-height:1.55;}
 
 header.app{flex:0 0 auto;background:var(--surface);border-bottom:3px solid var(--accent);
-  display:flex;align-items:center;gap:12px;padding:calc(9px + env(safe-area-inset-top,0px)) 16px 9px;z-index:300;}
+  display:flex;align-items:center;gap:12px;padding:9px 16px;z-index:300;}
 header.app .badge{background:var(--accent);color:#fff;font-size:10px;font-weight:700;
   letter-spacing:.06em;padding:2px 7px;border-radius:3px;margin-right:6px;vertical-align:2px;}
 header.app h1{margin:0;font-size:17px;letter-spacing:-.02em;}
 header.app .sub{color:var(--text-muted);font-size:11.5px;margin-top:1px;}
 header.app .spacer{flex:1 1 auto;}
-header.app .status{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:5px;}
+header.app .status{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+header.app .status .btn{padding:4px 9px;font-size:11px;white-space:nowrap;}
+header.app .status span{white-space:nowrap;}
+@media (max-width:700px){
+  header.app .sub{display:none;}
+  header.app h1{font-size:15px;white-space:nowrap;}
+  header.app .status .conn-txt{display:none;}
+  header.app .status{gap:5px;}
+}
 header.app .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none;}
 header.app .dot.off{background:var(--text-muted);}
 .menu-btn{display:none;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);
@@ -63,7 +82,7 @@ nav#nav a.on{background:var(--accent);color:#fff;font-weight:700;}
 nav#nav a .ic{flex:none;width:20px;text-align:center;}
 
 main#content{flex:1 1 auto;min-width:0;overflow-y:auto;padding:22px 26px 60px;}
-.scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:250;}
+.scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:350;}
 
 h2.pgttl{margin:0 0 3px;font-size:19px;letter-spacing:-.01em;}
 p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
@@ -92,6 +111,30 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .btn.sm{padding:5px 10px;font-size:11.5px;border-radius:6px;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
 .gridCodeOpt:hover{background:var(--bg);}
+/* 순번 배지: 그룹별 색 + 순위가 높을수록 진하게 */
+.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);}
+.g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
+.g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
+.g-yel{--g:#a16207;--g-soft:#fef9c3;--g-strong:#facc15;--g-on:#3f2a00;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .g-blue{--g:#60a5fa;--g-soft:#0f1f3d;} :root:not([data-theme="light"]) .g-red{--g:#f87171;--g-soft:#3b1113;} :root:not([data-theme="light"]) .g-yel{--g:#fde047;--g-soft:#332a05;} :root:not([data-theme="light"]) .g-pur{--g:#c4b5fd;--g-soft:#2a1a4a;} }
+.rk{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:21px;padding:0 6px;border-radius:11px;font-weight:800;font-size:11.5px;line-height:1;}
+.rk.t1{background:var(--g-strong,var(--g));color:var(--g-on,#fff);box-shadow:0 0 0 2px var(--g-soft);}
+.rk.t2{background:var(--g-soft);color:var(--g);border:1px solid var(--g);}
+.rk.t3{color:var(--g);opacity:.75;}
+/* 그룹 색으로 칠한 칸 */
+td.gc,th.gc{background:var(--g-soft) !important;color:var(--g);}
+td.gc b,td.gc strong{color:var(--g);}
+th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
+:root th.gh.g-blk{background:#1f2937 !important;}
+.otSum td.gc,.otSum th.gc,.otSum td.otc{min-width:50px;padding:4px 6px !important;}
+.dragHandle{display:inline-flex;align-items:center;justify-content:center;width:26px;height:28px;margin-right:4px;border-radius:6px;
+  cursor:grab;color:var(--text-muted);font-size:16px;touch-action:none;user-select:none;-webkit-user-select:none;}
+.dragHandle:hover{background:var(--accent-soft);color:var(--accent);}
+body.team-dragging, body.team-dragging *{cursor:grabbing !important;user-select:none;-webkit-user-select:none;}
+tr.dragging{opacity:.35;}
+tr.drop-before td{box-shadow:inset 0 3px 0 var(--accent);}
+tr.drop-after td{box-shadow:inset 0 -3px 0 var(--accent);}
+[data-team-drop].drop-into{outline:2px dashed var(--accent);outline-offset:4px;}
 
 .badge-code{display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
   border-radius:6px;padding:2px 7px;border:1px solid transparent;}
@@ -132,6 +175,42 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 .ctbl.gtbl th,.ctbl.gtbl td{height:30px !important;font-size:10.5px !important;padding:2px 3px !important;box-sizing:border-box;}
 .ctbl.gtbl td.namecell,.ctbl.gtbl th.namehead{padding:2px 8px !important;font-size:11px !important;}
 .ctbl.gtbl td.daycell{width:30px !important;}
+td.daycell.filled{border-color:rgba(255,255,255,.7);}
+/* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
+.cmbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+.cmbWrap .panel{margin-bottom:0;padding:14px;}
+.cmbLeft{flex:0 0 auto;max-width:100%;}
+.cmbRight{flex:1 1 360px;min-width:0;}
+.cmbCtrl{height:104px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:10px;}
+.cmbCtrl h3{margin:0;}
+.ctbl.gtbl thead th{height:34px !important;}
+/* 배차표: 가로로 밀어서 보기 + 왼쪽 정보칸·머리글 고정 + 줄 높이 통일 */
+.dpScrollBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px;}
+.dpWrap{overflow:auto;max-height:calc(100vh - 150px);border:2px solid var(--text);border-radius:0 0 10px 10px;background:var(--surface);-webkit-overflow-scrolling:touch;}
+#dpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
+#dpTable th,#dpTable td{height:36px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;padding:0 4px;white-space:nowrap;}
+#dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
+#dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;}
+#dpTable th.dpSlotH{min-width:42px;width:42px;}
+#dpTable .dpI{position:sticky;background:var(--surface);z-index:2;}
+#dpTable thead .dpI{z-index:4;background:var(--bg);}
+#dpTable .dpI1{left:0;min-width:40px;width:40px;}
+#dpTable .dpI2{left:40px;min-width:88px;width:88px;font-weight:700;}
+#dpTable .dpI3{left:128px;min-width:48px;width:48px;font-weight:700;}
+#dpTable .dpI4{left:176px;min-width:50px;width:50px;}
+#dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:2px solid var(--text-muted);}
+#dpTable td.dpI1[colspan]{min-width:272px;border-right:2px solid var(--text-muted);}
+@media (max-width:700px){
+  /* 폰: 번호·성명만 고정하고 좁게 → 시간 칸이 더 많이 보이게 */
+  #dpTable .dpI3,#dpTable .dpI4,#dpTable .dpI5{position:static;}
+  #dpTable .dpI1{min-width:28px;width:28px;padding:0 2px;}
+  #dpTable .dpI2{left:28px;min-width:64px;width:64px;border-right:2px solid var(--text-muted);}
+  #dpTable .dpI2 input{width:56px !important;}
+  #dpTable .dpI5{border-right:1px solid var(--border);}
+  #dpTable td.dpI1[colspan]{min-width:0;}
+  .dpScrollBar .hint{display:none;}
+  #dpTable td.dpCell,#dpTable th.dpSlotH{min-width:38px;width:38px;}
+}
 
 .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);align-items:center;}
 .legend .sw{display:inline-flex;align-items:center;gap:4px;}
@@ -147,8 +226,9 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 @media (max-width:860px){
   .menu-btn{display:flex;align-items:center;justify-content:center;}
   nav#nav{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .2s;
-    z-index:260;padding-top:calc(14px + env(safe-area-inset-top,0px));box-shadow:0 0 24px rgba(0,0,0,.25);}
+    z-index:360;padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:calc(30px + env(safe-area-inset-bottom,0px));box-shadow:0 0 24px rgba(0,0,0,.25);}
   nav#nav.open{transform:translateX(0);}
+  .scrim{z-index:350;}
   .scrim.show{display:block;}
   main#content{padding:16px 14px 50px;}
 }
@@ -158,7 +238,7 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 <header class="app">
   <button class="menu-btn" id="menuBtn" aria-label="메뉴">☰</button>
   <h1><span class="badge">근태관리</span>SNCT 근태관리</h1>
-  <div class="sub" id="headerSub">선광신컨테이너터미널 · STS파트 · Phase 1</div>
+  <div class="sub" id="headerSub">선광신컨테이너터미널 · STS파트</div>
   <div class="spacer"></div>
   <div class="status" id="dbStatus"><span class="dot off"></span>연결 확인 중…</div>
 </header>
@@ -171,10 +251,12 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
     <div class="navttl" style="margin-top:10px;">조장관리</div>
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
-    <div class="navttl" style="margin-top:10px;">조장 운영</div>
+    <div class="navttl" data-editor-only style="margin-top:10px;">조장 운영</div>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드 참조</a>
+    <div class="navttl" data-editor-only style="margin-top:10px;">데이터</div>
+    <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
 </div>
@@ -195,6 +277,7 @@ let unsub = { emp:null, hol:null, code:null, att:null, dispatch:null, splan:null
 let prefill = null; // {date, employeeId} - 그리드에서 셀 클릭 시 입력화면 프리필
 let inputViewDate = null, inputViewEmp = null; // 출퇴근 입력화면에서 마지막으로 보던 날짜/직원 (재렌더 시에도 유지)
 let combinedTeamFilter = ''; // 근태관리 표: '' (전체), '1', '2'
+let combinedYm = null; // 근태관리 아래 '월별 근태코드' 표의 연/월 {y,m}
 let teamOtFilter = ''; // 조별 월간집계: '' (전체), '1', '2'
 let otMatrixStart = null, otMatrixEnd = null; // 월별 OT현황: 작업기간
 let otPayYear = null, otPayMonth = null; // 월별 OT현황: 임금월(예: "10월"=9/26~10/25) 기준 연/월
@@ -215,6 +298,47 @@ let gridEdit = null; // {date, employeeId} - 월별표에서 셀 클릭 시 근�
 let otDetailEmpId = null; // 기사별 OT현황: 달력 상세보기 중인 직원
 let codeStatsIncludeMeal = true; // 근태코드 집계: 평일OT에 식사연장(식사계) 포함 여부
 let codeStatsStart = null, codeStatsEnd = null; // 근태코드 집계: 집계 기간(시작~종료)
+// 근태관리 집계 기간·식사연장 설정을 이 기기에 기억(다른 화면에 다녀오거나 앱을 다시 열어도 유지)
+const CMB_PREF_KEY = 'snct_combined_range';
+try{
+  const p = JSON.parse(localStorage.getItem(CMB_PREF_KEY) || 'null');
+  if(p && /^\d{4}-\d{2}-\d{2}$/.test(p.start||'') && /^\d{4}-\d{2}-\d{2}$/.test(p.end||'')){ codeStatsStart = p.start; codeStatsEnd = p.end; }
+  if(p && typeof p.meal==='boolean') codeStatsIncludeMeal = p.meal;
+}catch(e){}
+function saveCombinedPref(){
+  try{ localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal})); }catch(e){}
+  saveViewPrefsCloud({combinedStart:codeStatsStart, combinedEnd:codeStatsEnd, combinedMeal:codeStatsIncludeMeal});
+}
+// 월별 OT현황 기간도 같은 방식으로 기억
+const OT_PREF_KEY = 'snct_ot_range';
+const isYmd = v => /^\d{4}-\d{2}-\d{2}$/.test(v||'');
+function loadOtPrefLocal(){
+  try{
+    const p = JSON.parse(localStorage.getItem(OT_PREF_KEY) || 'null');
+    if(p && isYmd(p.start) && isYmd(p.end)){ otMatrixStart = p.start; otMatrixEnd = p.end; otPayYear = p.payYear; otPayMonth = p.payMonth; }
+  }catch(e){}
+}
+function saveOtPref(){
+  const v = {start:otMatrixStart, end:otMatrixEnd, payYear:otPayYear, payMonth:otPayMonth};
+  try{ localStorage.setItem(OT_PREF_KEY, JSON.stringify(v)); }catch(e){}
+  saveViewPrefsCloud({otStart:otMatrixStart, otEnd:otMatrixEnd, otPayYear, otPayMonth});
+}
+// 편집자가 바꾼 설정만 클라우드에 저장(보기 전용 사용자가 바꾼 건 그 기기에서만 잠시 유지)
+function saveViewPrefsCloud(partial){
+  if(!db || !canEdit || demoMode) return;
+  db.doc('meta/viewPrefs').set(Object.assign({updatedAt: Date.now()}, partial), {merge:true}).catch(()=>{});
+}
+// 클라우드의 공용 설정을 화면에 반영
+function applyViewPrefs(p){
+  if(!p) return;
+  if(isYmd(p.combinedStart) && isYmd(p.combinedEnd)){ codeStatsStart = p.combinedStart; codeStatsEnd = p.combinedEnd; }
+  if(typeof p.combinedMeal==='boolean') codeStatsIncludeMeal = p.combinedMeal;
+  if(isYmd(p.otStart) && isYmd(p.otEnd)){ otMatrixStart = p.otStart; otMatrixEnd = p.otEnd; if(p.otPayYear) otPayYear = p.otPayYear; if(p.otPayMonth) otPayMonth = p.otPayMonth; }
+  try{
+    localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal}));
+    if(otMatrixStart) localStorage.setItem(OT_PREF_KEY, JSON.stringify({start:otMatrixStart, end:otMatrixEnd, payYear:otPayYear, payMonth:otPayMonth}));
+  }catch(e){}
+}
 let codeStatsAttendance = {}; // 근태코드 집계 전용 출퇴근 데이터 (선택한 기간 전체를 별도로 구독)
 let dispatch = {}; // `${date}_${shift}_${empId}` -> {slots:{slot:catKey}}
 let weekStart = null; // 지원계획표 화면 상태 (해당 주의 월요일, YYYY-MM-DD)
@@ -265,6 +389,7 @@ function updateCountLive(slot){
 function dispatchPaintValue(){ return dispatchPaint==='수정' ? '' : dispatchPaint; }
 function dispatchStartPaint(td){
   if(!td || !td.classList.contains('dpCell')) return;
+  if(!canEdit){ requireEdit(); return; }
   const empId = td.dataset.dispatchEmp, slot = td.dataset.dispatchSlot;
   paintSession = {empId, changes:{}};
   paintSession.changes[slot] = dispatchPaintValue();
@@ -310,6 +435,17 @@ function shiftMonth(dateStr, n){
   const nd = Math.min(d, daysInMonth(ny,nm));
   return dstr(ny, nm, nd);
 }
+// 기간을 n개월 이동. "1일~말일" 한 달 전체 기간이면 이동 후에도 그 달의 1일~말일로 맞춤(8/31, 2/29 등 누락 방지)
+function shiftRangeMonth(start, end, n){
+  const [sy,sm,sd] = start.split('-').map(Number);
+  const [ey,em,ed] = end.split('-').map(Number);
+  if(sd===1 && sy===ey && sm===em && ed===daysInMonth(ey,em)){
+    const ns = shiftMonth(start, n);
+    const [ny,nm] = ns.split('-').map(Number);
+    return [ns, dstr(ny,nm,daysInMonth(ny,nm))];
+  }
+  return [shiftMonth(start,n), shiftMonth(end,n)];
+}
 
 const WORK_CODES = [
   {code:'D', label:'주간(D)', cls:'bc-D'},
@@ -328,10 +464,37 @@ const CODE_LABELS = {
 };
 const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 // 코드 색상 규칙: N,ND,NS,FCH,MCH,MCS,VP,VA는 빨간색, 나머지는 검은색
-const RED_CODES = new Set(['N','ND','NS','FCH','MCH','MCS','VP','VA']);
-function codeColor(code){ return RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'; }
+// 코드 색: FC는 진한 파랑, 아래 코드는 빨강, 나머지(N 포함)는 검정
+const RED_CODES = new Set(['ND','NS','FCH','MCH','MCS','VP','VA']);
+function codeColor(code){ return code==='FC' ? 'var(--fc)' : code==='MC' ? 'var(--mc)' : (RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'); }
+// 근태관리 표 칸 채우기: 색이 있는 코드(FC 파랑·MC 초록·빨강 코드)는 칸 전체를 그 색으로, 글씨는 흰색
+function codeFill(code){ return code==='FC' ? 'var(--fill-fc)' : code==='MC' ? 'var(--fill-mc)' : (RED_CODES.has(code) ? 'var(--fill-red)' : ''); }
+// 근태코드 참조에 있는(숨기지 않은) 코드만 유효 — 화면 표시와 가져오기에 공통 사용
+function refWorkCodes(){ return new Set(WORK_CODES.map(w=>w.code).filter(c=>!hiddenCodes.has(c))); }
+function refStatusCodes(){
+  const custom = Object.keys(codeDefs).filter(c=>!STATUS_CODE_LIST.includes(c) && !WORK_CODES.some(w=>w.code===c));
+  return new Set([...STATUS_CODE_LIST, ...custom].filter(c=>!hiddenCodes.has(c)));
+}
+// 원본 기준 '지원근무' 일수: 월별표(근태코드 칸)에 SP·D·N·DN·ND로 입력된 날
+function isSupportDay(rec){ const a = rec && rec.attCode; return !!a && (a==='SP' || a==='D' || a==='N' || a==='DN' || a.startsWith('ND')); }
+function isRefCode(c){ return !!c && (refWorkCodes().has(c) || refStatusCodes().has(c)); }
+// 셀에 보여줄 코드: 근태코드(참조표에 있을 때) → 근무코드(OFF 제외, 참조표에 있을 때)
+function gridCode(rec){
+  if(!rec) return '';
+  if(rec.statusCode && isRefCode(rec.statusCode)) return rec.statusCode;
+  const a = rec.attCode;
+  if(!a || a==='OFF' || !isRefCode(a)) return '';
+  if((a==='D' || a==='N') && !rec.attManual) return ''; // 엑셀에서 온 D·N은 표시 안 함(선지원은 직접 입력)
+  return a;
+}
+function displayCode(rec){
+  if(!rec) return '';
+  if(rec.statusCode && isRefCode(rec.statusCode)) return rec.statusCode;
+  if(rec.workCode && rec.workCode!=='OFF' && isRefCode(rec.workCode)) return rec.workCode;
+  return '';
+}
 
-const OT_NOTE = 'DB.xlsx의 실제 데이터 2,587건(본연근무 2,094건 + 지원근무 493건) 전체를 원본 엑셀 수식과 대조하여 100% 일치를 확인했습니다: 표준 시업시각(체크인 6~14시→08:00 시업 / 14~24시→19:00 시업 고정), 휴일·일요일 퇴근보전(D코드 8~12시 퇴근시 12:00 보장, N코드 19~24시 퇴근시 24:00 보장), 야식 중복공제 방지까지 반영했습니다. 토요일 특근 여부는 원본처럼 "이번 주 평일(월~금) 개근" 여부로 판단하는데, 주간 출근 현황을 자동으로 집계하는 로직은 아직 없어서 우선 월별 근태관리표에서 토요일 셀을 열면 나오는 "만근" 체크박스로 직접 표시해 주세요(체크하면 특근/토요가산 적용, 안 하면 평일로 계산). 이 판단 규칙은 추후 다시 정리할 예정입니다. 연근(연속근무, 휴일 2배 가산)은 현재 입력 항목이 없어 항상 미적용으로 계산됩니다.';
+const OT_NOTE = '원본 엑셀(DB입력) 6,048행의 계산 결과와 한 줄씩 대조해 총OT가 모두 일치함을 확인했습니다. 표준 시업시각(본출근 6~14시→08:00 / 14~24시→19:00), 휴일·일요일 퇴근보전(편성 근무코드 기준: 주간 8~12시 퇴근→12:00 보장, 야간 19~24시 퇴근→24:00 보장), 야식 중복공제 방지, 연근(휴일 2배) 반영. 토요일 특근은 그 주 월~금이 출근·공휴일·VA·VP·E·FCH·MCH·UJ로 모두 채워지면 자동으로 적용되며(원본 규칙), 필요하면 월별표 토요일 칸에서 수동으로 인정할 수 있습니다.';
 
 function dateAt(dateStr, h, m, addDay){
   const [y,mo,d] = dateStr.split('-').map(Number);
@@ -375,6 +538,7 @@ function timeSelectHtml(name, value){
 function timeSelectRangeHtml(name, value, hours){
   let h='', m='';
   if(value){ const p = value.split(':'); h = p[0]; m = p[1]; }
+  if(h && !hours.map(String).includes(String(Number(h)))) hours = hours.concat([Number(h)]).sort((a,b)=>a-b);
   const hOpts = hours.map(x=>`<option value="${x}"${String(x)===String(h)?' selected':''}>${x}시</option>`).join('');
   const mOpts = MIN_OPTIONS.map(x=>`<option value="${x}"${x===m?' selected':''}>${x}분</option>`).join('');
   return `<select name="${name}H" style="border:1px solid var(--border);border-radius:8px;padding:8px 6px;background:var(--bg);color:var(--text);font-size:13px;"><option value="">시</option>${hOpts}</select>` +
@@ -394,6 +558,22 @@ function quickTimeButtons(name, options, curVal){
       style="border:2px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;background:var(--bg);color:var(--text);cursor:pointer;">${label}</button>
     <input type="hidden" name="${esc(name)}" id="${esc(name)}Field" value="${esc(curVal||'')}">`;
 }
+// 토요일 만근 자동 판정 (원본 엑셀 규칙 — 864개 토요일 전부 대조 일치):
+// 그 주 월~금 5일이 모두 '출근(본출근 입력) · 공휴일 · 인정 근태코드' 중 하나면 만근 → 토요일 근무는 특근(SA)
+const MANGUEN_CODES = new Set(['VA','VP','E','FCH','MCH','UJ','LS','SV','CK']);
+function autoManguen(dateStr, empId){
+  if(!empId || typeof attStore==='undefined') return false;
+  const [y,m,d] = dateStr.split('-').map(Number);
+  if(new Date(y,m-1,d).getDay()!==6) return false;
+  for(let i=5;i>=1;i--){
+    const ds = addDays(dateStr, -i);
+    const r = attStore[ds+'_'+empId];
+    const ok = (r && r.checkIn) || holidays[ds] || (r && MANGUEN_CODES.has(r.statusCode));
+    if(!ok) return false;
+  }
+  return true;
+}
+function recManguen(rec, dateStr){ return !!(rec && (rec.manguen || autoManguen(dateStr, rec.employeeId))); }
 function dayCategory(dateStr, manguen){
   const [wy,wm,wd] = dateStr.split('-').map(Number);
   const w = new Date(wy, wm-1, wd).getDay(); // 0=일 6=토, 타임존 안전 파싱
@@ -419,14 +599,16 @@ function computeDaily(rec, dateStr){
   if(actualEnd<=start) actualEnd = new Date(actualEnd.getTime()+24*3600000);
   const checkoutDec = toDec(rec.checkOut);
 
-  const kcat = dayCategory(dateStr, rec.manguen);
+  const kcat = dayCategory(dateStr, recManguen(rec, dateStr));
 
   let guaranteedEnd = actualEnd;
+  // 퇴근보전은 원본 엑셀처럼 '근무코드(편성된 주간/야간)' 기준으로 판단. 엑셀에서 가져온 기록은 baseShift(D/N)에 들어 있음
+  const gCode = rec.baseShift || rec.workCode;
   if(kcat==='SU' || kcat==='H'){
-    if((rec.workCode==='D'||rec.workCode==='DN') && checkoutDec>8 && checkoutDec<12){
+    if((gCode==='D'||gCode==='DN') && checkoutDec>8 && checkoutDec<12){
       guaranteedEnd = dateAt(dateStr,12,0);
     }
-    if((rec.workCode==='N'||rec.workCode==='ND') && checkoutDec>=19 && checkoutDec<=24){
+    if((gCode==='N'||gCode==='ND') && checkoutDec>=19 && checkoutDec<=24){
       guaranteedEnd = dateAt(dateStr,0,0,1); // 24:00 = 익일 00:00
     }
   }
@@ -514,7 +696,7 @@ function computeSupportDaily(rec, dateStr){
     }
   }
 
-  const kcat = dayCategory(dateStr, rec.manguen);
+  const kcat = dayCategory(dateStr, recManguen(rec, dateStr));
   let premium;
   if(shiftParsed){
     if(kcat==='SU' || kcat==='H' || kcat==='SA'){
@@ -523,18 +705,21 @@ function computeSupportDaily(rec, dateStr){
       premium = (8 + supOT + tajo + honjo)*1.5 + supNight*0.5;
     }
   } else {
-    // 실제 지원근무 없이(또는 시간 파싱 불가) 본조보상/타조보상만 입력된 경우: 그 시간만큼만 가산 배율 적용
-    const mult = (kcat==='SU' || kcat==='H' || kcat==='SA') ? 2 : 1.5;
-    premium = (honjo + tajo) * mult;
+    // 실제 지원근무 없이 본조보상/타조보상만 입력된 경우 (원본 수식 기준):
+    // 본조보상은 요일과 관계없이 1.5배, 타조보상은 휴일·토요일 2배 / 평일 1.5배
+    const tajoMult = (kcat==='SU' || kcat==='H' || kcat==='SA') ? 2 : 1.5;
+    premium = honjo * 1.5 + tajo * tajoMult;
   }
   return {supTotal, supOT, supNight, premium, valid:true};
 }
 
-const SEED_EMPLOYEES = ['오원일','서인기','김성용','김기영','김의섭','김치수','남궁영호','김태석','김태화','박무근','이동화','전재필','최두영','최윤수','최현철','노인규','선종화','우창기','유재현','고훈희','유재선','강위상','김성일','김재천','박종국','김세중','홍윤택','강대정','황대영','윤성하','임성현'];
+const SEED_EMPLOYEES = ['김기영','김성용','김의섭','김치수','김태석','김태화','남궁영호','노인규','박무근','서인기','선종희','오원일','이동화','전재필','최두영','최윤수','최현철'];
+// 기본 명단에서 뺀 사람(번호 e01~e17은 그대로 유지하기 위해 목록에서 지우지 않고 건너뜀)
+const SEED_EMPLOYEES_SKIP = new Set(['선종희']);
 const SEED_HOLIDAYS_2026 = [
-  ['2026-01-01','신정'],['2026-02-16','설날연휴'],['2026-02-17','설날'],['2026-02-18','설날연휴'],
+  ['2025-12-25','성탄절'],['2026-01-01','신정'],['2026-02-16','설날연휴'],['2026-02-17','설날'],['2026-02-18','설날연휴'],
   ['2026-03-01','삼일절'],['2026-03-02','대체공휴일'],['2026-04-10','회사창립일'],['2026-05-01','근로자의날'],
-  ['2026-05-05','어린이날'],['2026-05-24','부처님오신날'],['2026-05-25','대체공휴일'],['2026-06-06','현충일'],
+  ['2026-05-05','어린이날'],['2026-05-24','부처님오신날'],['2026-05-25','대체공휴일'],['2026-06-03','지방선거'],['2026-06-06','현충일'],
   ['2026-06-15','SNCT노조설립일'],['2026-07-17','제헌절'],['2026-08-15','광복절'],['2026-08-17','대체공휴일'],
   ['2026-09-24','추석연휴'],['2026-09-25','추석'],['2026-09-26','추석연휴'],['2026-10-03','개천절'],
   ['2026-10-05','대체공휴일'],['2026-10-09','한글날'],['2026-12-25','성탄절']
@@ -560,7 +745,7 @@ function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   clearTimeout(showToast._h);
-  showToast._h = setTimeout(()=>t.classList.remove('show'), 2200);
+  showToast._h = setTimeout(()=>t.classList.remove('show'), msg.length>30 ? 6000 : 2200);
 }
 // window.confirm()은 샌드박스 iframe(아티팩트 환경)에서 차단되어 조용히 실패할 수 있어,
 // 자체 DOM으로 만든 확인창을 사용한다. document.body에 직접 붙여서 render()와 무관하게 동작.
@@ -584,6 +769,10 @@ function appConfirm(message, onConfirm){
   document.getElementById('appConfirmCancel').onclick = cleanup;
   document.getElementById('appConfirmOk').onclick = ()=>{ cleanup(); onConfirm(); };
 }
+// 근태관리 순번 제외: 'all' = 모든 순번 제외, 'ot' = 휴일·평일 OT 순번만 제외, '' = 포함
+// 조편성 관리에서 바꿀 수 있고, 따로 정하지 않은 사람은 아래 기본값을 따름
+const DEFAULT_RANK_EXCLUDE = {'오원일':'all', '선종화':'all', '서인기':'ot', '우창기':'ot'};
+function rankExcl(e){ return (e && e.rankExclude!==undefined && e.rankExclude!==null) ? e.rankExclude : (DEFAULT_RANK_EXCLUDE[e && e.name] || ''); }
 function empName(id){ const e = employees.find(x=>x.id===id); return e ? e.name : '(알수없음)'; }
 function statusLabel(code){
   if(!code) return '';
@@ -592,143 +781,357 @@ function statusLabel(code){
   return label ? `${code}(${label})` : code;
 }
 
-/* ========================= DB 연결 ========================= */
-/* ========================= 로컬 저장소(브라우저 자체 저장, 로그인·외부서비스 불필요) ========================= */
-function createLocalDb(){
-  const STORAGE_KEY = 'snct_attendance_data_v1';
-  function loadAll(){
-    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }catch(e){ return {}; }
+/* ========================= Firebase 연결 (클라우드 실시간 저장) ========================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDKNB0xNs-1FEv_UrlSfX9-fgjJph3YG8A",
+  authDomain: "snct-d40ed.firebaseapp.com",
+  projectId: "snct-d40ed",
+  storageBucket: "snct-d40ed.firebasestorage.app",
+  messagingSenderId: "236880210998",
+  appId: "1:236880210998:web:b0abb11eae94b3103a3c97"
+};
+// 저장(편집)이 허용된 계정. Firestore 보안 규칙에도 같은 이메일을 넣어야 실제로 저장됩니다.
+const EDITOR_EMAILS = ['snctunion@gmail.com'];
+const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/12.19.0/';
+const OLD_LOCAL_KEY = 'snct_attendance_data_v1'; // 이전 버전(브라우저 저장)이 쓰던 저장 키
+const LAST_BACKUP_KEY = 'snct_attendance_last_backup';
+let fb = null;            // {fsM, authM, fs, auth}
+let currentUser = null, canEdit = false, authResolved = false, isOnline = navigator.onLine;
+
+async function loadFirebase(){
+  const [appM, fsM, authM] = await Promise.all([
+    import(FIREBASE_SDK+'firebase-app.js'),
+    import(FIREBASE_SDK+'firebase-firestore.js'),
+    import(FIREBASE_SDK+'firebase-auth.js')
+  ]);
+  const app = appM.initializeApp(FIREBASE_CONFIG);
+  let fs;
+  try{
+    // 기기에 사본을 저장해 두어 다시 열 때 빠르고, 잠깐 인터넷이 끊겨도 입력이 유지됨
+    fs = fsM.initializeFirestore(app, {ignoreUndefinedProperties:true,
+      localCache: fsM.persistentLocalCache({tabManager: fsM.persistentMultipleTabManager()})});
+  }catch(e){
+    fs = fsM.initializeFirestore(app, {ignoreUndefinedProperties:true});
   }
-  function saveAll(data){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){}
-    window.dispatchEvent(new Event('localdb-change'));
-  }
-  function docRef(collName, docId){
-    const self = {
-      async get(){
-        const data = loadAll();
-        const val = (data[collName]||{})[docId];
-        return { exists: val !== undefined, id: docId, data: ()=>val };
-      },
-      async set(val){
-        const data = loadAll();
-        if(!data[collName]) data[collName] = {};
-        data[collName][docId] = val;
-        saveAll(data);
-      },
-      async update(val){
-        const data = loadAll();
-        if(!data[collName]) data[collName] = {};
-        data[collName][docId] = Object.assign({}, data[collName][docId]||{}, val);
-        saveAll(data);
-      },
-      async delete(){
-        const data = loadAll();
-        if(data[collName]) delete data[collName][docId];
-        saveAll(data);
-      },
-      onSnapshot(cb, errCb){
-        const fire = ()=>{ self.get().then(cb).catch(errCb); };
-        fire();
-        const handler = ()=>fire();
-        window.addEventListener('localdb-change', handler);
-        window.addEventListener('storage', handler);
-        return ()=>{ window.removeEventListener('localdb-change', handler); window.removeEventListener('storage', handler); };
-      }
+  const auth = authM.getAuth(app);
+  fb = {fsM, authM, fs, auth};
+}
+
+// 기존 코드가 쓰던 db.collection().doc().get/set/onSnapshot 형태를 그대로 유지하는 어댑터
+function createFirebaseDb(){
+  const {fsM, fs} = fb;
+  const wrapDoc = snap => ({exists: snap.exists(), id: snap.id, data: ()=>snap.data()});
+  const wrapQuery = snap => ({docs: snap.docs.map(d=>({id:d.id, data:()=>d.data()}))});
+  function docRef(coll, id){
+    const ref = fsM.doc(fs, coll, id);
+    return {
+      async get(){ return wrapDoc(await fsM.getDoc(ref)); },
+      set(val, opts){ return fsM.setDoc(ref, val, opts||{}); },
+      update(val){ return fsM.setDoc(ref, val, {merge:true}); },
+      delete(){ return fsM.deleteDoc(ref); },
+      onSnapshot(cb, errCb){ return fsM.onSnapshot(ref, snap=>cb(wrapDoc(snap)), errCb); }
     };
-    return self;
   }
-  function collectionRef(name, filters, order){
-    filters = filters || [];
-    const self = {
+  function collectionRef(name, cons){
+    cons = cons || [];
+    const q = ()=> fsM.query(fsM.collection(fs, name), ...cons);
+    return {
       doc(id){ return docRef(name, id); },
-      where(field, op, val){ return collectionRef(name, filters.concat([[field,op,val]]), order); },
-      orderBy(field, dir){ return collectionRef(name, filters, {field, dir: dir||'asc'}); },
-      async get(){
-        const data = loadAll();
-        let entries = Object.entries(data[name]||{});
-        entries = entries.filter(([id,v])=>filters.every(([f,op,val])=>{
-          const fv = v[f];
-          if(op==='==') return fv===val;
-          if(op==='!=') return fv!==val;
-          if(op==='>=') return fv>=val;
-          if(op==='<=') return fv<=val;
-          if(op==='>') return fv>val;
-          if(op==='<') return fv<val;
-          return true;
-        }));
-        if(order){
-          entries.sort((a,b)=>{
-            const av=a[1][order.field], bv=b[1][order.field];
-            const cmp = av<bv?-1:(av>bv?1:0);
-            return order.dir==='desc' ? -cmp : cmp;
-          });
-        }
-        return { docs: entries.map(([id,v])=>({id, data:()=>v})) };
-      },
-      onSnapshot(cb, errCb){
-        const fire = ()=>{ self.get().then(cb).catch(errCb); };
-        fire();
-        const handler = ()=>fire();
-        window.addEventListener('localdb-change', handler);
-        window.addEventListener('storage', handler);
-        return ()=>{ window.removeEventListener('localdb-change', handler); window.removeEventListener('storage', handler); };
-      }
+      where(f, op, v){ return collectionRef(name, cons.concat([fsM.where(f, op, v)])); },
+      orderBy(f, dir){ return collectionRef(name, cons.concat([fsM.orderBy(f, dir||'asc')])); },
+      async get(){ return wrapQuery(await fsM.getDocs(q())); },
+      onSnapshot(cb, errCb){ return fsM.onSnapshot(q(), snap=>cb(wrapQuery(snap)), errCb); }
     };
-    return self;
   }
+  const COLLS = ['employees','holidays','codeDefs','attendance','dispatch','supportPlan','meta'];
   return {
     collection(name){ return collectionRef(name); },
-    doc(path){ const [collName, docId] = path.split('/'); return docRef(collName, docId); }
+    doc(path){ const [c, id] = path.split('/'); return docRef(c, id); },
+    async exportAll(){
+      const out = {};
+      for(const n of COLLS){
+        const snap = await fsM.getDocs(fsM.collection(fs, n));
+        out[n] = {};
+        snap.docs.forEach(d=>{ out[n][d.id] = d.data(); });
+      }
+      return out;
+    },
+    async importAll(data, onProgress){
+      const items = [];
+      for(const n of COLLS){ for(const [id, v] of Object.entries(data[n]||{})){ if(v && typeof v==='object') items.push([n, id, v]); } }
+      for(let i=0; i<items.length; i+=400){
+        const batch = fsM.writeBatch(fs);
+        items.slice(i, i+400).forEach(([n, id, v])=> batch.set(fsM.doc(fs, n, id), v, {merge:true}));
+        await batch.commit();
+        if(onProgress) onProgress(Math.min(i+400, items.length), items.length);
+      }
+      return items.length;
+    }
+  };
+}
+
+function requireEdit(){
+  if(canEdit) return true;
+  showToast(db ? '보기 전용입니다. 편집하려면 편집자 로그인을 하세요.' : '서버에 연결되지 않아 저장할 수 없습니다.');
+  return false;
+}
+function saveErrMsg(base, err){
+  const c = (err && err.code) || '';
+  if(c==='permission-denied') return base + ' (권한 없음 — Firestore 보안 규칙을 게시했는지, 편집자 계정인지 확인하세요)';
+  if(c==='not-found') return base + ' (Firestore 데이터베이스를 찾을 수 없음 — 데이터베이스가 만들어졌는지 확인하세요)';
+  if(c==='unavailable') return base + ' (서버에 연결할 수 없음 — 인터넷 연결을 확인하세요)';
+  return base + (c ? ` (오류: ${c})` : (err && err.message ? ` (${err.message})` : ''));
+}
+function lastBackupAt(){ try{ return Number(localStorage.getItem(LAST_BACKUP_KEY))||0; }catch(e){ return 0; } }
+function oldLocalData(){
+  try{ const raw = localStorage.getItem(OLD_LOCAL_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+}
+window.addEventListener('online', ()=>{ isOnline = true; updateStatusBar(); });
+window.addEventListener('offline', ()=>{ isOnline = false; updateStatusBar(); });
+
+function updateStatusBar(){
+  const statusEl = document.getElementById('dbStatus');
+  if(!statusEl) return;
+  if(demoMode){
+    statusEl.innerHTML = '<span class="dot" style="background:var(--amber);"></span><span style="color:var(--amber);font-weight:700;">🧪 미리보기 모드 — 예시 데이터, 저장 안 됨</span>';
+    return;
+  }
+  let conn;
+  if(!db) conn = '<span class="dot off"></span><span>서버 연결 실패 — 인터넷 연결을 확인하세요</span>';
+  else if(!isOnline) conn = '<span class="dot off"></span><span>오프라인 (연결되면 자동 반영)</span>';
+  else conn = '<span class="dot"></span><span class="conn-txt">실시간 동기화</span>';
+  let authHtml = '';
+  if(db && authResolved){
+    authHtml = canEdit
+      ? `<span style="color:var(--ok);font-weight:700;">✏️ 편집 모드</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+      : (currentUser
+          ? `<span style="color:var(--warn);">편집 권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+          : `<span>👁 보기 전용</span><button type="button" class="btn ghost sm" id="loginBtn">편집자 로그인</button>`);
+  }
+  statusEl.innerHTML = conn + authHtml;
+  const lb = document.getElementById('loginBtn'), lo = document.getElementById('logoutBtn');
+  if(lb) lb.onclick = openLoginDialog;
+  if(lo) lo.onclick = ()=> appConfirm('로그아웃할까요? 로그아웃하면 보기 전용이 됩니다.', ()=> fb.authM.signOut(fb.auth));
+}
+function openLoginDialog(){
+  const old = document.getElementById('loginOverlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'loginOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML = `
+    <form id="loginForm" style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;">
+      <h3 style="margin:0 0 4px;font-size:15px;">편집자 로그인</h3>
+      <div class="field"><label>이메일</label><input type="email" name="email" autocomplete="username" required value="${esc(EDITOR_EMAILS[0]||'')}"></div>
+      <div class="field"><label>비밀번호</label><input type="password" name="pw" autocomplete="current-password" required></div>
+      <div id="loginErr" style="color:var(--warn);font-size:12px;min-height:16px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="btn ghost sm" id="loginCancel">취소</button>
+        <button type="submit" class="btn sm" id="loginSubmit">로그인</button>
+      </div>
+    </form>`;
+  document.body.appendChild(ov);
+  const form = ov.querySelector('#loginForm');
+  ov.querySelector('#loginCancel').onclick = ()=> ov.remove();
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
+  setTimeout(()=>{ const pw = form.querySelector('[name=pw]'); if(pw) pw.focus(); }, 50);
+  form.onsubmit = async (e)=>{
+    e.preventDefault();
+    const f = new FormData(form), btn = form.querySelector('#loginSubmit'), errEl = form.querySelector('#loginErr');
+    btn.disabled = true; errEl.textContent = '';
+    try{
+      await fb.authM.signInWithEmailAndPassword(fb.auth, String(f.get('email')).trim(), String(f.get('pw')));
+      ov.remove();
+      showToast('로그인되었습니다.');
+    }catch(err){
+      const c = err && err.code || '';
+      errEl.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found')) ? '이메일 또는 비밀번호가 맞지 않습니다.'
+        : c.includes('too-many-requests') ? '시도가 너무 많습니다. 잠시 후 다시 해 보세요.'
+        : c.includes('network') ? '인터넷 연결을 확인하세요.'
+        : '로그인 실패: ' + c;
+      btn.disabled = false;
+    }
+  };
+}
+// 보기 전용 사용자는 근태관리·월별 OT현황·배차표·지원계획표만 볼 수 있음. 편집자는 전체 메뉴.
+const EDITOR_ONLY_VIEWS = ['input','team','holidays','codes','backup','grid','employees','codestats'];
+function isEditorOnlyView(v){ return EDITOR_ONLY_VIEWS.includes(v); }
+function updateNavForRole(){
+  document.querySelectorAll('nav#nav a[data-view]').forEach(a=>{
+    a.style.display = (!canEdit && isEditorOnlyView(a.dataset.view)) ? 'none' : '';
+  });
+  document.querySelectorAll('nav#nav [data-editor-only]').forEach(x=> x.style.display = canEdit ? '' : 'none');
+}
+// 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
+function applyReadonly(el){
+  const allow = new Set(['codeStatsStartInput','codeStatsEndInput','codeStatsMealChk','otRangeStartInput','otRangeEndInput','dpDate','dpShift','fDate','fEmp1','fEmp2']);
+  el.querySelectorAll('input,select,textarea').forEach(x=>{ if(!allow.has(x.id) && x.type!=='file') x.disabled = true; });
+  el.querySelectorAll('#holForm,#teamAddForm,#showAddCodeBtn,#splanResetBtn,#backupImportBtn,#delRecBtn,#attForm button[type="submit"],[data-act="del-emp"],[data-act="del-hol"],[data-act="delete-code"],[data-act="restore-code"],[data-act="save-code"],.dpCatBtn,.editor-only')
+    .forEach(x=> x.style.display = 'none');
+  el.querySelectorAll('[data-act="toggle-role"]').forEach(x=> x.disabled = true);
+}
+
+
+/* ========================= 미리보기 모드 (Claude 화면 등 Firebase 연결이 막힌 곳) ========================= */
+// 실제 앱 주소가 아닌 곳에서 서버 연결이 안 되면, 예시 데이터로 화면을 보여줌. 여기서 바꾼 내용은 저장되지 않음.
+const LIVE_HOSTS = ['snctunion-svg.github.io'];
+let demoMode = false;
+function createDemoDb(){
+  const store = {};
+  const listeners = new Set();
+  const clone = v => v==null ? v : JSON.parse(JSON.stringify(v));
+  const coll = n => (store[n] = store[n] || {});
+  const notify = ()=> setTimeout(()=> listeners.forEach(l=>l()), 0);
+  const wrapDoc = (c,id)=>{ const v = coll(c)[id]; return {exists: v!==undefined, id, data: ()=>clone(v)}; };
+  function runQuery(name, cons){
+    let e = Object.entries(coll(name));
+    cons.filter(k=>k.t==='w').forEach(k=>{
+      e = e.filter(([id,v])=>{ const f=v[k.f]; return k.op==='=='?f===k.v : k.op==='>='?f>=k.v : k.op==='<='?f<=k.v : true; });
+    });
+    const o = cons.find(k=>k.t==='o');
+    if(o){ e = e.filter(([id,v])=>v[o.f]!==undefined).sort((a,b)=> (a[1][o.f]<b[1][o.f]?-1:a[1][o.f]>b[1][o.f]?1:0) * (o.d==='desc'?-1:1)); }
+    return {docs: e.map(([id,v])=>({id, data:()=>clone(v)}))};
+  }
+  function docRef(c, id){
+    return {
+      async get(){ return wrapDoc(c,id); },
+      async set(val, opts){ coll(c)[id] = (opts && opts.merge) ? Object.assign({}, coll(c)[id]||{}, clone(val)) : clone(val); notify(); },
+      async update(val){ coll(c)[id] = Object.assign({}, coll(c)[id]||{}, clone(val)); notify(); },
+      async delete(){ delete coll(c)[id]; notify(); },
+      onSnapshot(cb){ const l=()=>cb(wrapDoc(c,id)); listeners.add(l); setTimeout(l,0); return ()=>listeners.delete(l); }
+    };
+  }
+  function collectionRef(name, cons){
+    cons = cons || [];
+    return {
+      doc(id){ return docRef(name, id); },
+      where(f,op,v){ return collectionRef(name, cons.concat([{t:'w',f,op,v}])); },
+      orderBy(f,d){ return collectionRef(name, cons.concat([{t:'o',f,d}])); },
+      async get(){ return runQuery(name, cons); },
+      onSnapshot(cb){ const l=()=>cb(runQuery(name, cons)); listeners.add(l); setTimeout(l,0); return ()=>listeners.delete(l); }
+    };
+  }
+  // 예시 데이터 채우기
+  SEED_EMPLOYEES.filter(n=>!SEED_EMPLOYEES_SKIP.has(n)).forEach((n,i)=>{
+    const team = i<8 ? '1' : '2';
+    coll('employees')['e'+pad2(i+1)] = {name:n, part:'STS', order:i+1, active:true, team, teamOrder: team==='1' ? i+1 : i-7};
+  });
+  SEED_HOLIDAYS_2026.forEach(([d,n])=>{ coll('holidays')[d] = {date:d, name:n}; });
+  STATUS_CODE_LIST.forEach(c=>{ coll('codeDefs')[c] = {code:c, label:CODE_LABELS[c]||''}; });
+  const t = new Date();
+  let ds = shiftMonth(dstr(t.getFullYear(), t.getMonth()+1, 1), -1);
+  const nx = shiftMonth(dstr(t.getFullYear(), t.getMonth()+1, 1), 1).split('-').map(Number);
+  const end = dstr(nx[0], nx[1], daysInMonth(nx[0], nx[1])); // 지난달~다음달까지 예시 기록
+  let k = 0;
+  while(ds <= end){
+    const [y,m,d] = ds.split('-').map(Number);
+    const w = new Date(y,m-1,d).getDay();
+    Object.entries(coll('employees')).forEach(([id,e],i)=>{
+      k++;
+      const night = (d + i) % 4 >= 2;
+      const off = (d + i*3) % 7 === 0;
+      const rec = {date:ds, employeeId:id};
+      if(off){ Object.assign(rec, {workCode:'OFF', statusCode: w===0 ? 'MCS' : (k%3 ? 'FC' : 'MC')}); }
+      else if(night){ Object.assign(rec, {workCode:'N', checkIn:'19:00', checkOut: k%3 ? '7:00' : '8:00', yasik: k%2===0}); }
+      else { Object.assign(rec, {workCode:'D', checkIn:'8:00', checkOut: k%4 ? '17:00' : '20:00', jungsik: k%5===0}); }
+      if(k%11===0){ rec.supportIn = '19:00'; rec.supportOut = '24:00'; }
+      coll('attendance')[ds+'_'+id] = rec;
+    });
+    ds = addDays(ds, 1);
+  }
+  coll('meta').seed = {seededAt:1};
+  return {
+    collection(name){ return collectionRef(name); },
+    doc(path){ const [c,id] = path.split('/'); return docRef(c,id); },
+    async exportAll(){ return clone(store); },
+    async importAll(data){ let n=0; Object.entries(data||{}).forEach(([c,docs])=> Object.entries(docs||{}).forEach(([id,v])=>{ coll(c)[id] = Object.assign({}, coll(c)[id]||{}, clone(v)); n++; })); notify(); return n; }
   };
 }
 
 async function initDb(){
-  try{
-    db = await claude.use('db');
-    userCap = await claude.use('user');
-  }catch(e){ db = null; }
   const statusEl = document.getElementById('dbStatus');
-  // GitHub Pages 등 외부에서 열면 이 기기 브라우저에 저장
-  if(!db){
-    db = createLocalDb();
-    statusEl.innerHTML = '<span class="dot"></span>이 기기에 저장됨';
-    dbReady = true;
+  statusEl.innerHTML = '<span class="dot off"></span><span>서버 연결 중…</span>';
+  try{
+    await loadFirebase();
+    db = createFirebaseDb();
+  }catch(e){ db = null; console.error(e); }
+  if(!db && !LIVE_HOSTS.includes(location.hostname)){
+    // 미리보기 모드: 예시 데이터 + 편집 가능(저장은 안 됨)
+    demoMode = true;
+    db = createDemoDb();
+    dbReady = true; authResolved = true; canEdit = true;
+    updateStatusBar(); updateNavForRole();
     subscribeAll();
-    trySeed();
-    return;
-  }
-  if(!db){
-    statusEl.innerHTML = '<span class="dot off"></span>공유 저장소 사용 불가 (미리보기 모드)';
-    dbReady = false;
-    seedLocalFallback();
     render();
     return;
   }
-  statusEl.innerHTML = '<span class="dot"></span>공유 데이터에 연결됨';
+  if(!db){
+    dbReady = false;
+    updateStatusBar();
+    render();
+    return;
+  }
   dbReady = true;
+  updateStatusBar();
   subscribeAll();
+  fb.authM.onAuthStateChanged(fb.auth, user=>{
+    currentUser = user;
+    canEdit = !!(user && EDITOR_EMAILS.map(x=>x.toLowerCase()).includes(String(user.email||'').toLowerCase()));
+    const first = !authResolved;
+    authResolved = true;
+    updateStatusBar();
+    updateNavForRole();
+    if(!canEdit && isEditorOnlyView(VIEW)) setView('combined'); // 보기 전용은 허용된 화면(근태관리)으로
+    else render();
+    if(canEdit) afterEditorLogin();
+  });
+}
+// 편집자 로그인 직후: 클라우드가 비어 있으면 이전 브라우저 데이터를 올리거나 기본값을 채움
+let editorSetupDone = false;
+async function afterEditorLogin(){
+  if(editorSetupDone) return;
+  editorSetupDone = true;
+  try{
+    const marker = await db.doc('meta/seed').get();
+    if(!marker.exists){
+      const old = oldLocalData();
+      const nAtt = old ? Object.keys(old.attendance||{}).length : 0;
+      const nEmp = old ? Object.keys(old.employees||{}).length : 0;
+      if(old && (nAtt || nEmp)){
+        appConfirm(`클라우드가 아직 비어 있습니다. 이 브라우저에 이전 버전 데이터(직원 ${nEmp}명·출퇴근 ${nAtt}건)가 있는데, 클라우드로 올릴까요? (취소하면 기본 명단으로 시작합니다)`, async ()=>{
+          await uploadData(old);
+          trySeed();
+        });
+        // 취소한 경우를 대비해 잠시 뒤 기본값 채우기 (올리기를 선택했으면 marker가 생겨 건너뜀)
+        setTimeout(async ()=>{ const m = await db.doc('meta/seed').get(); if(!m.exists && !document.getElementById('appConfirmOverlay')) trySeed(); }, 30000);
+        return;
+      }
+    }
+  }catch(e){}
   trySeed();
+}
+async function uploadData(data){
+  showToast('클라우드로 올리는 중…');
+  try{
+    const n = await db.importAll(data, (done, total)=> showToast(`클라우드로 올리는 중… ${done}/${total}`));
+    showToast(`${n}건을 클라우드에 올렸습니다.`);
+    return true;
+  }catch(e){
+    showToast(saveErrMsg('올리기에 실패했습니다.', e));
+    return false;
+  }
 }
 
 function seedLocalFallback(){
-  employees = SEED_EMPLOYEES.map((n,i)=>{
-    const inTeam1 = i < 16;
-    const teamOrder = inTeam1 ? i+1 : i-16+1;
-    const teamRole = teamOrder===2 ? '조장' : '조원';
-    return {id:'e'+pad2(i+1), name:n, part:'STS', order:i+1, active:true, union:'1', team: inTeam1?'1':'2', teamRole, teamOrder, teamNote:''};
-  });
-  holidays = {}; SEED_HOLIDAYS_2026.forEach(([d,n])=>holidays[d]=n);
-  codeDefs = {}; STATUS_CODE_LIST.forEach(c=>codeDefs[c]={code:c,label:CODE_LABELS[c]||''});
-  attendance = {};
+  employees = []; holidays = {}; codeDefs = {};
 }
 
 async function trySeed(){
-  if(!db) return;
+  if(!db || !canEdit) return;
   try{
     const marker = await db.doc('meta/seed').get();
     if(!marker.exists){
       for(let i=0;i<SEED_EMPLOYEES.length;i++){
+        if(SEED_EMPLOYEES_SKIP.has(SEED_EMPLOYEES[i])) continue;
         await db.collection('employees').doc('e'+pad2(i+1)).set({name:SEED_EMPLOYEES[i], part:'STS', order:i+1, active:true, union:'1', team:'', teamRole:'조원', teamOrder:i+1, teamNote:''});
       }
       for(const [d,n] of SEED_HOLIDAYS_2026){
@@ -755,49 +1158,10 @@ async function trySeed(){
       }
       await db.doc('meta/unionSeedV1').set({seededAt: Date.now()});
     }
-    // 기본 명단(SEED_EMPLOYEES)에는 있는데 실제 employees 컬렉션에는 없는 사람을 항상 보충(마커와 무관) - 조편성 반영보다 먼저 실행
-    {
-      const empSnap3 = await db.collection('employees').get();
-      const existingNames = new Set(empSnap3.docs.map(d=>d.data().name));
-      const missing = SEED_EMPLOYEES.filter(n=>!existingNames.has(n));
-      if(missing.length){
-        let maxOrder = empSnap3.docs.reduce((mx,d)=>Math.max(mx, d.data().order||0), 0);
-        let maxIdNum = empSnap3.docs.reduce((mx,d)=>Math.max(mx, Number((d.id||'').replace('e',''))||0), 0);
-        for(const n of missing){
-          maxOrder++; maxIdNum++;
-          await db.collection('employees').doc('e'+pad2(maxIdNum)).set({name:n, part:'STS', order:maxOrder, active:true, union:'1', team:'', teamRole:'조원', teamOrder:maxOrder, teamNote:''});
-        }
-      }
-    }
-    // 예전에 오타로 잘못 추가됐던 "선종희"(올바른 이름은 "선종화") 레코드 정리
-    {
-      const empSnap4 = await db.collection('employees').get();
-      for(const d of empSnap4.docs){
-        if(d.data().name === '선종희'){
-          await db.collection('employees').doc(d.id).delete();
-        }
-      }
-    }
-    // 조편성 순번/직책 - 실제 화면 기준(1조 16명 + 2조 15명) 전체 반영, 마커와 무관하게 항상 이름 기준으로 맞춤
-    const teamData = {
-      '오원일':{team:'1',teamOrder:1,teamRole:'조원'}, '서인기':{team:'1',teamOrder:2,teamRole:'조장'},
-      '김성용':{team:'1',teamOrder:3,teamRole:'조원'}, '김기영':{team:'1',teamOrder:4,teamRole:'조원'},
-      '김의섭':{team:'1',teamOrder:5,teamRole:'조원'}, '김치수':{team:'1',teamOrder:6,teamRole:'조원'},
-      '남궁영호':{team:'1',teamOrder:7,teamRole:'조원'}, '김태석':{team:'1',teamOrder:8,teamRole:'조원'},
-      '김태화':{team:'1',teamOrder:9,teamRole:'조원'}, '박무근':{team:'1',teamOrder:10,teamRole:'조원'},
-      '이동화':{team:'1',teamOrder:11,teamRole:'조원'}, '전재필':{team:'1',teamOrder:12,teamRole:'조원'},
-      '최두영':{team:'1',teamOrder:13,teamRole:'조원'}, '최윤수':{team:'1',teamOrder:14,teamRole:'조원'},
-      '최현철':{team:'1',teamOrder:15,teamRole:'조원'}, '노인규':{team:'1',teamOrder:16,teamRole:'조원'},
-      '선종화':{team:'2',teamOrder:1,teamRole:'조원'}, '우창기':{team:'2',teamOrder:2,teamRole:'조장'},
-      '유재현':{team:'2',teamOrder:3,teamRole:'조원'}, '고훈희':{team:'2',teamOrder:4,teamRole:'조원'},
-      '유재선':{team:'2',teamOrder:5,teamRole:'조원'}, '강위상':{team:'2',teamOrder:6,teamRole:'조원'},
-      '김성일':{team:'2',teamOrder:7,teamRole:'조원'}, '김재천':{team:'2',teamOrder:8,teamRole:'조원'},
-      '박종국':{team:'2',teamOrder:9,teamRole:'조원'}, '김세중':{team:'2',teamOrder:10,teamRole:'조원'},
-      '홍윤택':{team:'2',teamOrder:11,teamRole:'조원'}, '강대정':{team:'2',teamOrder:12,teamRole:'조원'},
-      '황대영':{team:'2',teamOrder:13,teamRole:'조원'}, '윤성하':{team:'2',teamOrder:14,teamRole:'조원'},
-      '임성현':{team:'2',teamOrder:15,teamRole:'조원'}
-    };
-    {
+    // 조편성 순번/직책 수기 입력 반영 (사용자 지정: 1조 서인기1번(조장)·김성용2번(조원)·김기영3번(조원))
+    const teamMarker = await db.doc('meta/teamOrderSeedV1').get();
+    if(!teamMarker.exists){
+      const teamData = {'서인기':{team:'1',teamOrder:1,teamRole:'조장'}, '김성용':{team:'1',teamOrder:2,teamRole:'조원'}, '김기영':{team:'1',teamOrder:3,teamRole:'조원'}};
       const empSnap2 = await db.collection('employees').get();
       for(const d of empSnap2.docs){
         const nm = d.data().name;
@@ -805,28 +1169,33 @@ async function trySeed(){
           await db.collection('employees').doc(d.id).update(teamData[nm]);
         }
       }
+      await db.doc('meta/teamOrderSeedV1').set({seededAt: Date.now()});
     }
+    // (삭제·이름변경한 직원이 되살아나던 '기본 명단 강제 보충' 로직은 제거함)
   }catch(e){ /* 동시 시딩 등은 무시 */ }
 }
 
 function subscribeAll(){
   unsub.emp = db.collection('employees').orderBy('order').onSnapshot(snap=>{
     employees = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    render();
+    scheduleRender();
   }, dbErr);
   unsub.hol = db.collection('holidays').onSnapshot(snap=>{
     holidays = {};
     snap.docs.forEach(d=>{ const v=d.data(); holidays[v.date]=v.name; });
-    render();
+    scheduleRender();
   }, dbErr);
   unsub.code = db.collection('codeDefs').onSnapshot(snap=>{
     codeDefs = {};
     snap.docs.forEach(d=>{ codeDefs[d.id]=d.data(); });
-    render();
+    scheduleRender();
   }, dbErr);
+  unsub.viewPrefs = db.doc('meta/viewPrefs').onSnapshot(doc=>{
+    if(doc.exists){ applyViewPrefs(doc.data()); scheduleRender(); }
+  }, ()=>{});
   unsub.hiddenCodes = db.doc('meta/hiddenCodes').onSnapshot(doc=>{
     hiddenCodes = new Set((doc.exists && doc.data().codes) || []);
-    render();
+    scheduleRender();
   }, dbErr);
   subscribeAttendanceMonth(curYear, curMonth);
 }
@@ -836,42 +1205,60 @@ function markRecentlyDeleted(key){
   recentlyDeleted[key] = Date.now();
   setTimeout(()=>{ if(recentlyDeleted[key]) delete recentlyDeleted[key]; }, 8000);
 }
-function subscribeAttendanceMonth(y,m){
-  if(!db) return;
-  if(unsub.att) unsub.att();
-  const start = dstr(y,m,1), end = dstr(y,m,daysInMonth(y,m));
-  unsub.att = db.collection('attendance').where('date','>=',start).where('date','<=',end)
+// 출퇴근 기록: 필요한 달만 실시간 구독하고(읽기 비용 절약), 모든 화면이 하나의 공유 캐시를 사용.
+// 저장은 항상 '해당 화면이 다루는 항목만 병합(merge)'하므로, 캐시에 없던 기록도 덮어써지지 않음.
+const attStore = {};
+attendance = attStore; codeStatsAttendance = attStore; otMatrixAttendance = attStore;
+const ATT_DEFAULTS = {workCode:'OFF', statusCode:'', note:'', extCode:false, manguen:false};
+function normAtt(v){ return Object.assign({}, ATT_DEFAULTS, v); }
+const monthSubs = new Map(); // 'YYYY-MM' -> unsubscribe
+const MONTH_SUB_MAX = 14;
+function nextYm(ym){ const [y,m] = ym.split('-').map(Number); return m===12 ? `${y+1}-01` : `${y}-${pad2(m+1)}`; }
+function ensureAttendanceRange(start, end){
+  if(!db || !start || !end) return;
+  if(end < start) [start, end] = [end, start];
+  start = addDays(start, -6); // 토요일 만근 판정에 필요한 그 주 월~금 기록까지
+  let ym = start.slice(0,7), guard = 0;
+  const endYm = end.slice(0,7);
+  while(ym <= endYm && guard++ < 12){ ensureMonth(ym); ym = nextYm(ym); }
+}
+function ensureMonth(ym){
+  if(monthSubs.has(ym)){ const fn = monthSubs.get(ym); monthSubs.delete(ym); monthSubs.set(ym, fn); return; }
+  const [y,m] = ym.split('-').map(Number);
+  const fn = db.collection('attendance').where('date','>=',ym+'-01').where('date','<=',dstr(y,m,daysInMonth(y,m)))
     .onSnapshot(snap=>{
-      attendance = {};
-      const now = Date.now();
+      const seen = new Set(), now = Date.now();
       snap.docs.forEach(d=>{
         const delAt = recentlyDeleted[d.id];
         if(delAt && now - delAt < 8000) return; // 방금 삭제한 기록은 잠깐 무시
-        attendance[d.id]=d.data();
+        seen.add(d.id);
+        attStore[d.id] = normAtt(d.data());
       });
-      render();
+      Object.keys(attStore).forEach(k=>{ if(k.startsWith(ym) && !seen.has(k)) delete attStore[k]; });
+      scheduleRender();
     }, dbErr);
+  monthSubs.set(ym, fn);
+  while(monthSubs.size > MONTH_SUB_MAX){
+    const [oldYm, oldFn] = monthSubs.entries().next().value;
+    oldFn(); monthSubs.delete(oldYm);
+    Object.keys(attStore).forEach(k=>{ if(k.startsWith(oldYm)) delete attStore[k]; });
+  }
 }
-function subscribeCodeStatsRange(start,end){
-  if(!db) return;
-  if(unsub.codeStats) unsub.codeStats();
-  unsub.codeStats = db.collection('attendance').where('date','>=',start).where('date','<=',end)
-    .onSnapshot(snap=>{
-      codeStatsAttendance = {};
-      snap.docs.forEach(d=>{ codeStatsAttendance[d.id]=d.data(); });
-      render();
-    }, dbErr);
+function ensureForView(){
+  if(!dbReady) return;
+  if(VIEW==='input'){ const d = (prefill && prefill.date) || inputViewDate || todayStr(); ensureAttendanceRange(d, d); }
+  else if(VIEW==='grid'){ const d = dstr(curYear,curMonth,1); ensureAttendanceRange(d, d); }
+  else if(VIEW==='combined' || VIEW==='codestats'){
+    if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd);
+    if(VIEW==='combined' && combinedYm){ const d = dstr(combinedYm.y, combinedYm.m, 1); ensureAttendanceRange(d, d); }
+  }
+  else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
+  else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); }
 }
-function subscribeOtMatrixRange(start,end){
-  if(!db) return;
-  if(unsub.otMatrix) unsub.otMatrix();
-  unsub.otMatrix = db.collection('attendance').where('date','>=',start).where('date','<=',end)
-    .onSnapshot(snap=>{
-      otMatrixAttendance = {};
-      snap.docs.forEach(d=>{ otMatrixAttendance[d.id]=d.data(); });
-      render();
-    }, dbErr);
-}
+// 기존 호출부 호환용
+function subscribeAttendanceMonth(y,m){ const d = dstr(y,m,1); ensureAttendanceRange(d, d); }
+function subscribeCodeStatsRange(start,end){ ensureAttendanceRange(start, end); }
+function subscribeOtMatrixRange(start,end){ ensureAttendanceRange(start, end); }
 
 function subscribeDispatchDay(dateStr){
   if(!db) return;
@@ -879,59 +1266,63 @@ function subscribeDispatchDay(dateStr){
   unsub.dispatch = db.collection('dispatch').where('date','==',dateStr).onSnapshot(snap=>{
     dispatch = {};
     snap.docs.forEach(d=>{ dispatch[d.id]=d.data(); });
-    render();
+    scheduleRender();
   }, dbErr);
 }
-async function loadSupportPlanAll(){
-  if(!db) return;
-  try{
-    const snap = await db.collection('supportPlan').get();
+// 지원계획표: 보고 있는 주(7일)만 실시간 구독
+let splanSubWeek = null;
+function loadSupportPlanAll(){
+  if(!db || !weekStart) return;
+  if(splanSubWeek === weekStart && unsub.splan) return;
+  if(unsub.splan) unsub.splan();
+  const ws = weekStart, we = addDays(weekStart, 6);
+  splanSubWeek = ws;
+  unsub.splan = db.collection('supportPlan').where('date','>=',ws).where('date','<=',we).onSnapshot(snap=>{
     const fresh = {};
-    snap.docs.forEach(d=>{ fresh[d.id]=d.data(); });
+    Object.entries(supportPlan).forEach(([k,v])=>{ const d = k.slice(0,10); if(d < ws || d > we) fresh[k] = v; });
+    snap.docs.forEach(d=>{ fresh[d.id] = d.data(); });
     supportPlan = fresh;
-    render();
-  }catch(e){ /* 조회 실패 시 기존 로컬 상태 유지 */ }
+    scheduleRender();
+  }, dbErr);
 }
 
 function dbErr(e){
   if(e && e.code==='revoked'){ showToast('접근 권한이 변경되어 실시간 갱신이 중단되었습니다.'); return; }
+  if(e && e.code==='permission-denied'){ showToast('데이터를 읽을 권한이 없습니다. Firestore 보안 규칙을 확인하세요.'); return; }
   if(e){ showToast('데이터 연결 오류: ' + (e.message || e.code || e)); }
 }
 
 /* ========================= 쓰기 함수 ========================= */
-async function saveAttendance(rec){
-  const key = rec.date+'_'+rec.employeeId;
-  attendance[key] = rec; // 낙관적 로컬 업데이트: 저장 성공 여부와 무관하게 화면엔 즉시 반영
-  codeStatsAttendance[key] = rec; // 근태관리 표(임의 기간 캐시)도 함께 갱신
-  if(!db){
-    render(); showToast('미리보기 모드: 저장되지 않았습니다.'); return;
-  }
+// partial: 이 화면이 다루는 항목만(date, employeeId 필수). 서버에는 병합 저장되어 다른 항목은 보존됨.
+async function saveAttendance(partial){
+  if(!requireEdit()) return;
+  const key = partial.date+'_'+partial.employeeId;
+  attStore[key] = normAtt(Object.assign({}, attStore[key]||{}, partial)); // 낙관적 로컬 업데이트
   render();
   try{
-    await db.collection('attendance').doc(key).set(rec);
+    await db.collection('attendance').doc(key).set(partial, {merge:true});
     showToast('저장되었습니다.');
   }catch(err){
-    showToast('저장에 실패했습니다.');
+    showToast(saveErrMsg('저장에 실패했습니다.', err));
   }
 }
 async function deleteAttendanceRec(date, empId){
+  if(!requireEdit()) return;
   const key = date+'_'+empId;
   markRecentlyDeleted(key);
-  delete attendance[key]; // 낙관적 로컬 업데이트: 삭제 성공 여부와 무관하게 화면엔 즉시 반영
-  delete codeStatsAttendance[key];
-  if(!db){ render(); return; }
+  delete attStore[key]; // 낙관적 로컬 업데이트
   render();
   try{
     await db.collection('attendance').doc(key).delete();
-    delete attendance[key]; // 서버 삭제 완료 후 혹시 중간에 되살아난 값이 있어도 다시 한번 확실히 비움
-    delete codeStatsAttendance[key];
+    delete attStore[key];
     render();
     showToast('삭제되었습니다.');
   }catch(err){
-    showToast('삭제에 실패했습니다.');
+    showToast(saveErrMsg('삭제에 실패했습니다.', err));
   }
 }
 async function addEmployee(name, part, team){
+  if(!requireEdit()) return;
   const id = 'e' + Date.now();
   const order = employees.length ? Math.max(...employees.map(e=>e.order||0))+1 : 1;
   const teamOrder = team ? (employees.filter(e=>e.team===team).length + 1) : undefined;
@@ -941,45 +1332,51 @@ async function addEmployee(name, part, team){
   render();
   if(!db) return;
   try{ await db.collection('employees').doc(id).set(data); }
-  catch(err){ showToast('직원 추가에 실패했습니다.'); employees = employees.filter(e=>e.id!==id); render(); }
+  catch(err){ console.error(err); showToast(saveErrMsg('직원 추가에 실패했습니다.', err)); employees = employees.filter(e=>e.id!==id); render(); }
 }
 async function updateEmployee(id, data){
+  if(!requireEdit()) return;
   const e = employees.find(x=>x.id===id);
   if(e) Object.assign(e, data); // 낙관적 로컬 업데이트
   render();
   if(!db) return;
   try{ await db.collection('employees').doc(id).update(data); }
-  catch(err){ showToast('저장에 실패했습니다.'); }
+  catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
 }
 async function removeEmployee(id){
+  if(!requireEdit()) return;
   employees = employees.filter(e=>e.id!==id); // 낙관적 로컬 업데이트
   render();
   if(!db) return;
   try{ await db.collection('employees').doc(id).delete(); }
-  catch(err){ showToast('삭제에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('삭제에 실패했습니다.', err)); }
 }
 async function addHoliday(date,name){
+  if(!requireEdit()) return;
   holidays[date] = name; // 낙관적 로컬 업데이트
   render();
   if(!db) return;
   try{ await db.collection('holidays').doc(date).set({date,name}); }
-  catch(err){ showToast('공휴일 저장에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('공휴일 저장에 실패했습니다.', err)); }
 }
 async function removeHoliday(date){
+  if(!requireEdit()) return;
   delete holidays[date]; // 낙관적 로컬 업데이트
   render();
   if(!db) return;
   try{ await db.collection('holidays').doc(date).delete(); }
-  catch(err){ showToast('삭제에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('삭제에 실패했습니다.', err)); }
 }
 async function saveCodeLabel(code,label){
+  if(!requireEdit()) return;
   codeDefs[code] = {code,label}; // 낙관적 로컬 업데이트
   render();
   if(!db){ return; }
   try{ await db.collection('codeDefs').doc(code).set({code,label}); showToast('설명이 저장되었습니다.'); }
-  catch(err){ showToast('저장에 실패했습니다.'); }
+  catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
 }
 async function deleteCodeDef(code){
+  if(!requireEdit()) return;
   delete codeDefs[code]; // 낙관적 로컬 업데이트
   hiddenCodes.add(code); // 기본 코드라도 삭제하면 목록·선택창에서 완전히 숨김
   render();
@@ -989,33 +1386,37 @@ async function deleteCodeDef(code){
     await db.doc('meta/hiddenCodes').set({codes: Array.from(hiddenCodes)});
     showToast('삭제되었습니다.');
   }
-  catch(err){ showToast('삭제에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('삭제에 실패했습니다.', err)); }
 }
 async function restoreCodeDef(code){
+  if(!requireEdit()) return;
   hiddenCodes.delete(code); // 낙관적 로컬 업데이트
   render();
   if(!db) return;
   try{ await db.doc('meta/hiddenCodes').set({codes: Array.from(hiddenCodes)}); showToast('복원되었습니다.'); }
-  catch(err){ showToast('복원에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('복원에 실패했습니다.', err)); }
 }
 async function saveDispatchSlots(dateStr, shift, empId, changes){
+  if(!requireEdit()) return;
   const id = `${dateStr}_${shift}_${empId}`;
   const cur = Object.assign({date:dateStr, shift, employeeId:empId, slots:{}}, dispatch[id]||{});
   cur.slots = Object.assign({}, cur.slots, changes);
   dispatch[id] = cur; // 낙관적 로컬 업데이트: 저장 성공 여부와 무관하게 화면엔 즉시 반영
   if(!db){ render(); return; }
   try{ await db.collection('dispatch').doc(id).set(cur); }
-  catch(err){ showToast('배차 저장에 실패했습니다.'); render(); }
+  catch(err){ console.error(err); showToast(saveErrMsg('배차 저장에 실패했습니다.', err)); render(); }
 }
 async function saveDispatchSupportName(dateStr, shift, supId, name){
+  if(!requireEdit()) return;
   const id = `${dateStr}_${shift}_${supId}`;
   const cur = Object.assign({date:dateStr, shift, employeeId:supId, slots:{}}, dispatch[id]||{}, {name});
   dispatch[id] = cur; // 낙관적 로컬 업데이트
   if(!db){ render(); return; }
   try{ await db.collection('dispatch').doc(id).set(cur); }
-  catch(err){ showToast('배차 저장에 실패했습니다.'); render(); }
+  catch(err){ console.error(err); showToast(saveErrMsg('배차 저장에 실패했습니다.', err)); render(); }
 }
 async function saveSupportPlan(dateStr, shift, data){
+  if(!requireEdit()) return;
   const id = `${dateStr}_${shift}`;
   const rec = Object.assign({date:dateStr, shift}, data);
   supportPlan[id] = rec; // 낙관적 로컬 업데이트
@@ -1027,6 +1428,7 @@ async function saveSupportPlan(dateStr, shift, data){
 // 여러 날짜/조 칸을 한번에 저장할 때는 로컬 반영은 한번에, 서버 저장은 순차적으로 진행해서
 // 동시 다발 쓰기로 인해 일부가 유실되는 것을 방지한다.
 async function saveSupportPlanBatch(groups){
+  if(!requireEdit()) return;
   groups.forEach(g=>{ supportPlan[`${g.ds}_${g.sh}`] = Object.assign({date:g.ds, shift:g.sh}, g.cur); });
   render();
   if(!db){ showToast('저장되었습니다.'); return; }
@@ -1038,6 +1440,7 @@ async function saveSupportPlanBatch(groups){
   showToast('저장되었습니다.');
 }
 async function deleteSupportPlanWeek(startStr){
+  if(!requireEdit()) return;
   const days = Array.from({length:7}, (_,i)=>addDays(startStr,i));
   const ids = [];
   days.forEach(ds=>['day','night'].forEach(sh=> ids.push(`${ds}_${sh}`)));
@@ -1050,6 +1453,7 @@ async function deleteSupportPlanWeek(startStr){
 
 /* ========================= 렌더 라우터 ========================= */
 function setView(v){
+  if(authResolved && !canEdit && isEditorOnlyView(v)) v = 'combined';
   VIEW = v;
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
   document.getElementById('nav').classList.remove('open');
@@ -1076,7 +1480,34 @@ function setView(v){
   }
   render();
 }
+// 데이터 변경 알림이 여러 개 동시에 와도 화면은 한 번만 다시 그림.
+// 입력칸에 커서가 있는 동안에는(다른 창에서 저장된 경우 등) 입력 중인 값이 날아가지 않게 보류했다가 포커스가 빠지면 그림.
+let renderScheduled = false, renderDeferred = false;
+function isEditingField(){
+  const a = document.activeElement;
+  if(!a) return false;
+  const content = document.getElementById('content');
+  if(!content || !content.contains(a)) return false;
+  if(a.tagName==='TEXTAREA' || a.tagName==='SELECT') return true;
+  if(a.tagName==='INPUT'){ const t=(a.type||'').toLowerCase(); return !['checkbox','radio','button','submit','reset','file'].includes(t); }
+  return false;
+}
+function scheduleRender(){
+  if(renderScheduled) return;
+  renderScheduled = true;
+  setTimeout(()=>{
+    renderScheduled = false;
+    if(isEditingField()){ renderDeferred = true; return; }
+    render();
+  }, 0);
+}
+document.addEventListener('focusout', ()=>{
+  if(!renderDeferred) return;
+  setTimeout(()=>{ if(renderDeferred && !isEditingField()){ renderDeferred = false; render(); } }, 0);
+});
 function render(){
+  renderDeferred = false;
+  ensureForView();
   const el = document.getElementById('content');
   if(VIEW==='input') el.innerHTML = pageInput();
   else if(VIEW==='grid') el.innerHTML = pageGrid();
@@ -1089,7 +1520,9 @@ function render(){
   else if(VIEW==='dispatch') el.innerHTML = pageDispatch();
   else if(VIEW==='splan') el.innerHTML = pageSupportPlan();
   else if(VIEW==='team') el.innerHTML = pageTeam();
+  else if(VIEW==='backup') el.innerHTML = pageBackup();
   afterRender();
+  if(!canEdit) applyReadonly(el);
 }
 
 function workBadge(code){
@@ -1180,17 +1613,13 @@ function pageGrid(){
       const ds = dstr(curYear,curMonth,d);
       const rec = attendance[ds+'_'+e.id];
       const cls = dayCellClass(ds, curYear, curMonth, d);
-      let inner = '';
+      let inner = '', fill = '';
       if(rec){
-        if(rec.statusCode){
-          inner = `<span class="mini" style="color:${codeColor(rec.statusCode)};font-weight:700;">${esc(rec.statusCode)}</span>`;
-        } else if(rec.workCode && rec.workCode!=='OFF'){
-          inner = `<span class="mini" style="color:${codeColor(rec.workCode)};font-weight:700;">${esc(rec.workCode)}</span>`;
-        }
-        if(rec.manguen) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
-        if(rec.supportCode) inner += `<span class="mini2" style="color:var(--accent);font-weight:700;">지${esc(rec.supportCode)}</span>`;
+        const dc = gridCode(rec);
+        fill = dc ? codeFill(dc) : '';
+        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
-      return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
+      return `<td class="daycell ${cls}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     const orderTag = e.team ? `<span style="color:var(--text-muted);font-weight:400;font-size:10.5px;">${esc(e.team)}조${e.teamOrder?' '+e.teamOrder+'번':''}</span> ` : '';
     return `<tr><td class="namecell">${orderTag}${esc(e.name)}</td>${cells}</tr>`;
@@ -1261,7 +1690,8 @@ function renderGridEditModal(){
   const isSaturday = new Date(wy,wm-1,wd).getDay()===6;
   const manguenField = isSaturday ? `
       <div class="field" style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:6px;">
-        <input type="checkbox" id="gridManguen" ${rec.manguen?'checked':''}>만근(이번주 평일 개근 → 토요일 특근 인정)</label></div>` : '';
+        <input type="checkbox" id="gridManguen" ${rec.manguen?'checked':''}>만근 수동 인정</label>
+        <span class="hint" style="margin:2px 0 0;">자동 판정: <b>${autoManguen(date, employeeId)?'만근(특근 적용)':'만근 아님'}</b> — 월~금이 출근·공휴일·VA·VP·E·FCH·MCH·UJ로 모두 채워지면 자동으로 만근입니다. 자동 판정이 틀릴 때만 체크하세요.</span></div>` : '';
   return `
   <div id="gridEditScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:360px;width:92%;margin-bottom:0;background:var(--surface);">
@@ -1271,13 +1701,6 @@ function renderGridEditModal(){
         <label>근무코드 (목록에서 고르거나 직접 입력)</label>
         <input type="text" id="gridCode" autocomplete="off" value="${curVal==='OFF'?'':esc(curVal)}" placeholder="예: D, OFF, FC..." style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--text);width:100%;">
         <div id="gridCodeDropdown" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:340px;overflow-y:auto;z-index:50;">${optRows}</div>
-      </div>
-      <div class="field" style="margin-bottom:14px;">
-        <label>지원코드 (지원 나간 날만 선택 → 지원 카운트)</label>
-        <select id="gridSupportCode" style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--text);width:100%;">
-          <option value="" ${!rec.supportCode?'selected':''}>없음</option>
-          ${SUPPORT_CODES.map(c=>`<option value="${c}" ${rec.supportCode===c?'selected':''}>${c}</option>`).join('')}
-        </select>
       </div>
       ${manguenField}
       <div class="row">
@@ -1291,21 +1714,20 @@ function renderGridEditModal(){
 
 /* ========================= 근태관리(통합: 집계+표) ========================= */
 function pageCombined(){
-  // 집계 기간(코드 집계 + 일자별 표 공통) 준비
+  // ① 근태 집계: 시작일~종료일 기간 기준
   if(!codeStatsStart || !codeStatsEnd){
     const t = new Date();
     codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1);
     codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1));
   }
+  // ② 월별 근태코드: 달력 한 달 기준
+  if(!combinedYm){ const t = new Date(); combinedYm = {y:t.getFullYear(), m:t.getMonth()+1}; }
   const rangeStart = codeStatsStart, rangeEnd = codeStatsEnd;
-  const days = [];
-  for(let ds=rangeStart; ds<=rangeEnd; ds=addDays(ds,1)) days.push(ds);
   const sortedEmployees = employees.slice().filter(e=> !combinedTeamFilter || (e.team||'')===combinedTeamFilter).sort((a,b)=>{
     const ta = a.team||'9', tb = b.team||'9';
     if(ta!==tb) return ta<tb?-1:1;
     return (a.teamOrder||999)-(b.teamOrder||999);
   });
-
 
   const perEmp = sortedEmployees.map(e=>{
     let codeCnt = {FCH:0,MCH:0,MCS:0,FC:0,MC:0};
@@ -1314,134 +1736,129 @@ function pageCombined(){
       const rec = codeStatsAttendance[ds+'_'+e.id];
       if(!rec) continue;
       if(rec.statusCode && codeCnt.hasOwnProperty(rec.statusCode)) codeCnt[rec.statusCode]++;
+      // 원본 26년_근태관리 기준: 휴일 OT = 휴일 근무 + 휴일 지원, 평일 OT = 평일 근무(토요 만근 특근 제외) + 식사
       const c = computeDaily(rec, ds);
-      if(c.valid){ if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else otWeekday+=c.premium; }
-      // 지원 카운트: 원본 수식 =COUNTIF(SP)+COUNTIF(DN)+COUNTIF(ND*)+COUNTIF(D)+COUNTIF(N) 와 동일 (하루 최대 1)
-      if(isSupportCountDay(rec)) supDays++;
+      const sp = computeSupportDaily(rec, ds);
+      const kc = dayCategory(ds, recManguen(rec, ds));
+      if(c.valid){ if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else if(c.category==='평일') otWeekday+=c.premium; }
+      if(sp.valid && (kc==='SU' || kc==='H')) otHoliday += sp.premium;
+      if(isSupportDay(rec)) supDays++;
       mealAllow += computeMealAllowance(rec);
     }
     const gyeHol = codeCnt.FCH+codeCnt.MCH, gyeWk = codeCnt.FC+codeCnt.MC;
     const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0);
     return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday, otWeekdayFinal, supDays};
   });
-  function rankByAsc(getVal){ return rankWithinTeam(perEmp, getVal, false); }
-  function rankByDesc(getVal){ return rankWithinTeam(perEmp, getVal, true); }
-  const rankSup=rankByAsc(r=>r.supDays), rankGyeHol=rankByAsc(r=>r.gyeHol), rankMCS=rankByAsc(r=>r.codeCnt.MCS);
-  const rankGyeWk=rankByAsc(r=>r.gyeWk), rankOtHol=rankByDesc(r=>r.otHoliday), rankOtWk=rankByDesc(r=>r.otWeekdayFinal);
+  // 순번 제외 대상은 순위 계산에서 빼고 칸을 비움(null)
+  const inAll = r => rankExcl(r.emp)!=='all';
+  const inOt = r => rankExcl(r.emp)==='';
+  function rankBy(getVal, desc, ok){
+    const x = perEmp.map((r,i)=>({i,v:getVal(r)||0,ok:ok(r)})).filter(q=>q.ok).sort((a,b)=>(desc? b.v-a.v : a.v-b.v) || a.i-b.i);
+    const arr = new Array(perEmp.length).fill(null); x.forEach((q,idx)=>arr[q.i]=idx+1); return arr;
+  }
+  const rankSup=rankBy(r=>r.supDays,false,inAll), rankGyeHol=rankBy(r=>r.gyeHol,false,inAll), rankMCS=rankBy(r=>r.codeCnt.MCS,false,inAll);
+  const rankGyeWk=rankBy(r=>r.gyeWk,false,inAll), rankOtHol=rankBy(r=>r.otHoliday,true,inOt), rankOtWk=rankBy(r=>r.otWeekdayFinal,true,inOt);
+  const nAll = perEmp.filter(inAll).length, nOt = perEmp.filter(inOt).length;
 
-  const dayHead = days.map(ds=>{
-    const [y,m,d] = ds.split('-').map(Number);
-    const cls = dayCellClass(ds, y, m, d);
-    return `<th class="${cls}" title="${esc(holidays[ds]||'')}">${m}/${d}<br>${weekdayKr(y,m,d)}</th>`;
-  }).join('');
-
-  const head = `<tr>
+  const statHead = `<tr>
     <th class="namehead" rowspan="2">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
-    <th colspan="2" style="background:var(--accent-soft);">지원근무</th>
-    <th colspan="8" style="background:var(--amber-soft);">휴일,주야간</th>
-    <th colspan="6" style="background:var(--ok-soft);">평일,주야간</th>
-    <th class="namehead" rowspan="2">성명</th>
-    <th colspan="${days.length}">일자별</th>
+    <th colspan="2" class="gh g-blk">지원근무</th>
+    <th colspan="8" class="gh g-hol">휴일,주야간</th>
+    <th colspan="6" class="gh g-wk">평일,주야간</th>
   </tr><tr>
-    <th style="width:40px;">지원</th><th style="width:40px;">순번</th>
-    <th style="width:40px;">FCH</th><th style="width:40px;">MCH</th><th style="width:40px;">계</th><th style="width:40px;">순번</th><th style="width:40px;">MCS</th><th style="width:40px;">순번</th><th style="width:70px;">OT</th><th style="width:40px;">순번</th>
-    <th style="width:40px;">FC</th><th style="width:40px;">MC</th><th style="width:40px;">계</th><th style="width:40px;">순번</th><th style="width:70px;">OT</th><th style="width:40px;">순번</th>
-    ${dayHead}
+    <th class="gc g-blk">지원</th><th class="gc g-blk">순번</th>
+    <th class="gc g-blue">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel">OT</th><th class="gc g-yel">순번</th>
+    <th class="gc g-wk">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">계</th><th class="gc g-wk">순번</th><th class="gc g-pur">OT</th><th class="gc g-pur">순번</th>
   </tr>`;
-
-  const rows = perEmp.map((r,idx)=>{
-    const e = r.emp;
-    const dayCells = days.map(ds=>{
-      const [y,m,d] = ds.split('-').map(Number);
-      const rec = codeStatsAttendance[ds+'_'+e.id];
-      const cls = dayCellClass(ds, y, m, d);
-      let inner = '';
-      if(rec){
-        if(rec.statusCode){
-          // 근태코드(FC 등)가 있으면 OFF 배지는 숨기고 근태코드만 표시
-          inner = `<span class="mini" style="color:${codeColor(rec.statusCode)};font-weight:700;">${esc(rec.statusCode)}</span>`;
-        } else if(rec.workCode && rec.workCode!=='OFF'){
-          inner = `<span class="mini" style="color:${codeColor(rec.workCode)};font-weight:700;">${esc(rec.workCode)}</span>`;
-        }
-        // 근태코드도 없고 근무코드도 OFF(또는 없음)면 빈칸
-        if(rec.manguen) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
-        if(rec.supportCode) inner += `<span class="mini2" style="color:var(--accent);font-weight:700;">지${esc(rec.supportCode)}</span>`;
-      }
-      return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
-    }).join('');
-    const isLeader = e.teamRole==='조장';
-    const noCell = isLeader ? '조장' : (idx+1);
+  const c0 = v => v||'';
+  const nEmp = perEmp.length;
+  // 순번 배지: 1~3위 진하게, 상위 절반 연하게, 나머지는 글자색만
+  const rk = (n, g, tot) => n==null ? '' : `<span class="rk ${n<=3?'t1':(n<=Math.ceil((tot||nEmp)/2)?'t2':'t3')} g-${g}">${n}</span>`;
+  // 순번 제외 대상은 숫자도 숨김: 전체 제외 → 모든 숫자, OT순번 제외 → OT 숫자만
+  const statRows = perEmp.map((r,idx)=>{
+    const ex = rankExcl(r.emp), hA = ex==='all', hO = ex!=='';
+    const v = x => hA ? '' : c0(x);
+    const ot = x => hO ? '' : fmtH(x);
     return `<tr>
-      <td style="text-align:center;">${esc(noCell)}</td>
-      <td class="namecell">${isLeader?'조장 ':''}${esc(e.name)}</td>
-      <td style="text-align:center;">${r.supDays||''}</td>
-      <td style="text-align:center;font-weight:700;">${rankSup[idx]}</td>
-      <td style="text-align:center;">${r.codeCnt.FCH||''}</td>
-      <td style="text-align:center;">${r.codeCnt.MCH||''}</td>
-      <td style="text-align:center;">${r.gyeHol||''}</td>
-      <td style="text-align:center;font-weight:700;">${rankGyeHol[idx]}</td>
-      <td style="text-align:center;">${r.codeCnt.MCS||''}</td>
-      <td style="text-align:center;font-weight:700;">${rankMCS[idx]}</td>
-      <td style="text-align:center;width:70px;">${fmtH(r.otHoliday)}</td>
-      <td style="text-align:center;font-weight:700;">${rankOtHol[idx]}</td>
-      <td style="text-align:center;">${r.codeCnt.FC||''}</td>
-      <td style="text-align:center;">${r.codeCnt.MC||''}</td>
-      <td style="text-align:center;">${r.gyeWk||''}</td>
-      <td style="text-align:center;font-weight:700;">${rankGyeWk[idx]}</td>
-      <td style="text-align:center;width:70px;">${fmtH(r.otWeekdayFinal)}</td>
-      <td style="text-align:center;font-weight:700;">${rankOtWk[idx]}</td>
-      <td class="namecell" style="">${isLeader?'조장 ':''}${esc(e.name)}</td>
-      ${dayCells}
+      <td style="text-align:center;">${idx+1}</td>
+      <td class="namecell" style="left:34px;">${esc(r.emp.name)}</td>
+      <td style="text-align:center;">${v(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
+      <td style="text-align:center;">${v(r.codeCnt.FCH)}</td><td style="text-align:center;">${v(r.codeCnt.MCH)}</td>
+      <td style="text-align:center;">${v(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
+      <td style="text-align:center;">${v(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'red',nAll)}</td>
+      <td style="text-align:center;min-width:52px;">${ot(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel',nOt)}</td>
+      <td style="text-align:center;">${v(r.codeCnt.FC)}</td><td style="text-align:center;">${v(r.codeCnt.MC)}</td>
+      <td style="text-align:center;">${v(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
+      <td style="text-align:center;min-width:52px;">${ot(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
     </tr>`;
   }).join('');
 
-  const modal = gridEdit ? renderGridEditModal() : '';
+  // 월별 근태코드 표
+  const {y:cy, m:cm} = combinedYm;
+  const monthDays = Array.from({length:daysInMonth(cy,cm)}, (_,i)=>dstr(cy,cm,i+1));
+  const dayHead = monthDays.map(ds=>{
+    const d = Number(ds.slice(8,10));
+    const cls = dayCellClass(ds, cy, cm, d);
+    return `<th class="${cls}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(cy,cm,d)}</th>`;
+  }).join('');
+  const codeRows = sortedEmployees.map(e=>{
+    const cells = monthDays.map(ds=>{
+      const d = Number(ds.slice(8,10));
+      const rec = codeStatsAttendance[ds+'_'+e.id];
+      const cls = dayCellClass(ds, cy, cm, d);
+      let inner = '', fill = '';
+      if(rec){
+        const dc = gridCode(rec);
+        fill = dc ? codeFill(dc) : '';
+        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
+      }
+      return `<td class="daycell ${cls}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
+    }).join('');
+    return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
+  }).join('');
 
-  return `
-  <h2 class="pgttl">근태관리</h2>
-  <p class="pgsub">근태코드 집계와 월별 근태관리표가 한 표로 합쳐져 있습니다. 날짜 칸을 클릭하면 근무코드·근태코드를 바로 입력할 수 있어요.</p>
-  <div class="row" style="margin-bottom:6px;align-items:center;">
-    <div class="field"><label>시작일</label><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"></div>
-    <div class="field"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;">
-      <input type="checkbox" id="codeStatsMealChk" ${codeStatsIncludeMeal?'checked':''}>평일OT 식사연장 포함
-    </label>
-    <span style="flex:1 1 auto;"></span>
-    <button class="btn ghost sm" id="prevMonth">◀ 이전달</button>
-    <div class="field" style="min-width:auto;"><b style="font-size:15px;">${esc(rangeStart)} ~ ${esc(rangeEnd)}</b></div>
-    <button class="btn ghost sm" id="nextMonth">다음달 ▶</button>
-  </div>
-  <div class="row" style="margin-bottom:14px;">
+  const modal = gridEdit ? renderGridEditModal() : '';
+  const teamBtns = `<div class="row" style="margin-bottom:14px;">
     <button class="btn ${combinedTeamFilter===''?'':'ghost'} sm" data-act="team-filter" data-team="">전체</button>
     <button class="btn ${combinedTeamFilter==='1'?'':'ghost'} sm" data-act="team-filter" data-team="1">1조</button>
     <button class="btn ${combinedTeamFilter==='2'?'':'ghost'} sm" data-act="team-filter" data-team="2">2조</button>
+  </div>`;
+
+  return `
+  <h2 class="pgttl">근태관리</h2>
+  <p class="pgsub">왼쪽은 선택한 기간(시작일~종료일)의 집계, 오른쪽은 월별 근태코드 표입니다. 두 표는 각각 따로 움직입니다.</p>
+  ${teamBtns}
+  <div class="cmbWrap">
+    <div class="panel cmbLeft">
+      <div class="cmbCtrl">
+        <h3>근태 집계 <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(${esc(rangeStart)} ~ ${esc(rangeEnd)})</span></h3>
+        <div class="row" style="align-items:flex-end;flex-wrap:nowrap;">
+          <div class="field" style="min-width:auto;"><label>시작일</label><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"></div>
+          <div class="field" style="min-width:auto;"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;height:38px;white-space:nowrap;">
+            <input type="checkbox" id="codeStatsMealChk" ${codeStatsIncludeMeal?'checked':''}>식사연장 포함
+          </label>
+        </div>
+      </div>
+      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead>${statHead}</thead><tbody>${statRows}</tbody></table></div>`
+        : `<div class="empty">등록된 직원이 없습니다.</div>`}
+    </div>
+    <div class="panel cmbRight">
+      <div class="cmbCtrl">
+        <h3>월별 근태코드</h3>
+        <div class="row" style="align-items:center;flex-wrap:nowrap;height:58px;">
+          <button class="btn ghost sm" id="cmbPrevMonth">◀ 이전달</button>
+          <b style="font-size:15px;white-space:nowrap;">${cy}년 ${cm}월</b>
+          <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
+        </div>
+      </div>
+      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th><th colspan="${monthDays.length}">일자별</th></tr><tr>${dayHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
+        : `<div class="empty">등록된 직원이 없습니다.</div>`}
+    </div>
   </div>
-  ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`
-    : `<div class="empty">등록된 직원이 없습니다.</div>`}
+  <p class="hint">월별 근태코드의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(편집자). 근태코드 참조에 있는 코드만 표시됩니다.</p>
   ${modal}
   `;
-}
-
-
-// 원본 엑셀: =COUNTIF(M3,"SP")+COUNTIF(M3,"DN")+COUNTIF(M3,"ND*")+COUNTIF(M3,"D")+COUNTIF(M3,"N")
-// 평소 근무코드(D·N)와 섞이지 않도록, 날짜 칸의 별도 "지원코드" 칸만 보고 셈
-const SUPPORT_CODES = ['SP','D','N','DN','ND'];
-function isSupportCountDay(rec){
-  if(!rec) return false;
-  const c = (rec.supportCode||'').toUpperCase();
-  return c==='SP' || c==='DN' || c.startsWith('ND') || c==='D' || c==='N';
-}
-
-// 순번(순위)을 조(1조/2조)별로 따로 매김. desc=true면 큰 값이 1등
-function rankWithinTeam(list, getVal, desc){
-  const ranks = new Array(list.length);
-  const groups = {};
-  list.forEach((r,i)=>{ const t=(r.emp.team||''); (groups[t]=groups[t]||[]).push({i, v:getVal(r)||0}); });
-  Object.values(groups).forEach(g=>{
-    g.sort((a,b)=> (desc ? b.v-a.v : a.v-b.v) || a.i-b.i);
-    g.forEach((x,idx)=>{ ranks[x.i] = idx+1; });
-  });
-  return ranks;
 }
 
 /* ========================= 근태·OT 집계 ========================= */
@@ -1470,7 +1887,7 @@ function pageOT(){
       const meal = computeMealAllowance(rec);
       if(c.valid){ if(c.category==='평일'||c.category==='토요일') wkTotal+=c.premium; else hoTotal+=c.premium; }
       if(s.valid){
-        const cat = dayCategory(ds, rec && rec.manguen);
+        const cat = dayCategory(ds, recManguen(rec, ds));
         if(cat==='SU' || cat==='H') hoTotal += s.premium; else spTotal += s.premium;
       }
       mealTotal += meal;
@@ -1490,7 +1907,7 @@ function pageOT(){
   }).join('');
 
   const rows = perEmp.map((r,idx)=>{
-    const noCell = r.emp.teamRole==='조장' ? '조장' : (idx+1);
+    const noCell = idx+1;
     const z = v => v ? fmtH(v) : '';
     const dayCells = days.map(ds=>{
       const [y,m,d] = ds.split('-').map(Number);
@@ -1502,13 +1919,13 @@ function pageOT(){
       <td style="text-align:center;">${esc(noCell)}</td>
       <td class="namecell">${esc(r.emp.name)}</td>
       <td style="text-align:center;">${z(r.mealTotal)}</td>
-      <td style="text-align:center;background:var(--amber-soft);">${z(r.wkTotal)}</td>
-      <td style="text-align:center;background:var(--ok-soft);">${z(r.spTotal)}</td>
-      <td style="text-align:center;background:var(--ok-soft);font-weight:700;">${z(r.spGuar)}</td>
-      <td style="text-align:center;background:var(--warn-soft);">${z(r.hoTotal)}</td>
-      <td style="text-align:center;background:var(--warn-soft);font-weight:700;">${z(r.hoGuar)}</td>
-      <td style="text-align:center;background:var(--accent-soft);font-weight:800;">${fmtH(r.grand)}</td>
-      <td style="text-align:center;background:var(--accent-soft);">${fmtH(r.otGuar)}</td>
+      <td class="gc g-wk" style="text-align:center;font-weight:700;">${z(r.wkTotal)}</td>
+      <td class="gc g-sup" style="text-align:center;">${z(r.spTotal)}</td>
+      <td class="gc g-sup" style="text-align:center;font-weight:800;">${z(r.spGuar)}</td>
+      <td class="gc g-hol" style="text-align:center;">${z(r.hoTotal)}</td>
+      <td class="gc g-hol" style="text-align:center;font-weight:800;">${z(r.hoGuar)}</td>
+      <td class="otc gc g-ot" style="text-align:center;font-weight:800;">${fmtH(r.grand)}</td>
+      <td class="otc gc g-ot" style="text-align:center;font-weight:800;">${fmtH(r.otGuar)}</td>
       <td class="namecell">${esc(r.emp.name)}</td>
       ${dayCells}
     </tr>`;
@@ -1519,13 +1936,13 @@ function pageOT(){
   const avgRow = `<tr style="background:var(--bg);font-weight:800;">
     <td colspan="2" style="text-align:center;">평 균</td>
     <td style="text-align:center;">${avgOf('mealTotal')}</td>
-    <td style="text-align:center;background:var(--amber-soft);">${avgOf('wkTotal')}</td>
-    <td style="text-align:center;background:var(--ok-soft);">${avgOf('spTotal')}</td>
-    <td style="text-align:center;background:var(--ok-soft);">${avgOf('spGuar')}</td>
-    <td style="text-align:center;background:var(--warn-soft);">${avgOf('hoTotal')}</td>
-    <td style="text-align:center;background:var(--warn-soft);">${avgOf('hoGuar')}</td>
-    <td style="text-align:center;background:var(--accent-soft);">${avgOf('grand')}</td>
-    <td style="text-align:center;background:var(--accent-soft);">${avgOf('otGuar')}</td>
+    <td class="gc g-wk" style="text-align:center;">${avgOf('wkTotal')}</td>
+    <td class="gc g-sup" style="text-align:center;">${avgOf('spTotal')}</td>
+    <td class="gc g-sup" style="text-align:center;">${avgOf('spGuar')}</td>
+    <td class="gc g-hol" style="text-align:center;">${avgOf('hoTotal')}</td>
+    <td class="gc g-hol" style="text-align:center;">${avgOf('hoGuar')}</td>
+    <td class="gc g-ot" style="text-align:center;">${avgOf('grand')}</td>
+    <td class="gc g-ot" style="text-align:center;">${avgOf('otGuar')}</td>
     <td></td>
     ${days.map(()=>'<td></td>').join('')}
   </tr>`;
@@ -1536,7 +1953,6 @@ function pageOT(){
   <div class="row" style="margin-bottom:6px;align-items:center;">
     <div class="field"><label>시작일</label><input type="date" id="otRangeStartInput" value="${esc(otMatrixStart)}"></div>
     <div class="field"><label>종료일</label><input type="date" id="otRangeEndInput" value="${esc(otMatrixEnd)}"></div>
-    <span style="background:#fff200;color:#3a2a00;font-weight:800;padding:6px 16px;border-radius:6px;">총OT</span>
     <span style="flex:1 1 auto;"></span>
     <button class="btn ghost sm" id="prevPayMonth">◀ 이전달</button>
     <div class="field" style="min-width:auto;"><b style="font-size:15px;">${otPayYear}년 ${otPayMonth}월 (${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)})</b></div>
@@ -1547,23 +1963,23 @@ function pageOT(){
     <button class="btn ${otTeamFilter==='1'?'':'ghost'} sm" data-act="ot-team-filter" data-team="1">1조</button>
     <button class="btn ${otTeamFilter==='2'?'':'ghost'} sm" data-act="ot-team-filter" data-team="2">2조</button>
   </div>
-  ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl"><thead>
+  ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl otSum"><thead>
     <tr>
       <th rowspan="2" class="namehead">No</th><th rowspan="2" class="namehead" style="left:34px;">성명</th>
       <th>식사</th>
-      <th>평일</th>
-      <th colspan="2">지원</th>
-      <th colspan="2">휴일</th>
-      <th colspan="2">OT</th>
+      <th class="gh g-wk">평일</th>
+      <th colspan="2" class="gh g-sup">지원</th>
+      <th colspan="2" class="gh g-hol">휴일</th>
+      <th colspan="2" class="gc g-ot" style="font-weight:800;">OT</th>
       <th rowspan="2" class="namehead">성명</th>
       <th colspan="${days.length}">일자별</th>
     </tr>
     <tr>
       <th>계</th>
-      <th style="background:var(--amber-soft);">계</th>
-      <th style="background:var(--ok-soft);">계</th><th style="background:var(--ok-soft);">보전</th>
-      <th style="background:var(--warn-soft);">계</th><th style="background:var(--warn-soft);">보전</th>
-      <th style="background:var(--accent-soft);">실</th><th style="background:var(--accent-soft);">보전</th>
+      <th class="gc g-wk">계</th>
+      <th class="gc g-sup">계</th><th class="gc g-sup">보전</th>
+      <th class="gc g-hol">계</th><th class="gc g-hol">보전</th>
+      <th class="gc g-ot">실</th><th class="gc g-ot">보전</th>
       ${dayHead}
     </tr>
   </thead><tbody>${rows}${avgRow}</tbody></table></div>`
@@ -1594,7 +2010,7 @@ function pageTeamOT(){
       }
       const s = computeSupportDaily(rec, ds);
       if(s.valid){
-        const cat = dayCategory(ds, rec.manguen);
+        const cat = dayCategory(ds, recManguen(rec, ds));
         if(cat==='SU' || cat==='H') hoSup += s.premium;
         else if(cat==='SA') spSat += s.premium;
         else spWeekday += s.premium;
@@ -1620,7 +2036,7 @@ function pageTeamOT(){
   });
 
   const rows = perEmp.map((r,idx)=>{
-    const noCell = r.emp.teamRole==='조장' ? '조장' : (idx+1);
+    const noCell = idx+1;
     const z = v => v ? fmtH(v) : '';
     return `<tr>
       <td style="text-align:center;">${esc(noCell)}</td>
@@ -1703,8 +2119,8 @@ function pageCodeStats(){
         if(c.category==='일요일' || c.category==='공휴일'){ otHoliday += c.premium; workHoliday++; }
         else { otWeekday += c.premium; workWeekday++; }
       }
-      // 지원 카운트: 원본 수식 =COUNTIF(SP)+COUNTIF(DN)+COUNTIF(ND*)+COUNTIF(D)+COUNTIF(N) 와 동일 (하루 최대 1)
-      if(isSupportCountDay(rec)) supDays++;
+      const s = computeSupportDaily(rec, ds);
+      if(s.valid) supDays++;
       mealAllow += computeMealAllowance(rec);
     }
     const gyeHol = codeCnt.FCH + codeCnt.MCH;
@@ -1716,8 +2132,18 @@ function pageCodeStats(){
   });
 
   // 순위(순번): 지원일수/계/MCS는 값이 작을수록 1등(오름차순), OT는 값이 클수록 1등(내림차순)
-  function rankByAsc(getVal){ return rankWithinTeam(perEmp, getVal, false); }
-  function rankByDesc(getVal){ return rankWithinTeam(perEmp, getVal, true); }
+  function rankByAsc(getVal){
+    const s = perEmp.map((r,i)=>({i, v:getVal(r)||0})).sort((a,b)=> a.v-b.v || a.i-b.i);
+    const ranks = new Array(perEmp.length);
+    s.forEach((x,idx)=>{ ranks[x.i] = idx+1; });
+    return ranks;
+  }
+  function rankByDesc(getVal){
+    const s = perEmp.map((r,i)=>({i, v:getVal(r)||0})).sort((a,b)=> b.v-a.v || a.i-b.i);
+    const ranks = new Array(perEmp.length);
+    s.forEach((x,idx)=>{ ranks[x.i] = idx+1; });
+    return ranks;
+  }
   const rankSup = rankByAsc(r=>r.supDays);
   const rankGyeHol = rankByAsc(r=>r.gyeHol);
   const rankMCS = rankByAsc(r=>r.codeCnt.MCS);
@@ -1726,7 +2152,7 @@ function pageCodeStats(){
   const rankOtWk = rankByDesc(r=>r.otWeekdayFinal);
 
   const rows = perEmp.map((r,idx)=>{
-    const noCell = r.emp.teamRole==='조장' ? '조장' : (idx+1);
+    const noCell = idx+1;
     return `<tr style="height:34px;">
       <td style="text-align:center;">${esc(noCell)}</td>
       <td class="namecell" style="height:34px;">${esc(r.emp.name)}</td>
@@ -1894,18 +2320,18 @@ function pageDispatch(){
     const bg = cat ? cat.bg : 'transparent';
     const fg = cat ? cat.fg : 'var(--text)';
     return `<td class="dpCell" data-dispatch-emp="${esc(empId)}" data-dispatch-slot="${esc(s)}" data-dispatch-cur="${esc(catKey||'')}"
-      style="width:30px;height:32px;min-height:32px;background:${bg};color:${fg};cursor:pointer;text-align:center;font-size:9.5px;font-weight:700;border:1px solid var(--border);user-select:none;"></td>`;
+      style="background:${bg};color:${fg};"></td>`;
   }
 
-  const head = `<th class="namehead">No</th><th class="namehead" style="left:34px;">성명</th><th>근태</th><th>퇴근</th><th>승무</th>` +
+  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4">퇴근</th><th class="dpI dpI5">승무</th>` +
     slots.map(s=>{
       const [hh,mm] = s.split(':');
       const isRed = hh==='07' || hh==='12' || hh==='18' || hh==='24';
       const color = isRed ? '#E03131' : '#000000';
       if(mm==='00'){
-        return `<th style="min-width:30px;color:${color};font-size:15px;font-weight:800;">${esc(hh)}</th>`;
+        return `<th class="dpSlotH" style="color:${color};font-size:15px;font-weight:800;">${esc(hh)}</th>`;
       }
-      return `<th style="min-width:30px;color:${color};font-size:9px;font-weight:600;">${esc(mm)}</th>`;
+      return `<th class="dpSlotH" style="color:${color};font-size:10px;font-weight:600;">${esc(mm)}</th>`;
     }).join('');
 
   const slotCounts = slots.map(()=>0); // 시간대(칸)별 배치 인원 수
@@ -1920,13 +2346,12 @@ function pageDispatch(){
       if(v){ paintedSlots++; slotCounts[si]++; }
       return slotCell(e.id, s, v);
     }).join('');
-    const isLeader = e.teamRole==='조장';
     return `<tr>
-      <td class="namecell" style="text-align:center;">${isLeader?'조장':idx+1}</td>
-      <td class="namecell" style="left:34px;">${isLeader?'조장 ':''}${esc(e.name)}</td>
-      <td style="text-align:center;">${esc(rec.statusCode || rec.workCode || '')}</td>
-      <td style="text-align:center;">${esc(rec.checkOut||'')}</td>
-      <td style="text-align:center;" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
+      <td class="dpI dpI1">${idx+1}</td>
+      <td class="dpI dpI2" style="text-align:left;">${esc(e.name)}</td>
+      <td class="dpI dpI3" style="color:${codeColor(displayCode(rec))};">${esc(displayCode(rec))}</td>
+      <td class="dpI dpI4">${esc(rec.checkOut||'')}</td>
+      <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
       ${cells}
     </tr>`;
   }).join('');
@@ -1944,17 +2369,17 @@ function pageDispatch(){
       if(v){ supPainted++; slotCounts[si]++; }
       return slotCell(supId, s, v);
     }).join('');
-    const supLabel = i===0 ? `<td class="namecell" rowspan="${SUP_COUNT}" style="text-align:center;vertical-align:middle;">지원</td>` : '';
+    const supLabel = i===0 ? `<td class="dpI dpI1" rowspan="${SUP_COUNT}" style="vertical-align:middle;">지원</td>` : '';
     return `<tr>
       ${supLabel}
-      <td class="namecell" style="left:34px;"><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름" style="width:70px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:var(--text);"></td>
-      <td></td><td></td><td style="text-align:center;" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
+      <td class="dpI dpI2"><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름" style="width:66px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:var(--text);"></td>
+      <td class="dpI dpI3"></td><td class="dpI dpI4"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
       ${cells}
     </tr>`;
   }).join('');
 
   const countRow = `<tr style="background:var(--bg);">
-    <td class="namecell" colspan="5" style="text-align:center;font-weight:800;">시간대별 인원</td>
+    <td class="dpI dpI1" colspan="5" style="font-weight:800;">시간대별 인원</td>
     ${slots.map((s,si)=>`<td data-dispatch-count="${esc(s)}" style="text-align:center;font-weight:800;color:${slotCounts[si]>0?'var(--accent)':'var(--text-muted)'};">${slotCounts[si]||''}</td>`).join('')}
   </tr>`;
 
@@ -1975,7 +2400,12 @@ function pageDispatch(){
   </div>
   <div class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>
   <div style="background:#E8B84B;color:#3a2a00;font-weight:700;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;">${esc(dateBanner)}</div>
-  ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl" id="dpTable" style="border-radius:0 0 8px 8px;overflow:hidden;"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
+  ${sortedEmployees.length? `<div class="dpScrollBar">
+      <button type="button" class="btn ghost sm" data-dp-scroll="-1">◀ 앞 시간</button>
+      <span class="hint" style="margin:0;">표를 옆으로 밀어서(스크롤) 보세요. 성명·근태·퇴근·승무 칸은 고정됩니다.</span>
+      <button type="button" class="btn ghost sm" data-dp-scroll="1">뒤 시간 ▶</button>
+    </div>
+    <div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다. 먼저 직원 관리에서 직원을 추가하세요.</div>`}
   <p class="hint">성명은 조편성 관리에서 설정한 조·순번 순서대로 표시됩니다. "지원" 행은 이름을 직접 입력해서 사용하세요.</p>
   `;
@@ -2041,34 +2471,96 @@ function pageSupportPlan(){
 
 /* ========================= 조편성 관리 ========================= */
 function teamPanel(teamKey, title){
-  const list = employees.filter(e=>(e.team||'')===teamKey).sort((a,b)=>(a.teamOrder||0)-(b.teamOrder||0));
-  const rows = list.map(e=>{
-    const isLeader = e.teamRole==='조장';
-    const orderCell = isLeader
-      ? `<span style="font-weight:800;color:var(--accent);">조장</span>`
-      : `<input type="number" data-team-emp="${esc(e.id)}" data-team-field="teamOrder" value="${e.teamOrder||''}" style="width:48px;border:1px solid var(--border);border-radius:5px;padding:3px;background:var(--bg);color:var(--text);text-align:center;">`;
-    return `<tr>
-    <td style="text-align:center;">${orderCell}</td>
-    <td><input type="text" data-team-emp="${esc(e.id)}" data-team-field="part" value="${esc(e.part||'')}" style="width:80px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);"></td>
-    <td class="namecell">${isLeader?'조장 ':''}${esc(e.name)}</td>
-    <td style="text-align:center;">
-      <button type="button" class="btn ${isLeader?'':'ghost'} sm" data-act="toggle-role" data-id="${esc(e.id)}" data-role="${isLeader?'조원':'조장'}">${isLeader?'조장':'조원'}</button>
+  const list = employees.filter(e=>(e.team||'')===teamKey).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
+  const rows = list.map((e,idx)=>`<tr data-emp-row="${esc(e.id)}">
+    <td style="text-align:center;white-space:nowrap;">
+      <span class="dragHandle" data-drag-emp="${esc(e.id)}" title="끌어서 순번 이동">⠿</span>
+      <b style="display:inline-block;min-width:18px;">${idx+1}</b>
     </td>
+    <td><input type="text" data-team-emp="${esc(e.id)}" data-team-field="part" value="${esc(e.part||'')}" style="width:80px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);"></td>
+    <td class="namecell">${esc(e.name)}</td>
+    <td><select data-team-emp="${esc(e.id)}" data-team-field="rankExclude" title="근태관리 순번 계산에서 제외" style="border:1px solid var(--border);border-radius:5px;padding:3px 4px;background:var(--bg);color:var(--text);font-size:12px;">
+      <option value=""${rankExcl(e)===''?' selected':''}>포함</option>
+      <option value="ot"${rankExcl(e)==='ot'?' selected':''}>OT순번 제외</option>
+      <option value="all"${rankExcl(e)==='all'?' selected':''}>전체 제외</option>
+    </select></td>
     <td><button class="btn warn ghost sm" data-act="del-emp" data-id="${esc(e.id)}">삭제</button></td>
-  </tr>`;
-  }).join('');
+  </tr>`).join('');
   return `
-  <div style="flex:1 1 320px;min-width:260px;">
+  <div data-team-drop="${esc(teamKey)}" style="flex:1 1 320px;min-width:260px;border-radius:10px;">
     <h3 style="margin-bottom:8px;">${esc(title)} (${list.length}명)</h3>
-    ${list.length? `<div class="scrollx"><table class="tbl"><thead><tr><th>순번</th><th>파트</th><th>성명</th><th>직책</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
-      : `<div class="empty">배정된 직원이 없습니다.</div>`}
+    ${list.length? `<div class="scrollx"><table class="tbl"><thead><tr><th>순번</th><th>파트</th><th>성명</th><th>근태관리 순번</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+      : `<div class="empty">배정된 직원이 없습니다. 다른 조에서 끌어다 놓을 수 있어요.</div>`}
   </div>`;
+}
+// 드래그한 결과대로 조·순번을 한 번에 저장
+async function saveTeamOrders(updates){
+  if(!requireEdit() || !updates.length) return;
+  updates.forEach(u=>{ const e = employees.find(x=>x.id===u.id); if(e){ e.team = u.team; e.teamOrder = u.teamOrder; } }); // 낙관적 로컬 업데이트
+  render();
+  if(!db) return;
+  try{
+    await Promise.all(updates.map(u=> db.collection('employees').doc(u.id).set({team:u.team, teamOrder:u.teamOrder}, {merge:true})));
+    showToast('순번이 저장되었습니다.');
+  }catch(err){ console.error(err); showToast(saveErrMsg('순번 저장에 실패했습니다.', err)); }
+}
+let teamDrag = null; // {id, fromTeam, target:{team, beforeId|null}}
+function teamListOf(teamKey, excludeId){
+  return employees.filter(e=>(e.team||'')===teamKey && e.id!==excludeId).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
+}
+function clearTeamDropMarks(){
+  document.querySelectorAll('.drop-before,.drop-after,.drop-into').forEach(x=>x.classList.remove('drop-before','drop-after','drop-into'));
+}
+function teamDragMove(clientX, clientY){
+  if(!teamDrag) return;
+  // 화면 가장자리 근처면 자동 스크롤
+  const main = document.getElementById('content');
+  const r = main.getBoundingClientRect();
+  if(clientY < r.top + 50) main.scrollTop -= 12; else if(clientY > r.bottom - 50) main.scrollTop += 12;
+  clearTeamDropMarks();
+  const at = document.elementFromPoint(clientX, clientY);
+  if(!at){ teamDrag.target = null; return; }
+  const row = at.closest('tr[data-emp-row]');
+  const zone = at.closest('[data-team-drop]');
+  if(row && row.dataset.empRow !== teamDrag.id){
+    const rr = row.getBoundingClientRect();
+    const after = clientY > rr.top + rr.height/2;
+    row.classList.add(after ? 'drop-after' : 'drop-before');
+    const teamKey = row.closest('[data-team-drop]').dataset.teamDrop;
+    const list = teamListOf(teamKey, teamDrag.id);
+    const i = list.findIndex(e=>e.id===row.dataset.empRow);
+    teamDrag.target = {team: teamKey, index: after ? i+1 : i};
+  } else if(zone && !row){
+    zone.classList.add('drop-into');
+    teamDrag.target = {team: zone.dataset.teamDrop, index: teamListOf(zone.dataset.teamDrop, teamDrag.id).length};
+  } else if(!row){
+    teamDrag.target = null;
+  }
+}
+function teamDragEnd(){
+  if(!teamDrag) return;
+  const {id, fromTeam, target} = teamDrag;
+  teamDrag = null;
+  clearTeamDropMarks();
+  document.querySelectorAll('tr.dragging').forEach(x=>x.classList.remove('dragging'));
+  document.body.classList.remove('team-dragging');
+  if(!target) return;
+  const me = employees.find(e=>e.id===id);
+  if(!me) return;
+  const updates = [];
+  const dest = teamListOf(target.team, id);
+  dest.splice(Math.max(0, Math.min(target.index, dest.length)), 0, me);
+  dest.forEach((e,i)=>{ if((e.team||'')!==target.team || e.teamOrder!==i+1) updates.push({id:e.id, team:target.team, teamOrder:i+1}); });
+  if(target.team !== fromTeam){
+    teamListOf(fromTeam, id).forEach((e,i)=>{ if(e.teamOrder!==i+1) updates.push({id:e.id, team:fromTeam, teamOrder:i+1}); });
+  }
+  saveTeamOrders(updates);
 }
 function pageTeam(){
   const unassigned = employees.filter(e=>e.team!=='1' && e.team!=='2');
   return `
   <h2 class="pgttl">조편성 관리</h2>
-  <p class="pgsub">직원을 1조/2조로 배정하고 순번·직책을 관리합니다. (원본 시트의 NP/GP 순위 점수는 산출 근거가 파일에 없어 이 앱에는 포함하지 않았습니다 — 순번은 직접 입력해 주세요.)</p>
+  <p class="pgsub">순번 옆 <b>⠿</b> 손잡이를 잡고 위아래로 끌면 순번이 바뀝니다. 다른 조 칸으로 끌어다 놓으면 조도 함께 바뀌어요.</p>
   <div class="panel">
     <h3>직원 추가</h3>
     <form id="teamAddForm" class="row">
@@ -2109,17 +2601,14 @@ function afterRender(){
       const checkInVal = readTimeSelect(f,'checkIn');
       // 근무코드가 아직 월별표에서 지정 안 된 경우, 계산 미리보기와 동일하게 체크인 시각으로 D/N을 추정해서 저장
       // 근무코드(D/N 등)는 자동 추정하지 않고 항상 근태관리 그리드에서 수동으로만 지정한다
-      const workCode = existing && existing.workCode ? existing.workCode : 'OFF';
+      // 이 화면이 다루는 항목만 저장(근무코드·근태코드·만근·비고는 월별표에서 관리하므로 건드리지 않음)
       const rec = {
         date: f.get('date'), employeeId: f.get('employeeId'),
-        workCode: workCode || 'OFF', statusCode: (existing && existing.statusCode) || '',
         checkIn: checkInVal, checkOut: readTimeSelect(f,'checkOut'),
         supportIn: readTimeSelect(f,'supportIn'), supportOut: readTimeSelect(f,'supportOut'),
         honjoComp: f.get('honjoComp')||'', tajoComp: f.get('tajoComp')||'',
-        note: (existing && existing.note) || '', extCode: !!(existing && existing.extCode),
         jochul: !!f.get('jochul'), seokchul: !!f.get('seokchul'), jungsik: !!f.get('jungsik'),
-        yasik: !!f.get('yasik'), manguen: !!(existing && existing.manguen),
-        supportCode: (existing && existing.supportCode) || '', updatedAt: Date.now()
+        yasik: !!f.get('yasik'), updatedAt: Date.now()
       };
       if(!rec.date || !rec.employeeId){ showToast('날짜와 직원을 선택하세요.'); return; }
       curYear = Number(rec.date.slice(0,4)); curMonth = Number(rec.date.slice(5,7));
@@ -2143,7 +2632,7 @@ function afterRender(){
     const updatePreview = ()=>{
       const f = new FormData(form);
       const curRec = attendance[f.get('date')+'_'+f.get('employeeId')];
-      const common = {extCode: !!(curRec&&curRec.extCode), yasik: !!f.get('yasik'), manguen: !!(curRec&&curRec.manguen),
+      const common = {extCode: !!(curRec&&curRec.extCode), yasik: !!f.get('yasik'), manguen: !!(curRec&&curRec.manguen), employeeId: f.get('employeeId'),
         jochul: !!f.get('jochul'), seokchul: !!f.get('seokchul'), jungsik: !!f.get('jungsik')};
       const checkInVal = readTimeSelect(f,'checkIn');
       // 근무코드가 아직 월별표에서 지정 안 된 경우, 미리보기용으로만 체크인 시각을 보고 주간(D)/야간(N)을 추정
@@ -2154,7 +2643,7 @@ function afterRender(){
         previewWorkCode = hh<=14 ? 'D' : 'N';
       }
       previewWorkCode = previewWorkCode || 'OFF';
-      const tmp = Object.assign({workCode:previewWorkCode, checkIn:checkInVal, checkOut:readTimeSelect(f,'checkOut')}, common);
+      const tmp = Object.assign({workCode:previewWorkCode, baseShift:(curRec && curRec.baseShift)||'', checkIn:checkInVal, checkOut:readTimeSelect(f,'checkOut')}, common);
       const supTmp = Object.assign({supportIn:readTimeSelect(f,'supportIn'), supportOut:readTimeSelect(f,'supportOut'), honjoComp:f.get('honjoComp'), tajoComp:f.get('tajoComp')}, common);
       const c = computeDaily(tmp, f.get('date'));
       const s = computeSupportDaily(supTmp, f.get('date'));
@@ -2189,32 +2678,39 @@ function afterRender(){
   if(prevPayMonth) prevPayMonth.onclick = ()=>{
     otPayMonth--; if(otPayMonth<1){ otPayMonth=12; otPayYear--; }
     [otMatrixStart, otMatrixEnd] = payPeriodRange(otPayYear, otPayMonth);
+    saveOtPref();
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
   if(nextPayMonth) nextPayMonth.onclick = ()=>{
     otPayMonth++; if(otPayMonth>12){ otPayMonth=1; otPayYear++; }
     [otMatrixStart, otMatrixEnd] = payPeriodRange(otPayYear, otPayMonth);
+    saveOtPref();
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; render(); });
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; render(); });
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{
+    if(!canEdit) return;
     prefill = {date: x.dataset.date, employeeId: x.dataset.emp};
     setView('input');
   });
   // 작업기간 직접수정
   const otRangeStartInput = document.getElementById('otRangeStartInput'), otRangeEndInput = document.getElementById('otRangeEndInput');
   if(otRangeStartInput) otRangeStartInput.onchange = ()=>{
+    if(!otRangeStartInput.value) return;
     otMatrixStart = otRangeStartInput.value;
     if(otMatrixStart > otMatrixEnd) otMatrixEnd = otMatrixStart;
+    saveOtPref();
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
   if(otRangeEndInput) otRangeEndInput.onchange = ()=>{
+    if(!otRangeEndInput.value) return;
     otMatrixEnd = otRangeEndInput.value;
     if(otMatrixEnd < otMatrixStart) otMatrixStart = otMatrixEnd;
+    saveOtPref();
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
@@ -2223,7 +2719,7 @@ function afterRender(){
   const prevM = document.getElementById('prevMonth'), nextM = document.getElementById('nextMonth');
   if(prevM) prevM.onclick = ()=>{
     if(VIEW==='combined'){
-      codeStatsStart = shiftMonth(codeStatsStart,-1); codeStatsEnd = shiftMonth(codeStatsEnd,-1);
+      [codeStatsStart, codeStatsEnd] = shiftRangeMonth(codeStatsStart, codeStatsEnd, -1);
       if(dbReady) subscribeCodeStatsRange(codeStatsStart, codeStatsEnd);
       render(); return;
     }
@@ -2231,28 +2727,36 @@ function afterRender(){
   };
   if(nextM) nextM.onclick = ()=>{
     if(VIEW==='combined'){
-      codeStatsStart = shiftMonth(codeStatsStart,1); codeStatsEnd = shiftMonth(codeStatsEnd,1);
+      [codeStatsStart, codeStatsEnd] = shiftRangeMonth(codeStatsStart, codeStatsEnd, 1);
       if(dbReady) subscribeCodeStatsRange(codeStatsStart, codeStatsEnd);
       render(); return;
     }
     curMonth++; if(curMonth>12){curMonth=1;curYear++;} if(dbReady) subscribeAttendanceMonth(curYear,curMonth); render();
   };
+  const cmbPrev = document.getElementById('cmbPrevMonth'), cmbNext = document.getElementById('cmbNextMonth');
+  if(cmbPrev) cmbPrev.onclick = ()=>{ let {y,m} = combinedYm; m--; if(m<1){ m=12; y--; } combinedYm = {y,m}; render(); };
+  if(cmbNext) cmbNext.onclick = ()=>{ let {y,m} = combinedYm; m++; if(m>12){ m=1; y++; } combinedYm = {y,m}; render(); };
   const codeStatsMealChk = document.getElementById('codeStatsMealChk');
-  if(codeStatsMealChk) codeStatsMealChk.onchange = ()=>{ codeStatsIncludeMeal = codeStatsMealChk.checked; render(); };
+  if(codeStatsMealChk) codeStatsMealChk.onchange = ()=>{ codeStatsIncludeMeal = codeStatsMealChk.checked; saveCombinedPref(); render(); };
   const codeStatsStartInput = document.getElementById('codeStatsStartInput'), codeStatsEndInput = document.getElementById('codeStatsEndInput');
   if(codeStatsStartInput) codeStatsStartInput.onchange = ()=>{
+    if(!codeStatsStartInput.value) return; // 날짜를 지우는 중이면 무시
     codeStatsStart = codeStatsStartInput.value;
     if(codeStatsStart > codeStatsEnd) codeStatsEnd = codeStatsStart;
+    saveCombinedPref();
     if(dbReady) subscribeCodeStatsRange(codeStatsStart, codeStatsEnd);
     render();
   };
   if(codeStatsEndInput) codeStatsEndInput.onchange = ()=>{
+    if(!codeStatsEndInput.value) return;
     codeStatsEnd = codeStatsEndInput.value;
     if(codeStatsEnd < codeStatsStart) codeStatsStart = codeStatsEnd;
+    saveCombinedPref();
     if(dbReady) subscribeCodeStatsRange(codeStatsStart, codeStatsEnd);
     render();
   };
   el.querySelectorAll('[data-act="grid-cell"]').forEach(x=>x.onclick=()=>{
+    if(!canEdit){ requireEdit(); return; }
     gridEdit = {date:x.dataset.date, employeeId:x.dataset.emp};
     render();
   });
@@ -2273,9 +2777,11 @@ function afterRender(){
     gDropdown.querySelectorAll('.gridCodeOpt').forEach(opt=>{
       opt.onclick = ()=>{ gCode.value = opt.dataset.code; hideDropdown(); };
     });
-    document.addEventListener('click', function outsideClick(e){
+    if(window._gridOutsideClick) document.removeEventListener('click', window._gridOutsideClick);
+    window._gridOutsideClick = function outsideClick(e){
       if(!gCode.contains(e.target) && !gDropdown.contains(e.target)) hideDropdown();
-    });
+    };
+    document.addEventListener('click', window._gridOutsideClick);
   }
   const gManguen = document.getElementById('gridManguen');
   const gSave = document.getElementById('gridEditSave'), gCancel = document.getElementById('gridEditCancel');
@@ -2284,20 +2790,21 @@ function afterRender(){
     const {date, employeeId} = gridEdit;
     const existing = attendance[date+'_'+employeeId] || {};
     const val = gCode.value.trim().toUpperCase() || 'OFF';
-    const isWorkCode = WORK_CODES.some(w=>w.code===val);
-    const isStatusCode = STATUS_CODE_LIST.includes(val) || !!codeDefs[val];
+    const isWorkCode = val==='OFF' || refWorkCodes().has(val);
+    const isStatusCode = refStatusCodes().has(val);
     if(!isWorkCode && !isStatusCode){
-      showToast('"'+val+'"은(는) 유효한 근무코드·근태코드가 아니에요.');
+      showToast('"'+val+'"은(는) 근태코드 참조에 없는 코드예요. 근태코드 참조에서 먼저 추가하세요.');
       return;
     }
-    const rec = Object.assign({}, existing, {
+    const rec = {
       date, employeeId,
       workCode: isWorkCode ? val : 'OFF',
       statusCode: isWorkCode ? '' : val,
+      attCode: val==='OFF' ? '' : val, // 근태코드 칸에 직접 입력한 값(지원일수 판정에 사용)
+      attManual: true, // 편집모드에서 직접 입력한 코드(D·N도 표에 표시)
       manguen: gManguen ? gManguen.checked : !!existing.manguen,
-      supportCode: (document.getElementById('gridSupportCode')||{}).value || '',
       updatedAt: Date.now()
-    });
+    };
     gridEdit = null;
     saveAttendance(rec);
   };
@@ -2382,9 +2889,16 @@ function afterRender(){
   if(dpDate) dpDate.onchange = ()=>{ dispatchDate = dpDate.value; if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
   if(dpShift) dpShift.onchange = ()=>{ dispatchShift = dpShift.value; render(); };
   el.querySelectorAll('.dpCatBtn').forEach(x=>x.onclick=()=>{ dispatchPaint = x.dataset.cat; render(); });
+  const dpWrapEl = document.getElementById('dpWrap');
+  if(dpWrapEl){
+    if(window._dpScrollLeft) dpWrapEl.scrollLeft = window._dpScrollLeft; // 다시 그려도 보던 위치 유지
+    dpWrapEl.onscroll = ()=>{ window._dpScrollLeft = dpWrapEl.scrollLeft; };
+  }
+  el.querySelectorAll('[data-dp-scroll]').forEach(x=>x.onclick=()=>{
+    if(dpWrapEl) dpWrapEl.scrollBy({left: Number(x.dataset.dpScroll) * 42 * 6, behavior:'smooth'});
+  });
   const dpTable = document.getElementById('dpTable');
   if(dpTable){
-    dpTable.style.touchAction = 'none';
     dpTable.onpointerdown = (e)=>{
       const td = e.target.closest('.dpCell');
       if(!td) return;
@@ -2435,23 +2949,134 @@ function afterRender(){
     };
     if(x.tagName==='SELECT') x.onchange = commit; else x.onblur = commit;
   });
-  el.querySelectorAll('[data-act="toggle-role"]').forEach(x=>{
-    x.onclick = ()=>{
-      const id = x.dataset.id, newRole = x.dataset.role;
-      if(newRole==='조장'){
-        // 같은 조에서 기존 조장은 조원으로 내림 (조장은 조당 한 명)
-        const me = employees.find(e=>e.id===id);
-        if(me){
-          employees.filter(e=>e.id!==id && e.team===me.team && e.teamRole==='조장')
-            .forEach(e=> updateEmployee(e.id, {teamRole:'조원'}));
-        }
-        updateEmployee(id, {teamRole:'조장'});
-      } else {
-        updateEmployee(id, {teamRole:'조원'});
-      }
+  el.querySelectorAll('.dragHandle').forEach(h=>{
+    h.onpointerdown = (e)=>{
+      if(!canEdit){ requireEdit(); return; }
+      e.preventDefault();
+      const row = h.closest('tr[data-emp-row]');
+      const zone = h.closest('[data-team-drop]');
+      teamDrag = {id: h.dataset.dragEmp, fromTeam: zone ? zone.dataset.teamDrop : '', target: null};
+      row.classList.add('dragging');
+      document.body.classList.add('team-dragging');
+      try{ h.setPointerCapture(e.pointerId); }catch(err){}
     };
+    h.onpointermove = (e)=>{ if(teamDrag) teamDragMove(e.clientX, e.clientY); };
+    h.onpointerup = ()=> teamDragEnd();
+    h.onpointercancel = ()=>{ if(teamDrag){ teamDrag.target = null; teamDragEnd(); } };
   });
 }
+
+/* ========================= 백업·복원 ========================= */
+function pageBackup(){
+  const lb = lastBackupAt();
+  const lbTxt = lb ? new Date(lb).toLocaleString('ko-KR') : '아직 백업한 적 없음';
+  const old = oldLocalData();
+  const nOldAtt = old ? Object.keys(old.attendance||{}).length : 0, nOldEmp = old ? Object.keys(old.employees||{}).length : 0;
+  return `
+  <h2 class="pgttl">백업·복원</h2>
+  <p class="pgsub">데이터는 클라우드(Firebase)에 저장되어 PC·휴대폰에서 실시간으로 함께 보입니다. 만일을 대비해 가끔 백업 파일을 내려받아 두세요.</p>
+  <div class="panel">
+    <h3>백업 파일 내려받기</h3>
+    <p class="hint" style="margin:0 0 12px;">마지막 백업(이 기기 기준): <b>${esc(lbTxt)}</b></p>
+    <button class="btn" id="backupExportBtn" ${db?'':'disabled'}>백업 파일 내려받기 (.json)</button>
+  </div>
+  <div class="panel editor-only">
+    <h3>백업 파일 올리기</h3>
+    <p class="hint" style="margin:0 0 12px;">백업 파일 안의 기록을 클라우드에 올립니다. <b>같은 기록은 파일 내용으로 덮어쓰고</b>, 파일에 없는 기록은 그대로 둡니다. 이전 버전(브라우저 저장) 백업 파일과 <b>엑셀 DB입력 가져오기 파일</b>도 여기서 올립니다.</p>
+    <input type="file" id="backupImportFile" accept=".json,application/json" style="display:none;">
+    <button class="btn warn ghost" id="backupImportBtn" ${db?'':'disabled'}>백업 파일 선택…</button>
+  </div>
+  ${(nOldAtt||nOldEmp) ? `<div class="panel editor-only">
+    <h3>이 브라우저에 남아 있는 이전 데이터</h3>
+    <p class="hint" style="margin:0 0 12px;">이전 버전에서 이 브라우저에 저장했던 데이터(직원 ${nOldEmp}명·출퇴근 ${nOldAtt.toLocaleString()}건)가 있습니다. 클라우드로 올릴 수 있습니다.</p>
+    <button class="btn ghost" id="uploadOldLocalBtn">이전 데이터 클라우드로 올리기</button>
+  </div>` : ''}`;
+}
+async function exportBackup(){
+  if(!db) return;
+  showToast('백업 파일 만드는 중…');
+  let data;
+  try{ data = await db.exportAll(); }catch(e){ showToast('백업에 실패했습니다. 인터넷 연결을 확인하세요.'); return; }
+  const payload = {app:'SNCT근태관리', format:2, exportedAt:new Date().toISOString(), data};
+  const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `SNCT근태_백업_${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  try{ localStorage.setItem(LAST_BACKUP_KEY, String(Date.now())); }catch(e){}
+  showToast('백업 파일을 내려받았습니다.');
+  if(VIEW==='backup') render();
+}
+function importBackupFile(file){
+  if(!file || !db || !requireEdit()) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let obj;
+    try{ obj = JSON.parse(reader.result); }catch(e){ showToast('올바른 백업 파일이 아닙니다.'); return; }
+    if(obj && obj.kind==='attendanceByName'){ importAttendanceByName(obj); return; }
+    const data = obj && obj.data ? obj.data : obj;
+    if(!data || typeof data!=='object' || (!data.employees && !data.attendance)){
+      showToast('SNCT 근태관리 백업 파일이 아닙니다.'); return;
+    }
+    const n = Object.keys(data.attendance||{}).length, ne = Object.keys(data.employees||{}).length;
+    const when = obj.exportedAt ? new Date(obj.exportedAt).toLocaleString('ko-KR') : '날짜 정보 없음';
+    appConfirm(`백업(${when}, 직원 ${ne}명·출퇴근 ${n}건)을 클라우드에 올릴까요? 같은 기록은 파일 내용으로 덮어씁니다.`, ()=> uploadData(data));
+  };
+  reader.onerror = ()=> showToast('파일을 읽지 못했습니다.');
+  reader.readAsText(file);
+}
+// 엑셀(DB입력) 출퇴근 가져오기: 성명으로 직원을 찾아 날짜별 기록에 병합 저장(근무코드·근태코드 등 다른 항목은 보존)
+function importAttendanceByName(obj){
+  const rows = Array.isArray(obj.rows) ? obj.rows : [];
+  const byName = {};
+  employees.forEach(e=>{ byName[String(e.name||'').trim()] = e.id; });
+  const workSet = refWorkCodes(), statusSet = refStatusCodes();
+  const docs = {}, missing = {}, skippedCodes = {};
+  let minD = null, maxD = null, nCode = 0;
+  rows.forEach(r=>{
+    const id = byName[String(r.name||'').trim()];
+    if(!id){ missing[r.name] = (missing[r.name]||0) + 1; return; }
+    const {name, code, workCheck, ...fields} = r;
+    // 근무코드·근태코드: 근태코드 참조에 있는 것만 반영
+    if(code){
+      if(workSet.has(code)){ fields.workCode = code; fields.statusCode = ''; fields.attCode = code; nCode++; }
+      else if(statusSet.has(code)){ fields.statusCode = code; fields.workCode = (workCheck && workSet.has(workCheck)) ? workCheck : 'OFF'; fields.attCode = code; nCode++; }
+      else {
+        skippedCodes[code] = (skippedCodes[code]||0) + 1;
+        if(workCheck && workSet.has(workCheck)){ fields.workCode = workCheck; }
+      }
+    } else if(workCheck && workSet.has(workCheck)){
+      fields.workCode = workCheck; fields.statusCode = ''; fields.attCode = ''; nCode++;
+    }
+    if(Object.keys(fields).length <= 1) return; // date만 남으면 넣을 게 없음
+    docs[r.date+'_'+id] = Object.assign(fields, {employeeId:id, updatedAt:Date.now()});
+    if(!minD || r.date<minD) minD = r.date;
+    if(!maxD || r.date>maxD) maxD = r.date;
+  });
+  const n = Object.keys(docs).length;
+  const missTxt = Object.keys(missing).length ? ` 직원 명단에 없는 이름(${Object.entries(missing).map(([k,v])=>k+' '+v+'건').join(', ')})은 건너뜁니다.` : '';
+  const skipTxt = Object.keys(skippedCodes).length ? ` 근태코드 참조에 없는 코드(${Object.entries(skippedCodes).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' '+v+'건').join(', ')})는 넣지 않습니다.` : '';
+  if(!n){ showToast('넣을 기록이 없습니다.' + missTxt); return; }
+  const codeTxt = obj.includesCodes ? ` 근무코드·근태코드 ${nCode.toLocaleString()}건도 함께 넣습니다.` : ' 근무코드·근태코드는 그대로 둡니다.';
+  const hol = {};
+  (Array.isArray(obj.holidays) ? obj.holidays : []).forEach(h=>{ if(h && h.date) hol[h.date] = {date:h.date, name:h.name||'공휴일'}; });
+  const holTxt = Object.keys(hol).length ? ` 원본의 공휴일 ${Object.keys(hol).length}일도 공휴일 관리에 맞춰 넣습니다.` : '';
+  appConfirm(`엑셀 DB입력 기록 ${n.toLocaleString()}건(${minD} ~ ${maxD})을 넣을까요?${codeTxt}${holTxt}${skipTxt}${missTxt}`,
+    ()=> uploadData(Object.keys(hol).length ? {attendance: docs, holidays: hol} : {attendance: docs}));
+}
+document.addEventListener('click', (e)=>{
+  if(e.target.closest('#backupExportBtn')) exportBackup();
+  else if(e.target.closest('#backupImportBtn')){ if(!requireEdit()) return; const f=document.getElementById('backupImportFile'); if(f){ f.value=''; f.click(); } }
+  else if(e.target.closest('#uploadOldLocalBtn')){
+    if(!requireEdit()) return;
+    const old = oldLocalData(); if(!old) return;
+    appConfirm('이 브라우저의 이전 데이터를 클라우드로 올릴까요? 같은 기록은 덮어씁니다.', ()=> uploadData(old));
+  }
+});
+document.addEventListener('change', (e)=>{
+  if(e.target && e.target.id==='backupImportFile') importBackupFile(e.target.files && e.target.files[0]);
+});
 
 /* ========================= 내비게이션/모바일 ========================= */
 document.querySelectorAll('nav#nav a').forEach(a=>{
@@ -2466,8 +3091,14 @@ document.getElementById('scrim').addEventListener('click', ()=>{
   document.getElementById('scrim').classList.remove('show');
 });
 document.querySelector('nav#nav a[data-view="input"]').classList.add('on');
+updateNavForRole();
 
 /* ========================= 시작 ========================= */
+loadOtPrefLocal();
+// 앱 설치(PC·안드로이드) 및 오프라인 화면용 서비스워커 등록 — 웹 주소(https)로 열었을 때만
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 (function(){
   const t = new Date();
   curYear = t.getFullYear(); curMonth = t.getMonth()+1;
