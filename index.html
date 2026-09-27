@@ -31,9 +31,9 @@
     --text:#e5e9f0; --text-muted:#8b96a8; --border:#2c3646; --surface:#161d2b; --bg:#0c1119;
   }
 }
-:root{ --fc:#1e3a8a; --wk:#047857; --wk-soft:#d1fae5; --sup:#1d4ed8; --sup-soft:#dbeafe; --hol:#c2410c; --hol-soft:#ffedd5; }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; } }
-:root[data-theme="dark"]{ --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; }
+:root{ --mc:#15803d; --fill-fc:#cfe0ff; --fill-mc:#c9f2d6; --fill-red:#fdd5d5; --fc:#1e3a8a; --wk:#047857; --wk-soft:#d1fae5; --sup:#1d4ed8; --sup-soft:#dbeafe; --hol:#c2410c; --hol-soft:#ffedd5; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; } }
+:root[data-theme="dark"]{ --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; }
 :root[data-theme="dark"]{
   --accent:#60a5fa; --accent-soft:#101d33; --accent-line:#1e3a5f;
   --warn:#f87171; --warn-soft:#341316; --warn-line:#7f1d1d;
@@ -170,6 +170,7 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 .ctbl.gtbl th,.ctbl.gtbl td{height:30px !important;font-size:10.5px !important;padding:2px 3px !important;box-sizing:border-box;}
 .ctbl.gtbl td.namecell,.ctbl.gtbl th.namehead{padding:2px 8px !important;font-size:11px !important;}
 .ctbl.gtbl td.daycell{width:30px !important;}
+td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
 .cmbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
 .cmbWrap .panel{margin-bottom:0;padding:14px;}
@@ -419,7 +420,9 @@ const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 // 코드 색상 규칙: N,ND,NS,FCH,MCH,MCS,VP,VA는 빨간색, 나머지는 검은색
 // 코드 색: FC는 진한 파랑, 아래 코드는 빨강, 나머지(N 포함)는 검정
 const RED_CODES = new Set(['ND','NS','FCH','MCH','MCS','VP','VA']);
-function codeColor(code){ return code==='FC' ? 'var(--fc)' : (RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'); }
+function codeColor(code){ return code==='FC' ? 'var(--fc)' : code==='MC' ? 'var(--mc)' : (RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'); }
+// 근태관리 표 칸 채우기: 색이 있는 코드(FC 파랑·MC 초록·빨강 코드)는 칸 전체를 그 색으로, 글씨는 흰색
+function codeFill(code){ return code==='FC' ? 'var(--fill-fc)' : code==='MC' ? 'var(--fill-mc)' : (RED_CODES.has(code) ? 'var(--fill-red)' : ''); }
 // 근태코드 참조에 있는(숨기지 않은) 코드만 유효 — 화면 표시와 가져오기에 공통 사용
 function refWorkCodes(){ return new Set(WORK_CODES.map(w=>w.code).filter(c=>!hiddenCodes.has(c))); }
 function refStatusCodes(){
@@ -1557,13 +1560,13 @@ function pageGrid(){
       const ds = dstr(curYear,curMonth,d);
       const rec = attendance[ds+'_'+e.id];
       const cls = dayCellClass(ds, curYear, curMonth, d);
-      let inner = '';
+      let inner = '', fill = '';
       if(rec){
         const dc = gridCode(rec);
-        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:700;">${esc(dc)}</span>`;
-        if(recManguen(rec, ds)) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
+        fill = dc ? codeFill(dc) : '';
+        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
-      return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
+      return `<td class="daycell ${cls}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     const orderTag = e.team ? `<span style="color:var(--text-muted);font-weight:400;font-size:10.5px;">${esc(e.team)}조${e.teamOrder?' '+e.teamOrder+'번':''}</span> ` : '';
     return `<tr><td class="namecell">${orderTag}${esc(e.name)}</td>${cells}</tr>`;
@@ -1738,13 +1741,13 @@ function pageCombined(){
       const d = Number(ds.slice(8,10));
       const rec = codeStatsAttendance[ds+'_'+e.id];
       const cls = dayCellClass(ds, cy, cm, d);
-      let inner = '';
+      let inner = '', fill = '';
       if(rec){
         const dc = gridCode(rec);
-        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:700;">${esc(dc)}</span>`;
-        if(recManguen(rec, ds)) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
+        fill = dc ? codeFill(dc) : '';
+        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
-      return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
+      return `<td class="daycell ${cls}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
   }).join('');
