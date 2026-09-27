@@ -125,6 +125,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 td.gc,th.gc{background:var(--g-soft) !important;color:var(--g);}
 td.gc b,td.gc strong{color:var(--g);}
 th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
+.gtbl .sepL{border-left:3px solid var(--text) !important;}
 :root th.gh.g-blk{background:#1f2937 !important;}
 .otSum td.gc,.otSum th.gc,.otSum td.otc{min-width:50px;padding:4px 6px !important;}
 .dragHandle{display:inline-flex;align-items:center;justify-content:center;width:26px;height:28px;margin-right:4px;border-radius:6px;
@@ -772,6 +773,18 @@ function appConfirm(message, onConfirm){
 // 근태관리 순번 제외: 'all' = 모든 순번 제외, 'ot' = 휴일·평일 OT 순번만 제외, '' = 포함
 // 조편성 관리에서 바꿀 수 있고, 따로 정하지 않은 사람은 아래 기본값을 따름
 const DEFAULT_RANK_EXCLUDE = {'오원일':'all', '선종화':'all', '서인기':'ot', '우창기':'ot'};
+const DEFAULT_ADJ = {
+  '서인기':{supAdj:3,holAdj:0,wkAdj:0}, '김치수':{supAdj:2,holAdj:354.5,wkAdj:98}, '전재필':{supAdj:2,holAdj:306.47,wkAdj:97},
+  '최두영':{supAdj:3,holAdj:213.3,wkAdj:100}, '박무근':{supAdj:3,holAdj:215,wkAdj:99.8}, '김태석':{supAdj:9,holAdj:364.5,wkAdj:90},
+  '김기영':{supAdj:3,holAdj:243,wkAdj:98}, '김의섭':{supAdj:2,holAdj:135,wkAdj:63.6}, '김성용':{supAdj:2,holAdj:204.88,wkAdj:71.6},
+  '김태화':{supAdj:3,holAdj:188.3,wkAdj:73}, '최윤수':{supAdj:2,holAdj:208.8,wkAdj:99}, '노인규':{supAdj:2,holAdj:143.7,wkAdj:93.5},
+  '이동화':{supAdj:1,holAdj:157.52,wkAdj:91}, '남궁영호':{supAdj:2,holAdj:102.9,wkAdj:89}, '최현철':{supAdj:2,holAdj:191.87,wkAdj:90}
+};
+function adjOf(e, f){
+  if(e && e[f]!==undefined && e[f]!==null && e[f]!=='') return Number(e[f])||0;
+  const d = DEFAULT_ADJ[e && e.name]; return d ? d[f] : 0;
+}
+const IMPORT_LAST_DATE = '2026-09-29'; // 엑셀에서 가져온 출퇴근 기록의 마지막 날짜
 function rankExcl(e){ return (e && e.rankExclude!==undefined && e.rankExclude!==null) ? e.rankExclude : (DEFAULT_RANK_EXCLUDE[e && e.name] || ''); }
 function empName(id){ const e = employees.find(x=>x.id===id); return e ? e.name : '(알수없음)'; }
 function statusLabel(code){
@@ -1730,6 +1743,7 @@ function pageCombined(){
     return (a.teamOrder||999)-(b.teamOrder||999);
   });
 
+  let noAttCount = 0; // 근태코드 칸 정보 없이 저장된 기록 수(예전 버전으로 가져온 경우)
   const perEmp = sortedEmployees.map(e=>{
     let codeCnt = {FCH:0,MCH:0,MCS:0,FC:0,MC:0};
     let otHoliday=0, otWeekday=0, supDays=0, mealAllow=0;
@@ -1737,6 +1751,7 @@ function pageCombined(){
       const rec = codeStatsAttendance[ds+'_'+e.id];
       if(!rec) continue;
       if(rec.statusCode && codeCnt.hasOwnProperty(rec.statusCode)) codeCnt[rec.statusCode]++;
+      if(rec.attCode===undefined && ds<=IMPORT_LAST_DATE && (rec.checkIn || (rec.workCode && rec.workCode!=='OFF'))) noAttCount++;
       // 원본 26년_근태관리 기준: 휴일 OT = 휴일 근무 + 휴일 지원, 평일 OT = 평일 근무(토요 만근 특근 제외) + 식사
       const c = computeDaily(rec, ds);
       const sp = computeSupportDaily(rec, ds);
@@ -1747,9 +1762,9 @@ function pageCombined(){
       mealAllow += computeMealAllowance(rec);
     }
     const gyeHol = codeCnt.FCH+codeCnt.MCH, gyeWk = codeCnt.FC+codeCnt.MC;
-    const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0) + (Number(e.wkAdj)||0);
+    const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0) + adjOf(e,'wkAdj');
     // 원본처럼 보정값(지원·휴일·평일)을 더함 — 조편성 관리의 '근태관리 보정값'에서 입력
-    return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday: otHoliday + (Number(e.holAdj)||0), otWeekdayFinal, supDays: supDays + (Number(e.supAdj)||0)};
+    return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday: otHoliday + adjOf(e,'holAdj'), otWeekdayFinal, supDays: supDays + adjOf(e,'supAdj')};
   });
   // 순번 제외 대상은 순위 계산에서 빼고 칸을 비움(null)
   const inAll = r => rankExcl(r.emp)!=='all';
@@ -1772,13 +1787,13 @@ function pageCombined(){
 
   const statHead = `<tr>
     <th class="namehead" rowspan="2">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
-    <th colspan="2" class="gh g-blk">지원근무</th>
-    <th colspan="8" class="gh g-hol">휴일,주야간</th>
-    <th colspan="6" class="gh g-wk">평일,주야간</th>
+    <th colspan="2" class="gh g-blk sepL">지원근무</th>
+    <th colspan="8" class="gh g-hol sepL">휴일,주야간</th>
+    <th colspan="6" class="gh g-wk sepL">평일,주야간</th>
   </tr><tr>
-    <th class="gc g-blk">지원</th><th class="gc g-blk">순번</th>
-    <th class="gc g-blue">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel">OT</th><th class="gc g-yel">순번</th>
-    <th class="gc g-wk">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">계</th><th class="gc g-wk">순번</th><th class="gc g-pur">OT</th><th class="gc g-pur">순번</th>
+    <th class="gc g-blk sepL">지원</th><th class="gc g-blk">순번</th>
+    <th class="gc g-blue sepL">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel">OT</th><th class="gc g-yel">순번</th>
+    <th class="gc g-wk sepL">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">계</th><th class="gc g-wk">순번</th><th class="gc g-pur">OT</th><th class="gc g-pur">순번</th>
   </tr>`;
   const c0 = v => v||'';
   const nEmp = perEmp.length;
@@ -1793,12 +1808,12 @@ function pageCombined(){
     return `<tr>
       <td style="text-align:center;">${idx+1}</td>
       <td class="namecell" style="left:34px;">${esc(r.emp.name)}</td>
-      <td style="text-align:center;">${v(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
-      <td style="text-align:center;">${v(r.codeCnt.FCH)}</td><td style="text-align:center;">${v(r.codeCnt.MCH)}</td>
+      <td class="sepL" style="text-align:center;font-weight:700;">${v(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
+      <td class="sepL" style="text-align:center;">${v(r.codeCnt.FCH)}</td><td style="text-align:center;">${v(r.codeCnt.MCH)}</td>
       <td style="text-align:center;">${v(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
       <td style="text-align:center;">${v(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'red',nAll)}</td>
       <td style="text-align:center;min-width:52px;">${ot(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel',nOt)}</td>
-      <td style="text-align:center;">${v(r.codeCnt.FC)}</td><td style="text-align:center;">${v(r.codeCnt.MC)}</td>
+      <td class="sepL" style="text-align:center;">${v(r.codeCnt.FC)}</td><td style="text-align:center;">${v(r.codeCnt.MC)}</td>
       <td style="text-align:center;">${v(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
       <td style="text-align:center;min-width:52px;">${ot(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
     </tr>`;
@@ -1851,6 +1866,7 @@ function pageCombined(){
           </label>
         </div>
       </div>
+      ${(noAttCount && canEdit) ? `<div class="note" style="margin-bottom:10px;">⚠ 지원 일수를 셀 수 없는 기록이 <b>${noAttCount.toLocaleString()}건</b> 있어요(예전 버전 앱으로 가져온 기록). <b>백업·복원 → DB입력_가져오기.json</b>을 다시 올리면 원본과 같은 지원 숫자가 나옵니다.</div>` : ''}
       ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead>${statHead}</thead><tbody>${statRows}</tbody></table></div>`
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
@@ -2570,7 +2586,7 @@ function teamDragEnd(){
 // 근태관리 보정값: 원본 26년_근태관리 '보정 세부사항'(지원·휴일·평일)과 같음. 집계 결과에 그대로 더해짐
 function adjustPanel(){
   const list = employees.slice().sort((a,b)=>((a.team||'9')<(b.team||'9')?-1:(a.team||'9')>(b.team||'9')?1:(a.teamOrder||999)-(b.teamOrder||999)));
-  const inp = (e,f) => `<input type="number" step="0.01" data-team-emp="${esc(e.id)}" data-team-field="${f}" value="${e[f]!=null && e[f]!=='' ? esc(e[f]) : ''}" placeholder="0" style="width:84px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);text-align:right;">`;
+  const inp = (e,f) => `<input type="number" step="0.01" data-team-emp="${esc(e.id)}" data-team-field="${f}" value="${esc(adjOf(e,f)||'')}" placeholder="0" style="width:84px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);text-align:right;">`;
   return `<div class="panel">
     <h3>근태관리 보정값</h3>
     <p class="hint" style="margin:0 0 10px;">원본 엑셀 '보정 세부사항'과 같아요. 여기 넣은 값이 근태관리 집계의 <b>지원 일수 · 휴일 OT · 평일 OT</b>에 더해집니다(순번에도 반영).</p>
@@ -3056,7 +3072,8 @@ function importAttendanceByName(obj){
   const rows = Array.isArray(obj.rows) ? obj.rows : [];
   const byName = {};
   employees.forEach(e=>{ byName[String(e.name||'').trim()] = e.id; });
-  const workSet = refWorkCodes(), statusSet = refStatusCodes();
+  const statusSet = refStatusCodes();
+  const ALL_WORK = new Set(WORK_CODES.map(w=>w.code));
   const docs = {}, missing = {}, skippedCodes = {};
   let minD = null, maxD = null, nCode = 0;
   rows.forEach(r=>{
@@ -3064,15 +3081,17 @@ function importAttendanceByName(obj){
     if(!id){ missing[r.name] = (missing[r.name]||0) + 1; return; }
     const {name, code, workCheck, ...fields} = r;
     // 근무코드·근태코드: 근태코드 참조에 있는 것만 반영
+    // 근태코드 칸 원래 값은 항상 attCode로 저장(지원근무 일수 계산용 — 참조표·숨김 설정과 무관)
+    fields.attCode = code || '';
     if(code){
-      if(workSet.has(code)){ fields.workCode = code; fields.statusCode = ''; fields.attCode = code; nCode++; }
-      else if(statusSet.has(code)){ fields.statusCode = code; fields.workCode = (workCheck && workSet.has(workCheck)) ? workCheck : 'OFF'; fields.attCode = code; nCode++; }
+      if(ALL_WORK.has(code)){ fields.workCode = code; fields.statusCode = ''; nCode++; }
+      else if(statusSet.has(code)){ fields.statusCode = code; fields.workCode = (workCheck && ALL_WORK.has(workCheck)) ? workCheck : 'OFF'; nCode++; }
       else {
         skippedCodes[code] = (skippedCodes[code]||0) + 1;
-        if(workCheck && workSet.has(workCheck)){ fields.workCode = workCheck; }
+        if(workCheck && ALL_WORK.has(workCheck)){ fields.workCode = workCheck; }
       }
-    } else if(workCheck && workSet.has(workCheck)){
-      fields.workCode = workCheck; fields.statusCode = ''; fields.attCode = ''; nCode++;
+    } else if(workCheck && ALL_WORK.has(workCheck)){
+      fields.workCode = workCheck; fields.statusCode = ''; nCode++;
     }
     if(Object.keys(fields).length <= 1) return; // date만 남으면 넣을 게 없음
     docs[r.date+'_'+id] = Object.assign(fields, {employeeId:id, updatedAt:Date.now()});
