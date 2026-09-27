@@ -1730,18 +1730,24 @@ function pageCombined(){
   const nEmp = perEmp.length;
   // 순번 배지: 1~3위 진하게, 상위 절반 연하게, 나머지는 글자색만
   const rk = (n, g, tot) => n==null ? '' : `<span class="rk ${n<=3?'t1':(n<=Math.ceil((tot||nEmp)/2)?'t2':'t3')} g-${g}">${n}</span>`;
-  const statRows = perEmp.map((r,idx)=>`<tr>
+  // 순번 제외 대상은 숫자도 숨김: 전체 제외 → 모든 숫자, OT순번 제외 → OT 숫자만
+  const statRows = perEmp.map((r,idx)=>{
+    const ex = rankExcl(r.emp), hA = ex==='all', hO = ex!=='';
+    const v = x => hA ? '' : c0(x);
+    const ot = x => hO ? '' : fmtH(x);
+    return `<tr>
       <td style="text-align:center;">${idx+1}</td>
       <td class="namecell" style="left:34px;">${esc(r.emp.name)}</td>
-      <td style="text-align:center;">${c0(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
-      <td style="text-align:center;">${c0(r.codeCnt.FCH)}</td><td style="text-align:center;">${c0(r.codeCnt.MCH)}</td>
-      <td style="text-align:center;">${c0(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
-      <td style="text-align:center;">${c0(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'red',nAll)}</td>
-      <td style="text-align:center;min-width:52px;">${fmtH(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel',nOt)}</td>
-      <td style="text-align:center;">${c0(r.codeCnt.FC)}</td><td style="text-align:center;">${c0(r.codeCnt.MC)}</td>
-      <td style="text-align:center;">${c0(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
-      <td style="text-align:center;min-width:52px;">${fmtH(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
-    </tr>`).join('');
+      <td style="text-align:center;">${v(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
+      <td style="text-align:center;">${v(r.codeCnt.FCH)}</td><td style="text-align:center;">${v(r.codeCnt.MCH)}</td>
+      <td style="text-align:center;">${v(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
+      <td style="text-align:center;">${v(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'red',nAll)}</td>
+      <td style="text-align:center;min-width:52px;">${ot(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel',nOt)}</td>
+      <td style="text-align:center;">${v(r.codeCnt.FC)}</td><td style="text-align:center;">${v(r.codeCnt.MC)}</td>
+      <td style="text-align:center;">${v(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
+      <td style="text-align:center;min-width:52px;">${ot(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
+    </tr>`;
+  }).join('');
 
   // 월별 근태코드 표
   const {y:cy, m:cm} = combinedYm;
