@@ -411,6 +411,8 @@ function refStatusCodes(){
   const custom = Object.keys(codeDefs).filter(c=>!STATUS_CODE_LIST.includes(c) && !WORK_CODES.some(w=>w.code===c));
   return new Set([...STATUS_CODE_LIST, ...custom].filter(c=>!hiddenCodes.has(c)));
 }
+// 원본 기준 '지원근무' 일수: 월별표(근태코드 칸)에 SP·D·N·DN·ND로 입력된 날
+function isSupportDay(rec){ const a = rec && rec.attCode; return !!a && (a==='SP' || a==='D' || a==='N' || a==='DN' || a.startsWith('ND')); }
 function isRefCode(c){ return !!c && (refWorkCodes().has(c) || refStatusCodes().has(c)); }
 // 셀에 보여줄 코드: 근태코드(참조표에 있을 때) → 근무코드(OFF 제외, 참조표에 있을 때)
 function displayCode(rec){
@@ -484,6 +486,22 @@ function quickTimeButtons(name, options, curVal){
       style="border:2px solid var(--border);border-radius:8px;padding:8px 16px;font-size:13px;background:var(--bg);color:var(--text);cursor:pointer;">${label}</button>
     <input type="hidden" name="${esc(name)}" id="${esc(name)}Field" value="${esc(curVal||'')}">`;
 }
+// 토요일 만근 자동 판정 (원본 엑셀 규칙 — 864개 토요일 전부 대조 일치):
+// 그 주 월~금 5일이 모두 '출근(본출근 입력) · 공휴일 · 인정 근태코드' 중 하나면 만근 → 토요일 근무는 특근(SA)
+const MANGUEN_CODES = new Set(['VA','VP','E','FCH','MCH','UJ','LS','SV','CK']);
+function autoManguen(dateStr, empId){
+  if(!empId || typeof attStore==='undefined') return false;
+  const [y,m,d] = dateStr.split('-').map(Number);
+  if(new Date(y,m-1,d).getDay()!==6) return false;
+  for(let i=5;i>=1;i--){
+    const ds = addDays(dateStr, -i);
+    const r = attStore[ds+'_'+empId];
+    const ok = (r && r.checkIn) || holidays[ds] || (r && MANGUEN_CODES.has(r.statusCode));
+    if(!ok) return false;
+  }
+  return true;
+}
+function recManguen(rec, dateStr){ return !!(rec && (rec.manguen || autoManguen(dateStr, rec.employeeId))); }
 function dayCategory(dateStr, manguen){
   const [wy,wm,wd] = dateStr.split('-').map(Number);
   const w = new Date(wy, wm-1, wd).getDay(); // 0=일 6=토, 타임존 안전 파싱
@@ -509,14 +527,16 @@ function computeDaily(rec, dateStr){
   if(actualEnd<=start) actualEnd = new Date(actualEnd.getTime()+24*3600000);
   const checkoutDec = toDec(rec.checkOut);
 
-  const kcat = dayCategory(dateStr, rec.manguen);
+  const kcat = dayCategory(dateStr, recManguen(rec, dateStr));
 
   let guaranteedEnd = actualEnd;
+  // 퇴근보전은 원본 엑셀처럼 '근무코드(편성된 주간/야간)' 기준으로 판단. 엑셀에서 가져온 기록은 baseShift(D/N)에 들어 있음
+  const gCode = rec.baseShift || rec.workCode;
   if(kcat==='SU' || kcat==='H'){
-    if((rec.workCode==='D'||rec.workCode==='DN') && checkoutDec>8 && checkoutDec<12){
+    if((gCode==='D'||gCode==='DN') && checkoutDec>8 && checkoutDec<12){
       guaranteedEnd = dateAt(dateStr,12,0);
     }
-    if((rec.workCode==='N'||rec.workCode==='ND') && checkoutDec>=19 && checkoutDec<=24){
+    if((gCode==='N'||gCode==='ND') && checkoutDec>=19 && checkoutDec<=24){
       guaranteedEnd = dateAt(dateStr,0,0,1); // 24:00 = 익일 00:00
     }
   }
@@ -604,7 +624,7 @@ function computeSupportDaily(rec, dateStr){
     }
   }
 
-  const kcat = dayCategory(dateStr, rec.manguen);
+  const kcat = dayCategory(dateStr, recManguen(rec, dateStr));
   let premium;
   if(shiftParsed){
     if(kcat==='SU' || kcat==='H' || kcat==='SA'){
@@ -613,9 +633,10 @@ function computeSupportDaily(rec, dateStr){
       premium = (8 + supOT + tajo + honjo)*1.5 + supNight*0.5;
     }
   } else {
-    // 실제 지원근무 없이(또는 시간 파싱 불가) 본조보상/타조보상만 입력된 경우: 그 시간만큼만 가산 배율 적용
-    const mult = (kcat==='SU' || kcat==='H' || kcat==='SA') ? 2 : 1.5;
-    premium = (honjo + tajo) * mult;
+    // 실제 지원근무 없이 본조보상/타조보상만 입력된 경우 (원본 수식 기준):
+    // 본조보상은 요일과 관계없이 1.5배, 타조보상은 휴일·토요일 2배 / 평일 1.5배
+    const tajoMult = (kcat==='SU' || kcat==='H' || kcat==='SA') ? 2 : 1.5;
+    premium = honjo * 1.5 + tajo * tajoMult;
   }
   return {supTotal, supOT, supNight, premium, valid:true};
 }
@@ -624,9 +645,9 @@ const SEED_EMPLOYEES = ['김기영','김성용','김의섭','김치수','김태�
 // 기본 명단에서 뺀 사람(번호 e01~e17은 그대로 유지하기 위해 목록에서 지우지 않고 건너뜀)
 const SEED_EMPLOYEES_SKIP = new Set(['선종희']);
 const SEED_HOLIDAYS_2026 = [
-  ['2026-01-01','신정'],['2026-02-16','설날연휴'],['2026-02-17','설날'],['2026-02-18','설날연휴'],
+  ['2025-12-25','성탄절'],['2026-01-01','신정'],['2026-02-16','설날연휴'],['2026-02-17','설날'],['2026-02-18','설날연휴'],
   ['2026-03-01','삼일절'],['2026-03-02','대체공휴일'],['2026-04-10','회사창립일'],['2026-05-01','근로자의날'],
-  ['2026-05-05','어린이날'],['2026-05-24','부처님오신날'],['2026-05-25','대체공휴일'],['2026-06-06','현충일'],
+  ['2026-05-05','어린이날'],['2026-05-24','부처님오신날'],['2026-05-25','대체공휴일'],['2026-06-03','지방선거'],['2026-06-06','현충일'],
   ['2026-06-15','SNCT노조설립일'],['2026-07-17','제헌절'],['2026-08-15','광복절'],['2026-08-17','대체공휴일'],
   ['2026-09-24','추석연휴'],['2026-09-25','추석'],['2026-09-26','추석연휴'],['2026-10-03','개천절'],
   ['2026-10-05','대체공휴일'],['2026-10-09','한글날'],['2026-12-25','성탄절']
@@ -1117,6 +1138,7 @@ function nextYm(ym){ const [y,m] = ym.split('-').map(Number); return m===12 ? `$
 function ensureAttendanceRange(start, end){
   if(!db || !start || !end) return;
   if(end < start) [start, end] = [end, start];
+  start = addDays(start, -6); // 토요일 만근 판정에 필요한 그 주 월~금 기록까지
   let ym = start.slice(0,7), guard = 0;
   const endYm = end.slice(0,7);
   while(ym <= endYm && guard++ < 12){ ensureMonth(ym); ym = nextYm(ym); }
@@ -1516,7 +1538,7 @@ function pageGrid(){
       if(rec){
         const dc = displayCode(rec);
         if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:700;">${esc(dc)}</span>`;
-        if(rec.manguen) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
+        if(recManguen(rec, ds)) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
       }
       return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
     }).join('');
@@ -1589,7 +1611,8 @@ function renderGridEditModal(){
   const isSaturday = new Date(wy,wm-1,wd).getDay()===6;
   const manguenField = isSaturday ? `
       <div class="field" style="margin-bottom:14px;"><label style="display:flex;align-items:center;gap:6px;">
-        <input type="checkbox" id="gridManguen" ${rec.manguen?'checked':''}>만근(이번주 평일 개근 → 토요일 특근 인정)</label></div>` : '';
+        <input type="checkbox" id="gridManguen" ${rec.manguen?'checked':''}>만근 수동 인정</label>
+        <span class="hint" style="margin:2px 0 0;">자동 판정: <b>${autoManguen(date, employeeId)?'만근(특근 적용)':'만근 아님'}</b> — 월~금이 출근·공휴일·VA·VP·E·FCH·MCH·UJ로 모두 채워지면 자동으로 만근입니다. 자동 판정이 틀릴 때만 체크하세요.</span></div>` : '';
   return `
   <div id="gridEditScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:360px;width:92%;margin-bottom:0;background:var(--surface);">
@@ -1634,10 +1657,13 @@ function pageCombined(){
       const rec = codeStatsAttendance[ds+'_'+e.id];
       if(!rec) continue;
       if(rec.statusCode && codeCnt.hasOwnProperty(rec.statusCode)) codeCnt[rec.statusCode]++;
+      // 원본 26년_근태관리 기준: 휴일 OT = 휴일 근무 + 휴일 지원, 평일 OT = 평일 근무(토요 만근 특근 제외) + 식사
       const c = computeDaily(rec, ds);
-      if(c.valid){ if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else otWeekday+=c.premium; }
       const sp = computeSupportDaily(rec, ds);
-      if(sp.valid) supDays++;
+      const kc = dayCategory(ds, recManguen(rec, ds));
+      if(c.valid){ if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else if(c.category==='평일') otWeekday+=c.premium; }
+      if(sp.valid && (kc==='SU' || kc==='H')) otHoliday += sp.premium;
+      if(isSupportDay(rec)) supDays++;
       mealAllow += computeMealAllowance(rec);
     }
     const gyeHol = codeCnt.FCH+codeCnt.MCH, gyeWk = codeCnt.FC+codeCnt.MC;
@@ -1690,7 +1716,7 @@ function pageCombined(){
       if(rec){
         const dc = displayCode(rec);
         if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:700;">${esc(dc)}</span>`;
-        if(rec.manguen) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
+        if(recManguen(rec, ds)) inner += `<span class="mini2" style="color:var(--ok);">만근</span>`;
       }
       return `<td class="daycell ${cls}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}">${inner}</td>`;
     }).join('');
@@ -1767,7 +1793,7 @@ function pageOT(){
       const meal = computeMealAllowance(rec);
       if(c.valid){ if(c.category==='평일'||c.category==='토요일') wkTotal+=c.premium; else hoTotal+=c.premium; }
       if(s.valid){
-        const cat = dayCategory(ds, rec && rec.manguen);
+        const cat = dayCategory(ds, recManguen(rec, ds));
         if(cat==='SU' || cat==='H') hoTotal += s.premium; else spTotal += s.premium;
       }
       mealTotal += meal;
@@ -1891,7 +1917,7 @@ function pageTeamOT(){
       }
       const s = computeSupportDaily(rec, ds);
       if(s.valid){
-        const cat = dayCategory(ds, rec.manguen);
+        const cat = dayCategory(ds, recManguen(rec, ds));
         if(cat==='SU' || cat==='H') hoSup += s.premium;
         else if(cat==='SA') spSat += s.premium;
         else spWeekday += s.premium;
@@ -2508,7 +2534,7 @@ function afterRender(){
     const updatePreview = ()=>{
       const f = new FormData(form);
       const curRec = attendance[f.get('date')+'_'+f.get('employeeId')];
-      const common = {extCode: !!(curRec&&curRec.extCode), yasik: !!f.get('yasik'), manguen: !!(curRec&&curRec.manguen),
+      const common = {extCode: !!(curRec&&curRec.extCode), yasik: !!f.get('yasik'), manguen: !!(curRec&&curRec.manguen), employeeId: f.get('employeeId'),
         jochul: !!f.get('jochul'), seokchul: !!f.get('seokchul'), jungsik: !!f.get('jungsik')};
       const checkInVal = readTimeSelect(f,'checkIn');
       // 근무코드가 아직 월별표에서 지정 안 된 경우, 미리보기용으로만 체크인 시각을 보고 주간(D)/야간(N)을 추정
@@ -2519,7 +2545,7 @@ function afterRender(){
         previewWorkCode = hh<=14 ? 'D' : 'N';
       }
       previewWorkCode = previewWorkCode || 'OFF';
-      const tmp = Object.assign({workCode:previewWorkCode, checkIn:checkInVal, checkOut:readTimeSelect(f,'checkOut')}, common);
+      const tmp = Object.assign({workCode:previewWorkCode, baseShift:(curRec && curRec.baseShift)||'', checkIn:checkInVal, checkOut:readTimeSelect(f,'checkOut')}, common);
       const supTmp = Object.assign({supportIn:readTimeSelect(f,'supportIn'), supportOut:readTimeSelect(f,'supportOut'), honjoComp:f.get('honjoComp'), tajoComp:f.get('tajoComp')}, common);
       const c = computeDaily(tmp, f.get('date'));
       const s = computeSupportDaily(supTmp, f.get('date'));
@@ -2666,6 +2692,7 @@ function afterRender(){
       date, employeeId,
       workCode: isWorkCode ? val : 'OFF',
       statusCode: isWorkCode ? '' : val,
+      attCode: val==='OFF' ? '' : val, // 근태코드 칸에 직접 입력한 값(지원일수 판정에 사용)
       manguen: gManguen ? gManguen.checked : !!existing.manguen,
       updatedAt: Date.now()
     };
@@ -2904,11 +2931,14 @@ function importAttendanceByName(obj){
     const {name, code, workCheck, ...fields} = r;
     // 근무코드·근태코드: 근태코드 참조에 있는 것만 반영
     if(code){
-      if(workSet.has(code)){ fields.workCode = code; fields.statusCode = ''; nCode++; }
-      else if(statusSet.has(code)){ fields.statusCode = code; fields.workCode = (workCheck && workSet.has(workCheck)) ? workCheck : 'OFF'; nCode++; }
-      else { skippedCodes[code] = (skippedCodes[code]||0) + 1; }
+      if(workSet.has(code)){ fields.workCode = code; fields.statusCode = ''; fields.attCode = code; nCode++; }
+      else if(statusSet.has(code)){ fields.statusCode = code; fields.workCode = (workCheck && workSet.has(workCheck)) ? workCheck : 'OFF'; fields.attCode = code; nCode++; }
+      else {
+        skippedCodes[code] = (skippedCodes[code]||0) + 1;
+        if(workCheck && workSet.has(workCheck)){ fields.workCode = workCheck; }
+      }
     } else if(workCheck && workSet.has(workCheck)){
-      fields.workCode = workCheck; fields.statusCode = ''; nCode++;
+      fields.workCode = workCheck; fields.statusCode = ''; fields.attCode = ''; nCode++;
     }
     if(Object.keys(fields).length <= 1) return; // date만 남으면 넣을 게 없음
     docs[r.date+'_'+id] = Object.assign(fields, {employeeId:id, updatedAt:Date.now()});
@@ -2920,8 +2950,11 @@ function importAttendanceByName(obj){
   const skipTxt = Object.keys(skippedCodes).length ? ` 근태코드 참조에 없는 코드(${Object.entries(skippedCodes).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' '+v+'건').join(', ')})는 넣지 않습니다.` : '';
   if(!n){ showToast('넣을 기록이 없습니다.' + missTxt); return; }
   const codeTxt = obj.includesCodes ? ` 근무코드·근태코드 ${nCode.toLocaleString()}건도 함께 넣습니다.` : ' 근무코드·근태코드는 그대로 둡니다.';
-  appConfirm(`엑셀 DB입력 기록 ${n.toLocaleString()}건(${minD} ~ ${maxD})을 넣을까요?${codeTxt}${skipTxt}${missTxt}`,
-    ()=> uploadData({attendance: docs}));
+  const hol = {};
+  (Array.isArray(obj.holidays) ? obj.holidays : []).forEach(h=>{ if(h && h.date) hol[h.date] = {date:h.date, name:h.name||'공휴일'}; });
+  const holTxt = Object.keys(hol).length ? ` 원본의 공휴일 ${Object.keys(hol).length}일도 공휴일 관리에 맞춰 넣습니다.` : '';
+  appConfirm(`엑셀 DB입력 기록 ${n.toLocaleString()}건(${minD} ~ ${maxD})을 넣을까요?${codeTxt}${holTxt}${skipTxt}${missTxt}`,
+    ()=> uploadData(Object.keys(hol).length ? {attendance: docs, holidays: hol} : {attendance: docs}));
 }
 document.addEventListener('click', (e)=>{
   if(e.target.closest('#backupExportBtn')) exportBackup();
