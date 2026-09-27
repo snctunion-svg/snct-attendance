@@ -298,6 +298,16 @@ let gridEdit = null; // {date, employeeId} - 월별표에서 셀 클릭 시 근�
 let otDetailEmpId = null; // 기사별 OT현황: 달력 상세보기 중인 직원
 let codeStatsIncludeMeal = true; // 근태코드 집계: 평일OT에 식사연장(식사계) 포함 여부
 let codeStatsStart = null, codeStatsEnd = null; // 근태코드 집계: 집계 기간(시작~종료)
+// 근태관리 집계 기간·식사연장 설정을 이 기기에 기억(다른 화면에 다녀오거나 앱을 다시 열어도 유지)
+const CMB_PREF_KEY = 'snct_combined_range';
+try{
+  const p = JSON.parse(localStorage.getItem(CMB_PREF_KEY) || 'null');
+  if(p && /^\d{4}-\d{2}-\d{2}$/.test(p.start||'') && /^\d{4}-\d{2}-\d{2}$/.test(p.end||'')){ codeStatsStart = p.start; codeStatsEnd = p.end; }
+  if(p && typeof p.meal==='boolean') codeStatsIncludeMeal = p.meal;
+}catch(e){}
+function saveCombinedPref(){
+  try{ localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal})); }catch(e){}
+}
 let codeStatsAttendance = {}; // 근태코드 집계 전용 출퇴근 데이터 (선택한 기간 전체를 별도로 구독)
 let dispatch = {}; // `${date}_${shift}_${empId}` -> {slots:{slot:catKey}}
 let weekStart = null; // 지원계획표 화면 상태 (해당 주의 월요일, YYYY-MM-DD)
@@ -2687,17 +2697,21 @@ function afterRender(){
   if(cmbPrev) cmbPrev.onclick = ()=>{ let {y,m} = combinedYm; m--; if(m<1){ m=12; y--; } combinedYm = {y,m}; render(); };
   if(cmbNext) cmbNext.onclick = ()=>{ let {y,m} = combinedYm; m++; if(m>12){ m=1; y++; } combinedYm = {y,m}; render(); };
   const codeStatsMealChk = document.getElementById('codeStatsMealChk');
-  if(codeStatsMealChk) codeStatsMealChk.onchange = ()=>{ codeStatsIncludeMeal = codeStatsMealChk.checked; render(); };
+  if(codeStatsMealChk) codeStatsMealChk.onchange = ()=>{ codeStatsIncludeMeal = codeStatsMealChk.checked; saveCombinedPref(); render(); };
   const codeStatsStartInput = document.getElementById('codeStatsStartInput'), codeStatsEndInput = document.getElementById('codeStatsEndInput');
   if(codeStatsStartInput) codeStatsStartInput.onchange = ()=>{
+    if(!codeStatsStartInput.value) return; // 날짜를 지우는 중이면 무시
     codeStatsStart = codeStatsStartInput.value;
     if(codeStatsStart > codeStatsEnd) codeStatsEnd = codeStatsStart;
+    saveCombinedPref();
     if(dbReady) subscribeCodeStatsRange(codeStatsStart, codeStatsEnd);
     render();
   };
   if(codeStatsEndInput) codeStatsEndInput.onchange = ()=>{
+    if(!codeStatsEndInput.value) return;
     codeStatsEnd = codeStatsEndInput.value;
     if(codeStatsEnd < codeStatsStart) codeStatsStart = codeStatsEnd;
+    saveCombinedPref();
     if(dbReady) subscribeCodeStatsRange(codeStatsStart, codeStatsEnd);
     render();
   };
