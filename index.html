@@ -164,6 +164,33 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 .cmbCtrl{height:104px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:10px;}
 .cmbCtrl h3{margin:0;}
 .ctbl.gtbl thead th{height:34px !important;}
+/* 배차표: 가로로 밀어서 보기 + 왼쪽 정보칸·머리글 고정 + 줄 높이 통일 */
+.dpScrollBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px;}
+.dpWrap{overflow:auto;max-height:calc(100vh - 150px);border:2px solid var(--text);border-radius:0 0 10px 10px;background:var(--surface);-webkit-overflow-scrolling:touch;}
+#dpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
+#dpTable th,#dpTable td{height:36px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;padding:0 4px;white-space:nowrap;}
+#dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
+#dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;}
+#dpTable th.dpSlotH{min-width:42px;width:42px;}
+#dpTable .dpI{position:sticky;background:var(--surface);z-index:2;}
+#dpTable thead .dpI{z-index:4;background:var(--bg);}
+#dpTable .dpI1{left:0;min-width:40px;width:40px;}
+#dpTable .dpI2{left:40px;min-width:88px;width:88px;font-weight:700;}
+#dpTable .dpI3{left:128px;min-width:48px;width:48px;font-weight:700;}
+#dpTable .dpI4{left:176px;min-width:50px;width:50px;}
+#dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:2px solid var(--text-muted);}
+#dpTable td.dpI1[colspan]{min-width:272px;border-right:2px solid var(--text-muted);}
+@media (max-width:700px){
+  /* 폰: 번호·성명만 고정하고 좁게 → 시간 칸이 더 많이 보이게 */
+  #dpTable .dpI3,#dpTable .dpI4,#dpTable .dpI5{position:static;}
+  #dpTable .dpI1{min-width:28px;width:28px;padding:0 2px;}
+  #dpTable .dpI2{left:28px;min-width:64px;width:64px;border-right:2px solid var(--text-muted);}
+  #dpTable .dpI2 input{width:56px !important;}
+  #dpTable .dpI5{border-right:1px solid var(--border);}
+  #dpTable td.dpI1[colspan]{min-width:0;}
+  .dpScrollBar .hint{display:none;}
+  #dpTable td.dpCell,#dpTable th.dpSlotH{min-width:38px;width:38px;}
+}
 
 .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);align-items:center;}
 .legend .sw{display:inline-flex;align-items:center;gap:4px;}
@@ -2174,18 +2201,18 @@ function pageDispatch(){
     const bg = cat ? cat.bg : 'transparent';
     const fg = cat ? cat.fg : 'var(--text)';
     return `<td class="dpCell" data-dispatch-emp="${esc(empId)}" data-dispatch-slot="${esc(s)}" data-dispatch-cur="${esc(catKey||'')}"
-      style="width:30px;height:32px;min-height:32px;background:${bg};color:${fg};cursor:pointer;text-align:center;font-size:9.5px;font-weight:700;border:1px solid var(--border);user-select:none;"></td>`;
+      style="background:${bg};color:${fg};"></td>`;
   }
 
-  const head = `<th class="namehead">No</th><th class="namehead" style="left:34px;">성명</th><th>근태</th><th>퇴근</th><th>승무</th>` +
+  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4">퇴근</th><th class="dpI dpI5">승무</th>` +
     slots.map(s=>{
       const [hh,mm] = s.split(':');
       const isRed = hh==='07' || hh==='12' || hh==='18' || hh==='24';
       const color = isRed ? '#E03131' : '#000000';
       if(mm==='00'){
-        return `<th style="min-width:30px;color:${color};font-size:15px;font-weight:800;">${esc(hh)}</th>`;
+        return `<th class="dpSlotH" style="color:${color};font-size:15px;font-weight:800;">${esc(hh)}</th>`;
       }
-      return `<th style="min-width:30px;color:${color};font-size:9px;font-weight:600;">${esc(mm)}</th>`;
+      return `<th class="dpSlotH" style="color:${color};font-size:10px;font-weight:600;">${esc(mm)}</th>`;
     }).join('');
 
   const slotCounts = slots.map(()=>0); // 시간대(칸)별 배치 인원 수
@@ -2201,11 +2228,11 @@ function pageDispatch(){
       return slotCell(e.id, s, v);
     }).join('');
     return `<tr>
-      <td class="namecell" style="text-align:center;">${idx+1}</td>
-      <td class="namecell" style="left:34px;">${esc(e.name)}</td>
-      <td style="text-align:center;">${esc(displayCode(rec))}</td>
-      <td style="text-align:center;">${esc(rec.checkOut||'')}</td>
-      <td style="text-align:center;" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
+      <td class="dpI dpI1">${idx+1}</td>
+      <td class="dpI dpI2" style="text-align:left;">${esc(e.name)}</td>
+      <td class="dpI dpI3" style="color:${codeColor(displayCode(rec))};">${esc(displayCode(rec))}</td>
+      <td class="dpI dpI4">${esc(rec.checkOut||'')}</td>
+      <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
       ${cells}
     </tr>`;
   }).join('');
@@ -2223,17 +2250,17 @@ function pageDispatch(){
       if(v){ supPainted++; slotCounts[si]++; }
       return slotCell(supId, s, v);
     }).join('');
-    const supLabel = i===0 ? `<td class="namecell" rowspan="${SUP_COUNT}" style="text-align:center;vertical-align:middle;">지원</td>` : '';
+    const supLabel = i===0 ? `<td class="dpI dpI1" rowspan="${SUP_COUNT}" style="vertical-align:middle;">지원</td>` : '';
     return `<tr>
       ${supLabel}
-      <td class="namecell" style="left:34px;"><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름" style="width:70px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:var(--text);"></td>
-      <td></td><td></td><td style="text-align:center;" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
+      <td class="dpI dpI2"><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름" style="width:66px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:var(--text);"></td>
+      <td class="dpI dpI3"></td><td class="dpI dpI4"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
       ${cells}
     </tr>`;
   }).join('');
 
   const countRow = `<tr style="background:var(--bg);">
-    <td class="namecell" colspan="5" style="text-align:center;font-weight:800;">시간대별 인원</td>
+    <td class="dpI dpI1" colspan="5" style="font-weight:800;">시간대별 인원</td>
     ${slots.map((s,si)=>`<td data-dispatch-count="${esc(s)}" style="text-align:center;font-weight:800;color:${slotCounts[si]>0?'var(--accent)':'var(--text-muted)'};">${slotCounts[si]||''}</td>`).join('')}
   </tr>`;
 
@@ -2254,7 +2281,12 @@ function pageDispatch(){
   </div>
   <div class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>
   <div style="background:#E8B84B;color:#3a2a00;font-weight:700;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;">${esc(dateBanner)}</div>
-  ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl" id="dpTable" style="border-radius:0 0 8px 8px;overflow:hidden;"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
+  ${sortedEmployees.length? `<div class="dpScrollBar">
+      <button type="button" class="btn ghost sm" data-dp-scroll="-1">◀ 앞 시간</button>
+      <span class="hint" style="margin:0;">표를 옆으로 밀어서(스크롤) 보세요. 성명·근태·퇴근·승무 칸은 고정됩니다.</span>
+      <button type="button" class="btn ghost sm" data-dp-scroll="1">뒤 시간 ▶</button>
+    </div>
+    <div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다. 먼저 직원 관리에서 직원을 추가하세요.</div>`}
   <p class="hint">성명은 조편성 관리에서 설정한 조·순번 순서대로 표시됩니다. "지원" 행은 이름을 직접 입력해서 사용하세요.</p>
   `;
@@ -2721,9 +2753,16 @@ function afterRender(){
   if(dpDate) dpDate.onchange = ()=>{ dispatchDate = dpDate.value; if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
   if(dpShift) dpShift.onchange = ()=>{ dispatchShift = dpShift.value; render(); };
   el.querySelectorAll('.dpCatBtn').forEach(x=>x.onclick=()=>{ dispatchPaint = x.dataset.cat; render(); });
+  const dpWrapEl = document.getElementById('dpWrap');
+  if(dpWrapEl){
+    if(window._dpScrollLeft) dpWrapEl.scrollLeft = window._dpScrollLeft; // 다시 그려도 보던 위치 유지
+    dpWrapEl.onscroll = ()=>{ window._dpScrollLeft = dpWrapEl.scrollLeft; };
+  }
+  el.querySelectorAll('[data-dp-scroll]').forEach(x=>x.onclick=()=>{
+    if(dpWrapEl) dpWrapEl.scrollBy({left: Number(x.dataset.dpScroll) * 42 * 6, behavior:'smooth'});
+  });
   const dpTable = document.getElementById('dpTable');
   if(dpTable){
-    dpTable.style.touchAction = 'none';
     dpTable.onpointerdown = (e)=>{
       const td = e.target.closest('.dpCell');
       if(!td) return;
