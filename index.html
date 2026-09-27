@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SNCT 근태관리</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SNCT근태">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 :root{
   --accent:#1d4ed8; --accent-soft:#eff6ff; --accent-line:#bfdbfe;
@@ -40,7 +48,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;o
   font-family:'맑은 고딕','Malgun Gothic',Pretendard,-apple-system,sans-serif;font-size:14px;line-height:1.55;}
 
 header.app{flex:0 0 auto;background:var(--surface);border-bottom:3px solid var(--accent);
-  display:flex;align-items:center;gap:12px;padding:calc(9px + env(safe-area-inset-top,0px)) 16px 9px;z-index:300;}
+  display:flex;align-items:center;gap:12px;padding:9px 16px;z-index:300;}
 header.app .badge{background:var(--accent);color:#fff;font-size:10px;font-weight:700;
   letter-spacing:.06em;padding:2px 7px;border-radius:3px;margin-right:6px;vertical-align:2px;}
 header.app h1{margin:0;font-size:17px;letter-spacing:-.02em;}
@@ -71,7 +79,7 @@ nav#nav a.on{background:var(--accent);color:#fff;font-weight:700;}
 nav#nav a .ic{flex:none;width:20px;text-align:center;}
 
 main#content{flex:1 1 auto;min-width:0;overflow-y:auto;padding:22px 26px 60px;}
-.scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:250;}
+.scrim{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:350;}
 
 h2.pgttl{margin:0 0 3px;font-size:19px;letter-spacing:-.01em;}
 p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
@@ -155,8 +163,9 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 @media (max-width:860px){
   .menu-btn{display:flex;align-items:center;justify-content:center;}
   nav#nav{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);transition:transform .2s;
-    z-index:260;padding-top:calc(14px + env(safe-area-inset-top,0px));box-shadow:0 0 24px rgba(0,0,0,.25);}
+    z-index:360;padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:calc(30px + env(safe-area-inset-bottom,0px));box-shadow:0 0 24px rgba(0,0,0,.25);}
   nav#nav.open{transform:translateX(0);}
+  .scrim{z-index:350;}
   .scrim.show{display:block;}
   main#content{padding:16px 14px 50px;}
 }
@@ -179,11 +188,11 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
     <div class="navttl" style="margin-top:10px;">조장관리</div>
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
-    <div class="navttl" style="margin-top:10px;">조장 운영</div>
+    <div class="navttl" data-editor-only style="margin-top:10px;">조장 운영</div>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드 참조</a>
-    <div class="navttl" style="margin-top:10px;">데이터</div>
+    <div class="navttl" data-editor-only style="margin-top:10px;">데이터</div>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
@@ -553,6 +562,8 @@ function computeSupportDaily(rec, dateStr){
 }
 
 const SEED_EMPLOYEES = ['김기영','김성용','김의섭','김치수','김태석','김태화','남궁영호','노인규','박무근','서인기','선종희','오원일','이동화','전재필','최두영','최윤수','최현철'];
+// 기본 명단에서 뺀 사람(번호 e01~e17은 그대로 유지하기 위해 목록에서 지우지 않고 건너뜀)
+const SEED_EMPLOYEES_SKIP = new Set(['선종희']);
 const SEED_HOLIDAYS_2026 = [
   ['2026-01-01','신정'],['2026-02-16','설날연휴'],['2026-02-17','설날'],['2026-02-18','설날연휴'],
   ['2026-03-01','삼일절'],['2026-03-02','대체공휴일'],['2026-04-10','회사창립일'],['2026-05-01','근로자의날'],
@@ -582,7 +593,7 @@ function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   clearTimeout(showToast._h);
-  showToast._h = setTimeout(()=>t.classList.remove('show'), 2200);
+  showToast._h = setTimeout(()=>t.classList.remove('show'), msg.length>30 ? 6000 : 2200);
 }
 // window.confirm()은 샌드박스 iframe(아티팩트 환경)에서 차단되어 조용히 실패할 수 있어,
 // 자체 DOM으로 만든 확인창을 사용한다. document.body에 직접 붙여서 render()와 무관하게 동작.
@@ -709,7 +720,11 @@ function requireEdit(){
   return false;
 }
 function saveErrMsg(base, err){
-  return base + (err && err.code==='permission-denied' ? ' (권한 없음 — 편집자 계정인지 확인하세요)' : '');
+  const c = (err && err.code) || '';
+  if(c==='permission-denied') return base + ' (권한 없음 — Firestore 보안 규칙을 게시했는지, 편집자 계정인지 확인하세요)';
+  if(c==='not-found') return base + ' (Firestore 데이터베이스를 찾을 수 없음 — 데이터베이스가 만들어졌는지 확인하세요)';
+  if(c==='unavailable') return base + ' (서버에 연결할 수 없음 — 인터넷 연결을 확인하세요)';
+  return base + (c ? ` (오류: ${c})` : (err && err.message ? ` (${err.message})` : ''));
 }
 function lastBackupAt(){ try{ return Number(localStorage.getItem(LAST_BACKUP_KEY))||0; }catch(e){ return 0; } }
 function oldLocalData(){
@@ -777,9 +792,14 @@ function openLoginDialog(){
     }
   };
 }
-// 편집자만 볼 메뉴(출퇴근 입력) 숨김/표시
+// 보기 전용 사용자는 근태관리·월별 OT현황·배차표·지원계획표만 볼 수 있음. 편집자는 전체 메뉴.
+const EDITOR_ONLY_VIEWS = ['input','team','holidays','codes','backup','grid','employees','codestats'];
+function isEditorOnlyView(v){ return EDITOR_ONLY_VIEWS.includes(v); }
 function updateNavForRole(){
-  document.querySelectorAll('nav#nav a[data-view="input"]').forEach(a=> a.style.display = canEdit ? '' : 'none');
+  document.querySelectorAll('nav#nav a[data-view]').forEach(a=>{
+    a.style.display = (!canEdit && isEditorOnlyView(a.dataset.view)) ? 'none' : '';
+  });
+  document.querySelectorAll('nav#nav [data-editor-only]').forEach(x=> x.style.display = canEdit ? '' : 'none');
 }
 // 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
 function applyReadonly(el){
@@ -813,7 +833,7 @@ async function initDb(){
     authResolved = true;
     updateStatusBar();
     updateNavForRole();
-    if(first && !canEdit && VIEW==='input') setView('combined'); // 보기 전용은 근태관리 표부터
+    if(!canEdit && isEditorOnlyView(VIEW)) setView('combined'); // 보기 전용은 허용된 화면(근태관리)으로
     else render();
     if(canEdit) afterEditorLogin();
   });
@@ -864,6 +884,7 @@ async function trySeed(){
     const marker = await db.doc('meta/seed').get();
     if(!marker.exists){
       for(let i=0;i<SEED_EMPLOYEES.length;i++){
+        if(SEED_EMPLOYEES_SKIP.has(SEED_EMPLOYEES[i])) continue;
         await db.collection('employees').doc('e'+pad2(i+1)).set({name:SEED_EMPLOYEES[i], part:'STS', order:i+1, active:true, union:'1', team:'', teamRole:'조원', teamOrder:i+1, teamNote:''});
       }
       for(const [d,n] of SEED_HOLIDAYS_2026){
@@ -1057,7 +1078,7 @@ async function addEmployee(name, part, team){
   render();
   if(!db) return;
   try{ await db.collection('employees').doc(id).set(data); }
-  catch(err){ showToast('직원 추가에 실패했습니다.'); employees = employees.filter(e=>e.id!==id); render(); }
+  catch(err){ console.error(err); showToast(saveErrMsg('직원 추가에 실패했습니다.', err)); employees = employees.filter(e=>e.id!==id); render(); }
 }
 async function updateEmployee(id, data){
   if(!requireEdit()) return;
@@ -1074,7 +1095,7 @@ async function removeEmployee(id){
   render();
   if(!db) return;
   try{ await db.collection('employees').doc(id).delete(); }
-  catch(err){ showToast('삭제에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('삭제에 실패했습니다.', err)); }
 }
 async function addHoliday(date,name){
   if(!requireEdit()) return;
@@ -1082,7 +1103,7 @@ async function addHoliday(date,name){
   render();
   if(!db) return;
   try{ await db.collection('holidays').doc(date).set({date,name}); }
-  catch(err){ showToast('공휴일 저장에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('공휴일 저장에 실패했습니다.', err)); }
 }
 async function removeHoliday(date){
   if(!requireEdit()) return;
@@ -1090,7 +1111,7 @@ async function removeHoliday(date){
   render();
   if(!db) return;
   try{ await db.collection('holidays').doc(date).delete(); }
-  catch(err){ showToast('삭제에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('삭제에 실패했습니다.', err)); }
 }
 async function saveCodeLabel(code,label){
   if(!requireEdit()) return;
@@ -1111,7 +1132,7 @@ async function deleteCodeDef(code){
     await db.doc('meta/hiddenCodes').set({codes: Array.from(hiddenCodes)});
     showToast('삭제되었습니다.');
   }
-  catch(err){ showToast('삭제에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('삭제에 실패했습니다.', err)); }
 }
 async function restoreCodeDef(code){
   if(!requireEdit()) return;
@@ -1119,7 +1140,7 @@ async function restoreCodeDef(code){
   render();
   if(!db) return;
   try{ await db.doc('meta/hiddenCodes').set({codes: Array.from(hiddenCodes)}); showToast('복원되었습니다.'); }
-  catch(err){ showToast('복원에 실패했습니다.'); }
+  catch(err){ console.error(err); showToast(saveErrMsg('복원에 실패했습니다.', err)); }
 }
 async function saveDispatchSlots(dateStr, shift, empId, changes){
   if(!requireEdit()) return;
@@ -1129,7 +1150,7 @@ async function saveDispatchSlots(dateStr, shift, empId, changes){
   dispatch[id] = cur; // 낙관적 로컬 업데이트: 저장 성공 여부와 무관하게 화면엔 즉시 반영
   if(!db){ render(); return; }
   try{ await db.collection('dispatch').doc(id).set(cur); }
-  catch(err){ showToast('배차 저장에 실패했습니다.'); render(); }
+  catch(err){ console.error(err); showToast(saveErrMsg('배차 저장에 실패했습니다.', err)); render(); }
 }
 async function saveDispatchSupportName(dateStr, shift, supId, name){
   if(!requireEdit()) return;
@@ -1138,7 +1159,7 @@ async function saveDispatchSupportName(dateStr, shift, supId, name){
   dispatch[id] = cur; // 낙관적 로컬 업데이트
   if(!db){ render(); return; }
   try{ await db.collection('dispatch').doc(id).set(cur); }
-  catch(err){ showToast('배차 저장에 실패했습니다.'); render(); }
+  catch(err){ console.error(err); showToast(saveErrMsg('배차 저장에 실패했습니다.', err)); render(); }
 }
 async function saveSupportPlan(dateStr, shift, data){
   if(!requireEdit()) return;
@@ -1178,6 +1199,7 @@ async function deleteSupportPlanWeek(startStr){
 
 /* ========================= 렌더 라우터 ========================= */
 function setView(v){
+  if(authResolved && !canEdit && isEditorOnlyView(v)) v = 'combined';
   VIEW = v;
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
   document.getElementById('nav').classList.remove('open');
@@ -2334,6 +2356,7 @@ function afterRender(){
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; render(); });
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; render(); });
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{
+    if(!canEdit) return;
     prefill = {date: x.dataset.date, employeeId: x.dataset.emp};
     setView('input');
   });
@@ -2673,8 +2696,13 @@ document.getElementById('scrim').addEventListener('click', ()=>{
   document.getElementById('scrim').classList.remove('show');
 });
 document.querySelector('nav#nav a[data-view="input"]').classList.add('on');
+updateNavForRole();
 
 /* ========================= 시작 ========================= */
+// 앱 설치(PC·안드로이드) 및 오프라인 화면용 서비스워커 등록 — 웹 주소(https)로 열었을 때만
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 (function(){
   const t = new Date();
   curYear = t.getFullYear(); curMonth = t.getMonth()+1;
