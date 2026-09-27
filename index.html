@@ -414,6 +414,7 @@ function timeSelectHtml(name, value){
 function timeSelectRangeHtml(name, value, hours){
   let h='', m='';
   if(value){ const p = value.split(':'); h = p[0]; m = p[1]; }
+  if(h && !hours.map(String).includes(String(Number(h)))) hours = hours.concat([Number(h)]).sort((a,b)=>a-b);
   const hOpts = hours.map(x=>`<option value="${x}"${String(x)===String(h)?' selected':''}>${x}시</option>`).join('');
   const mOpts = MIN_OPTIONS.map(x=>`<option value="${x}"${x===m?' selected':''}>${x}분</option>`).join('');
   return `<select name="${name}H" style="border:1px solid var(--border);border-radius:8px;padding:8px 6px;background:var(--bg);color:var(--text);font-size:13px;"><option value="">시</option>${hOpts}</select>` +
@@ -713,7 +714,7 @@ function createFirebaseDb(){
       for(const n of COLLS){ for(const [id, v] of Object.entries(data[n]||{})){ if(v && typeof v==='object') items.push([n, id, v]); } }
       for(let i=0; i<items.length; i+=400){
         const batch = fsM.writeBatch(fs);
-        items.slice(i, i+400).forEach(([n, id, v])=> batch.set(fsM.doc(fs, n, id), v));
+        items.slice(i, i+400).forEach(([n, id, v])=> batch.set(fsM.doc(fs, n, id), v, {merge:true}));
         await batch.commit();
         if(onProgress) onProgress(Math.min(i+400, items.length), items.length);
       }
@@ -895,7 +896,7 @@ function createDemoDb(){
     collection(name){ return collectionRef(name); },
     doc(path){ const [c,id] = path.split('/'); return docRef(c,id); },
     async exportAll(){ return clone(store); },
-    async importAll(data){ Object.entries(data||{}).forEach(([c,docs])=> Object.assign(coll(c), clone(docs))); notify(); return 0; }
+    async importAll(data){ let n=0; Object.entries(data||{}).forEach(([c,docs])=> Object.entries(docs||{}).forEach(([id,v])=>{ coll(c)[id] = Object.assign({}, coll(c)[id]||{}, clone(v)); n++; })); notify(); return n; }
   };
 }
 
@@ -2780,7 +2781,7 @@ function pageBackup(){
   </div>
   <div class="panel editor-only">
     <h3>백업 파일 올리기</h3>
-    <p class="hint" style="margin:0 0 12px;">백업 파일 안의 기록을 클라우드에 올립니다. <b>같은 기록은 파일 내용으로 덮어쓰고</b>, 파일에 없는 기록은 그대로 둡니다. 이전 버전(브라우저 저장) 백업 파일도 올릴 수 있습니다.</p>
+    <p class="hint" style="margin:0 0 12px;">백업 파일 안의 기록을 클라우드에 올립니다. <b>같은 기록은 파일 내용으로 덮어쓰고</b>, 파일에 없는 기록은 그대로 둡니다. 이전 버전(브라우저 저장) 백업 파일과 <b>엑셀 DB입력 가져오기 파일</b>도 여기서 올립니다.</p>
     <input type="file" id="backupImportFile" accept=".json,application/json" style="display:none;">
     <button class="btn warn ghost" id="backupImportBtn" ${db?'':'disabled'}>백업 파일 선택…</button>
   </div>
@@ -2812,6 +2813,7 @@ function importBackupFile(file){
   reader.onload = ()=>{
     let obj;
     try{ obj = JSON.parse(reader.result); }catch(e){ showToast('올바른 백업 파일이 아닙니다.'); return; }
+    if(obj && obj.kind==='attendanceByName'){ importAttendanceByName(obj); return; }
     const data = obj && obj.data ? obj.data : obj;
     if(!data || typeof data!=='object' || (!data.employees && !data.attendance)){
       showToast('SNCT 근태관리 백업 파일이 아닙니다.'); return;
@@ -2822,6 +2824,27 @@ function importBackupFile(file){
   };
   reader.onerror = ()=> showToast('파일을 읽지 못했습니다.');
   reader.readAsText(file);
+}
+// 엑셀(DB입력) 출퇴근 가져오기: 성명으로 직원을 찾아 날짜별 기록에 병합 저장(근무코드·근태코드 등 다른 항목은 보존)
+function importAttendanceByName(obj){
+  const rows = Array.isArray(obj.rows) ? obj.rows : [];
+  const byName = {};
+  employees.forEach(e=>{ byName[String(e.name||'').trim()] = e.id; });
+  const docs = {}, missing = {};
+  let minD = null, maxD = null;
+  rows.forEach(r=>{
+    const id = byName[String(r.name||'').trim()];
+    if(!id){ missing[r.name] = (missing[r.name]||0) + 1; return; }
+    const {name, ...fields} = r;
+    docs[r.date+'_'+id] = Object.assign(fields, {employeeId:id, updatedAt:Date.now()});
+    if(!minD || r.date<minD) minD = r.date;
+    if(!maxD || r.date>maxD) maxD = r.date;
+  });
+  const n = Object.keys(docs).length;
+  const missTxt = Object.keys(missing).length ? ` 직원 명단에 없는 이름(${Object.entries(missing).map(([k,v])=>k+' '+v+'건').join(', ')})은 건너뜁니다.` : '';
+  if(!n){ showToast('넣을 기록이 없습니다.' + missTxt); return; }
+  appConfirm(`엑셀 DB입력의 출퇴근 기록 ${n.toLocaleString()}건(${minD} ~ ${maxD})을 넣을까요? 본출근·본퇴근·지원출근·지원퇴근·본조보상·타조보상·조출·중식·석출·야식 값만 바뀌고, 근무코드·근태코드는 그대로 둡니다.${missTxt}`,
+    ()=> uploadData({attendance: docs}));
 }
 document.addEventListener('click', (e)=>{
   if(e.target.closest('#backupExportBtn')) exportBackup();
