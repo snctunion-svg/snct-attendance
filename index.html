@@ -1747,8 +1747,9 @@ function pageCombined(){
       mealAllow += computeMealAllowance(rec);
     }
     const gyeHol = codeCnt.FCH+codeCnt.MCH, gyeWk = codeCnt.FC+codeCnt.MC;
-    const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0);
-    return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday, otWeekdayFinal, supDays};
+    const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0) + (Number(e.wkAdj)||0);
+    // 원본처럼 보정값(지원·휴일·평일)을 더함 — 조편성 관리의 '근태관리 보정값'에서 입력
+    return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday: otHoliday + (Number(e.holAdj)||0), otWeekdayFinal, supDays: supDays + (Number(e.supAdj)||0)};
   });
   // 순번 제외 대상은 순위 계산에서 빼고 칸을 비움(null)
   const inAll = r => rankExcl(r.emp)!=='all';
@@ -2566,6 +2567,18 @@ function teamDragEnd(){
   }
   saveTeamOrders(updates);
 }
+// 근태관리 보정값: 원본 26년_근태관리 '보정 세부사항'(지원·휴일·평일)과 같음. 집계 결과에 그대로 더해짐
+function adjustPanel(){
+  const list = employees.slice().sort((a,b)=>((a.team||'9')<(b.team||'9')?-1:(a.team||'9')>(b.team||'9')?1:(a.teamOrder||999)-(b.teamOrder||999)));
+  const inp = (e,f) => `<input type="number" step="0.01" data-team-emp="${esc(e.id)}" data-team-field="${f}" value="${e[f]!=null && e[f]!=='' ? esc(e[f]) : ''}" placeholder="0" style="width:84px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);text-align:right;">`;
+  return `<div class="panel">
+    <h3>근태관리 보정값</h3>
+    <p class="hint" style="margin:0 0 10px;">원본 엑셀 '보정 세부사항'과 같아요. 여기 넣은 값이 근태관리 집계의 <b>지원 일수 · 휴일 OT · 평일 OT</b>에 더해집니다(순번에도 반영).</p>
+    <div class="scrollx"><table class="tbl"><thead><tr><th>조</th><th>성명</th><th>지원 보정(일)</th><th>휴일 OT 보정</th><th>평일 OT 보정</th></tr></thead><tbody>
+    ${list.map(e=>`<tr><td>${esc(e.team?e.team+'조':'-')}</td><td class="namecell">${esc(e.name)}</td><td>${inp(e,'supAdj')}</td><td>${inp(e,'holAdj')}</td><td>${inp(e,'wkAdj')}</td></tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+}
 function pageTeam(){
   const unassigned = employees.filter(e=>e.team!=='1' && e.team!=='2');
   return `
@@ -2589,6 +2602,7 @@ function pageTeam(){
     ${teamPanel('2','2조')}
   </div>
   ${unassigned.length ? `<div class="panel">${teamPanel('','미배정')}</div>` : ''}
+  ${adjustPanel()}
   `;
 }
 
@@ -2955,6 +2969,7 @@ function afterRender(){
       const id = x.dataset.teamEmp, field = x.dataset.teamField;
       let val = x.value;
       if(field==='teamOrder') val = val===''? null : Number(val);
+      if(field==='supAdj' || field==='holAdj' || field==='wkAdj') val = val===''? 0 : Number(val);
       updateEmployee(id, {[field]: val});
     };
     if(x.tagName==='SELECT') x.onchange = commit; else x.onblur = commit;
@@ -3069,11 +3084,17 @@ function importAttendanceByName(obj){
   const skipTxt = Object.keys(skippedCodes).length ? ` 근태코드 참조에 없는 코드(${Object.entries(skippedCodes).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' '+v+'건').join(', ')})는 넣지 않습니다.` : '';
   if(!n){ showToast('넣을 기록이 없습니다.' + missTxt); return; }
   const codeTxt = obj.includesCodes ? ` 근무코드·근태코드 ${nCode.toLocaleString()}건도 함께 넣습니다.` : ' 근무코드·근태코드는 그대로 둡니다.';
+  const empAdj = {}; let nAdj = 0;
+  (Array.isArray(obj.adjust) ? obj.adjust : []).forEach(a=>{
+    const id = byName[String(a.name||'').trim()];
+    if(id){ empAdj[id] = {supAdj:Number(a.supAdj)||0, holAdj:Number(a.holAdj)||0, wkAdj:Number(a.wkAdj)||0}; nAdj++; }
+  });
   const hol = {};
   (Array.isArray(obj.holidays) ? obj.holidays : []).forEach(h=>{ if(h && h.date) hol[h.date] = {date:h.date, name:h.name||'공휴일'}; });
   const holTxt = Object.keys(hol).length ? ` 원본의 공휴일 ${Object.keys(hol).length}일도 공휴일 관리에 맞춰 넣습니다.` : '';
-  appConfirm(`엑셀 DB입력 기록 ${n.toLocaleString()}건(${minD} ~ ${maxD})을 넣을까요?${codeTxt}${holTxt}${skipTxt}${missTxt}`,
-    ()=> uploadData(Object.keys(hol).length ? {attendance: docs, holidays: hol} : {attendance: docs}));
+  const adjTxt = nAdj ? ` 근태관리 보정값(지원·휴일·평일) ${nAdj}명도 넣습니다.` : '';
+  appConfirm(`엑셀 DB입력 기록 ${n.toLocaleString()}건(${minD} ~ ${maxD})을 넣을까요?${codeTxt}${holTxt}${adjTxt}${skipTxt}${missTxt}`,
+    ()=>{ const up = {attendance: docs}; if(Object.keys(hol).length) up.holidays = hol; if(nAdj) up.employees = empAdj; uploadData(up); });
 }
 document.addEventListener('click', (e)=>{
   if(e.target.closest('#backupExportBtn')) exportBackup();
