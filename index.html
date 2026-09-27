@@ -307,6 +307,37 @@ try{
 }catch(e){}
 function saveCombinedPref(){
   try{ localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal})); }catch(e){}
+  saveViewPrefsCloud({combinedStart:codeStatsStart, combinedEnd:codeStatsEnd, combinedMeal:codeStatsIncludeMeal});
+}
+// 월별 OT현황 기간도 같은 방식으로 기억
+const OT_PREF_KEY = 'snct_ot_range';
+const isYmd = v => /^\d{4}-\d{2}-\d{2}$/.test(v||'');
+function loadOtPrefLocal(){
+  try{
+    const p = JSON.parse(localStorage.getItem(OT_PREF_KEY) || 'null');
+    if(p && isYmd(p.start) && isYmd(p.end)){ otMatrixStart = p.start; otMatrixEnd = p.end; otPayYear = p.payYear; otPayMonth = p.payMonth; }
+  }catch(e){}
+}
+function saveOtPref(){
+  const v = {start:otMatrixStart, end:otMatrixEnd, payYear:otPayYear, payMonth:otPayMonth};
+  try{ localStorage.setItem(OT_PREF_KEY, JSON.stringify(v)); }catch(e){}
+  saveViewPrefsCloud({otStart:otMatrixStart, otEnd:otMatrixEnd, otPayYear, otPayMonth});
+}
+// 편집자가 바꾼 설정만 클라우드에 저장(보기 전용 사용자가 바꾼 건 그 기기에서만 잠시 유지)
+function saveViewPrefsCloud(partial){
+  if(!db || !canEdit || demoMode) return;
+  db.doc('meta/viewPrefs').set(Object.assign({updatedAt: Date.now()}, partial), {merge:true}).catch(()=>{});
+}
+// 클라우드의 공용 설정을 화면에 반영
+function applyViewPrefs(p){
+  if(!p) return;
+  if(isYmd(p.combinedStart) && isYmd(p.combinedEnd)){ codeStatsStart = p.combinedStart; codeStatsEnd = p.combinedEnd; }
+  if(typeof p.combinedMeal==='boolean') codeStatsIncludeMeal = p.combinedMeal;
+  if(isYmd(p.otStart) && isYmd(p.otEnd)){ otMatrixStart = p.otStart; otMatrixEnd = p.otEnd; if(p.otPayYear) otPayYear = p.otPayYear; if(p.otPayMonth) otPayMonth = p.otPayMonth; }
+  try{
+    localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal}));
+    if(otMatrixStart) localStorage.setItem(OT_PREF_KEY, JSON.stringify({start:otMatrixStart, end:otMatrixEnd, payYear:otPayYear, payMonth:otPayMonth}));
+  }catch(e){}
 }
 let codeStatsAttendance = {}; // 근태코드 집계 전용 출퇴근 데이터 (선택한 기간 전체를 별도로 구독)
 let dispatch = {}; // `${date}_${shift}_${empId}` -> {slots:{slot:catKey}}
@@ -1159,6 +1190,9 @@ function subscribeAll(){
     snap.docs.forEach(d=>{ codeDefs[d.id]=d.data(); });
     scheduleRender();
   }, dbErr);
+  unsub.viewPrefs = db.doc('meta/viewPrefs').onSnapshot(doc=>{
+    if(doc.exists){ applyViewPrefs(doc.data()); scheduleRender(); }
+  }, ()=>{});
   unsub.hiddenCodes = db.doc('meta/hiddenCodes').onSnapshot(doc=>{
     hiddenCodes = new Set((doc.exists && doc.data().codes) || []);
     scheduleRender();
@@ -2644,12 +2678,14 @@ function afterRender(){
   if(prevPayMonth) prevPayMonth.onclick = ()=>{
     otPayMonth--; if(otPayMonth<1){ otPayMonth=12; otPayYear--; }
     [otMatrixStart, otMatrixEnd] = payPeriodRange(otPayYear, otPayMonth);
+    saveOtPref();
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
   if(nextPayMonth) nextPayMonth.onclick = ()=>{
     otPayMonth++; if(otPayMonth>12){ otPayMonth=1; otPayYear++; }
     [otMatrixStart, otMatrixEnd] = payPeriodRange(otPayYear, otPayMonth);
+    saveOtPref();
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
@@ -2663,14 +2699,18 @@ function afterRender(){
   // 작업기간 직접수정
   const otRangeStartInput = document.getElementById('otRangeStartInput'), otRangeEndInput = document.getElementById('otRangeEndInput');
   if(otRangeStartInput) otRangeStartInput.onchange = ()=>{
+    if(!otRangeStartInput.value) return;
     otMatrixStart = otRangeStartInput.value;
     if(otMatrixStart > otMatrixEnd) otMatrixEnd = otMatrixStart;
+    saveOtPref();
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
   if(otRangeEndInput) otRangeEndInput.onchange = ()=>{
+    if(!otRangeEndInput.value) return;
     otMatrixEnd = otRangeEndInput.value;
     if(otMatrixEnd < otMatrixStart) otMatrixStart = otMatrixEnd;
+    saveOtPref();
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
@@ -3054,6 +3094,7 @@ document.querySelector('nav#nav a[data-view="input"]').classList.add('on');
 updateNavForRole();
 
 /* ========================= 시작 ========================= */
+loadOtPrefLocal();
 // 앱 설치(PC·안드로이드) 및 오프라인 화면용 서비스워커 등록 — 웹 주소(https)로 열었을 때만
 if('serviceWorker' in navigator && location.protocol==='https:'){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
