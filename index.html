@@ -199,8 +199,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
 #dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;}
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
-#dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;border:2px solid #E03131 !important;}
-#dpTable th.dpMealH{border-left:2px solid #E03131 !important;border-right:2px solid #E03131 !important;border-top:2px solid #E03131 !important;}
+#dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;}
+#dpTable th.dpMealH{border-top:2px solid #E03131 !important;}
+#dpTable td.dpMealF{border-bottom:2px solid #E03131 !important;}
+#dpTable .mL{border-left:2px solid #E03131 !important;}
+#dpTable .mR{border-right:2px solid #E03131 !important;}
 #dpTable .dpNote{width:100%;height:100%;min-height:34px;border:0;background:transparent;color:#E03131;font-weight:800;font-size:12px;text-align:center;padding:0 2px;font-family:inherit;}
 #dpTable .dpNote:focus{outline:2px solid #E03131;outline-offset:-2px;background:#fff5f5;}
 #dpTable .dpNote:disabled{color:#E03131;opacity:1;-webkit-text-fill-color:#E03131;}
@@ -2497,9 +2500,15 @@ function pageDispatch(){
   const palette = DISPATCH_CATS.map(c=>`<button type="button" class="dpCatBtn" data-cat="${esc(c.key)}"
       style="background:${c.bg};color:${c.fg};border:2px solid ${dispatchPaint===c.key?'var(--text)':c.border};border-radius:10px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:${dispatchPaint===c.key?'0 0 0 2px var(--accent)':'none'};">${esc(c.key)}</button>`).join('');
 
+  // 빨간 시간 묶음(예: 07·30)의 바깥쪽에만 빨간 테두리: 묶음의 왼쪽 끝 mL, 오른쪽 끝 mR
+  const mealEdge = s => {
+    const i = slots.indexOf(s);
+    if(i<0 || !isMealSlot(s)) return '';
+    return (i===0 || !isMealSlot(slots[i-1]) ? ' mL' : '') + (i===slots.length-1 || !isMealSlot(slots[i+1]) ? ' mR' : '');
+  };
   function slotCell(empId, s, catKey, note){
     if(isMealSlot(s)){
-      return `<td class="dpMeal"><input type="text" class="dpNote" data-dp-note-emp="${esc(empId)}" data-dp-note-slot="${esc(s)}" value="${esc(note||'')}" maxlength="6"></td>`;
+      return `<td class="dpMeal${mealEdge(s)}"><input type="text" class="dpNote" data-dp-note-emp="${esc(empId)}" data-dp-note-slot="${esc(s)}" value="${esc(note||'')}" maxlength="6"></td>`;
     }
     const cat = dispatchCat(catKey);
     const bg = cat ? cat.bg : 'transparent';
@@ -2525,7 +2534,7 @@ function pageDispatch(){
       const [hh,mm] = s.split(':');
       const isRed = isMealSlot(s);
       const color = isRed ? '#E03131' : '#000000';
-      const cls = 'dpSlotH' + (isRed ? ' dpMealH' : '');
+      const cls = 'dpSlotH' + (isRed ? ' dpMealH' + mealEdge(s) : '');
       if(mm==='00'){
         return `<th class="${cls}" style="color:${color};font-size:15px;font-weight:800;">${esc(hh)}</th>`;
       }
@@ -2582,7 +2591,7 @@ function pageDispatch(){
 
   const countRow = `<tr style="background:var(--bg);">
     <td class="dpI dpI1" colspan="5" style="font-weight:800;">시간대별 인원</td>
-    ${slots.map((s,si)=>`<td data-dispatch-count="${esc(s)}" style="text-align:center;font-weight:800;color:${slotCounts[si]>0?'var(--accent)':'var(--text-muted)'};">${slotCounts[si]||''}</td>`).join('')}
+    ${slots.map((s,si)=>`<td data-dispatch-count="${esc(s)}"${isMealSlot(s)?` class="dpMealF${mealEdge(s)}"`:''} style="text-align:center;font-weight:800;color:${slotCounts[si]>0?'var(--accent)':'var(--text-muted)'};">${slotCounts[si]||''}</td>`).join('')}
   </tr>`;
 
   return `
