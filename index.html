@@ -126,6 +126,22 @@ td.gc,th.gc{background:var(--g-soft) !important;color:var(--g);}
 td.gc b,td.gc strong{color:var(--g);}
 th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .gtbl .sepL{border-left:3px solid var(--text) !important;}
+/* 급여 지급명세서 */
+.psWrap{overflow-x:auto;padding-bottom:10px;}
+.psSheet{background:#fff;color:#111;max-width:780px;min-width:680px;margin:0;padding:22px 24px 18px;border-radius:8px;border:1px solid var(--border);font-size:12.5px;position:relative;}
+.psTools{position:absolute;right:14px;top:12px;display:flex;gap:6px;}
+.psTitle{text-align:center;font-size:20px;letter-spacing:.02em;margin:6px 0 14px;} .psTitle span{margin-left:14px;}
+.psHead{width:88%;margin:0 auto 10px;border-collapse:collapse;border-top:1px solid #333;border-bottom:1px solid #333;} .psHead td{padding:7px 8px;}
+.psMeta{display:flex;justify-content:space-between;font-size:11.5px;margin:10px 0 4px;color:#333;}
+.psT{width:100%;border-collapse:collapse;table-layout:fixed;} .psT td{border:1px solid #9aa0a6;height:24px;padding:2px 6px;}
+.psT td.psSec{background:#dcdcdc;text-align:center;font-weight:700;width:13%;vertical-align:top;padding-top:5px;}
+.psT td.psL{background:#dcdcdc;text-align:center;font-weight:700;font-size:11px;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;}
+.psT td.psV{text-align:right;background:#fff;} .psT td.psA{background:#f3f7ff;} .psT td.psTot{font-weight:700;}
+.psNameIn{width:120px;border:0;border-bottom:1px solid #999;background:#fffde8;font:inherit;padding:2px 4px;color:#111;} .psNameIn:focus{outline:2px solid #1d4ed8;}
+.psIn{width:100%;border:0;background:#fffde8;text-align:right;font:inherit;padding:2px 0;color:#111;} .psIn:focus{outline:2px solid #1d4ed8;}
+@media print{ body.printing-ps > *:not(.layout){display:none !important;} body.printing-ps .layout > *:not(main){display:none !important;}
+  body.printing-ps main#content > *:not(.psWrap){display:none !important;} body.printing-ps .psSheet{border:0;}
+  body.printing-ps .psTools{display:none;} body.printing-ps .psIn{background:none;} body.printing-ps .psT td.psA{background:none;} }
 .nameLink{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .nameLink:hover{color:var(--accent);}
 :root th.gh.g-blk{background:#1f2937 !important;}
@@ -270,7 +286,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드 참조</a>
-    <a data-view="pay"><span class="ic">💰</span>OT 수당(명세서)</a>
+    <a data-view="pay"><span class="ic">💰</span>급여 명세서</a>
     <div class="navttl" data-editor-only style="margin-top:10px;">데이터</div>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
@@ -2987,8 +3003,29 @@ function afterRender(){
   if(payPrev) payPrev.onclick = ()=>{ let {y,m} = payYm; m--; if(m<1){ m=12; y--; } payYm = {y,m}; render(); };
   if(payNext) payNext.onclick = ()=>{ let {y,m} = payYm; m++; if(m>12){ m=1; y++; } payYm = {y,m}; render(); };
   el.querySelectorAll('[data-act="pay-team"]').forEach(x=>x.onclick=()=>{ payTeamFilter = x.dataset.team; render(); });
-  el.querySelectorAll('.payWage').forEach(x=>{
-    x.onchange = ()=>{ const v = x.value==='' ? 0 : Math.max(0, Math.round(Number(x.value)||0)); savePayroll(x.dataset.emp, {wageTotal: v}); };
+  const psName = document.getElementById('psName');
+  if(psName){
+    const pick = ()=>{
+      const n = psName.value.trim(); if(!n) return;
+      const emp = employees.find(x=>String(x.name||'').trim()===n);
+      if(!emp){ showToast('조편성 관리에 없는 이름이에요: '+n); const cur = employees.find(x=>x.id===payslipEmpId); psName.value = cur ? cur.name : ''; return; }
+      if(emp.id!==payslipEmpId){ payslipEmpId = emp.id; render(); }
+    };
+    psName.onchange = pick;
+    psName.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); pick(); } };
+    psName.onfocus = ()=> psName.select();
+  }
+  const psPrint = document.getElementById('psPrint');
+  if(psPrint) psPrint.onclick = ()=>{ document.body.classList.add('printing-ps'); window.print(); setTimeout(()=>document.body.classList.remove('printing-ps'), 500); };
+  el.querySelectorAll('.psIn').forEach(x=>{
+    x.onfocus = ()=>{ x.value = x.value.replace(/[^0-9]/g,''); };
+    x.onblur = ()=>{
+      const v = Number(x.value.replace(/[^0-9]/g,'')) || 0;
+      const prev = Number((payroll[x.dataset.emp]||{})[x.dataset.key]) || 0;
+      x.value = v ? v.toLocaleString() : '';
+      if(v !== prev) savePayroll(x.dataset.emp, {[x.dataset.key]: v});
+    };
+    x.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); x.blur(); } };
   });
   const leaveClose = document.getElementById('leaveClose'), leaveScrim = document.getElementById('leaveScrim');
   if(leaveClose) leaveClose.onclick = ()=>{ leaveEmpId = null; render(); };
@@ -3241,6 +3278,76 @@ async function savePayroll(empId, data){
   catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
 }
 const round10 = v => Math.round(v/10)*10;
+// 명세서에서 직접 입력하는 금액 항목
+const PAY_FIXED = [['base','기본급'],['tuition','학자금'],['longevity','근속수당'],['position','직책수당'],['tech','기술수당'],['hazard','고공(위험)수당'],['meal','식대'],['special','특근수당'],['keep','보전수당']];
+const RATE_ITEMS = ['base','longevity','position','tech','hazard']; // 통상시급에 들어가는 항목
+function payInfo(empId){
+  const p = payroll[empId] || {};
+  const sum = RATE_ITEMS.reduce((a,k)=> a + (Number(p[k])||0), 0);
+  const wage = sum || Number(p.wageTotal) || 0;
+  return {p, wage, rate: wage ? Math.round(wage/209) : 0};
+}
+// 명세서 시간 표기: 시간.분 (28.5시간 → 28.3 = 28시간 30분)
+function hm(v){
+  if(!v) return '';
+  let h = Math.floor(v + 1e-9), m = Math.round((v - h) * 60);
+  if(m===60){ h++; m = 0; }
+  return m ? `${h}.${String(m).padStart(2,'0').replace(/0$/,'')}` : String(h);
+}
+function payAmounts(e, start, end){
+  const pc = payCalc(e, start, end), info = payInfo(e.id), rate = info.rate;
+  const a = {
+    ext: rate ? round10(pc.extHours*rate*1.5) : 0,
+    night: rate ? round10(pc.wkNight*rate*0.5) : 0,
+    hol: rate ? round10((pc.holWork*1.5 + pc.holExtra)*rate) : 0,
+    holOT: rate ? round10(pc.holOT*rate*2) : 0,
+    holN: rate ? round10(pc.holNight*rate*0.5) : 0,
+    etc: rate ? round10(pc.diff*rate) : 0
+  };
+  a.ot = a.ext + a.night + a.hol + a.holOT + a.holN + a.etc;
+  const fixed = PAY_FIXED.reduce((x,[k])=> x + (Number(info.p[k])||0), 0);
+  a.gross = a.ot + fixed;
+  return {pc, info, rate, a};
+}
+let payslipEmpId = null;
+function renderPayslip(){
+  const e = employees.find(x=>x.id===payslipEmpId); if(!e || !payYm) return '';
+  const [start, end] = payPeriodRange(payYm.y, payYm.m);
+  const {pc, info, rate, a} = payAmounts(e, start, end);
+  const p = info.p;
+  const won = v => v ? Number(v).toLocaleString() : '';
+  const inp = k => `<input type="text" inputmode="numeric" class="psIn" data-emp="${esc(e.id)}" data-key="${k}" value="${won(p[k])}">`;
+  const lab = t => `<td class="psL">${esc(t)}</td>`;
+  const val = v => `<td class="psV">${v}</td>`;
+  const auto = v => `<td class="psV psA">${won(v)}</td>`;
+  const ded = ['소득세','지방소득세','정산소득세','정산주민세','건강보험','국민연금','고용보험','정산건강보험료','기타공제1','기타공제2','기부금','선우회비','조합비'];
+  const dedRows = [ded.slice(0,6), ded.slice(6,12), ded.slice(12)];
+  return `<div class="psWrap"><div class="psSheet" id="psSheet">
+    <div class="psTools"><button class="btn ghost sm" id="psPrint">인쇄</button></div>
+    <h2 class="psTitle">임직원 급여 지급명세서 <span>( ${payYm.y}년 ${String(payYm.m).padStart(2,'0')}월 )</span></h2>
+    <table class="psHead"><tr><td><b>부서 :</b> ${esc(e.part||'')}</td><td><b>조 :</b> ${esc(e.team?e.team+'조':'')}</td><td><b>성명 :</b> <input type="text" id="psName" list="psNameList" value="${esc(e.name)}" autocomplete="off" class="psNameIn"><datalist id="psNameList">${employees.map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist> <span style="margin-left:6px;">귀하</span></td></tr></table>
+    <div class="psMeta"><span>근무기간: ${esc(start)} ~ ${esc(end)}</span><span>통상시급: <b>${won(rate)}</b>원 ( (기본급+근속+직책+기술+고공) ÷ 209 )</span></div>
+    <table class="psT">
+      <tr><td class="psSec" rowspan="6">지급내역</td>${lab('기본급')}${lab('학자금')}${lab('근속수당')}${lab('직책수당')}${lab('기술수당')}${lab('연장근로수당')}</tr>
+      <tr>${val(inp('base'))}${val(inp('tuition'))}${val(inp('longevity'))}${val(inp('position'))}${val(inp('tech'))}${auto(a.ext)}</tr>
+      <tr>${lab('평일야간근로수당')}${lab('휴일근로수당')}${lab('휴일연장근로수당')}${lab('휴일야간근로수당')}${lab('특근수당')}${lab('보전수당')}</tr>
+      <tr>${auto(a.night)}${auto(a.hol)}${auto(a.holOT)}${auto(a.holN)}${val(inp('special'))}${val(inp('keep'))}</tr>
+      <tr>${lab('고공( 위험) 수당')}${lab('식대')}${lab('기타수당')}${lab('')}${lab('')}${lab('')}</tr>
+      <tr>${val(inp('hazard'))}${val(inp('meal'))}${auto(a.etc)}${val('')}${val('')}${val('')}</tr>
+      <tr><td class="psSec" rowspan="6">공제내역</td>${dedRows[0].map(lab).join('')}</tr>
+      <tr>${dedRows[0].map(()=>val('')).join('')}</tr>
+      <tr>${dedRows[1].map(lab).join('')}</tr>
+      <tr>${dedRows[1].map(()=>val('')).join('')}</tr>
+      <tr>${lab(dedRows[2][0])}${lab('')}${lab('')}${lab('')}${lab('')}${lab('')}</tr>
+      <tr>${val('')}${val('')}${val('')}${val('')}${val('')}${val('')}</tr>
+      <tr><td class="psSec" rowspan="2">근태사항</td>${lab('평일연장근로시간')}${lab('평일야간근로시간')}${lab('휴일근로시간')}${lab('휴일연장근로시간')}${lab('휴일야간근로시간')}${lab('')}</tr>
+      <tr>${val(hm(pc.extHours))}${val(hm(pc.wkNight))}${val(hm(pc.holWork))}${val(hm(pc.holOT))}${val(hm(pc.holNight))}${val('')}</tr>
+      <tr><td class="psSec">합계</td><td class="psL" colspan="2">지급총액</td><td class="psL" colspan="2">공제총액</td><td class="psL" colspan="2">실지급액</td></tr>
+      <tr><td class="psSec"></td><td class="psV psTot" colspan="2">${won(a.gross)}</td><td class="psV psTot" colspan="2"></td><td class="psV psTot" colspan="2">${won(a.gross)}</td></tr>
+    </table>
+    <p class="hint">노란 칸(기본급·근속·기술수당 등)은 직접 입력하는 금액이고, 연한 파란 칸은 근태 기록으로 자동 계산됩니다(기타수당 = (보전 OT − 실 OT) × 통상시급, 10원 단위 반올림). 공제내역은 공제율을 정한 뒤 추가할 예정이라 지금은 비어 있어요. 시간은 명세서처럼 '시간.분'(28.3 = 28시간 30분)으로 표시합니다.</p>
+  </div></div>`;
+}
 function payCalc(e, start, end){
   let wk=0, ho=0, sp=0, meal=0;           // 월별 OT현황과 같은 묶음(보전 계산용)
   let holWork=0, holOT=0, holNight=0, holExtra=0, wkNight=0, wkGroupPrem=0;
@@ -3273,67 +3380,18 @@ function pagePay(){
     payYm = {y, m};
   }
   const [start, end] = payPeriodRange(payYm.y, payYm.m);
-  const list = employees.slice().filter(e=> !payTeamFilter || (e.team||'')===payTeamFilter).sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
-  const h = v => v ? fmtH(v) : '';
-  const won = v => v ? v.toLocaleString() : '';
-  let sums = {ext:0,night:0,hol:0,holOT:0,holN:0,etc:0,total:0};
-  const rows = list.map(e=>{
-    const pc = payCalc(e, start, end);
-    const wage = Number((payroll[e.id]||{}).wageTotal)||0;
-    const rate = wage ? Math.round(wage/209) : 0;
-    const a = {
-      ext: rate ? round10(pc.extHours*rate*1.5) : 0,
-      night: rate ? round10(pc.wkNight*rate*0.5) : 0,
-      hol: rate ? round10((pc.holWork*1.5 + pc.holExtra)*rate) : 0,
-      holOT: rate ? round10(pc.holOT*rate*2) : 0,
-      holN: rate ? round10(pc.holNight*rate*0.5) : 0,
-      etc: rate ? round10(pc.diff*rate) : 0
-    };
-    a.total = a.ext + a.night + a.hol + a.holOT + a.holN + a.etc;
-    Object.keys(sums).forEach(k=> sums[k] += a[k]);
-    return `<tr>
-      <td class="namecell">${esc(e.name)}</td>
-      <td><input type="number" class="payWage" data-emp="${esc(e.id)}" value="${wage||''}" placeholder="월 통상임금 합계" style="width:120px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);text-align:right;"></td>
-      <td style="text-align:right;font-weight:700;">${won(rate)}</td>
-      <td class="gc g-wk" style="text-align:center;">${h(pc.extHours)}</td><td class="gc g-wk" style="text-align:center;">${h(pc.wkNight)}</td>
-      <td class="gc g-hol" style="text-align:center;">${h(pc.holWork)}</td><td class="gc g-hol" style="text-align:center;">${h(pc.holOT)}</td><td class="gc g-hol" style="text-align:center;">${h(pc.holNight)}</td>
-      <td style="text-align:right;">${won(a.ext)}</td><td style="text-align:right;">${won(a.night)}</td>
-      <td style="text-align:right;">${won(a.hol)}</td><td style="text-align:right;">${won(a.holOT)}</td><td style="text-align:right;">${won(a.holN)}</td>
-      <td class="gc g-ot" style="text-align:right;">${won(a.etc)}</td>
-      <td style="text-align:right;font-weight:800;">${won(a.total)}</td>
-      <td style="text-align:center;color:var(--text-muted);">${fmtH(pc.real)} / ${fmtH(pc.guar)}</td>
-    </tr>`;
-  }).join('');
+  const list = employees.slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
+  if(!payslipEmpId || !list.some(e=>e.id===payslipEmpId)) payslipEmpId = list[0] ? list[0].id : null;
   return `
-  <h2 class="pgttl">OT 수당 (급여명세서 형식)</h2>
-  <p class="pgsub">사람마다 <b>월 통상임금 합계</b>(기본급·근속·기술·고공수당 등 통상시급에 들어가는 금액의 합)를 넣으면, 통상시급(÷209)과 명세서 항목별 OT 수당이 계산됩니다. 편집자만 볼 수 있어요.</p>
+  <h2 class="pgttl">급여 명세서</h2>
+  <p class="pgsub">명세서의 <b>성명</b> 칸에 이름을 입력하면(조편성 관리의 모든 사람) 그 사람의 급여 지급명세서가 나와요. 노란 칸(기본급 등)은 직접 입력하고, 나머지 OT 수당과 근태사항은 근태 기록으로 자동 계산됩니다. 편집자만 볼 수 있어요.</p>
   <div class="row" style="margin-bottom:10px;align-items:center;">
     <button class="btn ghost sm" id="payPrev">◀ 이전달</button>
     <b style="font-size:15px;">${payYm.y}년 ${payYm.m}월 급여</b>
     <button class="btn ghost sm" id="payNext">다음달 ▶</button>
     <span class="hint" style="margin:0;">근무기간 ${esc(start)} ~ ${esc(end)}</span>
   </div>
-  <div class="row" style="margin-bottom:12px;">
-    <button class="btn ${payTeamFilter===''?'':'ghost'} sm" data-act="pay-team" data-team="">전체</button>
-    <button class="btn ${payTeamFilter==='1'?'':'ghost'} sm" data-act="pay-team" data-team="1">1조</button>
-    <button class="btn ${payTeamFilter==='2'?'':'ghost'} sm" data-act="pay-team" data-team="2">2조</button>
-  </div>
-  <div class="scrollx gridwrap"><table class="gtbl" style="font-size:12px;"><thead>
-    <tr>
-      <th rowspan="2" class="namehead">성명</th><th rowspan="2">월 통상임금 합계</th><th rowspan="2">통상시급</th>
-      <th colspan="5">근태사항 (시간)</th>
-      <th colspan="6">지급내역 (원)</th>
-      <th rowspan="2">합계</th><th rowspan="2">실 / 보전<br>(가산시간)</th>
-    </tr>
-    <tr>
-      <th class="gc g-wk">평일연장</th><th class="gc g-wk">평일야간</th><th class="gc g-hol">휴일근로</th><th class="gc g-hol">휴일연장</th><th class="gc g-hol">휴일야간</th>
-      <th>연장근로수당<br><span style="font-weight:400;">×1.5</span></th><th>평일야간<br><span style="font-weight:400;">×0.5</span></th><th>휴일근로<br><span style="font-weight:400;">×1.5</span></th><th>휴일연장<br><span style="font-weight:400;">×2</span></th><th>휴일야간<br><span style="font-weight:400;">×0.5</span></th><th class="gc g-ot">기타수당<br><span style="font-weight:400;">(보전−실)</span></th>
-    </tr>
-  </thead><tbody>${rows}
-    <tr style="background:var(--bg);font-weight:800;"><td class="namecell">합계</td><td></td><td></td><td colspan="5"></td>
-      <td style="text-align:right;">${won(sums.ext)}</td><td style="text-align:right;">${won(sums.night)}</td><td style="text-align:right;">${won(sums.hol)}</td><td style="text-align:right;">${won(sums.holOT)}</td><td style="text-align:right;">${won(sums.holN)}</td><td style="text-align:right;">${won(sums.etc)}</td><td style="text-align:right;">${won(sums.total)}</td><td></td></tr>
-  </tbody></table></div>
-  <p class="hint">시간은 소수(28.5 = 28시간 30분)로 표시합니다. 급여명세서는 같은 시간을 '시간.분'(28.3)으로 적어요. 연장근로에는 평일 근무 외에 지원근무(휴일 지원 포함)·식사 가산이 함께 들어갑니다(2023년 2월 명세서로 확인한 방식). 수당은 10원 단위 반올림.</p>
+  ${payslipEmpId ? renderPayslip() : ''}
   `;
 }
 
