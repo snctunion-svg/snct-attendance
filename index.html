@@ -738,7 +738,14 @@ function dayCategory(dateStr, manguen){
 // 하루치 근태 기록으로부터 근무시간/초과/심야/가산시간을 계산 (원본 DB입력 수식 100% 대조 검증됨)
 function computeDaily(rec, dateStr){
   const zero = {totalWork:0, meal:0, overtime:0, night:0, category:'-', premium:0, valid:false};
-  if(!rec || rec.workCode==='OFF' || !rec.checkIn || !rec.checkOut) return zero;
+  if(!rec || !rec.checkIn || !rec.checkOut) return zero;
+  // 근무코드: 월별표에서 지정한 값(D·N 등). 없으면(출퇴근 입력만 한 날) 본출근 시각으로 주간/야간을 판단.
+  // 편집자가 월별표에서 직접 OFF로 지정한 날만 계산하지 않음
+  let wc = (rec.workCode && rec.workCode!=='OFF') ? rec.workCode : '';
+  if(!wc){
+    if(rec.attManual && rec.workCode==='OFF') return zero;
+    wc = toDec(rec.checkIn) <= 14 ? 'D' : 'N';
+  }
 
   const checkinDec = toDec(rec.checkIn);
   let start;
@@ -755,7 +762,7 @@ function computeDaily(rec, dateStr){
 
   let guaranteedEnd = actualEnd;
   // 퇴근보전은 원본 엑셀처럼 '근무코드(편성된 주간/야간)' 기준으로 판단. 엑셀에서 가져온 기록은 baseShift(D/N)에 들어 있음
-  const gCode = rec.baseShift || rec.workCode;
+  const gCode = rec.baseShift || wc;
   if(kcat==='SU' || kcat==='H'){
     if((gCode==='D'||gCode==='DN') && checkoutDec>8 && checkoutDec<12){
       guaranteedEnd = dateAt(dateStr,12,0);
