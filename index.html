@@ -270,6 +270,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드 참조</a>
+    <a data-view="pay"><span class="ic">💰</span>OT 수당(명세서)</a>
     <div class="navttl" data-editor-only style="margin-top:10px;">데이터</div>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
@@ -1113,7 +1114,7 @@ function openLoginDialog(){
   };
 }
 // 보기 전용 사용자는 근태관리·월별 OT현황·배차표·지원계획표만 볼 수 있음. 편집자는 전체 메뉴.
-const EDITOR_ONLY_VIEWS = ['input','team','holidays','codes','backup','grid','employees','codestats'];
+const EDITOR_ONLY_VIEWS = ['input','team','holidays','codes','backup','grid','employees','codestats','pay'];
 function isEditorOnlyView(v){ return EDITOR_ONLY_VIEWS.includes(v); }
 function updateNavForRole(){
   document.querySelectorAll('nav#nav a[data-view]').forEach(a=>{
@@ -1243,7 +1244,7 @@ async function initDb(){
     updateNavForRole();
     if(!canEdit && isEditorOnlyView(VIEW)) setView('combined'); // 보기 전용은 허용된 화면(근태관리)으로
     else render();
-    if(canEdit) afterEditorLogin();
+    if(canEdit){ afterEditorLogin(); subscribePayroll(); } else unsubscribePayroll();
   });
 }
 // 편집자 로그인 직후: 클라우드가 비어 있으면 이전 브라우저 데이터를 올리거나 기본값을 채움
@@ -1415,6 +1416,7 @@ function ensureForView(){
     if(VIEW==='combined' && leaveEmpId && leaveYear) ensureAttendanceRange(`${leaveYear}-01-01`, `${leaveYear}-12-31`);
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
+  else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }
 }
 // 기존 호출부 호환용
@@ -1683,6 +1685,7 @@ function render(){
   else if(VIEW==='splan') el.innerHTML = pageSupportPlan();
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
+  else if(VIEW==='pay') el.innerHTML = pagePay();
   afterRender();
   if(!canEdit) applyReadonly(el);
 }
@@ -2980,6 +2983,13 @@ function afterRender(){
     render();
   };
   el.querySelectorAll('[data-act="leave"]').forEach(x=>x.onclick=()=>{ leaveEmpId = x.dataset.emp; render(); });
+  const payPrev = document.getElementById('payPrev'), payNext = document.getElementById('payNext');
+  if(payPrev) payPrev.onclick = ()=>{ let {y,m} = payYm; m--; if(m<1){ m=12; y--; } payYm = {y,m}; render(); };
+  if(payNext) payNext.onclick = ()=>{ let {y,m} = payYm; m++; if(m>12){ m=1; y++; } payYm = {y,m}; render(); };
+  el.querySelectorAll('[data-act="pay-team"]').forEach(x=>x.onclick=()=>{ payTeamFilter = x.dataset.team; render(); });
+  el.querySelectorAll('.payWage').forEach(x=>{
+    x.onchange = ()=>{ const v = x.value==='' ? 0 : Math.max(0, Math.round(Number(x.value)||0)); savePayroll(x.dataset.emp, {wageTotal: v}); };
+  });
   const leaveClose = document.getElementById('leaveClose'), leaveScrim = document.getElementById('leaveScrim');
   if(leaveClose) leaveClose.onclick = ()=>{ leaveEmpId = null; render(); };
   const lpy = document.getElementById('leavePrevYear'), lny = document.getElementById('leaveNextYear');
@@ -3204,6 +3214,127 @@ function afterRender(){
     h.onpointerup = ()=> teamDragEnd();
     h.onpointercancel = ()=>{ if(teamDrag){ teamDrag.target = null; teamDragEnd(); } };
   });
+}
+
+
+/* ========================= OT 수당(급여명세서 형식) ========================= */
+// 급여명세서와 같은 항목으로 OT를 나눠 보여줌 (2023년 2월 명세서로 대조 확인)
+//  · 휴일근로/휴일연장/휴일야간 : 일요일·공휴일에 '자기 조'로 근무한 시간
+//  · 연장근로/평일야간 : 평일·토요 근무 + 지원근무(휴일 지원 포함) + 식사 가산을 합친 것
+//  · 기타수당 : (보전 OT − 실 OT) × 통상시급
+//  · 통상시급 = 월 통상임금 합계 ÷ 209 (원 단위 반올림), 수당은 10원 단위 반올림
+let payYm = null, payTeamFilter = '';
+let payroll = {}; // employeeId -> {wageTotal}
+function subscribePayroll(){
+  if(!db || demoMode || unsub.payroll) return;
+  unsub.payroll = db.collection('payroll').onSnapshot(snap=>{
+    payroll = {}; snap.docs.forEach(d=>{ payroll[d.id] = d.data(); }); scheduleRender();
+  }, ()=>{ /* 권한 없음(보기 전용) — 조용히 무시 */ });
+}
+function unsubscribePayroll(){ if(unsub.payroll){ unsub.payroll(); unsub.payroll = null; } payroll = {}; }
+async function savePayroll(empId, data){
+  if(!requireEdit()) return;
+  payroll[empId] = Object.assign({}, payroll[empId]||{}, data);
+  render();
+  if(!db) return;
+  try{ await db.collection('payroll').doc(empId).set(data, {merge:true}); showToast('저장되었습니다.'); }
+  catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
+}
+const round10 = v => Math.round(v/10)*10;
+function payCalc(e, start, end){
+  let wk=0, ho=0, sp=0, meal=0;           // 월별 OT현황과 같은 묶음(보전 계산용)
+  let holWork=0, holOT=0, holNight=0, holExtra=0, wkNight=0, wkGroupPrem=0;
+  for(let ds=start; ds<=end; ds=addDays(ds,1)){
+    const rec = attStore[ds+'_'+e.id]; if(!rec) continue;
+    const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds), m = computeMealAllowance(rec);
+    if(c.valid){
+      if(c.category==='일요일' || c.category==='공휴일'){
+        ho += c.premium;
+        holWork += c.totalWork - c.overtime; holOT += c.overtime; holNight += c.night;
+        holExtra += c.premium - (c.totalWork*1.5 + c.overtime*0.5 + c.night*0.5); // 연근 등 추가분
+      } else { wk += c.premium; wkNight += c.night; wkGroupPrem += c.premium; }
+    }
+    if(p.valid){
+      const k = dayCategory(ds, recManguen(rec, ds));
+      if(k==='SU' || k==='H') ho += p.premium; else sp += p.premium;
+      wkNight += p.supNight; wkGroupPrem += p.premium;
+    }
+    meal += m; wkGroupPrem += m;
+  }
+  const real = wk + ho + sp + meal;
+  const guar = wk + Math.max(ho,60) + Math.max(sp,30) + meal;
+  const extHours = Math.max((wkGroupPrem - wkNight*0.5) / 1.5, 0);
+  return {real, guar, diff: Math.max(guar-real,0), extHours, wkNight, holWork, holOT, holNight, holExtra};
+}
+function pagePay(){
+  if(!payYm){
+    const t = new Date(); let y = t.getFullYear(), m = t.getMonth()+1;
+    if(otPayYear && otPayMonth){ y = otPayYear; m = otPayMonth; } else if(t.getDate()>=26){ m++; if(m>12){ m=1; y++; } }
+    payYm = {y, m};
+  }
+  const [start, end] = payPeriodRange(payYm.y, payYm.m);
+  const list = employees.slice().filter(e=> !payTeamFilter || (e.team||'')===payTeamFilter).sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
+  const h = v => v ? fmtH(v) : '';
+  const won = v => v ? v.toLocaleString() : '';
+  let sums = {ext:0,night:0,hol:0,holOT:0,holN:0,etc:0,total:0};
+  const rows = list.map(e=>{
+    const pc = payCalc(e, start, end);
+    const wage = Number((payroll[e.id]||{}).wageTotal)||0;
+    const rate = wage ? Math.round(wage/209) : 0;
+    const a = {
+      ext: rate ? round10(pc.extHours*rate*1.5) : 0,
+      night: rate ? round10(pc.wkNight*rate*0.5) : 0,
+      hol: rate ? round10((pc.holWork*1.5 + pc.holExtra)*rate) : 0,
+      holOT: rate ? round10(pc.holOT*rate*2) : 0,
+      holN: rate ? round10(pc.holNight*rate*0.5) : 0,
+      etc: rate ? round10(pc.diff*rate) : 0
+    };
+    a.total = a.ext + a.night + a.hol + a.holOT + a.holN + a.etc;
+    Object.keys(sums).forEach(k=> sums[k] += a[k]);
+    return `<tr>
+      <td class="namecell">${esc(e.name)}</td>
+      <td><input type="number" class="payWage" data-emp="${esc(e.id)}" value="${wage||''}" placeholder="월 통상임금 합계" style="width:120px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);text-align:right;"></td>
+      <td style="text-align:right;font-weight:700;">${won(rate)}</td>
+      <td class="gc g-wk" style="text-align:center;">${h(pc.extHours)}</td><td class="gc g-wk" style="text-align:center;">${h(pc.wkNight)}</td>
+      <td class="gc g-hol" style="text-align:center;">${h(pc.holWork)}</td><td class="gc g-hol" style="text-align:center;">${h(pc.holOT)}</td><td class="gc g-hol" style="text-align:center;">${h(pc.holNight)}</td>
+      <td style="text-align:right;">${won(a.ext)}</td><td style="text-align:right;">${won(a.night)}</td>
+      <td style="text-align:right;">${won(a.hol)}</td><td style="text-align:right;">${won(a.holOT)}</td><td style="text-align:right;">${won(a.holN)}</td>
+      <td class="gc g-ot" style="text-align:right;">${won(a.etc)}</td>
+      <td style="text-align:right;font-weight:800;">${won(a.total)}</td>
+      <td style="text-align:center;color:var(--text-muted);">${fmtH(pc.real)} / ${fmtH(pc.guar)}</td>
+    </tr>`;
+  }).join('');
+  return `
+  <h2 class="pgttl">OT 수당 (급여명세서 형식)</h2>
+  <p class="pgsub">사람마다 <b>월 통상임금 합계</b>(기본급·근속·기술·고공수당 등 통상시급에 들어가는 금액의 합)를 넣으면, 통상시급(÷209)과 명세서 항목별 OT 수당이 계산됩니다. 편집자만 볼 수 있어요.</p>
+  <div class="row" style="margin-bottom:10px;align-items:center;">
+    <button class="btn ghost sm" id="payPrev">◀ 이전달</button>
+    <b style="font-size:15px;">${payYm.y}년 ${payYm.m}월 급여</b>
+    <button class="btn ghost sm" id="payNext">다음달 ▶</button>
+    <span class="hint" style="margin:0;">근무기간 ${esc(start)} ~ ${esc(end)}</span>
+  </div>
+  <div class="row" style="margin-bottom:12px;">
+    <button class="btn ${payTeamFilter===''?'':'ghost'} sm" data-act="pay-team" data-team="">전체</button>
+    <button class="btn ${payTeamFilter==='1'?'':'ghost'} sm" data-act="pay-team" data-team="1">1조</button>
+    <button class="btn ${payTeamFilter==='2'?'':'ghost'} sm" data-act="pay-team" data-team="2">2조</button>
+  </div>
+  <div class="scrollx gridwrap"><table class="gtbl" style="font-size:12px;"><thead>
+    <tr>
+      <th rowspan="2" class="namehead">성명</th><th rowspan="2">월 통상임금 합계</th><th rowspan="2">통상시급</th>
+      <th colspan="5">근태사항 (시간)</th>
+      <th colspan="6">지급내역 (원)</th>
+      <th rowspan="2">합계</th><th rowspan="2">실 / 보전<br>(가산시간)</th>
+    </tr>
+    <tr>
+      <th class="gc g-wk">평일연장</th><th class="gc g-wk">평일야간</th><th class="gc g-hol">휴일근로</th><th class="gc g-hol">휴일연장</th><th class="gc g-hol">휴일야간</th>
+      <th>연장근로수당<br><span style="font-weight:400;">×1.5</span></th><th>평일야간<br><span style="font-weight:400;">×0.5</span></th><th>휴일근로<br><span style="font-weight:400;">×1.5</span></th><th>휴일연장<br><span style="font-weight:400;">×2</span></th><th>휴일야간<br><span style="font-weight:400;">×0.5</span></th><th class="gc g-ot">기타수당<br><span style="font-weight:400;">(보전−실)</span></th>
+    </tr>
+  </thead><tbody>${rows}
+    <tr style="background:var(--bg);font-weight:800;"><td class="namecell">합계</td><td></td><td></td><td colspan="5"></td>
+      <td style="text-align:right;">${won(sums.ext)}</td><td style="text-align:right;">${won(sums.night)}</td><td style="text-align:right;">${won(sums.hol)}</td><td style="text-align:right;">${won(sums.holOT)}</td><td style="text-align:right;">${won(sums.holN)}</td><td style="text-align:right;">${won(sums.etc)}</td><td style="text-align:right;">${won(sums.total)}</td><td></td></tr>
+  </tbody></table></div>
+  <p class="hint">시간은 소수(28.5 = 28시간 30분)로 표시합니다. 급여명세서는 같은 시간을 '시간.분'(28.3)으로 적어요. 연장근로에는 평일 근무 외에 지원근무(휴일 지원 포함)·식사 가산이 함께 들어갑니다(2023년 2월 명세서로 확인한 방식). 수당은 10원 단위 반올림.</p>
+  `;
 }
 
 /* ========================= 백업·복원 ========================= */
