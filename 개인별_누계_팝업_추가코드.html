@@ -1,0 +1,175 @@
+<!-- ===== 개인별 연간 근태 누계 팝업 (RV·AV·LS·SL·TL) — index.html의 </body> 바로 위에 붙여넣기 ===== -->
+<style>
+#lyBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:10px;padding:9px 12px;margin-bottom:14px;font-size:12.5px;}
+#lyBar b{color:var(--accent);}
+#lyBar input{border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--surface);color:var(--text);font-size:13px;font-family:inherit;}
+#lyBar .muted{color:var(--text-muted);}
+.cmbWrap td.namecell{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
+.cmbWrap td.namecell:hover{color:var(--accent);}
+#lyPop .ly-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0 10px;}
+#lyPop .ly-box{border:1px solid var(--border);border-radius:10px;padding:10px 2px;text-align:center;background:var(--bg);}
+#lyPop .ly-box .c{font-size:12px;font-weight:800;color:var(--text-muted);}
+#lyPop .ly-box .n{font-size:24px;font-weight:800;line-height:1.3;}
+#lyPop .ly-box .l{font-size:10px;color:var(--text-muted);}
+</style>
+<script>
+(function(){
+  const LY_CODES = ['RV','AV','LS','SL','TL'];
+  const LY_DOC = 'meta/leaveYear';   // 시작일 저장 위치(Firebase) — 편집자만 변경 가능
+  let lyStart = null;
+  let lyWatching = false;
+
+  const ymdOk = v => /^\d{4}-\d{2}-\d{2}$/.test(v||'');
+  function lyGetStart(){ return lyStart || (new Date().getFullYear() + '-01-01'); }
+  function lyEnd(s){ return addDays(shiftMonth(s, 12), -1); }   // 시작일부터 1년
+  function lyCanEdit(){ return typeof canEdit!=='undefined' && canEdit && !(typeof demoMode!=='undefined' && demoMode); }
+  function lyLabel(code){
+    const d = (typeof codeDefs!=='undefined' && codeDefs[code]) || null;
+    return (d && d.label) ? d.label : '';
+  }
+
+  // 시작일을 Firebase에서 실시간으로 받아옴(모든 사용자 동일)
+  function lyWatch(){
+    if(lyWatching) return;
+    if(typeof db==='undefined' || !db){ setTimeout(lyWatch, 800); return; }
+    lyWatching = true;
+    try{
+      db.doc(LY_DOC).onSnapshot(s=>{
+        const d = s.exists ? s.data() : null;
+        lyStart = (d && ymdOk(d.start)) ? d.start : null;
+        lyRenderBar(true);
+      }, ()=>{});
+    }catch(e){}
+  }
+
+  // 근태관리 화면 위쪽에 시작일 표시줄
+  function lyRenderBar(force){
+    const content = document.getElementById('content');
+    if(!content) return;
+    const wrap = content.querySelector('.cmbWrap');
+    const isCombined = (typeof VIEW!=='undefined' && VIEW==='combined');
+    let bar = document.getElementById('lyBar');
+    if(!wrap && !isCombined){ return; }
+    const s = lyGetStart(), e = lyEnd(s), ed = lyCanEdit();
+    const sig = s + '|' + ed;
+    if(!bar){
+      bar = document.createElement('div'); bar.id = 'lyBar';
+      if(wrap) wrap.parentNode.insertBefore(bar, wrap); else content.prepend(bar);
+    } else if(!force && bar.dataset.sig===sig){ return; }
+    bar.dataset.sig = sig;
+    if(ed){
+      bar.innerHTML = `📅 <b>연간 누계 시작일</b>
+        <input type="date" id="lyStartInput" value="${esc(s)}">
+        <span class="muted">~ ${esc(e)}</span>
+        <button type="button" class="btn sm" id="lySaveBtn">시작일 저장</button>
+        <span class="muted">· 이름을 누르면 개인별 누계</span>`;
+      const inp = bar.querySelector('#lyStartInput');
+      inp.onchange = ()=>{ if(ymdOk(inp.value)) bar.querySelector('.muted').textContent = '~ ' + lyEnd(inp.value); };
+      bar.querySelector('#lySaveBtn').onclick = ()=>{
+        if(!requireEdit()) return;
+        const v = inp.value;
+        if(!ymdOk(v)){ showToast('시작일을 선택하세요.'); return; }
+        db.doc(LY_DOC).set({start:v, updatedAt:Date.now()}, {merge:true})
+          .then(()=> showToast('시작일을 ' + v + '(으)로 저장했습니다.'))
+          .catch(err=> showToast(typeof saveErrMsg==='function' ? saveErrMsg('저장 실패', err) : '저장 실패'));
+      };
+    } else {
+      bar.innerHTML = `📅 <b>연간 누계 기준</b> ${esc(s)} ~ ${esc(e)} <span class="muted">· 이름을 누르면 개인별 누계</span>`;
+    }
+  }
+
+  // 근태관리 화면이 다시 그려질 때마다 표시줄 유지
+  function lyObserve(){
+    const content = document.getElementById('content');
+    if(!content){ setTimeout(lyObserve, 500); return; }
+    new MutationObserver(()=> lyRenderBar(false)).observe(content, {childList:true, subtree:true});
+    lyRenderBar(false);
+  }
+
+  function lyFindEmp(td){
+    const list = (typeof employees!=='undefined' && employees) || [];
+    // 1) 칸에 직원 id가 들어 있으면 그걸로
+    const vals = Object.values(td.dataset||{}).concat(Object.values((td.parentElement&&td.parentElement.dataset)||{}));
+    for(const v of vals){ const e = list.find(x=>x.id===v); if(e) return e; }
+    // 2) 이름으로 (긴 이름 먼저 — 예: 남궁영호)
+    const txt = (td.textContent||'').replace(/\s+/g,'');
+    return list.slice().sort((a,b)=>String(b.name).length-String(a.name).length)
+      .find(e=> e.name && txt.includes(String(e.name).replace(/\s+/g,''))) || null;
+  }
+
+  function lyCodeOf(r){
+    for(const k of ['statusCode','attCode','workCode']){
+      const c = String(r[k]||'').trim().toUpperCase();
+      if(LY_CODES.includes(c)) return c;
+    }
+    return '';
+  }
+
+  async function lyCount(emp, s, e){
+    const cnt = {}; LY_CODES.forEach(c=>cnt[c]=0);
+    const seen = new Map();
+    try{
+      const snap = await db.collection('attendance').where('employeeId','==',emp.id).get();
+      snap.docs.forEach(d=> seen.set(d.id, d.data()));
+    }catch(err){
+      // 연결이 안 되면 화면에 이미 불러온 데이터로 계산
+      [typeof attendance!=='undefined'?attendance:{}, typeof attStore!=='undefined'?attStore:{}].forEach(src=>{
+        Object.entries(src||{}).forEach(([k,r])=>{ if(r && r.employeeId===emp.id) seen.set(k, r); });
+      });
+    }
+    seen.forEach(r=>{
+      if(!r || !r.date || r.date<s || r.date>e) return;
+      const c = lyCodeOf(r); if(c) cnt[c]++;
+    });
+    return cnt;
+  }
+
+  async function lyOpen(emp){
+    const old = document.getElementById('lyPop'); if(old) old.remove();
+    const s = lyGetStart(), e = lyEnd(s);
+    const ov = document.createElement('div');
+    ov.id = 'lyPop';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML = `
+      <div style="background:var(--surface);color:var(--text);border-radius:14px;padding:18px;max-width:420px;width:92%;box-shadow:0 10px 30px rgba(0,0,0,.25);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <h3 style="margin:0;font-size:16px;">${esc(emp.name)} · 연간 누계</h3>
+          <button type="button" class="btn ghost sm" id="lyClose">닫기</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${esc(s)} ~ ${esc(e)}</div>
+        <div class="ly-grid" id="lyGrid">${LY_CODES.map(c=>`<div class="ly-box"><div class="c">${c}</div><div class="n">…</div><div class="l">${esc(lyLabel(c))}</div></div>`).join('')}</div>
+        <div id="lyTotal" style="text-align:right;font-size:12.5px;color:var(--text-muted);">불러오는 중…</div>
+      </div>`;
+    document.body.appendChild(ov);
+    const close = ()=> ov.remove();
+    ov.addEventListener('click', ev=>{ if(ev.target===ov) close(); });
+    ov.querySelector('#lyClose').onclick = close;
+
+    const cnt = await lyCount(emp, s, e);
+    if(!document.body.contains(ov)) return;
+    let total = 0;
+    ov.querySelector('#lyGrid').innerHTML = LY_CODES.map(c=>{
+      total += cnt[c];
+      return `<div class="ly-box"><div class="c">${c}</div><div class="n" style="color:${cnt[c]?'var(--accent)':'var(--text-muted)'};">${cnt[c]}</div><div class="l">${esc(lyLabel(c))}</div></div>`;
+    }).join('');
+    ov.querySelector('#lyTotal').innerHTML = `합계 <b style="color:var(--text);font-size:15px;">${total}</b>일`;
+  }
+
+  // 근태관리 표에서 성명 클릭 → 팝업 (편집자·보기전용 모두)
+  document.addEventListener('click', function(ev){
+    const t = ev.target;
+    if(!t || !t.closest) return;
+    const td = t.closest('td.namecell');
+    if(!td) return;
+    const inCombined = !!td.closest('.cmbWrap') || (typeof VIEW!=='undefined' && VIEW==='combined');
+    if(!inCombined) return;
+    if(t.closest('input,select,button,.dragHandle,a')) return;
+    const emp = lyFindEmp(td);
+    if(emp) lyOpen(emp);
+  });
+
+  lyWatch();
+  lyObserve();
+})();
+</script>
+<!-- ===== 개인별 연간 누계 팝업 끝 ===== -->
