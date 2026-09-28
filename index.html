@@ -286,7 +286,6 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드 참조</a>
-    <a data-view="pay"><span class="ic">💰</span>급여 명세서</a>
     <div class="navttl" data-editor-only style="margin-top:10px;">데이터</div>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
@@ -1260,7 +1259,7 @@ async function initDb(){
     updateNavForRole();
     if(!canEdit && isEditorOnlyView(VIEW)) setView('combined'); // 보기 전용은 허용된 화면(근태관리)으로
     else render();
-    if(canEdit){ afterEditorLogin(); subscribePayroll(); } else unsubscribePayroll();
+    if(canEdit) afterEditorLogin();
   });
 }
 // 편집자 로그인 직후: 클라우드가 비어 있으면 이전 브라우저 데이터를 올리거나 기본값을 채움
@@ -1633,6 +1632,7 @@ async function deleteSupportPlanWeek(startStr){
 
 /* ========================= 렌더 라우터 ========================= */
 function setView(v){
+  if(v==='pay') v = 'combined'; // 급여 명세서는 잠시 숨김(나중에 다시 사용)
   if(authResolved && !canEdit && isEditorOnlyView(v)) v = 'combined';
   VIEW = v;
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
@@ -1701,7 +1701,7 @@ function render(){
   else if(VIEW==='splan') el.innerHTML = pageSupportPlan();
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
-  else if(VIEW==='pay') el.innerHTML = pagePay();
+
   afterRender();
   if(!canEdit) applyReadonly(el);
 }
