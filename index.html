@@ -529,10 +529,12 @@ function leaveCounts(emp, start){
   return {cnt, end, total: Object.values(cnt).reduce((a,b)=>a+b,0)};
 }
 let leaveEmpId = null;
+let leaveYear = null; // 연간 누계 연도(1/1~12/31). 처음엔 근태관리 종료일의 연도
 function renderLeaveModal(){
   const emp = employees.find(e=>e.id===leaveEmpId);
-  if(!emp || !codeStatsStart) return '';
-  const {cnt, end} = leaveCounts(emp, codeStatsStart);
+  if(!emp) return '';
+  if(!leaveYear) leaveYear = Number((codeStatsEnd || todayStr()).slice(0,4));
+  const {cnt} = leaveCounts(emp, `${leaveYear}-01-01`); // 원본처럼 연 단위(1/1~12/31)
   const cells = LEAVE_TYPES.map(([c,l])=>`<div class="card" style="padding:12px 10px;text-align:center;">
       <div class="n" style="font-size:22px;">${cnt[c]}</div><div class="l">${esc(l)}<br><b style="color:var(--text);">${c}</b></div></div>`).join('');
   return `<div id="leaveScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
@@ -541,7 +543,12 @@ function renderLeaveModal(){
         <h3 style="margin:0;">${esc(emp.name)} · 연간 누계</h3><span style="flex:1"></span>
         <button class="btn ghost sm" id="leaveClose">닫기</button>
       </div>
-      <p class="hint" style="margin:0 0 12px;">${esc(codeStatsStart)} ~ ${esc(end)} (시작일부터 1년)</p>
+      <div style="display:flex;align-items:center;gap:8px;margin:0 0 12px;">
+        <button class="btn ghost sm" id="leavePrevYear">◀</button>
+        <b style="font-size:15px;">${leaveYear}년</b>
+        <button class="btn ghost sm" id="leaveNextYear">▶</button>
+        <span class="hint" style="margin:0;">${leaveYear}-01-01 ~ ${leaveYear}-12-31</span>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">${cells}</div>
     </div>
   </div>`;
@@ -1374,7 +1381,7 @@ function ensureForView(){
   else if(VIEW==='combined' || VIEW==='codestats'){
     if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd);
     if(VIEW==='combined' && combinedYm){ const d = dstr(combinedYm.y, combinedYm.m, 1); ensureAttendanceRange(d, d); }
-    if(VIEW==='combined' && leaveEmpId && codeStatsStart) ensureAttendanceRange(codeStatsStart, yearEnd(codeStatsStart));
+    if(VIEW==='combined' && leaveEmpId && leaveYear) ensureAttendanceRange(`${leaveYear}-01-01`, `${leaveYear}-12-31`);
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); }
@@ -2913,6 +2920,9 @@ function afterRender(){
   el.querySelectorAll('[data-act="leave"]').forEach(x=>x.onclick=()=>{ leaveEmpId = x.dataset.emp; render(); });
   const leaveClose = document.getElementById('leaveClose'), leaveScrim = document.getElementById('leaveScrim');
   if(leaveClose) leaveClose.onclick = ()=>{ leaveEmpId = null; render(); };
+  const lpy = document.getElementById('leavePrevYear'), lny = document.getElementById('leaveNextYear');
+  if(lpy) lpy.onclick = ()=>{ leaveYear--; render(); };
+  if(lny) lny.onclick = ()=>{ leaveYear++; render(); };
   if(leaveScrim) leaveScrim.onclick = (e)=>{ if(e.target===leaveScrim){ leaveEmpId = null; render(); } };
   el.querySelectorAll('[data-act="grid-cell"]').forEach(x=>x.onclick=()=>{
     if(!canEdit){ requireEdit(); return; }
