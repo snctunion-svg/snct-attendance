@@ -463,13 +463,15 @@ const WORK_CODES = [
 const WORK_CODE_COLOR = {D:'amber', N:'night', OFF:'text-muted', DN:'accent', ND:'accent', DS:'ok', NS:'ok', IN:'text'};
 const CODE_LABELS = {
   FC:'고정주휴', MC:'이동주휴', FCH:'고정주휴_공휴', MCH:'이동주휴_공휴', MCS:'이동주휴_일요',
-  SC:'지원휴무', SP:'지원패스', VP:'휴무선택', VA:'휴가연차', UJ:'노조업무', E:'교육', EC:'기타'
+  SC:'지원휴무', SP:'지원패스', VP:'휴무선택', VA:'휴가연차', UJ:'노조업무', E:'교육', EC:'기타',
+  // 원본 근태코드표 기준 연가 코드 (TL=휴직)
+  RV:'정기휴가', AV:'연차휴가', LS:'장기근속', SL:'병가휴가', TL:'휴직'
 };
 const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 // 코드 색상 규칙: N,ND,NS,FCH,MCH,MCS,VP,VA는 빨간색, 나머지는 검은색
 // 코드 색: FC 진한 파랑, MC 초록, VA·VP 연한 파랑(하늘색), 아래 코드는 빨강, 나머지(D·N·DN·ND 등)는 검정
 const RED_CODES = new Set(['NS','FCH','MCH','MCS']);
-const SKY_CODES = new Set(['VA','VP']);
+const SKY_CODES = new Set(['VA','VP','RV','AV','LS','SL','TL']);
 function codeColor(code){ return code==='FC' ? 'var(--fc)' : code==='MC' ? 'var(--mc)' : SKY_CODES.has(code) ? 'var(--sky)' : (RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'); }
 // 근태관리 표 칸 채우기: 색이 있는 코드(FC 파랑·MC 초록·빨강 코드)는 칸 전체를 그 색으로, 글씨는 흰색
 function codeFill(code){ return code==='FC' ? 'var(--fill-fc)' : code==='MC' ? 'var(--fill-mc)' : SKY_CODES.has(code) ? 'var(--fill-sky)' : (RED_CODES.has(code) ? 'var(--fill-red)' : ''); }
@@ -498,7 +500,7 @@ function excelCode(ds, name){
 function excelSupportHas(ds, name){ return !!excelCode(ds, name); }
 const EXCEL_LEAVE = {"서인기": "251227:AV,260117:RV,260413:RV,260414:RV,260415:RV,260416:RV,260417:AV,260430:CK,260502:AV,260504:AV,260516:AV,260718:AV,260725:AV,260801:AV,260803:AV,260804:AV,260807:AV,260818:AV,260821:AV,260919:AV,261002:AV,261010:AV,261017:AV", "김치수": "251226:AV,251231:AV,260103:RV,260107:RV,260109:RV,260116:RV,260124:RV,260203:AV,260407:AV,260418:LS,260502:LS,260504:LS,260516:LS,260523:AV,260703:AV,260704:AV,260711:AV,260904:AV,260905:AV,260918:CK,260923:AV,260929:AV,260930:AV,261001:AV,261002:AV,261006:AV,261008:AV,261010:AV", "전재필": "251226:AV,260110:RV,260117:RV,260119:RV,260120:RV,260306:RV,260321:AV,260328:AV,260414:LS,260420:LS,260509:LS,260511:LS,260620:AV,260622:AV,260724:AV,260803:AV,260808:AV,260818:AV,260819:AV,260820:AV,260821:AV,260905:AV,260917:AV,260918:AV,261024:AV", "최두영": "260121:RV,260122:RV,260516:RV,260919:RV", "박무근": "260914:SV,260915:RV", "김태석": "260107:RV,260108:RV,260317:RV,260321:RV,260417:CK,260418:RV,260509:LS,260620:LS,260622:LS,260701:LS,260805:AV,260806:AV,260807:AV,260818:AV,260819:AV,260907:AV,260908:AV,260919:AV", "김기영": "251229:AV,251230:AV,260102:RV,260103:RV,260131:SV,260211:SV,260212:SV,260213:SV,260214:SV,260215:SV,260227:RV,260318:RV,260319:AV,260320:AV,260423:RV,260424:LS,260515:CK,260527:LS,260704:AV,260727:LS,260728:LS,260730:AV,260829:AV,261110:AV,261111:AV", "김의섭": "251231:AV,260220:RV,260321:RV,260325:RV,260331:RV,260425:RV,260508:AV,260707:AV,260731:AV,260801:LS,260803:LS,260804:LS,260805:LS,260820:AV,260821:AV,260910:AV,260911:AV", "김성용": "251224:AV,260110:RV,260225:RV,260404:RV,260411:RV,260417:RV,260428:SV,260511:AV,260512:AV,260513:AV,260514:AV,260515:AV,260526:AV,260527:AV,260528:AV,260613:AV,260624:AV,260625:AV,260701:SV,260722:AV,260723:AV,260724:AV,260728:AV,260904:AV,260905:AV,260919:AV,260921:AV", "김태화": "260102:RV,260124:RV,260131:RV,260321:RV,260411:RV,260421:AV,260424:AV,260509:AV,260620:LS,260627:LS,260804:LS,260814:LS,260912:AV", "최윤수": "260110:RV,260409:RV,260413:CK,260414:LS,260415:LS,260416:LS,260417:LS,260608:RV,260620:RV,260914:RV,261020:AV,261021:AV", "노인규": "251227:AV,251229:AV,251230:AV,251231:AV,260107:RV,260203:RV,260204:RV,260206:RV,260324:SV,260530:RV,260707:AV,260708:AV,260716:AV,260919:AV,261006:AV,261013:AV,261014:AV,261015:AV,261016:AV", "이동화": "260119:RV,260120:RV,260121:RV,260204:RV,260205:RV,260214:AV,260707:AV,260708:AV,260801:AV,260803:AV,260804:AV,260918:AV,260923:AV,261006:AV,261013:AV,261014:AV,261015:AV,261016:AV", "남궁영호": "251226:AV,260225:RV,260226:RV,260427:CK,260502:RV,260504:RV,260516:RV,260523:LS,260613:AV,260704:LS,260706:LS,260708:LS,260806:AV,260807:AV,260822:AV,260918:AV,261013:AV,261014:AV,261015:AV,261016:AV,261026:AV,261027:AV", "최현철": "260126:AV,260127:AV,260128:AV,260224:AV,260225:AV,260304:AV,260504:AV,260509:AV,260511:CK,260722:AV,260724:AV,260725:AV,260826:AV"};
 // 개인별 연가 누계(성명 클릭 팝업): 원본 '정기·연차·근속·병가' 표와 같은 방식(시작일부터 1년)
-const LEAVE_TYPES = [['RV','정기'],['AV','연차'],['LS','근속'],['SL','병가'],['TL','TL']];
+const LEAVE_TYPES = [['RV','정기'],['AV','연차'],['LS','근속'],['SL','병가'],['TL','휴직']];
 const LEAVE_SET = new Set(LEAVE_TYPES.map(x=>x[0]));
 let _excelLeaveMap = null;
 function excelLeave(ds, name){
@@ -532,20 +534,17 @@ let leaveEmpId = null;
 function renderLeaveModal(){
   const emp = employees.find(e=>e.id===leaveEmpId);
   if(!emp || !codeStatsStart) return '';
-  const {cnt, end, total} = leaveCounts(emp, codeStatsStart);
+  const {cnt, end} = leaveCounts(emp, codeStatsStart);
   const cells = LEAVE_TYPES.map(([c,l])=>`<div class="card" style="padding:12px 10px;text-align:center;">
       <div class="n" style="font-size:22px;">${cnt[c]}</div><div class="l">${esc(l)}<br><b style="color:var(--text);">${c}</b></div></div>`).join('');
   return `<div id="leaveScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:460px;width:92%;margin:0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        <h3 style="margin:0;">${esc(emp.name)} · 연가 누계</h3><span style="flex:1"></span>
+        <h3 style="margin:0;">${esc(emp.name)} · 연간 누계</h3><span style="flex:1"></span>
         <button class="btn ghost sm" id="leaveClose">닫기</button>
       </div>
       <p class="hint" style="margin:0 0 12px;">${esc(codeStatsStart)} ~ ${esc(end)} (시작일부터 1년)</p>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">${cells}</div>
-      <div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--accent-soft);display:flex;justify-content:space-between;align-items:center;">
-        <b>연가 누계</b><b style="font-size:20px;color:var(--accent);">${total}일</b>
-      </div>
     </div>
   </div>`;
 }
@@ -564,6 +563,8 @@ function isRefCode(c){ return !!c && (refWorkCodes().has(c) || refStatusCodes().
 // 셀에 보여줄 코드: 근태코드(참조표에 있을 때) → 근무코드(OFF 제외, 참조표에 있을 때)
 function gridCode(rec, ds, name){
   if(rec && rec.statusCode && isRefCode(rec.statusCode)) return rec.statusCode;
+  // 예전 가져오기에서 빠졌던 원본 LS(장기근속)도 표시
+  if(ds && name && !(rec && rec.attManual)){ const lc = excelLeave(ds, name); if(lc==='LS' && isRefCode('LS')) return 'LS'; }
   let a = rec ? rec.attCode : undefined;
   if(a===undefined) a = (ds && name) ? excelCode(ds, name) : ''; // 예전 버전으로 가져온 기록은 원본 엑셀 값 사용
   if(!a || a==='OFF') return '';
@@ -643,7 +644,7 @@ function quickTimeButtons(name, options, curVal){
 }
 // 토요일 만근 자동 판정 (원본 엑셀 규칙 — 864개 토요일 전부 대조 일치):
 // 그 주 월~금 5일이 모두 '출근(본출근 입력) · 공휴일 · 인정 근태코드' 중 하나면 만근 → 토요일 근무는 특근(SA)
-const MANGUEN_CODES = new Set(['VA','VP','E','FCH','MCH','UJ','LS','SV','CK']);
+const MANGUEN_CODES = new Set(['VA','VP','E','FCH','MCH','UJ','LS','SV','CK','AV','RV']);
 function autoManguen(dateStr, empId){
   if(!empId || typeof attStore==='undefined') return false;
   const [y,m,d] = dateStr.split('-').map(Number);
@@ -1890,7 +1891,7 @@ function pageCombined(){
     const ot = x => hO ? '' : fmtH(x);
     return `<tr>
       <td style="text-align:center;">${idx+1}</td>
-      <td class="namecell nameLink" style="left:34px;" data-act="leave" data-emp="${esc(r.emp.id)}" title="연가 누계 보기">${esc(r.emp.name)}</td>
+      <td class="namecell nameLink" style="left:34px;" data-act="leave" data-emp="${esc(r.emp.id)}" title="연간 누계 보기">${esc(r.emp.name)}</td>
       <td class="sepL" style="text-align:center;font-weight:700;">${v(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
       <td class="sepL" style="text-align:center;">${v(r.codeCnt.FCH)}</td><td style="text-align:center;">${v(r.codeCnt.MCH)}</td>
       <td style="text-align:center;">${v(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
@@ -1923,7 +1924,7 @@ function pageCombined(){
       }
       return `<td class="daycell ${cls}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
-    return `<tr><td class="namecell nameLink" data-act="leave" data-emp="${esc(e.id)}" title="연가 누계 보기">${esc(e.name)}</td>${cells}</tr>`;
+    return `<tr><td class="namecell nameLink" data-act="leave" data-emp="${esc(e.id)}" title="연간 누계 보기">${esc(e.name)}</td>${cells}</tr>`;
   }).join('');
 
   const modal = gridEdit ? renderGridEditModal() : '';
