@@ -31,9 +31,9 @@
     --text:#e5e9f0; --text-muted:#8b96a8; --border:#2c3646; --surface:#161d2b; --bg:#0c1119;
   }
 }
-:root{ --ot:#854d0e; --ot-soft:#fef9c3; --mc:#15803d; --fill-fc:#cfe0ff; --fill-mc:#c9f2d6; --fill-red:#fdd5d5; --fc:#1e3a8a; --wk:#047857; --wk-soft:#d1fae5; --sup:#1d4ed8; --sup-soft:#dbeafe; --hol:#c2410c; --hol-soft:#ffedd5; }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --ot:#fde047; --ot-soft:#332a05; --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; } }
-:root[data-theme="dark"]{ --ot:#fde047; --ot-soft:#332a05; --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; }
+:root{ --sky:#0369a1; --fill-sky:#e0f2fe; --ot:#854d0e; --ot-soft:#fef9c3; --mc:#15803d; --fill-fc:#cfe0ff; --fill-mc:#c9f2d6; --fill-red:#fdd5d5; --fc:#1e3a8a; --wk:#047857; --wk-soft:#d1fae5; --sup:#1d4ed8; --sup-soft:#dbeafe; --hol:#c2410c; --hol-soft:#ffedd5; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --sky:#7dd3fc; --fill-sky:#0c2d44; --ot:#fde047; --ot-soft:#332a05; --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; } }
+:root[data-theme="dark"]{ --sky:#7dd3fc; --fill-sky:#0c2d44; --ot:#fde047; --ot-soft:#332a05; --fill-fc:#1c2c52; --fill-mc:#12351f; --fill-red:#44181a; --mc:#4ade80; --fc:#93c5fd; --wk:#34d399; --wk-soft:#06291d; --sup:#60a5fa; --sup-soft:#0f1f3d; --hol:#fb923c; --hol-soft:#3a1706; }
 :root[data-theme="dark"]{
   --accent:#60a5fa; --accent-soft:#101d33; --accent-line:#1e3a5f;
   --warn:#f87171; --warn-soft:#341316; --warn-line:#7f1d1d;
@@ -126,6 +126,8 @@ td.gc,th.gc{background:var(--g-soft) !important;color:var(--g);}
 td.gc b,td.gc strong{color:var(--g);}
 th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .gtbl .sepL{border-left:3px solid var(--text) !important;}
+.nameLink{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
+.nameLink:hover{color:var(--accent);}
 :root th.gh.g-blk{background:#1f2937 !important;}
 .otSum td.gc,.otSum th.gc,.otSum td.otc{min-width:50px;padding:4px 6px !important;}
 .dragHandle{display:inline-flex;align-items:center;justify-content:center;width:26px;height:28px;margin-right:4px;border-radius:6px;
@@ -465,11 +467,12 @@ const CODE_LABELS = {
 };
 const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 // 코드 색상 규칙: N,ND,NS,FCH,MCH,MCS,VP,VA는 빨간색, 나머지는 검은색
-// 코드 색: FC는 진한 파랑, 아래 코드는 빨강, 나머지(N 포함)는 검정
-const RED_CODES = new Set(['ND','NS','FCH','MCH','MCS','VP','VA']);
-function codeColor(code){ return code==='FC' ? 'var(--fc)' : code==='MC' ? 'var(--mc)' : (RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'); }
+// 코드 색: FC 진한 파랑, MC 초록, VA·VP 연한 파랑(하늘색), 아래 코드는 빨강, 나머지(D·N·DN·ND 등)는 검정
+const RED_CODES = new Set(['NS','FCH','MCH','MCS']);
+const SKY_CODES = new Set(['VA','VP']);
+function codeColor(code){ return code==='FC' ? 'var(--fc)' : code==='MC' ? 'var(--mc)' : SKY_CODES.has(code) ? 'var(--sky)' : (RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'); }
 // 근태관리 표 칸 채우기: 색이 있는 코드(FC 파랑·MC 초록·빨강 코드)는 칸 전체를 그 색으로, 글씨는 흰색
-function codeFill(code){ return code==='FC' ? 'var(--fill-fc)' : code==='MC' ? 'var(--fill-mc)' : (RED_CODES.has(code) ? 'var(--fill-red)' : ''); }
+function codeFill(code){ return code==='FC' ? 'var(--fill-fc)' : code==='MC' ? 'var(--fill-mc)' : SKY_CODES.has(code) ? 'var(--fill-sky)' : (RED_CODES.has(code) ? 'var(--fill-red)' : ''); }
 // 근태코드 참조에 있는(숨기지 않은) 코드만 유효 — 화면 표시와 가져오기에 공통 사용
 function refWorkCodes(){ return new Set(WORK_CODES.map(w=>w.code).filter(c=>!hiddenCodes.has(c))); }
 function refStatusCodes(){
@@ -493,6 +496,59 @@ function excelCode(ds, name){
   return (ds <= IMPORT_LAST_DATE && _excelSupMap.get(ds+'|'+name)) || '';
 }
 function excelSupportHas(ds, name){ return !!excelCode(ds, name); }
+const EXCEL_LEAVE = {"서인기": "251227:AV,260117:RV,260413:RV,260414:RV,260415:RV,260416:RV,260417:AV,260430:CK,260502:AV,260504:AV,260516:AV,260718:AV,260725:AV,260801:AV,260803:AV,260804:AV,260807:AV,260818:AV,260821:AV,260919:AV,261002:AV,261010:AV,261017:AV", "김치수": "251226:AV,251231:AV,260103:RV,260107:RV,260109:RV,260116:RV,260124:RV,260203:AV,260407:AV,260418:LS,260502:LS,260504:LS,260516:LS,260523:AV,260703:AV,260704:AV,260711:AV,260904:AV,260905:AV,260918:CK,260923:AV,260929:AV,260930:AV,261001:AV,261002:AV,261006:AV,261008:AV,261010:AV", "전재필": "251226:AV,260110:RV,260117:RV,260119:RV,260120:RV,260306:RV,260321:AV,260328:AV,260414:LS,260420:LS,260509:LS,260511:LS,260620:AV,260622:AV,260724:AV,260803:AV,260808:AV,260818:AV,260819:AV,260820:AV,260821:AV,260905:AV,260917:AV,260918:AV,261024:AV", "최두영": "260121:RV,260122:RV,260516:RV,260919:RV", "박무근": "260914:SV,260915:RV", "김태석": "260107:RV,260108:RV,260317:RV,260321:RV,260417:CK,260418:RV,260509:LS,260620:LS,260622:LS,260701:LS,260805:AV,260806:AV,260807:AV,260818:AV,260819:AV,260907:AV,260908:AV,260919:AV", "김기영": "251229:AV,251230:AV,260102:RV,260103:RV,260131:SV,260211:SV,260212:SV,260213:SV,260214:SV,260215:SV,260227:RV,260318:RV,260319:AV,260320:AV,260423:RV,260424:LS,260515:CK,260527:LS,260704:AV,260727:LS,260728:LS,260730:AV,260829:AV,261110:AV,261111:AV", "김의섭": "251231:AV,260220:RV,260321:RV,260325:RV,260331:RV,260425:RV,260508:AV,260707:AV,260731:AV,260801:LS,260803:LS,260804:LS,260805:LS,260820:AV,260821:AV,260910:AV,260911:AV", "김성용": "251224:AV,260110:RV,260225:RV,260404:RV,260411:RV,260417:RV,260428:SV,260511:AV,260512:AV,260513:AV,260514:AV,260515:AV,260526:AV,260527:AV,260528:AV,260613:AV,260624:AV,260625:AV,260701:SV,260722:AV,260723:AV,260724:AV,260728:AV,260904:AV,260905:AV,260919:AV,260921:AV", "김태화": "260102:RV,260124:RV,260131:RV,260321:RV,260411:RV,260421:AV,260424:AV,260509:AV,260620:LS,260627:LS,260804:LS,260814:LS,260912:AV", "최윤수": "260110:RV,260409:RV,260413:CK,260414:LS,260415:LS,260416:LS,260417:LS,260608:RV,260620:RV,260914:RV,261020:AV,261021:AV", "노인규": "251227:AV,251229:AV,251230:AV,251231:AV,260107:RV,260203:RV,260204:RV,260206:RV,260324:SV,260530:RV,260707:AV,260708:AV,260716:AV,260919:AV,261006:AV,261013:AV,261014:AV,261015:AV,261016:AV", "이동화": "260119:RV,260120:RV,260121:RV,260204:RV,260205:RV,260214:AV,260707:AV,260708:AV,260801:AV,260803:AV,260804:AV,260918:AV,260923:AV,261006:AV,261013:AV,261014:AV,261015:AV,261016:AV", "남궁영호": "251226:AV,260225:RV,260226:RV,260427:CK,260502:RV,260504:RV,260516:RV,260523:LS,260613:AV,260704:LS,260706:LS,260708:LS,260806:AV,260807:AV,260822:AV,260918:AV,261013:AV,261014:AV,261015:AV,261016:AV,261026:AV,261027:AV", "최현철": "260126:AV,260127:AV,260128:AV,260224:AV,260225:AV,260304:AV,260504:AV,260509:AV,260511:CK,260722:AV,260724:AV,260725:AV,260826:AV"};
+// 개인별 연가 누계(성명 클릭 팝업): 원본 '정기·연차·근속·병가' 표와 같은 방식(시작일부터 1년)
+const LEAVE_TYPES = [['RV','정기'],['AV','연차'],['LS','근속'],['SL','병가'],['TL','TL']];
+const LEAVE_SET = new Set(LEAVE_TYPES.map(x=>x[0]));
+let _excelLeaveMap = null;
+function excelLeave(ds, name){
+  if(!_excelLeaveMap){
+    _excelLeaveMap = new Map();
+    Object.entries(EXCEL_LEAVE).forEach(([n, list])=> list.split(',').forEach(x=>{
+      const [d, c] = x.split(':');
+      _excelLeaveMap.set('20'+d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4,6)+'|'+n, c);
+    }));
+  }
+  return _excelLeaveMap.get(ds+'|'+name) || '';
+}
+// 그 날의 연가 코드: 편집자가 직접 입력한 코드 → 원본 엑셀 코드 → 저장된 코드 순
+function leaveCodeFor(rec, ds, name){
+  let c = '';
+  if(rec && rec.attManual) c = rec.statusCode || rec.attCode || '';
+  else c = excelLeave(ds, name) || (rec ? (rec.rawCode || rec.statusCode || '') : '');
+  return LEAVE_SET.has(c) ? c : '';
+}
+function yearEnd(start){ const [y,m,d] = start.split('-').map(Number); return addDays(dstr(y+1, m, Math.min(d, daysInMonth(y+1, m))), -1); }
+function leaveCounts(emp, start){
+  const end = yearEnd(start), name = String(emp.name||'').trim(), cnt = {};
+  LEAVE_TYPES.forEach(([c])=> cnt[c] = 0);
+  for(let ds=start; ds<=end; ds=addDays(ds,1)){
+    const c = leaveCodeFor(attStore[ds+'_'+emp.id], ds, name);
+    if(c) cnt[c]++;
+  }
+  return {cnt, end, total: Object.values(cnt).reduce((a,b)=>a+b,0)};
+}
+let leaveEmpId = null;
+function renderLeaveModal(){
+  const emp = employees.find(e=>e.id===leaveEmpId);
+  if(!emp || !codeStatsStart) return '';
+  const {cnt, end, total} = leaveCounts(emp, codeStatsStart);
+  const cells = LEAVE_TYPES.map(([c,l])=>`<div class="card" style="padding:12px 10px;text-align:center;">
+      <div class="n" style="font-size:22px;">${cnt[c]}</div><div class="l">${esc(l)}<br><b style="color:var(--text);">${c}</b></div></div>`).join('');
+  return `<div id="leaveScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
+    <div class="panel" style="max-width:460px;width:92%;margin:0;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <h3 style="margin:0;">${esc(emp.name)} · 연가 누계</h3><span style="flex:1"></span>
+        <button class="btn ghost sm" id="leaveClose">닫기</button>
+      </div>
+      <p class="hint" style="margin:0 0 12px;">${esc(codeStatsStart)} ~ ${esc(end)} (시작일부터 1년)</p>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">${cells}</div>
+      <div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--accent-soft);display:flex;justify-content:space-between;align-items:center;">
+        <b>연가 누계</b><b style="font-size:20px;color:var(--accent);">${total}일</b>
+      </div>
+    </div>
+  </div>`;
+}
 function isSupportCode(a){ return !!a && (a==='SP' || a==='D' || a==='N' || a==='DN' || a.startsWith('ND')); }
 function isSupportDay(rec){
   if(!rec) return false;
@@ -1252,7 +1308,7 @@ attendance = attStore; codeStatsAttendance = attStore; otMatrixAttendance = attS
 const ATT_DEFAULTS = {workCode:'OFF', statusCode:'', note:'', extCode:false, manguen:false};
 function normAtt(v){ return Object.assign({}, ATT_DEFAULTS, v); }
 const monthSubs = new Map(); // 'YYYY-MM' -> unsubscribe
-const MONTH_SUB_MAX = 14;
+const MONTH_SUB_MAX = 18;
 function nextYm(ym){ const [y,m] = ym.split('-').map(Number); return m===12 ? `${y+1}-01` : `${y}-${pad2(m+1)}`; }
 function ensureAttendanceRange(start, end){
   if(!db || !start || !end) return;
@@ -1260,7 +1316,7 @@ function ensureAttendanceRange(start, end){
   start = addDays(start, -6); // 토요일 만근 판정에 필요한 그 주 월~금 기록까지
   let ym = start.slice(0,7), guard = 0;
   const endYm = end.slice(0,7);
-  while(ym <= endYm && guard++ < 12){ ensureMonth(ym); ym = nextYm(ym); }
+  while(ym <= endYm && guard++ < 15){ ensureMonth(ym); ym = nextYm(ym); }
 }
 function ensureMonth(ym){
   if(monthSubs.has(ym)){ const fn = monthSubs.get(ym); monthSubs.delete(ym); monthSubs.set(ym, fn); return; }
@@ -1291,6 +1347,7 @@ function ensureForView(){
   else if(VIEW==='combined' || VIEW==='codestats'){
     if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd);
     if(VIEW==='combined' && combinedYm){ const d = dstr(combinedYm.y, combinedYm.m, 1); ensureAttendanceRange(d, d); }
+    if(VIEW==='combined' && leaveEmpId && codeStatsStart) ensureAttendanceRange(codeStatsStart, yearEnd(codeStatsStart));
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); }
@@ -1833,7 +1890,7 @@ function pageCombined(){
     const ot = x => hO ? '' : fmtH(x);
     return `<tr>
       <td style="text-align:center;">${idx+1}</td>
-      <td class="namecell" style="left:34px;">${esc(r.emp.name)}</td>
+      <td class="namecell nameLink" style="left:34px;" data-act="leave" data-emp="${esc(r.emp.id)}" title="연가 누계 보기">${esc(r.emp.name)}</td>
       <td class="sepL" style="text-align:center;font-weight:700;">${v(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
       <td class="sepL" style="text-align:center;">${v(r.codeCnt.FCH)}</td><td style="text-align:center;">${v(r.codeCnt.MCH)}</td>
       <td style="text-align:center;">${v(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
@@ -1866,7 +1923,7 @@ function pageCombined(){
       }
       return `<td class="daycell ${cls}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
-    return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
+    return `<tr><td class="namecell nameLink" data-act="leave" data-emp="${esc(e.id)}" title="연가 누계 보기">${esc(e.name)}</td>${cells}</tr>`;
   }).join('');
 
   const modal = gridEdit ? renderGridEditModal() : '';
@@ -1910,6 +1967,7 @@ function pageCombined(){
   </div>
   <p class="hint">월별 근태코드의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(편집자). 근태코드 참조에 있는 코드만 표시됩니다.</p>
   ${modal}
+  ${leaveEmpId ? renderLeaveModal() : ''}
   `;
 }
 
@@ -2820,6 +2878,10 @@ function afterRender(){
     if(dbReady) subscribeCodeStatsRange(codeStatsStart, codeStatsEnd);
     render();
   };
+  el.querySelectorAll('[data-act="leave"]').forEach(x=>x.onclick=()=>{ leaveEmpId = x.dataset.emp; render(); });
+  const leaveClose = document.getElementById('leaveClose'), leaveScrim = document.getElementById('leaveScrim');
+  if(leaveClose) leaveClose.onclick = ()=>{ leaveEmpId = null; render(); };
+  if(leaveScrim) leaveScrim.onclick = (e)=>{ if(e.target===leaveScrim){ leaveEmpId = null; render(); } };
   el.querySelectorAll('[data-act="grid-cell"]').forEach(x=>x.onclick=()=>{
     if(!canEdit){ requireEdit(); return; }
     gridEdit = {date:x.dataset.date, employeeId:x.dataset.emp};
@@ -3104,10 +3166,11 @@ function importAttendanceByName(obj){
   rows.forEach(r=>{
     const id = byName[String(r.name||'').trim()];
     if(!id){ missing[r.name] = (missing[r.name]||0) + 1; return; }
-    const {name, code, workCheck, ...fields} = r;
+    const {name, code, workCheck, rawCode: _raw, ...fields} = r;
     // 근무코드·근태코드: 근태코드 참조에 있는 것만 반영
     // 근태코드 칸 원래 값은 항상 attCode로 저장(지원근무 일수 계산용 — 참조표·숨김 설정과 무관)
     fields.attCode = code || '';
+    if(r.rawCode) fields.rawCode = r.rawCode; // 원본 코드(AV·RV 등 — 연가 누계용)
     if(code){
       if(ALL_WORK.has(code)){ fields.workCode = code; fields.statusCode = ''; nCode++; }
       else if(statusSet.has(code)){ fields.statusCode = code; fields.workCode = (workCheck && ALL_WORK.has(workCheck)) ? workCheck : 'OFF'; nCode++; }
