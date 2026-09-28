@@ -179,6 +179,10 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 .ctbl.gtbl td.namecell,.ctbl.gtbl th.namehead{padding:2px 8px !important;font-size:11px !important;}
 .ctbl.gtbl td.daycell{width:30px !important;}
 td.daycell.filled{border-color:rgba(255,255,255,.7);}
+.gtbl th.wkA{background:#eef0f3 !important;} .gtbl th.wkB{background:#dde1e7 !important;}
+.gtbl td.daycell.wkA{background:#fafbfc;} .gtbl td.daycell.wkB{background:#eceef2;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
+  :root:not([data-theme="light"]) .gtbl td.daycell.wkA{background:#161d2b;} :root:not([data-theme="light"]) .gtbl td.daycell.wkB{background:#1d2637;} }
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
 .cmbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
 .cmbWrap .panel{margin-bottom:0;padding:14px;}
@@ -195,6 +199,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
 #dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;}
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
+#dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;border:2px solid #E03131 !important;}
+#dpTable th.dpMealH{border-left:2px solid #E03131 !important;border-right:2px solid #E03131 !important;border-top:2px solid #E03131 !important;}
+#dpTable .dpNote{width:100%;height:100%;min-height:34px;border:0;background:transparent;color:#E03131;font-weight:800;font-size:12px;text-align:center;padding:0 2px;font-family:inherit;}
+#dpTable .dpNote:focus{outline:2px solid #E03131;outline-offset:-2px;background:#fff5f5;}
+#dpTable .dpNote:disabled{color:#E03131;opacity:1;-webkit-text-fill-color:#E03131;}
 #dpTable .dpI{position:sticky;background:var(--surface);z-index:2;}
 #dpTable thead .dpI{z-index:4;background:var(--bg);}
 #dpTable .dpI1{left:0;min-width:40px;width:40px;}
@@ -356,6 +365,25 @@ const DISPATCH_CATS = [
   {key:'정비', bg:'#F3B3F3', fg:'#5c005c', border:'#F3B3F3'},
   {key:'기타', bg:'#7A2FA8', fg:'#ffffff', border:'#7A2FA8'}
 ];
+// 배차표의 조출·중식·석출·야식 시간 칸(빨간 시각: 07·12·18·24시) — 칠하기 대신 한글·숫자를 직접 입력
+// 월별 표 주 단위 색 구분(월~일 한 주씩 연한 회색 / 조금 더 진한 회색 번갈아)
+function weekBand(ds){
+  const [y,m,d] = mondayOf(ds).split('-').map(Number);
+  const wk = Math.floor(Date.UTC(y,m-1,d) / (7*86400000));
+  return (wk % 2) ? 'wkB' : 'wkA';
+}
+function isMealSlot(s){ const hh = String(s).split(':')[0]; return hh==='07' || hh==='12' || hh==='18' || hh==='24'; }
+async function saveDispatchNote(dateStr, shift, empId, slot, text){
+  if(!requireEdit()) return;
+  const id = `${dateStr}_${shift}_${empId}`;
+  const cur = Object.assign({date:dateStr, shift, employeeId:empId, slots:{}}, dispatch[id]||{});
+  cur.notes = Object.assign({}, cur.notes||{}, {[slot]: text});
+  if(!text) delete cur.notes[slot];
+  dispatch[id] = cur;
+  if(!db){ render(); return; }
+  try{ await db.collection('dispatch').doc(id).set(cur); }
+  catch(err){ showToast(saveErrMsg('배차 저장에 실패했습니다.', err)); render(); }
+}
 function dispatchCat(key){ return DISPATCH_CATS.find(c=>c.key===key); }
 function currentEmpSlots(empId){
   const id = `${dispatchDate}_${dispatchShift}_${empId}`;
@@ -1384,7 +1412,7 @@ function ensureForView(){
     if(VIEW==='combined' && leaveEmpId && leaveYear) ensureAttendanceRange(`${leaveYear}-01-01`, `${leaveYear}-12-31`);
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
-  else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); }
+  else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }
 }
 // 기존 호출부 호환용
 function subscribeAttendanceMonth(y,m){ const d = dstr(y,m,1); ensureAttendanceRange(d, d); }
@@ -1731,7 +1759,7 @@ function pageGrid(){
   const head = `<th class="namehead">성명</th>` + days.map(d=>{
     const ds = dstr(curYear,curMonth,d);
     const cls = dayCellClass(ds, curYear, curMonth, d);
-    return `<th class="${cls}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(curYear,curMonth,d)}</th>`;
+    return `<th class="${cls} ${weekBand(ds)}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(curYear,curMonth,d)}</th>`;
   }).join('');
 
   const sortedEmployees = employees.slice().sort((a,b)=>{
@@ -1750,7 +1778,7 @@ function pageGrid(){
         fill = dc ? codeFill(dc) : '';
         if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
-      return `<td class="daycell ${cls}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
+      return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     const orderTag = e.team ? `<span style="color:var(--text-muted);font-weight:400;font-size:10.5px;">${esc(e.team)}조${e.teamOrder?' '+e.teamOrder+'번':''}</span> ` : '';
     return `<tr><td class="namecell">${orderTag}${esc(e.name)}</td>${cells}</tr>`;
@@ -1844,22 +1872,8 @@ function renderGridEditModal(){
 }
 
 /* ========================= 근태관리(통합: 집계+표) ========================= */
-function pageCombined(){
-  // ① 근태 집계: 시작일~종료일 기간 기준
-  if(!codeStatsStart || !codeStatsEnd){
-    const t = new Date();
-    codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1);
-    codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1));
-  }
-  // ② 월별 근태코드: 달력 한 달 기준
-  if(!combinedYm){ const t = new Date(); combinedYm = {y:t.getFullYear(), m:t.getMonth()+1}; }
-  const rangeStart = codeStatsStart, rangeEnd = codeStatsEnd;
-  const sortedEmployees = employees.slice().filter(e=> !combinedTeamFilter || (e.team||'')===combinedTeamFilter).sort((a,b)=>{
-    const ta = a.team||'9', tb = b.team||'9';
-    if(ta!==tb) return ta<tb?-1:1;
-    return (a.teamOrder||999)-(b.teamOrder||999);
-  });
-
+// 근태관리 집계(지원·휴일·평일 개수, OT, 조별 순번) — 근태관리 표와 배차표 OT순번에서 함께 사용
+function combinedData(sortedEmployees, rangeStart, rangeEnd){
   let noAttCount = 0; // 근태코드 칸 정보 없이 저장된 기록 수(예전 버전으로 가져온 경우)
   const perEmp = sortedEmployees.map(e=>{
     let codeCnt = {FCH:0,MCH:0,MCS:0,FC:0,MC:0};
@@ -1906,6 +1920,25 @@ function pageCombined(){
   const rankGyeWk=rankBy(r=>r.gyeWk,false,inAll), rankOtHol=rankBy(r=>r.otHoliday,true,inOt), rankOtWk=rankBy(r=>r.otWeekdayFinal,true,inOt);
   const cntBy = ok => { const m = {}; perEmp.forEach(r=>{ if(ok(r)) m[teamOf(r)] = (m[teamOf(r)]||0) + 1; }); return m; };
   const nAllT = cntBy(inAll), nOtT = cntBy(inOt);
+  return {perEmp, rankSup, rankGyeHol, rankMCS, rankGyeWk, rankOtHol, rankOtWk, nAllT, nOtT, teamOf};
+}
+function pageCombined(){
+  // ① 근태 집계: 시작일~종료일 기간 기준
+  if(!codeStatsStart || !codeStatsEnd){
+    const t = new Date();
+    codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1);
+    codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1));
+  }
+  // ② 월별 근태코드: 달력 한 달 기준
+  if(!combinedYm){ const t = new Date(); combinedYm = {y:t.getFullYear(), m:t.getMonth()+1}; }
+  const rangeStart = codeStatsStart, rangeEnd = codeStatsEnd;
+  const sortedEmployees = employees.slice().filter(e=> !combinedTeamFilter || (e.team||'')===combinedTeamFilter).sort((a,b)=>{
+    const ta = a.team||'9', tb = b.team||'9';
+    if(ta!==tb) return ta<tb?-1:1;
+    return (a.teamOrder||999)-(b.teamOrder||999);
+  });
+
+  const {perEmp, rankSup, rankGyeHol, rankMCS, rankGyeWk, rankOtHol, rankOtWk, nAllT, nOtT, teamOf} = combinedData(sortedEmployees, rangeStart, rangeEnd);
 
   const statHead = `<tr>
     <th class="namehead" rowspan="2">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
@@ -1947,7 +1980,7 @@ function pageCombined(){
   const dayHead = monthDays.map(ds=>{
     const d = Number(ds.slice(8,10));
     const cls = dayCellClass(ds, cy, cm, d);
-    return `<th class="${cls}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(cy,cm,d)}</th>`;
+    return `<th class="${cls} ${weekBand(ds)}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(cy,cm,d)}</th>`;
   }).join('');
   const codeRows = sortedEmployees.map(e=>{
     const cells = monthDays.map(ds=>{
@@ -1960,7 +1993,7 @@ function pageCombined(){
         fill = dc ? codeFill(dc) : '';
         if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
-      return `<td class="daycell ${cls}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
+      return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     return `<tr><td class="namecell nameLink" data-act="leave" data-emp="${esc(e.id)}" title="연간 누계 보기">${esc(e.name)}</td>${cells}</tr>`;
   }).join('');
@@ -2464,7 +2497,10 @@ function pageDispatch(){
   const palette = DISPATCH_CATS.map(c=>`<button type="button" class="dpCatBtn" data-cat="${esc(c.key)}"
       style="background:${c.bg};color:${c.fg};border:2px solid ${dispatchPaint===c.key?'var(--text)':c.border};border-radius:10px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:${dispatchPaint===c.key?'0 0 0 2px var(--accent)':'none'};">${esc(c.key)}</button>`).join('');
 
-  function slotCell(empId, s, catKey){
+  function slotCell(empId, s, catKey, note){
+    if(isMealSlot(s)){
+      return `<td class="dpMeal"><input type="text" class="dpNote" data-dp-note-emp="${esc(empId)}" data-dp-note-slot="${esc(s)}" value="${esc(note||'')}" maxlength="6"></td>`;
+    }
     const cat = dispatchCat(catKey);
     const bg = cat ? cat.bg : 'transparent';
     const fg = cat ? cat.fg : 'var(--text)';
@@ -2472,15 +2508,28 @@ function pageDispatch(){
       style="background:${bg};color:${fg};"></td>`;
   }
 
-  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4">퇴근</th><th class="dpI dpI5">승무</th>` +
+  // 그 날짜의 OT 순번: 일요일·공휴일이면 휴일 OT 순번, 아니면 평일 OT 순번 (근태관리 집계 기간·조별 순번 기준)
+  if(!codeStatsStart || !codeStatsEnd){ const t = new Date(); codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1); codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1)); }
+  const dayIsHol = ['SU','H'].includes(dayCategory(ds, false));
+  const allSorted = employees.slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
+  const cd = combinedData(allSorted, codeStatsStart, codeStatsEnd);
+  const otRankOf = {};
+  cd.perEmp.forEach((r,i)=>{ otRankOf[r.emp.id] = {n: dayIsHol ? cd.rankOtHol[i] : cd.rankOtWk[i], tot: cd.nOtT[cd.teamOf(r)]||0}; });
+  const otRankCell = empId => {
+    const o = otRankOf[empId]; if(!o || o.n==null) return '';
+    const g = dayIsHol ? 'yel' : 'pur';
+    return `<span class="rk ${o.n<=3?'t1':(o.n<=Math.ceil(o.tot/2)?'t2':'t3')} g-${g}">${o.n}</span>`;
+  };
+  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${dayIsHol?'yel':'pur'}" title="근태관리 집계 기간(${esc(codeStatsStart)}~${esc(codeStatsEnd)}) 기준">${dayIsHol?'휴일':'평일'}<br>OT순번</th><th class="dpI dpI5">승무</th>` +
     slots.map(s=>{
       const [hh,mm] = s.split(':');
-      const isRed = hh==='07' || hh==='12' || hh==='18' || hh==='24';
+      const isRed = isMealSlot(s);
       const color = isRed ? '#E03131' : '#000000';
+      const cls = 'dpSlotH' + (isRed ? ' dpMealH' : '');
       if(mm==='00'){
-        return `<th class="dpSlotH" style="color:${color};font-size:15px;font-weight:800;">${esc(hh)}</th>`;
+        return `<th class="${cls}" style="color:${color};font-size:15px;font-weight:800;">${esc(hh)}</th>`;
       }
-      return `<th class="dpSlotH" style="color:${color};font-size:10px;font-weight:600;">${esc(mm)}</th>`;
+      return `<th class="${cls}" style="color:${color};font-size:10px;font-weight:600;">${esc(mm)}</th>`;
     }).join('');
 
   const slotCounts = slots.map(()=>0); // 시간대(칸)별 배치 인원 수
@@ -2492,6 +2541,8 @@ function pageDispatch(){
     let paintedSlots = 0;
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
+      const note = drec && drec.notes ? (drec.notes[s]||'') : '';
+      if(isMealSlot(s)){ if(note) slotCounts[si]++; return slotCell(e.id, s, '', note); }
       if(v){ paintedSlots++; slotCounts[si]++; }
       return slotCell(e.id, s, v);
     }).join('');
@@ -2499,7 +2550,7 @@ function pageDispatch(){
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:left;">${esc(e.name)}</td>
       <td class="dpI dpI3" style="color:${codeColor(displayCode(rec))};">${esc(displayCode(rec))}</td>
-      <td class="dpI dpI4">${esc(rec.checkOut||'')}</td>
+      <td class="dpI dpI4">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
       ${cells}
     </tr>`;
@@ -2515,6 +2566,8 @@ function pageDispatch(){
     let supPainted = 0;
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
+      const note = drec && drec.notes ? (drec.notes[s]||'') : '';
+      if(isMealSlot(s)){ if(note) slotCounts[si]++; return slotCell(supId, s, '', note); }
       if(v){ supPainted++; slotCounts[si]++; }
       return slotCell(supId, s, v);
     }).join('');
@@ -2551,7 +2604,7 @@ function pageDispatch(){
   <div style="background:#E8B84B;color:#3a2a00;font-weight:700;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;">${esc(dateBanner)}</div>
   ${sortedEmployees.length? `<div class="dpScrollBar">
       <button type="button" class="btn ghost sm" data-dp-scroll="-1">◀ 앞 시간</button>
-      <span class="hint" style="margin:0;">표를 옆으로 밀어서(스크롤) 보세요. 성명·근태·퇴근·승무 칸은 고정됩니다.</span>
+      <span class="hint" style="margin:0;">표를 옆으로 밀어서(스크롤) 보세요. 성명·근태·OT순번·승무 칸은 고정됩니다.</span>
       <button type="button" class="btn ghost sm" data-dp-scroll="1">뒤 시간 ▶</button>
     </div>
     <div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
@@ -3084,6 +3137,14 @@ function afterRender(){
     dpTable.onpointerup = dispatchFinishPaint;
     dpTable.onpointercancel = dispatchFinishPaint;
   }
+  el.querySelectorAll('.dpNote').forEach(x=>{
+    x.onblur = ()=>{
+      const prev = ((dispatch[`${dispatchDate}_${dispatchShift}_${x.dataset.dpNoteEmp}`]||{}).notes||{})[x.dataset.dpNoteSlot] || '';
+      const val = x.value.trim();
+      if(val !== prev) saveDispatchNote(dispatchDate, dispatchShift, x.dataset.dpNoteEmp, x.dataset.dpNoteSlot, val);
+    };
+    x.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); x.blur(); } };
+  });
   el.querySelectorAll('[data-dispatch-sup]').forEach(x=>{
     x.onblur = ()=> saveDispatchSupportName(dispatchDate, dispatchShift, x.dataset.dispatchSup, x.value.trim());
   });
