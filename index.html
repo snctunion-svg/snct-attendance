@@ -336,7 +336,73 @@ let holYearFilter = null;
 let dispatchDate = null, dispatchShift = 'day', dispatchPaint = '초반'; // 배차표 화면 상태
 let paintSession = null; // {empId, changes:{slot:value}} - 배차표 드래그 색칠 중 임시 상태
 let gridEdit = null; // {date, employeeId} - 월별표에서 셀 클릭 시 근무코드/근태코드 인라인 편집
-let otDetailEmpId = null; // 기사별 OT현황: 달력 상세보기 중인 직원
+let otDetailEmpId = null;
+let otEdit = null; // 월별 OT현황에서 바로 보기·수정하는 칸 {date, employeeId}
+function renderOtEdit(){
+  const {date, employeeId} = otEdit;
+  const e = employees.find(x=>x.id===employeeId); if(!e) return '';
+  const rec = attStore[date+'_'+employeeId] || {};
+  const [y,m,d] = date.split('-').map(Number);
+  const c = computeDaily(rec.checkIn ? rec : null, date), sp = computeSupportDaily(rec, date), meal = computeMealAllowance(rec);
+  const chk = (n,l) => `<label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" name="${n}" ${rec[n]?'checked':''}>${l}</label>`;
+  const dc = gridCode(rec, date, String(e.name||'').trim());
+  return `<div id="otEditScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;overflow:auto;padding:16px;">
+    <form id="otEditForm" class="panel" style="max-width:520px;width:100%;margin:0;" autocomplete="off">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <h3 style="margin:0;">${esc(e.name)} · ${m}/${d}(${weekdayKr(y,m,d)})</h3>${dc ? codeBadge(dc) : ''}
+        <span style="flex:1"></span><button type="button" class="btn ghost sm" id="otEditClose">닫기</button>
+      </div>
+      <p class="hint" style="margin:0 0 10px;">${holidays[date] ? esc(holidays[date])+' · ' : ''}${c.valid ? esc(c.category)+' 근무' : '본근무 없음'}</p>
+      <div class="row">
+        <div class="field"><label>본출근</label><div style="display:flex;gap:4px;">${timeSelectRangeHtml('checkIn', rec.checkIn, [8,12,19,24])}</div></div>
+        <div class="field"><label>본퇴근</label><div style="display:flex;gap:4px;">${timeSelectHtml('checkOut', rec.checkOut)}</div></div>
+        <div class="field"><label>지원출근</label><div style="display:flex;gap:4px;">${timeSelectRangeHtml('supportIn', rec.supportIn, [8,12,19,24])}</div></div>
+        <div class="field"><label>지원퇴근</label><div style="display:flex;gap:4px;">${timeSelectHtml('supportOut', rec.supportOut)}</div></div>
+      </div>
+      <div class="row" style="margin-top:8px;align-items:center;">
+        <div class="field" style="min-width:90px;"><label>본조보상</label><input type="number" step="0.5" min="0" name="honjoComp" value="${esc(rec.honjoComp||'')}" placeholder="0" style="width:90px;"></div>
+        <div class="field" style="min-width:90px;"><label>타조보상</label><input type="number" step="0.5" min="0" name="tajoComp" value="${esc(rec.tajoComp||'')}" placeholder="0" style="width:90px;"></div>
+        ${chk('jochul','조출')}${chk('jungsik','중식')}${chk('seokchul','석출')}${chk('yasik','야식')}
+      </div>
+      <div class="cards" style="margin:12px 0 8px;grid-template-columns:repeat(4,1fr);">
+        <div class="card"><div class="n" style="font-size:18px;">${fmtH(c.totalWork)}</div><div class="l">실근무</div></div>
+        <div class="card"><div class="n" style="font-size:18px;">${fmtH(c.valid?c.premium:0)}</div><div class="l">본근무 가산</div></div>
+        <div class="card"><div class="n" style="font-size:18px;">${fmtH(sp.valid?sp.premium:0)}</div><div class="l">지원 가산</div></div>
+        <div class="card"><div class="n" style="font-size:18px;">${fmtH(meal)}</div><div class="l">식사</div></div>
+      </div>
+      ${canEdit ? `<div class="row" style="justify-content:flex-end;">
+        <button type="button" class="btn warn ghost sm" id="otEditDel" ${attStore[date+'_'+employeeId]?'':'disabled'}>초기화</button>
+        <button type="submit" class="btn sm">저장</button>
+      </div>` : '<p class="hint" style="margin:0;">보기 전용입니다.</p>'}
+    </form></div>`;
+}
+function bindOtEdit(el){
+  const f = document.getElementById('otEditForm'); if(!f) return;
+  const close = ()=>{ otEdit = null; render(); };
+  document.getElementById('otEditClose').onclick = close;
+  document.getElementById('otEditScrim').onclick = (ev)=>{ if(ev.target.id==='otEditScrim') close(); };
+  if(!canEdit){ f.querySelectorAll('input,select').forEach(x=> x.disabled = true); return; }
+  f.onsubmit = (ev)=>{
+    ev.preventDefault();
+    const fd = new FormData(f), {date, employeeId} = otEdit;
+    const rec = {
+      date, employeeId,
+      checkIn: readTimeSelect(fd,'checkIn'), checkOut: readTimeSelect(fd,'checkOut'),
+      supportIn: readTimeSelect(fd,'supportIn'), supportOut: readTimeSelect(fd,'supportOut'),
+      honjoComp: fd.get('honjoComp')||'', tajoComp: fd.get('tajoComp')||'',
+      jochul: !!fd.get('jochul'), seokchul: !!fd.get('seokchul'), jungsik: !!fd.get('jungsik'), yasik: !!fd.get('yasik'),
+      updatedAt: Date.now()
+    };
+    otEdit = null;
+    saveAttendance(rec);
+  };
+  const del = document.getElementById('otEditDel');
+  // 초기화: 출퇴근 시각·보상·식사만 지움(근무코드·근태코드·메모는 그대로)
+  if(del) del.onclick = ()=> appConfirm('이 날의 출퇴근 시각·보상·식사 입력을 지울까요? (근태코드는 그대로)', ()=>{
+    const {date, employeeId} = otEdit; otEdit = null;
+    saveAttendance({date, employeeId, checkIn:'', checkOut:'', supportIn:'', supportOut:'', honjoComp:'', tajoComp:'', jochul:false, seokchul:false, jungsik:false, yasik:false, updatedAt: Date.now()});
+  });
+} // 기사별 OT현황: 달력 상세보기 중인 직원
 let codeStatsIncludeMeal = true; // 근태코드 집계: 평일OT에 식사연장(식사계) 포함 여부
 let codeStatsStart = null, codeStatsEnd = null; // 근태코드 집계: 집계 기간(시작~종료)
 // 근태관리 집계 기간·식사연장 설정을 이 기기에 기억(다른 화면에 다녀오거나 앱을 다시 열어도 유지)
@@ -574,6 +640,26 @@ function codeStyle(code){
   if(CODE_STYLE[code]) return CODE_STYLE[code];
   if(RED_CODES.has(code)) return {bg:'#dc2626', fg:'#ffffff', txt:'#dc2626'};
   return {bg:'', fg:'var(--text)', txt:'var(--text)'};
+}
+// 색깔별 나열 순서: 검정 → 빨강 → 노랑 → 파랑 → 분홍 → 회색 → 하늘 → 그 외
+const CODE_GROUPS = [
+  {key:'black', name:'검은 글씨'}, {key:'red', name:'빨간 배경'}, {key:'yellow', name:'노란 배경'},
+  {key:'blue', name:'파란 배경'}, {key:'pink', name:'분홍 배경'}, {key:'gray', name:'회색 배경'}, {key:'sky', name:'하늘색 배경'}
+];
+function codeGroup(code){
+  if(RED_CODES.has(code)) return 'red';
+  return ({MC:'yellow', FC:'blue', SP:'pink', SC:'gray', VP:'sky'})[code] || 'black';
+}
+const BLACK_ORDER = ['D','N','DN','ND','DS','UJ','E','EC','CK','SV'];
+function codeSortKey(code){
+  const gi = CODE_GROUPS.findIndex(g=>g.key===codeGroup(code));
+  const bi = BLACK_ORDER.indexOf(code), ri = ['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL'].indexOf(code);
+  return gi*1000 + (bi>=0 ? bi : ri>=0 ? ri : 500);
+}
+function codeBadge(code){
+  const st = codeStyle(code);
+  return st.bg ? `<span class="badge-code" style="background:${st.bg};border-color:${st.bg};color:${st.fg};">${esc(code)}</span>`
+               : `<span class="badge-code" style="background:var(--bg);border-color:var(--border);color:var(--text);">${esc(code)}</span>`;
 }
 // 배경 없이 글씨만 쓰는 곳(배차표·목록 등)의 글씨 색
 function codeColor(code){ return codeStyle(code).txt; }
@@ -2067,10 +2153,10 @@ function renderGridEditModal(){
     const lbl = (d && d.label) ? d.label : (CODE_LABELS[c] || '');
     return {code:c, label:lbl};
   });
-  const allItems = [...wcItems, ...scItems];
+  const allItems = [...wcItems, ...scItems].sort((a,b)=> codeSortKey(a.code)-codeSortKey(b.code));
   const optRows = allItems.map(it=>`<div class="gridCodeOpt" data-code="${esc(it.code)}" data-search="${esc((it.code+' '+it.label).toLowerCase())}"
       style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-radius:6px;">
-      <span class="badge-code" style="flex:0 0 auto;background:var(--bg);border-color:var(--border);color:${codeColor(it.code)};">${esc(it.code)}</span>
+      <span style="flex:0 0 auto;">${codeBadge(it.code)}</span>
       <span style="color:var(--text);font-size:13px;">${esc(it.label)}</span>
     </div>`).join('');
   const [wy,wm,wd] = date.split('-').map(Number);
@@ -2405,6 +2491,7 @@ function pageOT(){
     : `<div class="empty">등록된 직원이 없습니다.</div>`}
   <p class="hint">임금월은 매월 26일부터 다음달 25일까지입니다 (예: "10월"=9/26~10/25). 휴일보전=MAX(휴일계,60), 지원보전=MAX(지원계,30). 출퇴근 입력에서 저장하면 이 표에도 자동으로 반영됩니다.</p>
   <div class="note" style="margin-top:14px;">${OT_NOTE}</div>
+  ${otEdit ? renderOtEdit() : ''}
   `;
 }
 /* ========================= 조별 월간집계 ========================= */
@@ -2668,25 +2755,22 @@ function pageHolidays(){
 
 /* ========================= 근태코드 참조 ========================= */
 function pageCodes(){
-  const wcRows = WORK_CODES.filter(w=>!hiddenCodes.has(w.code)).map(w=>{
-    const d = codeDefs[w.code];
-    const labelVal = (d && d.label) ? d.label : w.label.replace(/\([^)]*\)$/, '');
-    return `<tr><td>${workBadge(w.code)}</td>
-      <td><input type="text" data-code-label="${esc(w.code)}" value="${esc(labelVal)}" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text);width:100%;max-width:320px;"></td>
-      <td><button class="btn sm" data-act="save-code" data-code="${esc(w.code)}">저장</button></td>
-      <td><button class="btn warn ghost sm" data-act="delete-code" data-code="${esc(w.code)}">삭제</button></td></tr>`;
-  }).join('');
-  // 기본 근태코드 목록 + codeDefs에 남아있는 그 외 코드(예전 코드 등)까지 전부 표시 - 삭제 버튼으로 직접 정리 가능
+  // 근무코드 + 근태코드(기본·추가)를 한 목록으로 모아 색깔별로 묶어서 보여줌
   const customCodes = Object.keys(codeDefs).filter(c => !STATUS_CODE_LIST.includes(c) && !WORK_CODES.some(w=>w.code===c));
-  const allStatusCodes = [...STATUS_CODE_LIST, ...customCodes].filter(c=>!hiddenCodes.has(c));
-  const scRows = allStatusCodes.map(c=>{
-    const d = codeDefs[c];
-    const labelVal = (d && d.label) ? d.label : (CODE_LABELS[c] || '');
-    return `<tr><td><span class="badge-code" style="background:var(--bg);border-color:var(--border);color:${codeColor(c)};">${esc(c)}</span></td>
-      <td><input type="text" data-code-label="${esc(c)}" value="${esc(labelVal)}" placeholder="설명을 입력하세요" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text);width:100%;max-width:320px;"></td>
+  const all = [...WORK_CODES.map(w=>w.code), ...STATUS_CODE_LIST, ...customCodes].filter((c,i,a)=>a.indexOf(c)===i && !hiddenCodes.has(c));
+  all.sort((a,b)=> codeSortKey(a)-codeSortKey(b));
+  const labelOf = c => { const d = codeDefs[c]; if(d && d.label) return d.label; const w = WORK_CODES.find(x=>x.code===c); return w ? w.label.replace(/\([^)]*\)$/, '') : (CODE_LABELS[c] || ''); };
+  let lastG = '';
+  const rows = all.map(c=>{
+    const g = codeGroup(c), gname = (CODE_GROUPS.find(x=>x.key===g)||{}).name || '';
+    const head = g!==lastG ? `<tr><td colspan="4" style="background:var(--bg);font-weight:800;font-size:12px;padding:6px 8px;">${codeBadge(c).replace(/>[^<]*<\/span>$/, '>&nbsp;&nbsp;</span>')} ${esc(gname)}</td></tr>` : '';
+    lastG = g;
+    return head + `<tr><td>${codeBadge(c)}</td>
+      <td><input type="text" data-code-label="${esc(c)}" value="${esc(labelOf(c))}" placeholder="설명을 입력하세요" style="border:1px solid var(--border);border-radius:6px;padding:5px 8px;background:var(--bg);color:var(--text);width:100%;max-width:320px;"></td>
       <td><button class="btn sm" data-act="save-code" data-code="${esc(c)}">저장</button></td>
       <td><button class="btn warn ghost sm" data-act="delete-code" data-code="${esc(c)}">삭제</button></td></tr>`;
   }).join('');
+  const wcRows = rows, scRows = '';
   const hiddenList = Array.from(hiddenCodes).filter(c=>!FORCED_HIDDEN.includes(c));
   const hiddenRow = hiddenList.length ? `
   <div class="panel">
@@ -2698,7 +2782,7 @@ function pageCodes(){
   </div>` : '';
   return `
   <h2 class="pgttl">근태코드 참조</h2>
-  <div class="note">근무코드(D/N 등)와 근태코드(특이사항)를 하나의 표로 합쳤습니다. 설명을 고치고 저장하거나, 삭제 버튼으로 정리할 수 있어요.</div>
+  <div class="note">근무코드(D/N 등)와 근태코드를 <b>색깔별로</b> 모아 보여줍니다. 설명을 고치고 저장하거나, 삭제 버튼으로 정리할 수 있어요.</div>
   <div class="panel">
     <h3>전체 코드</h3>
     <div class="scrollx"><table class="tbl"><thead><tr><th>코드</th><th>의미/설명</th><th></th><th></th></tr></thead><tbody>${wcRows}${scRows}</tbody></table></div>
@@ -3176,11 +3260,8 @@ function afterRender(){
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; render(); });
-  el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{
-    if(!canEdit) return;
-    prefill = {date: x.dataset.date, employeeId: x.dataset.emp};
-    setView('input');
-  });
+  el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
+  bindOtEdit(el);
   // 작업기간 직접수정
   const otRangeStartInput = document.getElementById('otRangeStartInput'), otRangeEndInput = document.getElementById('otRangeEndInput');
   if(otRangeStartInput) otRangeStartInput.onchange = ()=>{
