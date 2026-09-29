@@ -50,9 +50,9 @@ html,body{height:100%;margin:0;}
 body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden;
   font-family:'맑은 고딕','Malgun Gothic',Pretendard,-apple-system,sans-serif;font-size:14px;line-height:1.55;}
 
-header.app{flex:0 0 auto;background:var(--surface);border-bottom:3px solid var(--accent);
+header.app{flex:0 0 auto;background:#fde2ec;border-bottom:3px solid #ec4899;
   display:flex;align-items:center;gap:12px;padding:9px 16px;z-index:300;}
-header.app .badge{background:var(--accent);color:#fff;font-size:10px;font-weight:700;
+header.app .badge{background:#db2777;color:#fff;font-size:10px;font-weight:700;
   letter-spacing:.06em;padding:2px 7px;border-radius:3px;margin-right:6px;vertical-align:2px;}
 header.app h1{margin:0;font-size:17px;letter-spacing:-.02em;}
 header.app .sub{color:var(--text-muted);font-size:11.5px;margin-top:1px;}
@@ -78,7 +78,8 @@ nav#nav .navttl{font-size:10.5px;font-weight:700;color:var(--text-muted);letter-
 nav#nav a{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;text-decoration:none;
   color:var(--text);font-size:13.5px;margin-bottom:2px;cursor:pointer;min-height:40px;}
 nav#nav a:hover{background:var(--accent-soft);color:var(--accent);}
-nav#nav a.on{background:var(--accent);color:#fff;font-weight:700;}
+nav#nav a.on{background:#ec4899;color:#fff;font-weight:700;}
+nav#nav a:hover:not(.on){background:#fce7f3;color:#be185d;}
 nav#nav a .ic{flex:none;width:20px;text-align:center;}
 
 main#content{flex:1 1 auto;min-width:0;overflow-y:auto;padding:22px 26px 60px;}
@@ -142,6 +143,12 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 @media print{ body.printing-ps > *:not(.layout){display:none !important;} body.printing-ps .layout > *:not(main){display:none !important;}
   body.printing-ps main#content > *:not(.psWrap){display:none !important;} body.printing-ps .psSheet{border:0;}
   body.printing-ps .psTools{display:none;} body.printing-ps .psIn{background:none;} body.printing-ps .psT td.psA{background:none;} }
+.gtbl td.stNo{position:sticky;left:0;z-index:2;background:var(--surface);min-width:34px;width:34px;}
+.gtbl td.namecell.stName{position:sticky;left:34px !important;z-index:3;background:var(--surface);}
+.cmbLeft .scrollx{max-width:100%;}
+@media (max-width:860px){ .cmbLeft{flex:1 1 100%;min-width:0;} .cmbLeft .scrollx{display:block !important;overflow-x:auto;} }
+.cellMemo{display:block;font-size:8px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:clip;max-width:28px;margin:0 auto;}
+.adjCell{cursor:pointer;} .adjCell:hover{outline:2px solid var(--accent);outline-offset:-2px;} .adjMark{color:var(--accent);font-size:9px;margin-left:1px;}
 .nameLink{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .nameLink:hover{color:var(--accent);}
 :root th.gh.g-blk{background:#1f2937 !important;}
@@ -195,8 +202,8 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 .ctbl.gtbl td.namecell,.ctbl.gtbl th.namehead{padding:2px 8px !important;font-size:11px !important;}
 .ctbl.gtbl td.daycell{width:30px !important;}
 td.daycell.filled{border-color:rgba(255,255,255,.7);}
-.gtbl th.wkA{background:#eef0f3 !important;} .gtbl th.wkB{background:#dde1e7 !important;}
-.gtbl td.daycell.wkA{background:#fafbfc;} .gtbl td.daycell.wkB{background:#eceef2;}
+.gtbl th.wkA{background:#fce7f3 !important;} .gtbl th.wkB{background:#dbeafe !important;}
+.gtbl td.daycell.wkA{background:#fdf2f8;} .gtbl td.daycell.wkB{background:#eff6ff;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
   :root:not([data-theme="light"]) .gtbl td.daycell.wkA{background:#161d2b;} :root:not([data-theme="light"]) .gtbl td.daycell.wkB{background:#1d2637;} }
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
@@ -216,6 +223,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;}
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
 #dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;}
+#dpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:11px;text-align:center;padding:0;}
+#dpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
 #dpTable th.dpMealH{border-top:2px solid #E03131 !important;}
 #dpTable td.dpMealF{border-bottom:2px solid #E03131 !important;}
 #dpTable .mL{border-left:2px solid #E03131 !important;}
@@ -301,18 +310,19 @@ let db = null, userCap = null, dbReady = false;
 let employees = [];        // [{id,name,part,order,active}]
 let holidays = {};         // dateStr -> name
 let codeDefs = {};         // code -> {code,label}
-let hiddenCodes = new Set(); // 근무코드/근태코드 중 사용자가 "삭제"해서 목록·선택창에서 숨긴 코드들
+const FORCED_HIDDEN = ['IN','OFF','VA']; // 요청으로 삭제(목록·선택창에서 숨김)
+let hiddenCodes = new Set(FORCED_HIDDEN); // 근무코드/근태코드 중 사용자가 "삭제"해서 목록·선택창에서 숨긴 코드들
 let attendance = {};       // `${date}_${empId}` -> record
 let curYear = 2026, curMonth = 9; // 표시 중인 년/월 (grid + input 기본값)
 let unsub = { emp:null, hol:null, code:null, att:null, dispatch:null, splan:null, codeStats:null, otMatrix:null, hiddenCodes:null };
 let prefill = null; // {date, employeeId} - 그리드에서 셀 클릭 시 입력화면 프리필
 let inputViewDate = null, inputViewEmp = null; // 출퇴근 입력화면에서 마지막으로 보던 날짜/직원 (재렌더 시에도 유지)
-let combinedTeamFilter = ''; // 근태관리 표: '' (전체), '1', '2'
+let combinedTeamFilter = (()=>{ try{ return localStorage.getItem('snct_team_cmb')||''; }catch(e){ return ''; } })(); // 근태관리 표: '' (전체), '1', '2' — 기기에 기억
 let combinedYm = null; // 근태관리 아래 '월별 근태코드' 표의 연/월 {y,m}
 let teamOtFilter = ''; // 조별 월간집계: '' (전체), '1', '2'
 let otMatrixStart = null, otMatrixEnd = null; // 월별 OT현황: 작업기간
 let otPayYear = null, otPayMonth = null; // 월별 OT현황: 임금월(예: "10월"=9/26~10/25) 기준 연/월
-let otTeamFilter = ''; // 월별 OT현황: '' (전체), '1', '2'
+let otTeamFilter = (()=>{ try{ return localStorage.getItem('snct_team_ot')||''; }catch(e){ return ''; } })(); // 월별 OT현황 — 기기에 기억
 let dispatchTeamFilter = ''; // 배차표: '' (전체), '1', '2'
 let addCodeFormOpen = false; // 근태코드 참조: 코드 추가 폼 표시 여부
 // 임금월 계산: "M월"은 (M-1월)26일 ~ M월25일
@@ -390,6 +400,40 @@ function weekBand(ds){
   const [y,m,d] = mondayOf(ds).split('-').map(Number);
   const wk = Math.floor(Date.UTC(y,m-1,d) / (7*86400000));
   return (wk % 2) ? 'wkB' : 'wkA';
+}
+let dpPop = null; // {empId, slot}
+let dpPopOpenedAt = 0;
+function openDpPop(empId, slot){ dpPop = {empId, slot}; dpPopOpenedAt = Date.now(); render(); }
+const dpPopReady = ()=> Date.now() - dpPopOpenedAt > 450; // 칸을 누른 손가락이 팝업 버튼을 눌러버리는 것 방지
+function renderDpPop(){
+  const id = `${dispatchDate}_${dispatchShift}_${dpPop.empId}`;
+  const drec = dispatch[id] || {};
+  const cur = (drec.slots||{})[dpPop.slot] || '', note = (drec.notes||{})[dpPop.slot] || '';
+  const who = dpPop.empId.startsWith('sup') ? (drec.name || '지원') : empName(dpPop.empId);
+  const btns = DISPATCH_CATS.filter(c=>c.key!=='수정').map(c=>`<button type="button" class="dpPopCat" data-cat="${esc(c.key)}" style="background:${c.bg};color:${c.fg};border:2px solid ${cur===c.key?'#111':c.border};border-radius:10px;padding:10px 0;font-weight:800;font-size:14px;cursor:pointer;">${esc(c.key)}</button>`).join('');
+  return `<div id="dpPopScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
+    <div class="panel" style="max-width:360px;width:92%;margin:0;">
+      <h3 style="margin:0 0 2px;">${esc(who)} · ${esc(dpPop.slot)}</h3>
+      <p class="hint" style="margin:0 0 12px;">항목을 누르면 바로 칠해집니다.</p>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px;">${btns}</div>
+      <button type="button" class="btn warn ghost sm" id="dpPopClear" style="width:100%;margin-bottom:10px;">색 지우기</button>
+      <p class="hint" style="margin:0 0 8px;">글씨는 칸을 <b>두 번 누르면</b> 칸 안에서 바로 입력할 수 있어요.</p>
+      <div class="row" style="justify-content:flex-end;"><button class="btn ghost sm" id="dpPopClose">닫기</button></div>
+    </div></div>`;
+}
+// 배차표 칸 안에서 바로 글씨 입력(두 번 누르기)
+function startDpInlineEdit(td){
+  const empId = td.dataset.dispatchEmp, slot = td.dataset.dispatchSlot;
+  const id = `${dispatchDate}_${dispatchShift}_${empId}`;
+  const prev = ((dispatch[id]||{}).notes||{})[slot] || '';
+  td.innerHTML = `<input type="text" class="dpInline" maxlength="10" value="${esc(prev)}">`;
+  const inp = td.querySelector('input');
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = (save)=>{ if(done) return; done = true; const v = inp.value.trim(); if(save && v!==prev){ saveDispatchNote(dispatchDate, dispatchShift, empId, slot, v); } render(); };
+  inp.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); finish(true); } else if(ev.key==='Escape'){ finish(false); } };
+  inp.onblur = ()=> finish(true);
+  inp.onpointerdown = (ev)=> ev.stopPropagation();
 }
 function isMealSlot(s){ const hh = String(s).split(':')[0]; return hh==='07' || hh==='12' || hh==='18' || hh==='24'; }
 async function saveDispatchNote(dateStr, shift, empId, slot, text){
@@ -517,11 +561,26 @@ const CODE_LABELS = {
 const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 // 코드 색상 규칙: N,ND,NS,FCH,MCH,MCS,VP,VA는 빨간색, 나머지는 검은색
 // 코드 색: FC 진한 파랑, MC 초록, VA·VP 연한 파랑(하늘색), 아래 코드는 빨강, 나머지(D·N·DN·ND 등)는 검정
-const RED_CODES = new Set(['NS','FCH','MCH','MCS']);
-const SKY_CODES = new Set(['VA','VP','RV','AV','LS','SL','TL']);
-function codeColor(code){ return code==='FC' ? 'var(--fc)' : code==='MC' ? 'var(--mc)' : SKY_CODES.has(code) ? 'var(--sky)' : (RED_CODES.has(code) ? 'var(--warn)' : 'var(--text)'); }
+// 코드 색 (요청 기준)
+//  · 빨간 배경 + 흰 글씨: NS·FCH·MCH·MCS·AV·RV·LS·SL·TL
+//  · 노란 배경 + 검은 글씨: MC   · 파란 배경 + 흰 글씨: FC
+//  · 분홍 배경 + 빨간 글씨: SP   · 흐린 회색 배경 + 진한 회색 글씨: SC
+//  · 나머지(D·N·DN·ND·DS·UJ·E·EC·CK 등): 검은 글씨만
+const RED_CODES = new Set(['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL']);
+const SKY_CODES = new Set(['VP']);
+const CODE_STYLE = {FC:{bg:'#2563eb',fg:'#ffffff',txt:'#1d4ed8'}, MC:{bg:'#fde047',fg:'#111111',txt:'#a16207'},
+  SP:{bg:'#fbcfe8',fg:'#dc2626',txt:'#dc2626'}, SC:{bg:'#e5e7eb',fg:'#4b5563',txt:'#4b5563'}, VP:{bg:'#e0f2fe',fg:'#0369a1',txt:'#0369a1'}};
+function codeStyle(code){
+  if(CODE_STYLE[code]) return CODE_STYLE[code];
+  if(RED_CODES.has(code)) return {bg:'#dc2626', fg:'#ffffff', txt:'#dc2626'};
+  return {bg:'', fg:'var(--text)', txt:'var(--text)'};
+}
+// 배경 없이 글씨만 쓰는 곳(배차표·목록 등)의 글씨 색
+function codeColor(code){ return codeStyle(code).txt; }
+// 칸을 채울 때의 글씨 색
+function codeFillText(code){ return codeStyle(code).fg; }
 // 근태관리 표 칸 채우기: 색이 있는 코드(FC 파랑·MC 초록·빨강 코드)는 칸 전체를 그 색으로, 글씨는 흰색
-function codeFill(code){ return code==='FC' ? 'var(--fill-fc)' : code==='MC' ? 'var(--fill-mc)' : SKY_CODES.has(code) ? 'var(--fill-sky)' : (RED_CODES.has(code) ? 'var(--fill-red)' : ''); }
+function codeFill(code){ return codeStyle(code).bg; }
 // 근태코드 참조에 있는(숨기지 않은) 코드만 유효 — 화면 표시와 가져오기에 공통 사용
 function refWorkCodes(){ return new Set(WORK_CODES.map(w=>w.code).filter(c=>!hiddenCodes.has(c))); }
 function refStatusCodes(){
@@ -574,6 +633,27 @@ function leaveCounts(emp, start){
     if(c) cnt[c]++;
   }
   return {cnt, end, total: Object.values(cnt).reduce((a,b)=>a+b,0)};
+}
+let adjPop = null; // {empId, key, label, raw}
+function renderAdjPop(){
+  const e = employees.find(x=>x.id===adjPop.empId); if(!e) return '';
+  const cur = userAdjOf(e, adjPop.key), raw = Number(adjPop.raw)||0;
+  const f = x => (Math.round(x*100)/100).toLocaleString();
+  return `<div id="adjScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
+    <div class="panel" style="max-width:340px;width:92%;margin:0;">
+      <h3 style="margin:0 0 4px;">${esc(e.name)} · ${esc(adjPop.label)}</h3>
+      <p class="hint" style="margin:0 0 12px;">근태 집계에는 <b>현재값 + 보정값</b>이 표시됩니다(순번에도 반영).</p>
+      <div class="row" style="align-items:flex-end;flex-wrap:nowrap;">
+        <div class="field" style="min-width:0;flex:1;"><label>현재값</label><div style="padding:8px 2px;font-weight:700;">${f(raw)}</div></div>
+        <div style="padding:0 0 10px;font-weight:800;">+</div>
+        <div class="field" style="min-width:0;flex:1;"><label>보정값</label><input type="number" step="0.01" id="adjInput" value="${cur||''}" placeholder="0" style="width:100%;"></div>
+        <div style="padding:0 0 10px;font-weight:800;">=</div>
+        <div class="field" style="min-width:0;flex:1;"><label>합계</label><div id="adjSum" style="padding:8px 2px;font-weight:800;color:var(--accent);">${f(raw+cur)}</div></div>
+      </div>
+      <div class="row" style="justify-content:flex-end;margin-top:10px;">
+        <button class="btn ghost sm" id="adjCancel">취소</button><button class="btn sm" id="adjSave">저장</button>
+      </div>
+    </div></div>`;
 }
 let leaveEmpId = null;
 let leaveYear = null; // 연간 누계 연도(1/1~12/31). 처음엔 근태관리 종료일의 연도
@@ -639,6 +719,20 @@ function gridCode(rec, ds, name){
   if(isSupportCode(a)) return a;           // 근태코드 칸의 DN·ND·D·N·SP
   return isRefCode(a) ? a : '';
 }
+// ===== 교대 근무 순환 (주 단위, 월요일 시작) =====
+// 기준 주에 1조가 D면 2조는 N, 다음 주마다 서로 바뀜. 원본 엑셀(2025-12-22 주 1조 D)과 같은 규칙
+let rotation = {start:'2025-12-22', team1:'D'};
+function scheduledShift(ds, team){
+  if(!rotation || !rotation.start || !ds || (team!=='1' && team!=='2')) return '';
+  const a = mondayOf(rotation.start), b = mondayOf(ds);
+  const [y1,m1,d1] = a.split('-').map(Number), [y2,m2,d2] = b.split('-').map(Number);
+  const weeks = Math.round((Date.UTC(y2,m2-1,d2) - Date.UTC(y1,m1-1,d1)) / (7*86400000));
+  const t1 = rotation.team1==='N' ? 'N' : 'D';
+  const flip = c => c==='D' ? 'N' : 'D';
+  const c1 = (((weeks % 2) + 2) % 2) ? flip(t1) : t1;
+  return team==='1' ? c1 : flip(c1);
+}
+function empScheduled(empId, ds){ const e = employees.find(x=>x.id===empId); return e ? scheduledShift(ds, e.team||'') : ''; }
 function displayCode(rec){
   if(!rec) return '';
   if(rec.statusCode && isRefCode(rec.statusCode)) return rec.statusCode;
@@ -742,9 +836,10 @@ function computeDaily(rec, dateStr){
   // 근무코드: 월별표에서 지정한 값(D·N 등). 없으면(출퇴근 입력만 한 날) 본출근 시각으로 주간/야간을 판단.
   // 편집자가 월별표에서 직접 OFF로 지정한 날만 계산하지 않음
   let wc = (rec.workCode && rec.workCode!=='OFF') ? rec.workCode : '';
+  const sched = (typeof empScheduled==='function' && rec.employeeId) ? empScheduled(rec.employeeId, dateStr) : '';
   if(!wc){
     if(rec.attManual && rec.workCode==='OFF') return zero;
-    wc = toDec(rec.checkIn) <= 14 ? 'D' : 'N';
+    wc = sched || (toDec(rec.checkIn) <= 14 ? 'D' : 'N');
   }
 
   const checkinDec = toDec(rec.checkIn);
@@ -762,7 +857,7 @@ function computeDaily(rec, dateStr){
 
   let guaranteedEnd = actualEnd;
   // 퇴근보전은 원본 엑셀처럼 '근무코드(편성된 주간/야간)' 기준으로 판단. 엑셀에서 가져온 기록은 baseShift(D/N)에 들어 있음
-  const gCode = rec.baseShift || wc;
+  const gCode = rec.baseShift || sched || wc; // 편성 근무코드(교대 순환) 기준
   if(kcat==='SU' || kcat==='H'){
     if((gCode==='D'||gCode==='DN') && checkoutDec>8 && checkoutDec<12){
       guaranteedEnd = dateAt(dateStr,12,0);
@@ -875,6 +970,97 @@ function computeSupportDaily(rec, dateStr){
 const SEED_EMPLOYEES = ['김기영','김성용','김의섭','김치수','김태석','김태화','남궁영호','노인규','박무근','서인기','선종희','오원일','이동화','전재필','최두영','최윤수','최현철'];
 // 기본 명단에서 뺀 사람(번호 e01~e17은 그대로 유지하기 위해 목록에서 지우지 않고 건너뜀)
 const SEED_EMPLOYEES_SKIP = new Set(['선종희']);
+// 2027~2030 공휴일(공개 자료 기준, 선거일은 2028 총선만 — 나머지는 공고 후 공휴일 관리에서 추가)
+const SEED_HOLIDAYS_2027_2030 = [
+  ['2027-01-01','신정'],
+  ['2027-02-06','설날연휴'],
+  ['2027-02-07','설날'],
+  ['2027-02-08','설날연휴'],
+  ['2027-02-09','대체공휴일(설날)'],
+  ['2027-03-01','삼일절'],
+  ['2027-04-10','회사창립일'],
+  ['2027-05-01','노동절'],
+  ['2027-05-03','대체공휴일(노동절)'],
+  ['2027-05-05','어린이날'],
+  ['2027-05-13','부처님오신날'],
+  ['2027-06-06','현충일'],
+  ['2027-06-15','SNCT노조설립일'],
+  ['2027-07-17','제헌절'],
+  ['2027-08-15','광복절'],
+  ['2027-08-16','대체공휴일(광복절)'],
+  ['2027-09-14','추석연휴'],
+  ['2027-09-15','추석'],
+  ['2027-09-16','추석연휴'],
+  ['2027-10-03','개천절'],
+  ['2027-10-04','대체공휴일(개천절)'],
+  ['2027-10-09','한글날'],
+  ['2027-10-11','대체공휴일(한글날)'],
+  ['2027-12-25','성탄절'],
+  ['2027-12-27','대체공휴일(성탄절)'],
+  ['2028-01-01','신정'],
+  ['2028-01-26','설날연휴'],
+  ['2028-01-27','설날'],
+  ['2028-01-28','설날연휴'],
+  ['2028-03-01','삼일절'],
+  ['2028-04-10','회사창립일'],
+  ['2028-04-12','국회의원선거일'],
+  ['2028-05-01','노동절'],
+  ['2028-05-02','부처님오신날'],
+  ['2028-05-05','어린이날'],
+  ['2028-06-06','현충일'],
+  ['2028-06-15','SNCT노조설립일'],
+  ['2028-07-17','제헌절'],
+  ['2028-08-15','광복절'],
+  ['2028-10-02','추석연휴'],
+  ['2028-10-03','추석·개천절'],
+  ['2028-10-04','추석연휴'],
+  ['2028-10-05','대체공휴일(개천절)'],
+  ['2028-10-09','한글날'],
+  ['2028-12-25','성탄절'],
+  ['2029-01-01','신정'],
+  ['2029-02-12','설날연휴'],
+  ['2029-02-13','설날'],
+  ['2029-02-14','설날연휴'],
+  ['2029-03-01','삼일절'],
+  ['2029-04-10','회사창립일'],
+  ['2029-05-01','노동절'],
+  ['2029-05-05','어린이날'],
+  ['2029-05-07','대체공휴일(어린이날)'],
+  ['2029-05-20','부처님오신날'],
+  ['2029-05-21','대체공휴일(부처님오신날)'],
+  ['2029-06-06','현충일'],
+  ['2029-06-15','SNCT노조설립일'],
+  ['2029-07-17','제헌절'],
+  ['2029-08-15','광복절'],
+  ['2029-09-21','추석연휴'],
+  ['2029-09-22','추석'],
+  ['2029-09-23','추석연휴'],
+  ['2029-09-24','대체공휴일(추석)'],
+  ['2029-10-03','개천절'],
+  ['2029-10-09','한글날'],
+  ['2029-12-25','성탄절'],
+  ['2030-01-01','신정'],
+  ['2030-02-02','설날연휴'],
+  ['2030-02-03','설날'],
+  ['2030-02-04','설날연휴'],
+  ['2030-02-05','대체공휴일(설날)'],
+  ['2030-03-01','삼일절'],
+  ['2030-04-10','회사창립일'],
+  ['2030-05-01','노동절'],
+  ['2030-05-05','어린이날'],
+  ['2030-05-06','대체공휴일(어린이날)'],
+  ['2030-05-09','부처님오신날'],
+  ['2030-06-06','현충일'],
+  ['2030-06-15','SNCT노조설립일'],
+  ['2030-07-17','제헌절'],
+  ['2030-08-15','광복절'],
+  ['2030-09-11','추석연휴'],
+  ['2030-09-12','추석'],
+  ['2030-09-13','추석연휴'],
+  ['2030-10-03','개천절'],
+  ['2030-10-09','한글날'],
+  ['2030-12-25','성탄절']
+];
 const SEED_HOLIDAYS_2026 = [
   ['2025-12-25','성탄절'],['2026-01-01','신정'],['2026-02-16','설날연휴'],['2026-02-17','설날'],['2026-02-18','설날연휴'],
   ['2026-03-01','삼일절'],['2026-03-02','대체공휴일'],['2026-04-10','회사창립일'],['2026-05-01','근로자의날'],
@@ -950,9 +1136,11 @@ const DEFAULT_ADJ = {
   '최현철':{holCntAdj:7,mcsAdj:6,wkCntAdj:5,supAdj:2,holAdj:191.87,wkAdj:90}
 };
 
+// 사용자가 팝업에서 직접 넣은 보정값(기존 기본 보정과 별도로 더해짐)
+function userAdjOf(e, f){ return (e && Number(e['u_'+f])) || 0; }
 function adjOf(e, f){
   if(e && e[f]!==undefined && e[f]!==null && e[f]!=='') return Number(e[f])||0;
-  const d = DEFAULT_ADJ[e && e.name]; return d ? d[f] : 0;
+  const d = DEFAULT_ADJ[e && e.name]; return (d && d[f]) || 0;
 }
 const IMPORT_LAST_DATE = '2026-10-03'; // 엑셀에서 가져온 출퇴근 기록의 마지막 날짜
 function rankExcl(e){ return (e && e.rankExclude!==undefined && e.rankExclude!==null) ? e.rankExclude : (DEFAULT_RANK_EXCLUDE[e && e.name] || ''); }
@@ -1198,7 +1386,7 @@ function createDemoDb(){
     const team = i<8 ? '1' : '2';
     coll('employees')['e'+pad2(i+1)] = {name:n, part:'STS', order:i+1, active:true, team, teamOrder: team==='1' ? i+1 : i-7};
   });
-  SEED_HOLIDAYS_2026.forEach(([d,n])=>{ coll('holidays')[d] = {date:d, name:n}; });
+  SEED_HOLIDAYS_2026.concat(SEED_HOLIDAYS_2027_2030).forEach(([d,n])=>{ coll('holidays')[d] = {date:d, name:n}; });
   STATUS_CODE_LIST.forEach(c=>{ coll('codeDefs')[c] = {code:c, label:CODE_LABELS[c]||''}; });
   const t = new Date();
   let ds = shiftMonth(dstr(t.getFullYear(), t.getMonth()+1, 1), -1);
@@ -1355,6 +1543,12 @@ async function trySeed(){
       }
       await db.doc('meta/teamOrderSeedV1').set({seededAt: Date.now()});
     }
+    // 2027~2030 공휴일: 없는 날짜만 1회 추가
+    const holMarker = await db.doc('meta/holidaySeed2030').get();
+    if(!holMarker.exists){
+      for(const [d,n] of SEED_HOLIDAYS_2027_2030){ if(!holidays[d]) await db.collection('holidays').doc(d).set({date:d, name:n}); }
+      await db.doc('meta/holidaySeed2030').set({seededAt: Date.now()});
+    }
     // (삭제·이름변경한 직원이 되살아나던 '기본 명단 강제 보충' 로직은 제거함)
   }catch(e){ /* 동시 시딩 등은 무시 */ }
 }
@@ -1374,11 +1568,14 @@ function subscribeAll(){
     snap.docs.forEach(d=>{ codeDefs[d.id]=d.data(); });
     scheduleRender();
   }, dbErr);
+  unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
+    if(doc.exists){ const r = doc.data(); if(r && r.start) rotation = {start:r.start, team1: r.team1==='N'?'N':'D'}; scheduleRender(); }
+  }, ()=>{});
   unsub.viewPrefs = db.doc('meta/viewPrefs').onSnapshot(doc=>{
     if(doc.exists){ applyViewPrefs(doc.data()); scheduleRender(); }
   }, ()=>{});
   unsub.hiddenCodes = db.doc('meta/hiddenCodes').onSnapshot(doc=>{
-    hiddenCodes = new Set((doc.exists && doc.data().codes) || []);
+    hiddenCodes = new Set([...((doc.exists && doc.data().codes) || []), ...FORCED_HIDDEN]);
     scheduleRender();
   }, dbErr);
   subscribeAttendanceMonth(curYear, curMonth);
@@ -1805,9 +2002,11 @@ function pageGrid(){
       const dc = gridCode(rec, ds, String(e.name||'').trim());
       {
         fill = dc ? codeFill(dc) : '';
-        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
+        if(dc) inner = `<span class="mini" style="color:${fill ? codeFillText(dc) : codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
-      return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
+      const memo = rec && rec.note ? String(rec.note) : '';
+      if(memo) inner += `<span class="cellMemo" style="color:${fill ? codeFillText(dc) : 'var(--text-muted)'};">${esc(memo.length>3 ? memo.slice(0,3)+'…' : memo)}</span>`;
+      return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${memo?` title="${esc(memo)}"`:''}${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     const orderTag = e.team ? `<span style="color:var(--text-muted);font-weight:400;font-size:10.5px;">${esc(e.team)}조${e.teamOrder?' '+e.teamOrder+'번':''}</span> ` : '';
     return `<tr><td class="namecell">${orderTag}${esc(e.name)}</td>${cells}</tr>`;
@@ -1891,6 +2090,8 @@ function renderGridEditModal(){
         <div id="gridCodeDropdown" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:340px;overflow-y:auto;z-index:50;">${optRows}</div>
       </div>
       ${manguenField}
+      <div class="field" style="margin-bottom:14px;"><label>메모 (글씨 입력)</label>
+        <input type="text" id="gridMemo" maxlength="20" value="${esc(rec.note||'')}" placeholder="예: 병원, 교육 등" style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--text);width:100%;"></div>
       <div class="row">
         <button class="btn" id="gridEditSave">저장</button>
         <button class="btn ghost" id="gridEditCancel">취소</button>
@@ -1925,11 +2126,13 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
       if(sp.valid && (kc==='SU' || kc==='H')) otHoliday += sp.premium;
       mealAllow += computeMealAllowance(rec);
     }
-    codeCnt.MCS += adjOf(e,'mcsAdj');
-    const gyeHol = codeCnt.FCH+codeCnt.MCH + adjOf(e,'holCntAdj'), gyeWk = codeCnt.FC+codeCnt.MC + adjOf(e,'wkCntAdj');
-    const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0) + adjOf(e,'wkAdj');
+    const A2 = k => adjOf(e,k) + userAdjOf(e,k); // 기존 보정 + 직접 넣은 보정
+    codeCnt.FCH += A2('fchAdj'); codeCnt.MCH += A2('mchAdj'); codeCnt.FC += A2('fcAdj'); codeCnt.MC += A2('mcAdj');
+    codeCnt.MCS += A2('mcsAdj');
+    const gyeHol = codeCnt.FCH+codeCnt.MCH + A2('holCntAdj'), gyeWk = codeCnt.FC+codeCnt.MC + A2('wkCntAdj');
+    const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0) + A2('wkAdj');
     // 원본처럼 보정값(지원·휴일·평일)을 더함 — 조편성 관리의 '근태관리 보정값'에서 입력
-    return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday: otHoliday + adjOf(e,'holAdj'), otWeekdayFinal, supDays: supDays + adjOf(e,'supAdj')};
+    return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday: otHoliday + A2('holAdj'), otWeekdayFinal, supDays: supDays + A2('supAdj')};
   });
   // 순번 제외 대상은 순위 계산에서 빼고 칸을 비움(null)
   const inAll = r => rankExcl(r.emp)!=='all';
@@ -1970,12 +2173,12 @@ function pageCombined(){
   const {perEmp, rankSup, rankGyeHol, rankMCS, rankGyeWk, rankOtHol, rankOtWk, nAllT, nOtT, teamOf} = combinedData(sortedEmployees, rangeStart, rangeEnd);
 
   const statHead = `<tr>
-    <th class="namehead" rowspan="2">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
+    <th class="namehead" rowspan="2" style="min-width:34px;width:34px;">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
     <th colspan="2" class="gh g-blk sepL">지원근무</th>
     <th colspan="8" class="gh g-hol sepL">휴일,주야간</th>
     <th colspan="6" class="gh g-wk sepL">평일,주야간</th>
   </tr><tr>
-    <th class="gc g-blk sepL">지원</th><th class="gc g-blk">순번</th>
+    <th class="gc g-blk sepL">계</th><th class="gc g-blk">순번</th>
     <th class="gc g-blue sepL">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel">OT</th><th class="gc g-yel">순번</th>
     <th class="gc g-wk sepL">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">계</th><th class="gc g-wk">순번</th><th class="gc g-pur">OT</th><th class="gc g-pur">순번</th>
   </tr>`;
@@ -1989,17 +2192,19 @@ function pageCombined(){
     const nAll = nAllT[teamOf(r)]||0, nOt = nOtT[teamOf(r)]||0;
     const v = x => hA ? '' : c0(x);
     const ot = x => hO ? '' : fmtH(x);
+    // 누르면 보정 팝업: data-adj(보정 항목), data-raw(계산값)
+    const A = (key, label, total, shown, extra) => `<td class="adjCell${extra||''}" data-act="adj" data-emp="${esc(r.emp.id)}" data-key="${key}" data-label="${esc(label)}" data-raw="${Math.round((total - userAdjOf(r.emp,key))*100)/100}" style="text-align:center;${key==='supAdj'?'font-weight:700;':''}${key==='holAdj'||key==='wkAdj'?'min-width:52px;':''}">${shown}</td>`;
     return `<tr>
-      <td style="text-align:center;">${idx+1}</td>
-      <td class="namecell nameLink" style="left:34px;" data-act="leave" data-emp="${esc(r.emp.id)}" title="연간 누계 보기">${esc(r.emp.name)}</td>
-      <td class="sepL" style="text-align:center;font-weight:700;">${v(r.supDays)}</td><td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
-      <td class="sepL" style="text-align:center;">${v(r.codeCnt.FCH)}</td><td style="text-align:center;">${v(r.codeCnt.MCH)}</td>
-      <td style="text-align:center;">${v(r.gyeHol)}</td><td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
-      <td style="text-align:center;">${v(r.codeCnt.MCS)}</td><td style="text-align:center;">${rk(rankMCS[idx],'red',nAll)}</td>
-      <td style="text-align:center;min-width:52px;">${ot(r.otHoliday)}</td><td style="text-align:center;">${rk(rankOtHol[idx],'yel',nOt)}</td>
-      <td class="sepL" style="text-align:center;">${v(r.codeCnt.FC)}</td><td style="text-align:center;">${v(r.codeCnt.MC)}</td>
-      <td style="text-align:center;">${v(r.gyeWk)}</td><td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
-      <td style="text-align:center;min-width:52px;">${ot(r.otWeekdayFinal)}</td><td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
+      <td class="stNo" style="text-align:center;">${idx+1}</td>
+      <td class="namecell nameLink stName" data-act="leave" data-emp="${esc(r.emp.id)}" title="연간 누계 보기">${esc(r.emp.name)}</td>
+      ${A('supAdj','지원근무 계', r.supDays, v(r.supDays), ' sepL')}<td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
+      ${A('fchAdj','FCH', r.codeCnt.FCH, v(r.codeCnt.FCH), ' sepL')}${A('mchAdj','MCH', r.codeCnt.MCH, v(r.codeCnt.MCH))}
+      ${A('holCntAdj','휴일 계', r.gyeHol, v(r.gyeHol))}<td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
+      ${A('mcsAdj','MCS', r.codeCnt.MCS, v(r.codeCnt.MCS))}<td style="text-align:center;">${rk(rankMCS[idx],'red',nAll)}</td>
+      ${A('holAdj','휴일 OT', r.otHoliday, ot(r.otHoliday))}<td style="text-align:center;">${rk(rankOtHol[idx],'yel',nOt)}</td>
+      ${A('fcAdj','FC', r.codeCnt.FC, v(r.codeCnt.FC), ' sepL')}${A('mcAdj','MC', r.codeCnt.MC, v(r.codeCnt.MC))}
+      ${A('wkCntAdj','평일 계', r.gyeWk, v(r.gyeWk))}<td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
+      ${A('wkAdj','평일 OT', r.otWeekdayFinal, ot(r.otWeekdayFinal))}<td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
     </tr>`;
   }).join('');
 
@@ -2020,9 +2225,11 @@ function pageCombined(){
       const dc = gridCode(rec, ds, String(e.name||'').trim());
       {
         fill = dc ? codeFill(dc) : '';
-        if(dc) inner = `<span class="mini" style="color:${codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
+        if(dc) inner = `<span class="mini" style="color:${fill ? codeFillText(dc) : codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
-      return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
+      const memo = rec && rec.note ? String(rec.note) : '';
+      if(memo) inner += `<span class="cellMemo" style="color:${fill ? codeFillText(dc) : 'var(--text-muted)'};">${esc(memo.length>3 ? memo.slice(0,3)+'…' : memo)}</span>`;
+      return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${memo?` title="${esc(memo)}"`:''}${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     return `<tr><td class="namecell nameLink" data-act="leave" data-emp="${esc(e.id)}" title="연간 누계 보기">${esc(e.name)}</td>${cells}</tr>`;
   }).join('');
@@ -2069,6 +2276,7 @@ function pageCombined(){
   <p class="hint">월별 근태코드의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(편집자). 근태코드 참조에 있는 코드만 표시됩니다.</p>
   ${modal}
   ${leaveEmpId ? renderLeaveModal() : ''}
+  ${adjPop ? renderAdjPop() : ''}
   `;
 }
 
@@ -2433,7 +2641,7 @@ function pageEmployees(){
 
 /* ========================= 공휴일 관리 ========================= */
 function pageHolidays(){
-  const years = Array.from(new Set(Object.keys(holidays).map(d=>d.slice(0,4)))).sort();
+  const years = Array.from(new Set(['2026','2027','2028','2029','2030', ...Object.keys(holidays).map(d=>d.slice(0,4))])).sort();
   if(!holYearFilter) holYearFilter = years.includes(String(curYear)) ? String(curYear) : (years[years.length-1] || String(curYear));
   const list = Object.entries(holidays).filter(([d])=>d.startsWith(holYearFilter)).sort((a,b)=>a[0]<b[0]?-1:1);
   const yearTabs = years.map(y=>`<button class="btn ${y===holYearFilter?'':'ghost'} sm" data-act="hol-year" data-year="${esc(y)}">${esc(y)}</button>`).join(' ');
@@ -2479,7 +2687,7 @@ function pageCodes(){
       <td><button class="btn sm" data-act="save-code" data-code="${esc(c)}">저장</button></td>
       <td><button class="btn warn ghost sm" data-act="delete-code" data-code="${esc(c)}">삭제</button></td></tr>`;
   }).join('');
-  const hiddenList = Array.from(hiddenCodes);
+  const hiddenList = Array.from(hiddenCodes).filter(c=>!FORCED_HIDDEN.includes(c));
   const hiddenRow = hiddenList.length ? `
   <div class="panel">
     <h3>숨긴 코드 (${hiddenList.length}개)</h3>
@@ -2540,7 +2748,7 @@ function pageDispatch(){
     const bg = cat ? cat.bg : 'transparent';
     const fg = cat ? cat.fg : 'var(--text)';
     return `<td class="dpCell" data-dispatch-emp="${esc(empId)}" data-dispatch-slot="${esc(s)}" data-dispatch-cur="${esc(catKey||'')}"
-      style="background:${bg};color:${fg};"></td>`;
+      style="background:${bg};color:${fg};"${note?` title="${esc(note)}"`:''}>${note?`<span class="dpTxt">${esc(note)}</span>`:''}</td>`;
   }
 
   // 그 날짜의 OT 순번: 일요일·공휴일이면 휴일 OT 순번, 아니면 평일 OT 순번 (근태관리 집계 기간·조별 순번 기준)
@@ -2579,12 +2787,12 @@ function pageDispatch(){
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
       if(isMealSlot(s)){ if(note) slotCounts[si]++; return slotCell(e.id, s, '', note); }
       if(v){ paintedSlots++; slotCounts[si]++; }
-      return slotCell(e.id, s, v);
+      return slotCell(e.id, s, v, note);
     }).join('');
     return `<tr>
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:left;">${esc(e.name)}</td>
-      <td class="dpI dpI3" style="color:${codeColor(displayCode(rec))};">${esc(displayCode(rec))}</td>
+      <td class="dpI dpI3" style="color:${codeColor(displayCode(rec))};">${displayCode(rec) ? esc(displayCode(rec)) : `<span style="color:var(--text-muted);font-weight:600;" title="교대 순환 근무">${esc(scheduledShift(ds, e.team||''))}</span>`}</td>
       <td class="dpI dpI4">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
       ${cells}
@@ -2604,7 +2812,7 @@ function pageDispatch(){
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
       if(isMealSlot(s)){ if(note) slotCounts[si]++; return slotCell(supId, s, '', note); }
       if(v){ supPainted++; slotCounts[si]++; }
-      return slotCell(supId, s, v);
+      return slotCell(supId, s, v, note);
     }).join('');
     const supLabel = i===0 ? `<td class="dpI dpI1" rowspan="${SUP_COUNT}" style="vertical-align:middle;">지원</td>` : '';
     return `<tr>
@@ -2622,7 +2830,7 @@ function pageDispatch(){
 
   return `
   <h2 class="pgttl">배차표</h2>
-  <p class="pgsub">팔레트에서 항목을 고른 뒤 시간대 칸을 마우스로 눌러서 드래그하면(클릭+드래그) 그 구간이 한번에 칠해지고, 승무 시간이 자동으로 합산됩니다. "수정"을 고르고 칠하면 지워집니다.</p>
+  <p class="pgsub"><b>칸을 누르면 바로 글씨를 입력</b>할 수 있어요(Enter 또는 다른 곳을 누르면 저장). <b>색칠</b>은 팔레트에서 항목(초반·후반·당직·정비·기타)을 고른 뒤 칸을 눌러 옆으로 끌면 그 구간이 칠해지고 승무 시간이 합산됩니다. "수정"을 고르고 끌면 색이 지워집니다.</p>
   <div class="row" style="margin-bottom:10px;align-items:center;">
     <div class="field"><label>날짜</label><input type="date" id="dpDate" value="${esc(ds)}"></div>
     <div class="field"><label>구분</label><select id="dpShift">
@@ -2644,6 +2852,7 @@ function pageDispatch(){
     </div>
     <div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다. 먼저 직원 관리에서 직원을 추가하세요.</div>`}
+  ${dpPop ? renderDpPop() : ''}
   <p class="hint">성명은 조편성 관리에서 설정한 조·순번 순서대로 표시됩니다. "지원" 행은 이름을 직접 입력해서 사용하세요.</p>
   `;
 }
@@ -2794,6 +3003,32 @@ function teamDragEnd(){
   saveTeamOrders(updates);
 }
 // 근태관리 보정값: 원본 26년_근태관리 '보정 세부사항'(지원·휴일·평일)과 같음. 집계 결과에 그대로 더해짐
+function rotationPanel(){
+  const start = mondayOf(rotation.start || todayStr());
+  const weeks = Array.from({length:6}, (_,i)=> addDays(mondayOf(todayStr()), i*7));
+  const prev = weeks.map(w=>{ const [,m,d] = w.split('-').map(Number); const c1 = scheduledShift(w,'1'), c2 = scheduledShift(w,'2');
+    return `<td style="text-align:center;">${m}/${d}~</td><td style="text-align:center;font-weight:800;">${c1}</td><td style="text-align:center;font-weight:800;">${c2}</td>`; });
+  return `<div class="panel">
+    <h3>교대 근무 순환</h3>
+    <p class="hint" style="margin:0 0 10px;">기준 주에 <b>1조가 D(주간)면 2조는 N(야간)</b>이고, 다음 주(월요일)마다 서로 바뀝니다. 이 근무코드는 출퇴근 입력만 한 날의 OT 계산(주간·야간, 휴일 퇴근보전)과 배차표 '근태' 칸(회색)에 자동으로 쓰여요. 월별표에서 직접 넣은 코드가 있으면 그 코드가 우선입니다.</p>
+    <div class="row" style="align-items:flex-end;margin-bottom:10px;">
+      <div class="field"><label>기준 주 (그 주 월요일로 맞춰짐)</label><input type="date" id="rotStart" value="${esc(start)}"></div>
+      <div class="field"><label>기준 주 1조 근무</label><select id="rotTeam1"><option value="D"${rotation.team1!=='N'?' selected':''}>D (주간)</option><option value="N"${rotation.team1==='N'?' selected':''}>N (야간)</option></select></div>
+      <span class="hint" style="margin:0 0 8px;">→ 2조는 ${rotation.team1==='N'?'D (주간)':'N (야간)'}</span>
+    </div>
+    <div class="scrollx"><table class="tbl" style="width:auto;"><thead><tr><th>주</th><th>1조</th><th>2조</th></tr></thead><tbody>
+      ${prev.map(r=>`<tr>${r}</tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+}
+async function saveRotation(data){
+  if(!requireEdit()) return;
+  rotation = Object.assign({}, rotation, data);
+  render();
+  if(!db) return;
+  try{ await db.doc('meta/rotation').set(rotation); showToast('교대 순환이 저장되었습니다.'); }
+  catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
+}
 function adjustPanel(){
   const list = employees.slice().sort((a,b)=>((a.team||'9')<(b.team||'9')?-1:(a.team||'9')>(b.team||'9')?1:(a.teamOrder||999)-(b.teamOrder||999)));
   const inp = (e,f) => `<input type="number" step="0.01" data-team-emp="${esc(e.id)}" data-team-field="${f}" value="${esc(adjOf(e,f)||'')}" placeholder="0" style="width:84px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);text-align:right;">`;
@@ -2828,7 +3063,7 @@ function pageTeam(){
     ${teamPanel('2','2조')}
   </div>
   ${unassigned.length ? `<div class="panel">${teamPanel('','미배정')}</div>` : ''}
-  ${adjustPanel()}
+  ${rotationPanel()}
   `;
 }
 
@@ -2837,7 +3072,7 @@ function afterRender(){
   const el = document.getElementById('content');
 
   el.querySelectorAll('[data-act="goto-grid"]').forEach(x=>x.onclick=(e)=>{ e.preventDefault(); setView('grid'); });
-  el.querySelectorAll('[data-act="team-filter"]').forEach(x=>x.onclick=()=>{ combinedTeamFilter = x.dataset.team; render(); });
+  el.querySelectorAll('[data-act="team-filter"]').forEach(x=>x.onclick=()=>{ combinedTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_cmb', combinedTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="teamot-filter"]').forEach(x=>x.onclick=()=>{ teamOtFilter = x.dataset.team; render(); });
 
   // 입력 폼
@@ -2939,7 +3174,7 @@ function afterRender(){
     if(dbReady) subscribeOtMatrixRange(otMatrixStart, otMatrixEnd);
     render();
   };
-  el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; render(); });
+  el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; render(); });
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{
     if(!canEdit) return;
@@ -3006,6 +3241,24 @@ function afterRender(){
     render();
   };
   el.querySelectorAll('[data-act="leave"]').forEach(x=>x.onclick=()=>{ leaveEmpId = x.dataset.emp; render(); });
+  el.querySelectorAll('[data-act="adj"]').forEach(x=>x.onclick=()=>{
+    if(!canEdit){ requireEdit(); return; }
+    adjPop = {empId:x.dataset.emp, key:x.dataset.key, label:x.dataset.label, raw:x.dataset.raw}; render();
+    setTimeout(()=>{ const i = document.getElementById('adjInput'); if(i){ i.focus(); i.select(); } }, 30);
+  });
+  const adjInput = document.getElementById('adjInput');
+  if(adjInput){
+    const upd = ()=>{ const s2 = document.getElementById('adjSum'); if(s2) s2.textContent = (Math.round(((Number(adjPop.raw)||0) + (Number(adjInput.value)||0))*100)/100).toLocaleString(); };
+    adjInput.oninput = upd;
+    const save = ()=>{ const val = adjInput.value==='' ? 0 : Number(adjInput.value)||0; const p = adjPop; adjPop = null; updateEmployee(p.empId, {['u_'+p.key]: val}); };
+    document.getElementById('adjSave').onclick = save;
+    adjInput.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); save(); } };
+    document.getElementById('adjCancel').onclick = ()=>{ adjPop = null; render(); };
+    document.getElementById('adjScrim').onclick = (ev)=>{ if(ev.target.id==='adjScrim'){ adjPop = null; render(); } };
+  }
+  const rotStart = document.getElementById('rotStart'), rotTeam1 = document.getElementById('rotTeam1');
+  if(rotStart) rotStart.onchange = ()=>{ if(rotStart.value) saveRotation({start: mondayOf(rotStart.value)}); };
+  if(rotTeam1) rotTeam1.onchange = ()=> saveRotation({team1: rotTeam1.value==='N'?'N':'D'});
   const payPrev = document.getElementById('payPrev'), payNext = document.getElementById('payNext');
   if(payPrev) payPrev.onclick = ()=>{ let {y,m} = payYm; m--; if(m<1){ m=12; y--; } payYm = {y,m}; render(); };
   if(payNext) payNext.onclick = ()=>{ let {y,m} = payYm; m++; if(m>12){ m=1; y++; } payYm = {y,m}; render(); };
@@ -3074,6 +3327,8 @@ function afterRender(){
   if(gSave) gSave.onclick = ()=>{
     const {date, employeeId} = gridEdit;
     const existing = attendance[date+'_'+employeeId] || {};
+    const memoEl = document.getElementById('gridMemo');
+    const memo = memoEl ? memoEl.value.trim() : '';
     const val = gCode.value.trim().toUpperCase() || 'OFF';
     const isWorkCode = val==='OFF' || refWorkCodes().has(val);
     const isStatusCode = refStatusCodes().has(val);
@@ -3088,6 +3343,7 @@ function afterRender(){
       attCode: val==='OFF' ? '' : val, // 근태코드 칸에 직접 입력한 값(지원일수 판정에 사용)
       attManual: true, // 편집모드에서 직접 입력한 코드(D·N도 표에 표시)
       manguen: gManguen ? gManguen.checked : !!existing.manguen,
+      note: memo,
       updatedAt: Date.now()
     };
     gridEdit = null;
@@ -3184,21 +3440,45 @@ function afterRender(){
   });
   const dpTable = document.getElementById('dpTable');
   if(dpTable){
+    // 한 번 누르면 → 칸에서 바로 글씨 입력. 눌러서 옆 칸으로 끌면 → 팔레트 색으로 칠하기
+    let dpPending = null, dpStartXY = [0,0];
     dpTable.onpointerdown = (e)=>{
       const td = e.target.closest('.dpCell');
       if(!td) return;
+      if(!canEdit){ requireEdit(); return; }
       e.preventDefault();
       try{ dpTable.setPointerCapture(e.pointerId); }catch(err){}
-      dispatchStartPaint(td);
+      dpPending = td; dpStartXY = [e.clientX, e.clientY];
     };
     dpTable.onpointermove = (e)=>{
-      if(!paintSession) return;
       const atPoint = document.elementFromPoint(e.clientX, e.clientY);
       const td = atPoint ? atPoint.closest('.dpCell') : null;
-      dispatchContinuePaint(td);
+      if(dpPending){
+        // 손가락이 살짝 흔들린 건 무시하고, 10px 넘게 끌었을 때만 칠하기 시작
+        const moved = Math.hypot(e.clientX - dpStartXY[0], e.clientY - dpStartXY[1]);
+        if(td && td!==dpPending && moved > 10){ dispatchStartPaint(dpPending); dispatchContinuePaint(td); dpPending = null; }
+        return;
+      }
+      if(paintSession) dispatchContinuePaint(td);
     };
-    dpTable.onpointerup = dispatchFinishPaint;
-    dpTable.onpointercancel = dispatchFinishPaint;
+    // 칸을 누르면 바로 글씨 입력, 눌러서 끌면 팔레트 색으로 칠하기
+    dpTable.onpointerup = ()=>{
+      if(dpPending){ const td = dpPending; dpPending = null; startDpInlineEdit(td); return; }
+      dispatchFinishPaint();
+    };
+    dpTable.onpointercancel = ()=>{ dpPending = null; dispatchFinishPaint(); };
+  }
+  if(dpPop){
+    const close = ()=>{ dpPop = null; render(); };
+    el.querySelectorAll('.dpPopCat').forEach(b=> b.onclick = (ev)=>{
+      ev.stopPropagation(); if(!dpPopReady()) return;
+      const p = dpPop, cat = b.dataset.cat; dpPop = null;
+      saveDispatchSlots(dispatchDate, dispatchShift, p.empId, {[p.slot]: cat}).then(()=>render()); render();
+    });
+    const clr = document.getElementById('dpPopClear');
+    if(clr) clr.onclick = (ev)=>{ ev.stopPropagation(); if(!dpPopReady()) return; const p = dpPop; dpPop = null; saveDispatchSlots(dispatchDate, dispatchShift, p.empId, {[p.slot]: ''}).then(()=>render()); render(); };
+    document.getElementById('dpPopClose').onclick = ()=>{ if(dpPopReady()) close(); };
+    document.getElementById('dpPopScrim').onclick = (ev)=>{ if(ev.target.id==='dpPopScrim' && dpPopReady()) close(); };
   }
   el.querySelectorAll('.dpNote').forEach(x=>{
     x.onblur = ()=>{
