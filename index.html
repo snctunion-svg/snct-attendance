@@ -2970,7 +2970,9 @@ function pageEmployees(){
 
 /* ========================= 공휴일 관리 ========================= */
 function pageHolidays(){
-  const years = Array.from(new Set(['2026','2027','2028','2029','2030', ...Object.keys(holidays).map(d=>d.slice(0,4))])).sort();
+  // 연도 버튼은 2026년부터(2025년 12/25 기록은 OT 계산용으로 남겨 두되 버튼은 숨김)
+  const years = Array.from(new Set(['2026','2027','2028','2029','2030', ...Object.keys(holidays).map(d=>d.slice(0,4))])).filter(y=>y>='2026').sort();
+  if(holYearFilter && holYearFilter<'2026') holYearFilter = null;
   if(!holYearFilter) holYearFilter = years.includes(String(curYear)) ? String(curYear) : (years[years.length-1] || String(curYear));
   const list = Object.entries(holidays).filter(([d])=>d.startsWith(holYearFilter)).sort((a,b)=>a[0]<b[0]?-1:1);
   const yearTabs = years.map(y=>`<button class="btn ${y===holYearFilter?'':'ghost'} sm" data-act="hol-year" data-year="${esc(y)}">${esc(y)}</button>`).join(' ');
