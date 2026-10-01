@@ -1377,9 +1377,9 @@ const FIREBASE_CONFIG = {
 // 조장관리(조장모드): 출퇴근 입력·근태관리·월별 OT현황·배차표·지원계획표 수정
 // UNION: 조편성 관리·공휴일 관리·근태코드 참조·백업·복원 수정
 // 로그인 안 함(보기 전용): 근태관리·월별 OT현황·배차표·지원계획표 보기만
-// 조장관리 = 기존 계정(snctunion@gmail.com), UNION = 새로 만든 계정(union@snct.app)
+// 조장관리 = 기존 계정(snctunion@gmail.com), UNION = 새로 만든 계정(프로젝트 자체 도메인 주소)
 const LEADER_EMAILS = ['snctunion@gmail.com'];
-const UNION_EMAILS = ['union@snct.app'];
+const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['combined','ot','dispatch','splan'];
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid'];
@@ -1563,7 +1563,7 @@ function openLoginDialog(role){
     }catch(err){
       const c = err && err.code || '';
       errEl.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found'))
-          ? (role==='union' ? '로그인 실패: 비밀번호가 틀렸거나, Firebase에 UNION 계정(union@snct.app)이 아직 없습니다.' : '비밀번호가 맞지 않습니다.')
+          ? (role==='union' ? '로그인 실패: 비밀번호가 틀렸거나, Firebase에 UNION 계정(union@snct-d40ed.firebaseapp.com)이 아직 없습니다.' : '비밀번호가 맞지 않습니다.')
         : c.includes('too-many-requests') ? '시도가 너무 많습니다. 잠시 후 다시 해 보세요.'
         : c.includes('network') ? '인터넷 연결을 확인하세요.'
         : '로그인 실패: ' + c;
