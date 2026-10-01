@@ -1377,8 +1377,9 @@ const FIREBASE_CONFIG = {
 // 조장관리(조장모드): 출퇴근 입력·근태관리·월별 OT현황·배차표·지원계획표 수정
 // UNION: 조편성 관리·공휴일 관리·근태코드 참조·백업·복원 수정
 // 로그인 안 함(보기 전용): 근태관리·월별 OT현황·배차표·지원계획표 보기만
-const UNION_EMAILS = ['snctunion@gmail.com'];
-const LEADER_EMAILS = ['jojang@snct.app'];
+// 조장관리 = 기존 계정(snctunion@gmail.com), UNION = 새로 만든 계정(union@snct.app)
+const LEADER_EMAILS = ['snctunion@gmail.com'];
+const UNION_EMAILS = ['union@snct.app'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['combined','ot','dispatch','splan'];
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid'];
@@ -1515,10 +1516,10 @@ function updateStatusBar(){
   let authHtml = '';
   if(db && authResolved){
     authHtml = userRole
-      ? `<span style="color:#be185d;font-weight:800;">${userRole==='union' ? '🛡 UNION' : '✏️ 조장모드'}</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+      ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : '✏️ 조장모드'}</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
       : (currentUser
           ? `<span style="color:var(--warn);">권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
-          : `<span>👁 보기 전용</span><button type="button" class="btn ghost sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn ghost sm" id="loginUnionBtn">UNION</button>`);
+          : `<span>👁 보기 전용</span><button type="button" class="btn sm" id="loginLeaderBtn">✏️ 조장모드 로그인</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">🛡 UNION 로그인</button>`);
   }
   statusEl.innerHTML = conn + authHtml;
   const lb = document.getElementById('loginLeaderBtn'), lu = document.getElementById('loginUnionBtn'), lo = document.getElementById('logoutBtn');
@@ -1534,8 +1535,9 @@ function openLoginDialog(role){
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
   ov.innerHTML = `
     <form id="loginForm" style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;">
-      <h3 style="margin:0 0 4px;font-size:15px;">${role==='union' ? 'UNION' : '조장관리'} 로그인</h3>
-      <div class="field"><label>계정(이메일)</label><input type="email" name="email" autocomplete="username" required value="${esc((role==='union' ? UNION_EMAILS : LEADER_EMAILS)[0]||'')}"></div>
+      <h3 style="margin:0 0 4px;font-size:15px;color:${role==='union' ? '#4c1d95' : '#be185d'};">${role==='union' ? '🛡 UNION 로그인' : '✏️ 조장모드 로그인'}</h3>
+      <p style="margin:0;font-size:12px;color:var(--text-muted);">${role==='union' ? '조편성 관리 · 공휴일 관리 · 근태코드 참조 · 백업·복원' : '출퇴근 입력 · 근태관리 · 월별 OT현황 · 배차표 · 지원계획표'}</p>
+      <input type="hidden" name="email" autocomplete="username" value="${esc((role==='union' ? UNION_EMAILS : LEADER_EMAILS)[0]||'')}">
       <div class="field"><label>비밀번호</label><input type="password" name="pw" autocomplete="current-password" required></div>
       <div id="loginErr" style="color:var(--warn);font-size:12px;min-height:16px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -1559,7 +1561,7 @@ function openLoginDialog(role){
       showToast(r==='union' ? 'UNION으로 로그인되었습니다.' : r==='leader' ? '조장모드로 로그인되었습니다.' : '로그인되었지만 권한이 없는 계정입니다.');
     }catch(err){
       const c = err && err.code || '';
-      errEl.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found')) ? '이메일 또는 비밀번호가 맞지 않습니다.'
+      errEl.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found')) ? '비밀번호가 맞지 않습니다.'
         : c.includes('too-many-requests') ? '시도가 너무 많습니다. 잠시 후 다시 해 보세요.'
         : c.includes('network') ? '인터넷 연결을 확인하세요.'
         : '로그인 실패: ' + c;
