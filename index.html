@@ -554,9 +554,7 @@ function vslBodyHtml(){
   }).join('');
   const rows = (d.sts||[]).map(r=>`<tr>${r.map(c=>`<td${c.rs>1?` rowspan="${c.rs}"`:''} style="text-align:center;">${esc(c.t)}</td>`).join('')}</tr>`).join('');
   return `${vslErr ? `<p class="hint" style="margin:0 0 6px;color:var(--warn);">${esc(vslErr)} (마지막으로 받은 내용 표시 중)</p>` : ''}
-    <div style="font-weight:800;margin:2px 0 8px;">선석별 작업현황</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px;">${berths}</div>
-    <div style="font-weight:800;margin:0 0 8px;">STS별 작업현황</div>
+    <div style="font-weight:800;margin:2px 0 8px;">STS별 작업현황</div>
     <div class="scrollx"><table class="tbl" style="font-size:12.5px;"><thead>
       <tr><th rowspan="2">선석</th><th rowspan="2">모선항차</th><th rowspan="2">STS</th><th rowspan="2">작업위치</th><th colspan="3">잔여량</th><th rowspan="2">생산성<br>(VAN/HR)</th><th rowspan="2">예상작업완료시간</th></tr>
       <tr><th>양하</th><th>적하</th><th>합계</th></tr>
