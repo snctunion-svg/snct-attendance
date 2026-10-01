@@ -3122,7 +3122,7 @@ function pageDispatch(){
     <button class="btn ${dispatchTeamFilter==='1'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="1">1조</button>
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
   </div>
-  <div class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>
+  ${canEdit ? `<div class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>` : ''}
   <div style="background:#E8B84B;color:#3a2a00;font-weight:700;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;">${esc(dateBanner)}</div>
   ${sortedEmployees.length? `<div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다. 먼저 직원 관리에서 직원을 추가하세요.</div>`}
