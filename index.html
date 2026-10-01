@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SNCT 근태관리</title>
-<link rel="manifest" href="manifest.webmanifest?v=4">
+<title>SNCT 장비관리</title>
+<link rel="manifest" href="manifest.webmanifest?v=5">
 <meta name="theme-color" content="#db2777">
 <link rel="icon" type="image/png" href="icon-pink-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon-pink.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="SNCT근태">
+<meta name="apple-mobile-web-app-title" content="SNCT장비">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 :root{
@@ -104,11 +104,15 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .field textarea{min-height:56px;resize:vertical;}
 .field.grow{flex:1 1 200px;}
 
-.btn{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:8px;padding:9px 16px;
+/* 버튼: 모두 분홍색 */
+:root{ --btn:#ec4899; --btn-dark:#db2777; --btn-soft:#fdf2f8; --btn-line:#f9a8d4; }
+.btn{border:1px solid var(--btn);background:var(--btn);color:#fff;border-radius:8px;padding:9px 16px;
   font-size:13px;font-weight:700;cursor:pointer;}
-.btn.ghost{background:var(--surface);color:var(--accent);}
-.btn.warn{background:var(--warn);border-color:var(--warn);}
-.btn.warn.ghost{background:var(--surface);color:var(--warn);border-color:var(--warn-line);}
+.btn:hover:not(:disabled){background:var(--btn-dark);border-color:var(--btn-dark);}
+.btn.ghost{background:var(--surface);color:var(--btn-dark);border-color:var(--btn-line);}
+.btn.ghost:hover:not(:disabled){background:var(--btn-soft);color:var(--btn-dark);border-color:var(--btn);}
+.btn.warn{background:var(--btn);border-color:var(--btn);}
+.btn.warn.ghost{background:var(--surface);color:var(--btn-dark);border-color:var(--btn-line);}
 .btn.sm{padding:5px 10px;font-size:11.5px;border-radius:6px;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
 .gridCodeOpt:hover{background:var(--bg);}
@@ -226,7 +230,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
 #dpTable th,#dpTable td{height:36px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;padding:0 4px;white-space:nowrap;}
 #dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
-#dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;}
+#dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:pan-x pan-y;-webkit-touch-callout:none;}
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
 #dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;}
 #dpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:11px;text-align:center;padding:0;}
@@ -285,7 +289,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 <body>
 <header class="app">
   <button class="menu-btn" id="menuBtn" aria-label="메뉴">☰</button>
-  <h1><span class="badge">근태관리</span>SNCT 근태관리</h1>
+  <h1><span class="badge">근태관리</span>SNCT 장비관리</h1>
   <div class="sub" id="headerSub">선광신컨테이너터미널 · STS파트</div>
   <div class="spacer"></div>
   <div class="status" id="dbStatus"><span class="dot off"></span>연결 확인 중…</div>
@@ -3735,32 +3739,49 @@ function afterRender(){
   const dpTable = document.getElementById('dpTable');
   if(dpTable){
     // 한 번 누르면 → 칸에서 바로 글씨 입력. 눌러서 옆 칸으로 끌면 → 팔레트 색으로 칠하기
-    let dpPending = null, dpStartXY = [0,0];
+    // PC(마우스): 한 번 누르면 글씨 입력, 눌러서 끌면 칠하기
+    // 휴대폰(터치): 밀면 표 스크롤, 짧게 누르면 글씨 입력, 꾹 누른 뒤(0.45초) 끌면 칠하기
+    // 보기 전용: 아무 동작 없이 스크롤만(안내 문구 안 띄움)
+    let dpPending = null, dpStartXY = [0,0], dpTouch = false, dpLongTimer = null;
     dpTable.onpointerdown = (e)=>{
       const td = e.target.closest('.dpCell');
-      if(!td) return;
-      if(!canEdit){ requireEdit(); return; }
-      e.preventDefault();
-      try{ dpTable.setPointerCapture(e.pointerId); }catch(err){}
-      dpPending = td; dpStartXY = [e.clientX, e.clientY];
+      if(!td || !canEdit) return;
+      dpPending = td; dpStartXY = [e.clientX, e.clientY]; dpTouch = e.pointerType==='touch' || e.pointerType==='pen';
+      if(!dpTouch){
+        e.preventDefault();
+        try{ dpTable.setPointerCapture(e.pointerId); }catch(err){}
+      } else {
+        clearTimeout(dpLongTimer);
+        const pid = e.pointerId;
+        dpLongTimer = setTimeout(()=>{
+          if(dpPending===td){ dpPending = null; dispatchStartPaint(td); try{ dpTable.setPointerCapture(pid); }catch(err){} if(navigator.vibrate) navigator.vibrate(15); }
+        }, 450);
+      }
     };
     dpTable.onpointermove = (e)=>{
-      const atPoint = document.elementFromPoint(e.clientX, e.clientY);
-      const td = atPoint ? atPoint.closest('.dpCell') : null;
       if(dpPending){
-        // 손가락이 살짝 흔들린 건 무시하고, 10px 넘게 끌었을 때만 칠하기 시작
         const moved = Math.hypot(e.clientX - dpStartXY[0], e.clientY - dpStartXY[1]);
-        if(td && td!==dpPending && moved > 10){ dispatchStartPaint(dpPending); dispatchContinuePaint(td); dpPending = null; }
+        if(moved > 10){
+          if(dpTouch){ clearTimeout(dpLongTimer); dpPending = null; return; } // 터치로 밀면 스크롤
+          const atPoint = document.elementFromPoint(e.clientX, e.clientY);
+          const td = atPoint ? atPoint.closest('.dpCell') : null;
+          if(td && td!==dpPending){ dispatchStartPaint(dpPending); dispatchContinuePaint(td); dpPending = null; }
+        }
         return;
       }
-      if(paintSession) dispatchContinuePaint(td);
+      if(paintSession){
+        const atPoint = document.elementFromPoint(e.clientX, e.clientY);
+        dispatchContinuePaint(atPoint ? atPoint.closest('.dpCell') : null);
+      }
     };
-    // 칸을 누르면 바로 글씨 입력, 눌러서 끌면 팔레트 색으로 칠하기
     dpTable.onpointerup = ()=>{
+      clearTimeout(dpLongTimer);
       if(dpPending){ const td = dpPending; dpPending = null; startDpInlineEdit(td); return; }
       dispatchFinishPaint();
     };
-    dpTable.onpointercancel = ()=>{ dpPending = null; dispatchFinishPaint(); };
+    dpTable.onpointercancel = ()=>{ clearTimeout(dpLongTimer); dpPending = null; dispatchFinishPaint(); };
+    // 꾹 눌러 칠하는 중에는 화면이 스크롤되지 않게
+    dpTable.addEventListener('touchmove', (ev)=>{ if(paintSession) ev.preventDefault(); }, {passive:false});
   }
   if(dpPop){
     const close = ()=>{ dpPop = null; render(); };
@@ -4011,7 +4032,7 @@ async function exportBackup(){
   const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `SNCT근태_백업_${todayStr()}.json`;
+  a.href = url; a.download = `SNCT장비_백업_${todayStr()}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url), 5000);
   try{ localStorage.setItem(LAST_BACKUP_KEY, String(Date.now())); }catch(e){}
@@ -4027,7 +4048,7 @@ function importBackupFile(file){
     if(obj && obj.kind==='attendanceByName'){ importAttendanceByName(obj); return; }
     const data = obj && obj.data ? obj.data : obj;
     if(!data || typeof data!=='object' || (!data.employees && !data.attendance)){
-      showToast('SNCT 근태관리 백업 파일이 아닙니다.'); return;
+      showToast('SNCT 장비관리 백업 파일이 아닙니다.'); return;
     }
     const n = Object.keys(data.attendance||{}).length, ne = Object.keys(data.employees||{}).length;
     const when = obj.exportedAt ? new Date(obj.exportedAt).toLocaleString('ko-KR') : '날짜 정보 없음';
