@@ -1,7 +1,7 @@
 {
   "id": "./?app=snct-pink",
-  "name": "SNCT 근태관리",
-  "short_name": "SNCT근태",
+  "name": "SNCT 장비관리",
+  "short_name": "SNCT장비",
   "description": "선광신컨테이너터미널 STS파트 근태관리",
   "start_url": "./?app=snct-pink",
   "scope": "./",
