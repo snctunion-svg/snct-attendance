@@ -303,11 +303,10 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <div class="navttl" style="margin-top:10px;">조장관리</div>
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
-    <div class="navttl" data-editor-only style="margin-top:10px;">조장 운영</div>
+    <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드 참조</a>
-    <div class="navttl" data-editor-only style="margin-top:10px;">데이터</div>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
@@ -1369,7 +1368,35 @@ const FIREBASE_CONFIG = {
   appId: "1:236880210998:web:b0abb11eae94b3103a3c97"
 };
 // 저장(편집)이 허용된 계정. Firestore 보안 규칙에도 같은 이메일을 넣어야 실제로 저장됩니다.
-const EDITOR_EMAILS = ['snctunion@gmail.com'];
+// ===== 로그인 권한 =====
+// 조장관리(조장모드): 출퇴근 입력·근태관리·월별 OT현황·배차표·지원계획표 수정
+// UNION: 조편성 관리·공휴일 관리·근태코드 참조·백업·복원 수정
+// 로그인 안 함(보기 전용): 근태관리·월별 OT현황·배차표·지원계획표 보기만
+const UNION_EMAILS = ['snctunion@gmail.com'];
+const LEADER_EMAILS = ['jojang@snct.app'];
+const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
+const VIEWER_VIEWS = ['combined','ot','dispatch','splan'];
+const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid'];
+const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats'];
+let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
+function roleOfEmail(email){
+  const e = String(email||'').toLowerCase();
+  if(UNION_EMAILS.some(x=>x.toLowerCase()===e)) return 'union';
+  if(LEADER_EMAILS.some(x=>x.toLowerCase()===e)) return 'leader';
+  return null;
+}
+function roleCanSee(v){
+  if(userRole==='all' || VIEWER_VIEWS.includes(v)) return true;
+  if(userRole==='leader') return LEADER_VIEWS.includes(v);
+  if(userRole==='union') return UNION_VIEWS.includes(v);
+  return false;
+}
+function roleCanEdit(v){
+  if(userRole==='all') return true;
+  if(userRole==='leader') return LEADER_VIEWS.includes(v);
+  if(userRole==='union') return UNION_VIEWS.includes(v);
+  return false;
+}
 const FIREBASE_SDK = 'https://www.gstatic.com/firebasejs/12.19.0/';
 const OLD_LOCAL_KEY = 'snct_attendance_data_v1'; // 이전 버전(브라우저 저장)이 쓰던 저장 키
 const LAST_BACKUP_KEY = 'snct_attendance_last_backup';
@@ -1450,12 +1477,14 @@ function createFirebaseDb(){
 
 function requireEdit(){
   if(canEdit) return true;
-  showToast(db ? '보기 전용입니다. 편집하려면 편집자 로그인을 하세요.' : '서버에 연결되지 않아 저장할 수 없습니다.');
+  showToast(!db ? '서버에 연결되지 않아 저장할 수 없습니다.'
+    : userRole ? '이 화면은 ' + (userRole==='leader' ? '조장모드' : 'UNION') + '에서 수정할 수 없습니다.'
+    : '보기 전용입니다. 조장관리 또는 UNION으로 로그인하세요.');
   return false;
 }
 function saveErrMsg(base, err){
   const c = (err && err.code) || '';
-  if(c==='permission-denied') return base + ' (권한 없음 — Firestore 보안 규칙을 게시했는지, 편집자 계정인지 확인하세요)';
+  if(c==='permission-denied') return base + ' (권한 없음 — Firestore 보안 규칙을 게시했는지, 로그인한 계정의 권한을 확인하세요)';
   if(c==='not-found') return base + ' (Firestore 데이터베이스를 찾을 수 없음 — 데이터베이스가 만들어졌는지 확인하세요)';
   if(c==='unavailable') return base + ' (서버에 연결할 수 없음 — 인터넷 연결을 확인하세요)';
   return base + (c ? ` (오류: ${c})` : (err && err.message ? ` (${err.message})` : ''));
@@ -1480,26 +1509,28 @@ function updateStatusBar(){
   else conn = '<span class="dot"></span><span class="conn-txt">실시간 동기화</span>';
   let authHtml = '';
   if(db && authResolved){
-    authHtml = canEdit
-      ? `<span style="color:var(--ok);font-weight:700;">✏️ 편집 모드</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+    authHtml = userRole
+      ? `<span style="color:#be185d;font-weight:800;">${userRole==='union' ? '🛡 UNION' : '✏️ 조장모드'}</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
       : (currentUser
-          ? `<span style="color:var(--warn);">편집 권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
-          : `<span>👁 보기 전용</span><button type="button" class="btn ghost sm" id="loginBtn">편집자 로그인</button>`);
+          ? `<span style="color:var(--warn);">권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+          : `<span>👁 보기 전용</span><button type="button" class="btn ghost sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn ghost sm" id="loginUnionBtn">UNION</button>`);
   }
   statusEl.innerHTML = conn + authHtml;
-  const lb = document.getElementById('loginBtn'), lo = document.getElementById('logoutBtn');
-  if(lb) lb.onclick = openLoginDialog;
+  const lb = document.getElementById('loginLeaderBtn'), lu = document.getElementById('loginUnionBtn'), lo = document.getElementById('logoutBtn');
+  if(lb) lb.onclick = ()=> openLoginDialog('leader');
+  if(lu) lu.onclick = ()=> openLoginDialog('union');
   if(lo) lo.onclick = ()=> appConfirm('로그아웃할까요? 로그아웃하면 보기 전용이 됩니다.', ()=> fb.authM.signOut(fb.auth));
 }
-function openLoginDialog(){
+function openLoginDialog(role){
+  role = role==='union' ? 'union' : 'leader';
   const old = document.getElementById('loginOverlay'); if(old) old.remove();
   const ov = document.createElement('div');
   ov.id = 'loginOverlay';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
   ov.innerHTML = `
     <form id="loginForm" style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;">
-      <h3 style="margin:0 0 4px;font-size:15px;">편집자 로그인</h3>
-      <div class="field"><label>이메일</label><input type="email" name="email" autocomplete="username" required value="${esc(EDITOR_EMAILS[0]||'')}"></div>
+      <h3 style="margin:0 0 4px;font-size:15px;">${role==='union' ? 'UNION' : '조장관리'} 로그인</h3>
+      <div class="field"><label>계정(이메일)</label><input type="email" name="email" autocomplete="username" required value="${esc((role==='union' ? UNION_EMAILS : LEADER_EMAILS)[0]||'')}"></div>
       <div class="field"><label>비밀번호</label><input type="password" name="pw" autocomplete="current-password" required></div>
       <div id="loginErr" style="color:var(--warn);font-size:12px;min-height:16px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -1519,7 +1550,8 @@ function openLoginDialog(){
     try{
       await fb.authM.signInWithEmailAndPassword(fb.auth, String(f.get('email')).trim(), String(f.get('pw')));
       ov.remove();
-      showToast('로그인되었습니다.');
+      const r = roleOfEmail(String(f.get('email')).trim());
+      showToast(r==='union' ? 'UNION으로 로그인되었습니다.' : r==='leader' ? '조장모드로 로그인되었습니다.' : '로그인되었지만 권한이 없는 계정입니다.');
     }catch(err){
       const c = err && err.code || '';
       errEl.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found')) ? '이메일 또는 비밀번호가 맞지 않습니다.'
@@ -1534,10 +1566,8 @@ function openLoginDialog(){
 const EDITOR_ONLY_VIEWS = ['input','team','holidays','codes','backup','grid','employees','codestats','pay'];
 function isEditorOnlyView(v){ return EDITOR_ONLY_VIEWS.includes(v); }
 function updateNavForRole(){
-  document.querySelectorAll('nav#nav a[data-view]').forEach(a=>{
-    a.style.display = (!canEdit && isEditorOnlyView(a.dataset.view)) ? 'none' : '';
-  });
-  document.querySelectorAll('nav#nav [data-editor-only]').forEach(x=> x.style.display = canEdit ? '' : 'none');
+  document.querySelectorAll('nav#nav a[data-view]').forEach(a=>{ a.style.display = roleCanSee(a.dataset.view) ? '' : 'none'; });
+  document.querySelectorAll('nav#nav [data-role-section="union"]').forEach(x=> x.style.display = (userRole==='union' || userRole==='all') ? '' : 'none');
 }
 // 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
 function applyReadonly(el){
@@ -1637,7 +1667,7 @@ async function initDb(){
     // 미리보기 모드: 예시 데이터 + 편집 가능(저장은 안 됨)
     demoMode = true;
     db = createDemoDb();
-    dbReady = true; authResolved = true; canEdit = true;
+    dbReady = true; authResolved = true; canEdit = true; userRole = 'all';
     updateStatusBar(); updateNavForRole();
     subscribeAll();
     render();
@@ -1654,14 +1684,15 @@ async function initDb(){
   subscribeAll();
   fb.authM.onAuthStateChanged(fb.auth, user=>{
     currentUser = user;
-    canEdit = !!(user && EDITOR_EMAILS.map(x=>x.toLowerCase()).includes(String(user.email||'').toLowerCase()));
+    userRole = user ? roleOfEmail(user.email) : null;
+    canEdit = roleCanEdit(VIEW);
     const first = !authResolved;
     authResolved = true;
     updateStatusBar();
     updateNavForRole();
-    if(!canEdit && isEditorOnlyView(VIEW)) setView('combined'); // 보기 전용은 허용된 화면(근태관리)으로
+    if(!roleCanSee(VIEW)) setView(userRole==='union' ? 'team' : 'combined'); // 볼 수 없는 화면이면 허용된 화면으로
     else render();
-    if(canEdit) afterEditorLogin();
+    if(userRole) afterEditorLogin();
   });
 }
 // 편집자 로그인 직후: 클라우드가 비어 있으면 이전 브라우저 데이터를 올리거나 기본값을 채움
@@ -1705,7 +1736,7 @@ function seedLocalFallback(){
 }
 
 async function trySeed(){
-  if(!db || !canEdit) return;
+  if(!db || !userRole) return;
   try{
     const marker = await db.doc('meta/seed').get();
     if(!marker.exists){
@@ -2061,7 +2092,8 @@ async function deleteSupportPlanWeek(startStr){
 /* ========================= 렌더 라우터 ========================= */
 function setView(v){
   if(v==='pay') v = 'combined'; // 급여 명세서는 잠시 숨김(나중에 다시 사용)
-  if(authResolved && !canEdit && isEditorOnlyView(v)) v = 'combined';
+  if(authResolved && !roleCanSee(v)) v = 'combined';
+  canEdit = roleCanEdit(v);
   VIEW = v;
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
   document.getElementById('nav').classList.remove('open');
@@ -2118,6 +2150,7 @@ function render(){
   renderDeferred = false;
   ensureForView();
   const el = document.getElementById('content');
+  if(authResolved) canEdit = roleCanEdit(VIEW);
   if(VIEW==='input') el.innerHTML = pageInput();
   else if(VIEW==='grid') el.innerHTML = pageGrid();
   else if(VIEW==='ot') el.innerHTML = pageOT();
@@ -2555,7 +2588,7 @@ function pageCombined(){
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
   </div>
-  <p class="hint">월별 근태코드의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(편집자). 근태코드 참조에 있는 코드만 표시됩니다.</p>
+  <p class="hint">월별 근태코드의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(조장모드). 근태코드 참조에 있는 코드만 표시됩니다.</p>
   ${modal}
   ${leaveEmpId ? renderLeaveModal() : ''}
   ${dayMemoOpen ? renderDayMemo() : ''}
