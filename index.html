@@ -230,6 +230,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
 #dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;}
 #dpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:11px;text-align:center;padding:0;}
+#dpTable tr.dpOff td:not(.dpPainted){background:#e5e7eb !important;color:#6b7280;}
+#dpTable tr.dpOff .dpNote{color:#9ca3af;}
 #dpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
 #dpTable th.dpMealH{border-top:2px solid #E03131 !important;}
 #dpTable td.dpMealF{border-bottom:2px solid #E03131 !important;}
@@ -513,6 +515,7 @@ function autoDispatchShift(){
   const c = scheduledShift(dispatchDate || todayStr(), dispatchTeamFilter);
   if(c) dispatchShift = c==='N' ? 'night' : 'day';
 }
+const DP_WORK_CODES = new Set(['D','N','DN','ND','DS','NS']); // 배차표에서 '근무'로 보는 코드
 function isMealSlot(s){ const hh = String(s).split(':')[0]; return hh==='07' || hh==='12' || hh==='18' || hh==='24'; }
 async function saveDispatchNote(dateStr, shift, empId, slot, text){
   if(!requireEdit()) return;
@@ -543,6 +546,7 @@ function applyPaintToCell(td, value){
   td.style.background = cat ? cat.bg : 'transparent';
   td.style.color = cat ? cat.fg : 'var(--text)';
   td.dataset.dispatchCur = value || '';
+  td.classList.toggle('dpPainted', !!cat);
 }
 function updateSuwuLive(empId){
   const cell = document.querySelector(`[data-dispatch-suwu="${empId}"]`);
@@ -3021,7 +3025,7 @@ function pageDispatch(){
     const cat = dispatchCat(catKey);
     const bg = cat ? cat.bg : 'transparent';
     const fg = cat ? cat.fg : 'var(--text)';
-    return `<td class="dpCell" data-dispatch-emp="${esc(empId)}" data-dispatch-slot="${esc(s)}" data-dispatch-cur="${esc(catKey||'')}"
+    return `<td class="dpCell${cat?' dpPainted':''}" data-dispatch-emp="${esc(empId)}" data-dispatch-slot="${esc(s)}" data-dispatch-cur="${esc(catKey||'')}"
       style="background:${bg};color:${fg};"${note?` title="${esc(note)}"`:''}>${note?`<span class="dpTxt">${esc(note)}</span>`:''}</td>`;
   }
 
@@ -3063,10 +3067,14 @@ function pageDispatch(){
       if(v){ paintedSlots++; slotCounts[si]++; }
       return slotCell(e.id, s, v, note);
     }).join('');
-    return `<tr>
+    // 근태: 월별 근태코드 표와 같은 코드(FC·MC·SC·AV·DN 등). 없으면 교대 순환 근무(D/N)
+    const mcode = gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim());
+    const dcode = mcode || scheduledShift(ds, e.team||'');
+    const offDay = !!dcode && !DP_WORK_CODES.has(dcode); // D·N 계열이 아니면(휴무·휴가 등) 행을 흐린 회색으로
+    return `<tr class="${offDay ? 'dpOff' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:left;">${esc(e.name)}</td>
-      <td class="dpI dpI3" style="color:${codeColor(displayCode(rec))};">${displayCode(rec) ? esc(displayCode(rec)) : `<span style="color:var(--text-muted);font-weight:600;" title="교대 순환 근무">${esc(scheduledShift(ds, e.team||''))}</span>`}</td>
+      <td class="dpI dpI3">${mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
       <td class="dpI dpI4">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
       ${cells}
