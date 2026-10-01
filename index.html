@@ -1520,7 +1520,7 @@ function updateStatusBar(){
       ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : '✏️ 조장모드'}</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
       : (currentUser
           ? `<span style="color:var(--warn);">권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
-          : `<span>👁 보기 전용</span><button type="button" class="btn sm" id="loginLeaderBtn">✏️ 조장모드 로그인</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">🛡 UNION 로그인</button>`);
+          : `<span>👁 보기 전용</span><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">UNION</button>`);
   }
   statusEl.innerHTML = conn + authHtml;
   const lb = document.getElementById('loginLeaderBtn'), lu = document.getElementById('loginUnionBtn'), lo = document.getElementById('logoutBtn');
@@ -1536,10 +1536,8 @@ function openLoginDialog(role){
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
   ov.innerHTML = `
     <form id="loginForm" style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;">
-      <h3 style="margin:0 0 4px;font-size:15px;color:${role==='union' ? '#4c1d95' : '#be185d'};">${role==='union' ? '🛡 UNION 로그인' : '✏️ 조장모드 로그인'}</h3>
-      <p style="margin:0;font-size:12px;color:var(--text-muted);">${role==='union' ? '전체 메뉴 (조장모드 메뉴 + 조편성·공휴일·근태코드·백업)' : '출퇴근 입력 · 근태관리 · 월별 OT현황 · 배차표 · 지원계획표'}</p>
       <input type="hidden" name="email" autocomplete="username" value="${esc((role==='union' ? UNION_EMAILS : LEADER_EMAILS)[0]||'')}">
-      <div class="field"><label>비밀번호</label><input type="password" name="pw" autocomplete="current-password" required></div>
+      <div class="field"><label style="color:${role==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${role==='union' ? 'UNION' : '조장관리'} 비밀번호</label><input type="password" name="pw" inputmode="numeric" autocomplete="current-password" required placeholder="비밀번호"></div>
       <div id="loginErr" style="color:var(--warn);font-size:12px;min-height:16px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
         <button type="button" class="btn ghost sm" id="loginCancel">취소</button>
