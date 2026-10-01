@@ -655,7 +655,10 @@ const RED_CODES = new Set(['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL']);
 const SKY_CODES = new Set(['VP']);
 const CODE_STYLE = {FC:{bg:'#2563eb',fg:'#ffffff',txt:'#1d4ed8'}, MC:{bg:'#fde047',fg:'#111111',txt:'#a16207'},
   SP:{bg:'#fbcfe8',fg:'#dc2626',txt:'#dc2626'}, SC:{bg:'#e5e7eb',fg:'#4b5563',txt:'#4b5563'}, VP:{bg:'#e0f2fe',fg:'#0369a1',txt:'#0369a1'}};
+const GROUP_STYLE = {red:{bg:'#dc2626',fg:'#ffffff',txt:'#dc2626'}, yellow:CODE_STYLE.MC, blue:CODE_STYLE.FC, pink:CODE_STYLE.SP, gray:CODE_STYLE.SC, sky:CODE_STYLE.VP, black:{bg:'',fg:'var(--text)',txt:'var(--text)'}};
 function codeStyle(code){
+  const cd = (typeof codeDefs!=='undefined') && codeDefs[code];
+  if(cd && cd.color && GROUP_STYLE[cd.color]) return GROUP_STYLE[cd.color];
   if(CODE_STYLE[code]) return CODE_STYLE[code];
   if(RED_CODES.has(code)) return {bg:'#dc2626', fg:'#ffffff', txt:'#dc2626'};
   return {bg:'', fg:'var(--text)', txt:'var(--text)'};
@@ -666,6 +669,8 @@ const CODE_GROUPS = [
   {key:'blue', name:'파란 배경'}, {key:'pink', name:'분홍 배경'}, {key:'gray', name:'회색 배경'}, {key:'sky', name:'하늘색 배경'}
 ];
 function codeGroup(code){
+  const cd = (typeof codeDefs!=='undefined') && codeDefs[code];
+  if(cd && cd.color) return cd.color;
   if(RED_CODES.has(code)) return 'red';
   return ({MC:'yellow', FC:'blue', SP:'pink', SC:'gray', VP:'sky'})[code] || 'black';
 }
@@ -1959,12 +1964,13 @@ async function deleteAttendanceRec(date, empId){
     showToast(saveErrMsg('삭제에 실패했습니다.', err));
   }
 }
-async function addEmployee(name, part, team){
+async function addEmployee(name, part, team, unionGroup){
   if(!requireEdit()) return;
   const id = 'e' + Date.now();
   const order = employees.length ? Math.max(...employees.map(e=>e.order||0))+1 : 1;
   const teamOrder = team ? (employees.filter(e=>e.team===team).length + 1) : undefined;
   const data = {name, part, order, active:true};
+  if(unionGroup==='1' || unionGroup==='2') data.unionGroup = unionGroup;
   if(team){ data.team = team; data.teamOrder = teamOrder; data.teamRole = '조원'; }
   employees.push(Object.assign({id}, data)); // 낙관적 로컬 업데이트
   render();
@@ -2005,12 +2011,15 @@ async function removeHoliday(date){
   try{ await db.collection('holidays').doc(date).delete(); }
   catch(err){ console.error(err); showToast(saveErrMsg('삭제에 실패했습니다.', err)); }
 }
-async function saveCodeLabel(code,label){
+async function saveCodeLabel(code,label,color){
   if(!requireEdit()) return;
-  codeDefs[code] = {code,label}; // 낙관적 로컬 업데이트
+  const data = {code,label};
+  const prevColor = codeDefs[code] && codeDefs[code].color;
+  if(color) data.color = color; else if(prevColor) data.color = prevColor; // 설명만 고칠 때는 색 유지
+  codeDefs[code] = data; // 낙관적 로컬 업데이트
   render();
   if(!db){ return; }
-  try{ await db.collection('codeDefs').doc(code).set({code,label}); showToast('설명이 저장되었습니다.'); }
+  try{ await db.collection('codeDefs').doc(code).set(data); showToast('저장되었습니다.'); }
   catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
 }
 async function deleteCodeDef(code){
@@ -2720,7 +2729,6 @@ function pageOT(){
   </thead><tbody>${rows}${avgRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다.</div>`}
   <p class="hint">임금월은 매월 26일부터 다음달 25일까지입니다 (예: "10월"=9/26~10/25). 휴일보전=MAX(휴일계,60), 지원보전=MAX(지원계,30). 출퇴근 입력에서 저장하면 이 표에도 자동으로 반영됩니다.</p>
-  <div class="note" style="margin-top:14px;">${OT_NOTE}</div>
   ${otEdit ? renderOtEdit() : ''}
   `;
 }
@@ -2965,7 +2973,7 @@ function pageHolidays(){
   return `
   <h2 class="pgttl">공휴일 관리</h2>
   <p class="pgsub">공휴일로 지정된 날짜는 월별 근태관리표에서 강조 표시됩니다.</p>
-  <div class="note">노조 설립일은 사람마다 달라요: <b>SNCT노조 → 6/15</b>, <b>통합노조 → 1/2</b> (해마다 자동 적용). 누가 어느 노조인지는 조편성 관리의 '노조(설립일)' 칸에서 정합니다. 기본값: 1조 전원·고훈희·유재현 = SNCT노조, 그 외 2조 = 통합노조.</div>
+  <div class="note">노조 설립일은 사람마다 달라요: <b>SNCT1노조 → 6/15</b>, <b>SNCT2노조 → 1/2</b> (해마다 자동 적용). 누가 어느 노조인지는 조편성 관리의 '노조' 칸에서 정합니다.</div>
   <div class="panel">
     <h3>연도별 공휴일</h3>
     <div class="row" style="margin-bottom:12px;">${yearTabs || '<span class="hint">등록된 공휴일이 없습니다.</span>'}</div>
@@ -3021,6 +3029,9 @@ function pageCodes(){
       <button class="btn ghost sm" id="showAddCodeBtn">+ 코드 추가</button>
     </div>
     <div id="addCodeForm" style="display:${addCodeFormOpen?'flex':'none'};gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;">
+      <select id="newCodeColor" style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--bg);color:var(--text);">
+        ${CODE_GROUPS.map(g=>`<option value="${g.key}">${esc(g.name)}</option>`).join('')}
+      </select>
       <input type="text" id="newCodeInput" placeholder="코드 (예: HD)" maxlength="8" style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--bg);color:var(--text);width:100px;text-transform:uppercase;">
       <input type="text" id="newCodeLabelInput" placeholder="설명 (예: 반차)" style="border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--bg);color:var(--text);width:200px;">
       <button class="btn sm" id="addCodeSaveBtn">추가</button>
@@ -3207,7 +3218,6 @@ function pageSupportPlan(){
   }).join('');
   return `
   <h2 class="pgttl">지원계획표</h2>
-  <p class="pgsub">주 단위로 가동대수·정원·휴무 등을 입력하면 지원가능/출근원/교대비율이 자동 계산됩니다.</p>
   <div class="row" style="margin-bottom:14px;">
     <button class="btn ghost sm" id="prevWeek">◀ 이전주</button>
     <div class="field" style="min-width:auto;"><b style="font-size:14px;">${esc(weekStart)} ~ ${esc(addDays(weekStart,6))}</b></div>
@@ -3217,7 +3227,6 @@ function pageSupportPlan(){
   <div class="row" style="margin-top:14px;">
     <button class="btn warn ghost" id="splanResetBtn">초기화</button>
   </div>
-  <p class="hint">입력 칸을 벗어나면(blur) 자동 저장됩니다. 지원가능 = 정원 − 휴무·휴가·기타 − 지원휴무 / 출근원 = 지원가능 + 총괄조장 + 선지원 + 지원 / 교대비율 = 출근원 ÷ 가동대수 (원본 시트 수식 기준)</p>
   `;
 }
 
@@ -3232,8 +3241,8 @@ function teamPanel(teamKey, title){
     <td><input type="text" data-team-emp="${esc(e.id)}" data-team-field="part" value="${esc(e.part||'')}" style="width:80px;border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:var(--bg);color:var(--text);"></td>
     <td class="namecell">${esc(e.name)}</td>
     <td><select data-team-emp="${esc(e.id)}" data-team-field="unionGroup" title="노조 설립일(공휴일)" style="border:1px solid var(--border);border-radius:5px;padding:3px 4px;background:var(--bg);color:var(--text);font-size:12px;">
-      <option value="1"${unionOf(e)==='1'?' selected':''}>SNCT노조(6/15)</option>
-      <option value="2"${unionOf(e)==='2'?' selected':''}>통합노조(1/2)</option>
+      <option value="1"${unionOf(e)==='1'?' selected':''}>SNCT1노조</option>
+      <option value="2"${unionOf(e)==='2'?' selected':''}>SNCT2노조</option>
     </select></td>
     <td><select data-team-emp="${esc(e.id)}" data-team-field="rankExclude" title="근태관리 순번 계산에서 제외" style="border:1px solid var(--border);border-radius:5px;padding:3px 4px;background:var(--bg);color:var(--text);font-size:12px;">
       <option value=""${rankExcl(e)===''?' selected':''}>포함</option>
@@ -3245,7 +3254,7 @@ function teamPanel(teamKey, title){
   return `
   <div data-team-drop="${esc(teamKey)}" style="flex:1 1 320px;min-width:260px;border-radius:10px;">
     <h3 style="margin-bottom:8px;">${esc(title)} (${list.length}명)</h3>
-    ${list.length? `<div class="scrollx"><table class="tbl"><thead><tr><th>순번</th><th>파트</th><th>성명</th><th>노조(설립일)</th><th>근태관리 순번</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
+    ${list.length? `<div class="scrollx"><table class="tbl"><thead><tr><th>순번</th><th>파트</th><th>성명</th><th>노조</th><th>근태관리 순번</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
       : `<div class="empty">배정된 직원이 없습니다. 다른 조에서 끌어다 놓을 수 있어요.</div>`}
   </div>`;
 }
@@ -3320,15 +3329,11 @@ function rotationPanel(){
     return `<td style="text-align:center;">${m}/${d}~</td><td style="text-align:center;font-weight:800;">${c1}</td><td style="text-align:center;font-weight:800;">${c2}</td>`; });
   return `<div class="panel">
     <h3>교대 근무 순환</h3>
-    <p class="hint" style="margin:0 0 10px;">기준 주에 <b>1조가 D(주간)면 2조는 N(야간)</b>이고, 다음 주(월요일)마다 서로 바뀝니다. 이 근무코드는 출퇴근 입력만 한 날의 OT 계산(주간·야간, 휴일 퇴근보전)과 배차표 '근태' 칸(회색)에 자동으로 쓰여요. 월별표에서 직접 넣은 코드가 있으면 그 코드가 우선입니다.</p>
     <div class="row" style="align-items:flex-end;margin-bottom:10px;">
       <div class="field"><label>기준 주 (그 주 월요일로 맞춰짐)</label><input type="date" id="rotStart" value="${esc(start)}"></div>
       <div class="field"><label>기준 주 1조 근무</label><select id="rotTeam1"><option value="D"${rotation.team1!=='N'?' selected':''}>D (주간)</option><option value="N"${rotation.team1==='N'?' selected':''}>N (야간)</option></select></div>
       <span class="hint" style="margin:0 0 8px;">→ 2조는 ${rotation.team1==='N'?'D (주간)':'N (야간)'}</span>
     </div>
-    <div class="scrollx"><table class="tbl" style="width:auto;"><thead><tr><th>주</th><th>1조</th><th>2조</th></tr></thead><tbody>
-      ${prev.map(r=>`<tr>${r}</tr>`).join('')}
-    </tbody></table></div>
   </div>`;
 }
 async function saveRotation(data){
@@ -3354,7 +3359,6 @@ function pageTeam(){
   const unassigned = employees.filter(e=>e.team!=='1' && e.team!=='2');
   return `
   <h2 class="pgttl">조편성 관리</h2>
-  <p class="pgsub">순번 옆 <b>⠿</b> 손잡이를 잡고 위아래로 끌면 순번이 바뀝니다. 다른 조 칸으로 끌어다 놓으면 조도 함께 바뀌어요.</p>
   <div class="panel">
     <h3>직원 추가</h3>
     <form id="teamAddForm" class="row">
@@ -3364,6 +3368,10 @@ function pageTeam(){
         <option value="1">1조</option>
         <option value="2">2조</option>
         <option value="">미배정</option>
+      </select></div>
+      <div class="field"><label>노조</label><select name="unionGroup">
+        <option value="1">SNCT1노조</option>
+        <option value="2">SNCT2노조</option>
       </select></div>
       <button class="btn" type="submit">추가</button>
     </form>
@@ -3692,7 +3700,7 @@ function afterRender(){
     const f = new FormData(teamAddForm);
     const name = (f.get('name')||'').trim();
     if(!name){ return; }
-    addEmployee(name, (f.get('part')||'STS').trim(), f.get('team')||'');
+    addEmployee(name, (f.get('part')||'STS').trim(), f.get('team')||'', f.get('unionGroup')||'1');
     teamAddForm.reset();
   };
   el.querySelectorAll('[data-emp-field]').forEach(x=>{
@@ -3747,8 +3755,9 @@ function afterRender(){
     const label = labelInput.value.trim();
     if(!code){ showToast('코드를 입력해주세요.'); return; }
     if(WORK_CODES.some(w=>w.code===code) || STATUS_CODE_LIST.includes(code)){ showToast('이미 있는 코드예요.'); return; }
+    const colorEl = document.getElementById('newCodeColor');
     addCodeFormOpen = false;
-    saveCodeLabel(code, label);
+    saveCodeLabel(code, label, colorEl ? colorEl.value : '');
   };
 
   // 배차표
