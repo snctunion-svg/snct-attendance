@@ -1,7 +1,7 @@
 // SNCT 근태관리 서비스워커: 앱 설치를 가능하게 하고, 인터넷이 끊겼을 때 마지막으로 받은 화면을 보여줌.
 // 항상 최신 파일을 먼저 받아오므로(network-first) GitHub에 새로 올린 내용이 바로 반영됨.
-const CACHE = 'snct-attendance-v2';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png?v=2', './icon-512.png?v=2', './apple-touch-icon.png?v=2'];
+const CACHE = 'snct-attendance-v3';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-pink-192.png', './icon-pink-512.png', './apple-touch-icon-pink.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(()=>{}));
   self.skipWaiting();
