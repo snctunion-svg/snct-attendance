@@ -236,6 +236,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:11px;text-align:center;padding:0;}
 #dpTable tr.dpOff td:not(.dpPainted){background:#e5e7eb !important;color:#6b7280;}
 #dpTable tr.dpOff .dpNote{color:#9ca3af;}
+@media (max-width:860px){ #vslFrame{height:300px !important;} }
 #dpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
 #dpTable th.dpMealH{border-top:2px solid #E03131 !important;}
 #dpTable td.dpMealF{border-bottom:2px solid #E03131 !important;}
@@ -519,6 +520,47 @@ function autoDispatchShift(){
   if(c) dispatchShift = c==='N' ? 'night' : 'day';
 }
 const DP_WORK_CODES = new Set(['D','N','DN','ND','DS','NS']); // 배차표에서 '근무'로 보는 코드
+// ===== 본선작업 현황 (회사 홈페이지 화면을 그대로 표시, 1분마다 새로고침) =====
+const VSL_URL = 'https://snct.sun-kwang.co.kr/infoservice/webpage/vessel/vslWorkStatus.jsp';
+let vslOpen = (()=>{ try{ return localStorage.getItem('snct_vsl_open')!=='0'; }catch(e){ return true; } })();
+let vslTimer = null, vslLoadedAt = 0;
+function vesselPanelHtml(){
+  return `<div id="vslPanel" class="panel" style="padding:12px 14px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <b style="font-size:15px;">🚢 본선작업 현황</b>
+      <span id="vslTime" class="hint" style="margin:0;"></span>
+      <span style="flex:1"></span>
+      <button type="button" class="btn ghost sm" id="vslReload">새로고침</button>
+      <a class="btn ghost sm" href="${VSL_URL}" target="_blank" rel="noopener" style="text-decoration:none;">새 창</a>
+      <button type="button" class="btn ghost sm" id="vslToggle">${vslOpen ? '접기' : '펼치기'}</button>
+    </div>
+    <div id="vslBody" style="display:${vslOpen?'block':'none'};margin-top:10px;">
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff;">
+        <iframe id="vslFrame" title="본선작업 현황" src="about:blank" style="display:block;width:100%;min-width:900px;height:380px;border:0;" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+      <p class="hint" style="margin:6px 0 0;">회사 홈페이지 화면을 그대로 보여 줍니다(1분마다 자동 새로고침). 빈 화면이나 '연결 거부'가 보이면 회사 사이트가 다른 화면 안에 표시되는 것을 막아 둔 것이니 '새 창'으로 보세요.</p>
+    </div>
+  </div>`;
+}
+function reloadVessel(){
+  const f = document.getElementById('vslFrame'); if(!f || !vslOpen) return;
+  f.src = VSL_URL; vslLoadedAt = Date.now();
+  const t = document.getElementById('vslTime'); if(t){ const d = new Date(); t.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} 기준`; }
+}
+function bindVesselPanel(){
+  const rl = document.getElementById('vslReload'), tg = document.getElementById('vslToggle');
+  if(rl) rl.onclick = reloadVessel;
+  if(tg) tg.onclick = ()=>{
+    vslOpen = !vslOpen; try{ localStorage.setItem('snct_vsl_open', vslOpen?'1':'0'); }catch(e){}
+    document.getElementById('vslBody').style.display = vslOpen ? 'block' : 'none';
+    tg.textContent = vslOpen ? '접기' : '펼치기';
+    if(vslOpen) reloadVessel();
+  };
+  if(!vslLoadedAt && vslOpen) reloadVessel();
+  if(!vslTimer) vslTimer = setInterval(()=>{
+    if(VIEW==='dispatch' && vslOpen && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000) reloadVessel();
+  }, 15000);
+}
 function isMealSlot(s){ const hh = String(s).split(':')[0]; return hh==='07' || hh==='12' || hh==='18' || hh==='24'; }
 async function saveDispatchNote(dateStr, shift, empId, slot, text){
   if(!requireEdit()) return;
@@ -1578,7 +1620,7 @@ function updateNavForRole(){
 }
 // 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
 function applyReadonly(el){
-  const allow = new Set(['codeStatsStartInput','codeStatsEndInput','codeStatsMealChk','otRangeStartInput','otRangeEndInput','dpDate','dpShift','fDate','fEmp1','fEmp2']);
+  const allow = new Set(['codeStatsStartInput','codeStatsEndInput','codeStatsMealChk','otRangeStartInput','otRangeEndInput','dpDate','dpShift','vslReload','vslToggle','fDate','fEmp1','fEmp2']);
   el.querySelectorAll('input,select,textarea').forEach(x=>{ if(!allow.has(x.id) && x.type!=='file') x.disabled = true; });
   el.querySelectorAll('#holForm,#teamAddForm,#showAddCodeBtn,#splanResetBtn,#backupImportBtn,#delRecBtn,#attForm button[type="submit"],[data-act="del-emp"],[data-act="del-hol"],[data-act="delete-code"],[data-act="restore-code"],[data-act="save-code"],.dpCatBtn,.editor-only')
     .forEach(x=> x.style.display = 'none');
@@ -2170,7 +2212,12 @@ function render(){
   else if(VIEW==='holidays') el.innerHTML = pageHolidays();
   else if(VIEW==='employees') el.innerHTML = pageEmployees();
   else if(VIEW==='codes') el.innerHTML = pageCodes();
-  else if(VIEW==='dispatch') el.innerHTML = pageDispatch();
+  else if(VIEW==='dispatch'){
+    // 본선작업 현황(외부 화면)은 다시 그릴 때마다 새로 불러오지 않도록 유지하고, 배차표 부분만 다시 그림
+    if(!document.getElementById('vslPanel')){ vslLoadedAt = 0; el.innerHTML = vesselPanelHtml() + '<div id="dpBody"></div>'; }
+    document.getElementById('dpBody').innerHTML = pageDispatch();
+    bindVesselPanel();
+  }
   else if(VIEW==='splan') el.innerHTML = pageSupportPlan();
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
