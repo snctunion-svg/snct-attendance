@@ -1,0 +1,78 @@
+/**
+ * 본선작업 현황(선석별 작업현황 · STS별 작업현황)만 뽑아서 앱에 JSON으로 전달
+ * 구글 Apps Script → 웹 앱으로 배포해서 사용합니다.
+ */
+const SRC_URL = 'https://snct.sun-kwang.co.kr/infoservice/webpage/vessel/vslWorkStatus.jsp';
+
+function doGet() {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get('vsl');
+  if (hit) return out_(hit);
+  let data;
+  try {
+    const res = UrlFetchApp.fetch(SRC_URL, {
+      muteHttpExceptions: true, followRedirects: true,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    const blob = res.getBlob();
+    let html = blob.getDataAsString('UTF-8');
+    if (html.indexOf('선석') < 0) html = blob.getDataAsString('EUC-KR'); // 한글 깨짐 방지
+    data = {
+      ok: res.getResponseCode() === 200 && html.indexOf('선석') >= 0,
+      code: res.getResponseCode(),
+      at: new Date().toISOString(),
+      berths: parseBerths_(html),
+      sts: parseSts_(html)
+    };
+  } catch (err) {
+    data = { ok: false, error: String(err), at: new Date().toISOString(), berths: [], sts: [] };
+  }
+  const json = JSON.stringify(data);
+  if (data.ok) cache.put('vsl', json, 50); // 50초 동안은 같은 결과 재사용(회사 사이트 부담 줄이기)
+  return out_(json);
+}
+
+function out_(s) {
+  return ContentService.createTextOutput(s).setMimeType(ContentService.MimeType.JSON);
+}
+
+function lines_(h) {
+  return h.replace(/<svg[\s\S]*?<\/svg>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(div|p|li|tr|span|td|th|b|strong)>/gi, '$&\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .split('\n').map(function (x) { return x.replace(/\s+/g, ' ').trim(); }).filter(String);
+}
+
+// 선석별 작업현황: 카드마다 제목(선석#1 등) + 안의 글자 줄들
+function parseBerths_(html) {
+  const a = html.indexOf('선석별 작업현황');
+  if (a < 0) return [];
+  const b = html.indexOf('STS별 작업현황', a);
+  const sec = html.slice(a, b > a ? b : undefined);
+  return sec.split(/<div class="vessel-card/).slice(1).map(function (p) {
+    const L = lines_('<div ' + p);
+    return { title: L[0] || '', empty: /^\s*empty-slot/.test(p), lines: L.slice(1) };
+  });
+}
+
+// STS별 작업현황: 표의 데이터 줄(칸 글자 배열)
+function parseSts_(html) {
+  const a = html.indexOf('STS별 작업현황');
+  if (a < 0) return [];
+  let t = html.slice(a);
+  const end = t.indexOf('</table>');
+  if (end > 0) t = t.slice(0, end);
+  const rows = [];
+  t.split(/<tr[^>]*>/i).slice(1).forEach(function (r) {
+    if (/<th/i.test(r) || /dash-empty/.test(r)) return;
+    const cells = r.split(/<td/i).slice(1).map(function (c) {
+      const span = (c.match(/rowspan\s*=\s*"?(\d+)/i) || [])[1];
+      const body = c.slice(c.indexOf('>') + 1).split(/<\/td>/i)[0];
+      return { t: lines_(body).join(' '), rs: span ? Number(span) : 1 };
+    });
+    if (cells.length) rows.push(cells);
+  });
+  return rows;
+}
