@@ -1391,14 +1391,15 @@ function roleOfEmail(email){
   if(LEADER_EMAILS.some(x=>x.toLowerCase()===e)) return 'leader';
   return null;
 }
+// UNION은 모든 화면을 보고 수정할 수 있음(전체 관리자)
 function roleCanSee(v){
-  if(userRole==='all' || VIEWER_VIEWS.includes(v)) return true;
+  if(userRole==='all' || userRole==='union' || VIEWER_VIEWS.includes(v)) return true;
   if(userRole==='leader') return LEADER_VIEWS.includes(v);
   if(userRole==='union') return UNION_VIEWS.includes(v);
   return false;
 }
 function roleCanEdit(v){
-  if(userRole==='all') return true;
+  if(userRole==='all' || userRole==='union') return true;
   if(userRole==='leader') return LEADER_VIEWS.includes(v);
   if(userRole==='union') return UNION_VIEWS.includes(v);
   return false;
@@ -1536,7 +1537,7 @@ function openLoginDialog(role){
   ov.innerHTML = `
     <form id="loginForm" style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;">
       <h3 style="margin:0 0 4px;font-size:15px;color:${role==='union' ? '#4c1d95' : '#be185d'};">${role==='union' ? '🛡 UNION 로그인' : '✏️ 조장모드 로그인'}</h3>
-      <p style="margin:0;font-size:12px;color:var(--text-muted);">${role==='union' ? '조편성 관리 · 공휴일 관리 · 근태코드 참조 · 백업·복원' : '출퇴근 입력 · 근태관리 · 월별 OT현황 · 배차표 · 지원계획표'}</p>
+      <p style="margin:0;font-size:12px;color:var(--text-muted);">${role==='union' ? '전체 메뉴 (조장모드 메뉴 + 조편성·공휴일·근태코드·백업)' : '출퇴근 입력 · 근태관리 · 월별 OT현황 · 배차표 · 지원계획표'}</p>
       <input type="hidden" name="email" autocomplete="username" value="${esc((role==='union' ? UNION_EMAILS : LEADER_EMAILS)[0]||'')}">
       <div class="field"><label>비밀번호</label><input type="password" name="pw" autocomplete="current-password" required></div>
       <div id="loginErr" style="color:var(--warn);font-size:12px;min-height:16px;"></div>
@@ -1561,7 +1562,8 @@ function openLoginDialog(role){
       showToast(r==='union' ? 'UNION으로 로그인되었습니다.' : r==='leader' ? '조장모드로 로그인되었습니다.' : '로그인되었지만 권한이 없는 계정입니다.');
     }catch(err){
       const c = err && err.code || '';
-      errEl.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found')) ? '비밀번호가 맞지 않습니다.'
+      errEl.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found'))
+          ? (role==='union' ? '로그인 실패: 비밀번호가 틀렸거나, Firebase에 UNION 계정(union@snct.app)이 아직 없습니다.' : '비밀번호가 맞지 않습니다.')
         : c.includes('too-many-requests') ? '시도가 너무 많습니다. 잠시 후 다시 해 보세요.'
         : c.includes('network') ? '인터넷 연결을 확인하세요.'
         : '로그인 실패: ' + c;
@@ -1697,7 +1699,7 @@ async function initDb(){
     authResolved = true;
     updateStatusBar();
     updateNavForRole();
-    if(!roleCanSee(VIEW)) setView(userRole==='union' ? 'team' : 'combined'); // 볼 수 없는 화면이면 허용된 화면으로
+    if(!roleCanSee(VIEW)) setView('combined'); // 볼 수 없는 화면이면 근태관리로
     else render();
     if(userRole) afterEditorLogin();
   });
