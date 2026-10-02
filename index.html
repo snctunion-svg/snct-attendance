@@ -158,6 +158,20 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .inTbl .inCell:focus{outline:2px solid var(--accent);outline-offset:-2px;background:#fffde8;} .inTbl .inCell.bad{background:#fee2e2;color:#b91c1c;}
 .inTbl td.inRO{text-align:center;color:var(--text-muted);min-width:52px;padding:0 6px !important;} .inTbl td.inTot{font-weight:800;color:var(--accent);}
 .inTbl tr.inDirty td{background:#fff7ed;} .inTbl input[type=checkbox]{width:17px;height:17px;}
+.vslCard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 16px 18px;margin-bottom:16px;}
+.vslCardHead{display:flex;align-items:center;margin-bottom:12px;font-size:15px;}
+.vslBerths{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+.vslBerth{border:1px dashed var(--border);border-radius:12px;background:var(--bg);min-height:200px;padding:14px;display:flex;flex-direction:column;}
+.vslBerth.on{border-style:solid;background:var(--surface);}
+.vslBerthHead{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--text-muted);font-size:15px;}
+.vslBerth.on .vslBerthHead{color:#1d4ed8;}
+.vslBerthIc{width:34px;height:34px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:15px;}
+.vslBerthEmpty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;}
+.vslBerthBody{margin-top:10px;} .vslShip{font-weight:800;font-size:15px;margin-bottom:4px;} .vslLine{font-size:13px;margin:2px 0;}
+.vslTbl{width:100%;border-collapse:collapse;font-size:13px;}
+.vslTbl thead th{background:#eaf1ff;color:#1e40af;font-weight:800;padding:8px 6px;text-align:center;border-bottom:2px solid #1d4ed8;}
+.vslTbl tbody td{padding:9px 6px;border-bottom:1px solid var(--border);}
+.vslTbl td.vslEmptyRow{text-align:center;color:var(--text-muted);padding:16px;}
 .adjCell{cursor:pointer;} .adjCell:hover{outline:2px solid var(--accent);outline-offset:-2px;} .adjMark{color:var(--accent);font-size:9px;margin-left:1px;}
 .nameLink{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .nameLink:hover{color:var(--accent);}
@@ -289,8 +303,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 <body>
 <header class="app">
   <button class="menu-btn" id="menuBtn" aria-label="메뉴">☰</button>
-  <h1><span class="badge">근태관리</span>장비관리</h1>
-  <div class="sub" id="headerSub">선광신컨테이너터미널 · STS파트</div>
+  <h1>장비관리</h1>
+  <div class="sub" id="headerSub" style="display:none;"></div>
   <div class="spacer"></div>
   <div class="status" id="dbStatus"><span class="dot off"></span>연결 확인 중…</div>
 </header>
@@ -300,6 +314,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="input"><span class="ic">✏️</span>출퇴근 입력</a>
     <a data-view="combined"><span class="ic">📋</span>근태관리</a>
     <a data-view="ot"><span class="ic">🧮</span>월별 OT현황</a>
+    <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
     <div class="navttl" style="margin-top:10px;">조장관리</div>
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
@@ -525,6 +540,48 @@ let vslApi = '';             // Apps Script 웹 앱 주소(UNION이 설정, 클�
 let vslData = null, vslErr = '', vslLoading = false;
 let vslOpen = (()=>{ try{ return localStorage.getItem('snct_vsl_open')!=='0'; }catch(e){ return true; } })();
 let vslTimer = null, vslLoadedAt = 0, vslSetupOpen = false;
+// 본선작업 화면(선석별 작업현황 + STS별 작업현황) — 회사 화면과 같은 구성
+function vslStsTableHtml(d){
+  const rows = ((d && d.sts) || []).map(r=>`<tr>${r.map(c=>`<td${c.rs>1?` rowspan="${c.rs}"`:''} style="text-align:center;">${esc(c.t)}</td>`).join('')}</tr>`).join('');
+  return `<div class="scrollx"><table class="vslTbl"><thead>
+      <tr><th rowspan="2">선석</th><th rowspan="2">모선항차</th><th rowspan="2">STS</th><th rowspan="2">작업위치</th><th colspan="3" class="vslGrp">잔여량</th><th rowspan="2">생산성<br>(VAN/HR)</th><th rowspan="2">예상작업완료시간</th></tr>
+      <tr><th>양하</th><th>적하</th><th>합계</th></tr>
+    </thead><tbody>${rows || '<tr><td colspan="9" class="vslEmptyRow">데이터가 없습니다.</td></tr>'}</tbody></table></div>`;
+}
+function pageVessel(){
+  const d = vslData;
+  const canSet = userRole==='union' || userRole==='all';
+  const t = d && d.at ? (()=>{ const x = new Date(d.at); return `${String(x.getHours()).padStart(2,'0')}:${String(x.getMinutes()).padStart(2,'0')} 기준`; })() : '';
+  const berths = (d && d.berths && d.berths.length ? d.berths : [{title:'선석#1',empty:true,lines:[]},{title:'선석#2',empty:true,lines:[]},{title:'선석#3',empty:true,lines:[]}]).map(b=>{
+    const has = !b.empty && b.lines && b.lines.length;
+    return `<div class="vslBerth${has?' on':''}">
+      <div class="vslBerthHead"><span class="vslBerthIc">⚓</span><span>${esc(b.title)}</span></div>
+      ${has ? `<div class="vslBerthBody">${b.lines.map((l,k)=>`<div class="${k===0?'vslShip':'vslLine'}">${esc(l)}</div>`).join('')}</div>`
+            : `<div class="vslBerthEmpty">작업이 없습니다.</div>`}
+    </div>`;
+  }).join('');
+  const msg = !vslApi ? `<div class="note" style="margin-bottom:12px;">본선작업 데이터 주소가 아직 설정되지 않았어요.${canSet ? ' 배차표의 본선작업 현황 칸 아래 \'데이터 주소 설정\'에서 넣어 주세요.' : ''}</div>`
+            : (vslErr ? `<div class="note" style="margin-bottom:12px;">${esc(vslErr)}</div>` : (!d ? `<div class="hint" style="margin-bottom:12px;">불러오는 중…</div>` : ''));
+  return `
+  <h2 class="pgttl">본선작업</h2>
+  ${msg}
+  <div class="vslCard">
+    <div class="vslCardHead"><b>선석별 작업현황</b><span class="hint" style="margin:0 0 0 8px;">${esc(t)}</span><span style="flex:1"></span>
+      <button type="button" class="btn ghost sm" id="vslPageReload">↻ 새로고침</button></div>
+    <div class="vslBerths">${berths}</div>
+  </div>
+  <div class="vslCard">
+    <div class="vslCardHead"><b>STS별 작업현황</b></div>
+    ${vslStsTableHtml(d)}
+  </div>`;
+}
+function bindVesselPage(){
+  const b = document.getElementById('vslPageReload'); if(b) b.onclick = ()=>{ vslLoadedAt = 0; reloadVessel(); };
+  if(vslApi && (!vslData || Date.now()-vslLoadedAt > 55000)) reloadVessel();
+  if(!vslTimer) vslTimer = setInterval(()=>{
+    if((VIEW==='dispatch' || VIEW==='vessel') && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000 && (VIEW==='vessel' || vslOpen)) reloadVessel();
+  }, 15000);
+}
 function vesselPanelHtml(){
   return `<div id="vslPanel" class="panel" style="padding:12px 14px;margin-bottom:14px;">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -588,6 +645,7 @@ async function reloadVessel(){
   }catch(err){ vslErr = '본선작업 데이터를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'; }
   vslLoading = false;
   paintVessel();
+  if(VIEW==='vessel') render();
 }
 function bindVesselPanel(){
   const rl = document.getElementById('vslReload'), tg = document.getElementById('vslToggle');
@@ -602,7 +660,7 @@ function bindVesselPanel(){
   if(body && !body.dataset.painted){ body.dataset.painted = '1'; paintVessel(); }
   if(!vslLoadedAt && vslOpen) reloadVessel();
   if(!vslTimer) vslTimer = setInterval(()=>{
-    if(VIEW==='dispatch' && vslOpen && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000) reloadVessel();
+    if((VIEW==='dispatch' || VIEW==='vessel') && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000 && (VIEW==='vessel' || vslOpen)) reloadVessel();
   }, 15000);
 }
 function isMealSlot(s){ const hh = String(s).split(':')[0]; return hh==='07' || hh==='12' || hh==='18' || hh==='24'; }
@@ -1467,7 +1525,7 @@ const FIREBASE_CONFIG = {
 const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
-const VIEWER_VIEWS = ['combined','ot','dispatch','splan'];
+const VIEWER_VIEWS = ['combined','ot','dispatch','splan','vessel'];
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid'];
 const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats'];
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
@@ -1900,7 +1958,7 @@ function subscribeAll(){
     snap.docs.forEach(d=>{ codeDefs[d.id]=d.data(); });
     scheduleRender();
   }, dbErr);
-  unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='dispatch'){ vslLoadedAt = 0; reloadVessel(); } } }, ()=>{});
+  unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='dispatch' || VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } } }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
     if(doc.exists){ const r = doc.data(); if(r && r.start) rotation = {start:r.start, team1: r.team1==='N'?'N':'D'}; scheduleRender(); }
@@ -2257,6 +2315,7 @@ function render(){
   else if(VIEW==='holidays') el.innerHTML = pageHolidays();
   else if(VIEW==='employees') el.innerHTML = pageEmployees();
   else if(VIEW==='codes') el.innerHTML = pageCodes();
+  else if(VIEW==='vessel'){ el.innerHTML = pageVessel(); bindVesselPage(); }
   else if(VIEW==='dispatch'){
     // 본선작업 현황(외부 화면)은 다시 그릴 때마다 새로 불러오지 않도록 유지하고, 배차표 부분만 다시 그림
     if(!document.getElementById('vslPanel')){ vslLoadedAt = 0; el.innerHTML = vesselPanelHtml() + '<div id="dpBody"></div>'; }
@@ -2649,7 +2708,7 @@ function pageCombined(){
       const memo = rec && rec.note ? String(rec.note) : '';
       return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
-    return `<tr><td class="namecell nameLink" data-act="leave" data-emp="${esc(e.id)}" title="연간 누계 보기">${esc(e.name)}</td>${cells}</tr>`;
+    return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
   }).join('');
 
   const modal = gridEdit ? renderGridEditModal() : '';
@@ -2680,7 +2739,7 @@ function pageCombined(){
     </div>
     <div class="panel cmbRight">
       <div class="cmbCtrl">
-        <h3>월별 근태코드</h3>
+        <h3>월별 근태</h3>
         <div class="row" style="align-items:center;flex-wrap:nowrap;height:58px;">
           <button class="btn ghost sm" id="cmbPrevMonth">◀ 이전달</button>
           <b style="font-size:15px;white-space:nowrap;">${cy}년 ${cm}월</b>
