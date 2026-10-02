@@ -158,6 +158,20 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .inTbl .inCell:focus{outline:2px solid var(--accent);outline-offset:-2px;background:#fffde8;} .inTbl .inCell.bad{background:#fee2e2;color:#b91c1c;}
 .inTbl td.inRO{text-align:center;color:var(--text-muted);min-width:52px;padding:0 6px !important;} .inTbl td.inTot{font-weight:800;color:var(--accent);}
 .inTbl tr.inDirty td{background:#fff7ed;} .inTbl input[type=checkbox]{width:17px;height:17px;}
+.bcWrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;}
+.bcChart{display:grid;grid-template-columns:70px 1fr;min-width:1100px;}
+.bcHeadL{background:#db2777;}
+.bcHead .bcDates{display:grid;background:#db2777;color:#fff;font-weight:800;font-size:12px;} .bcHead .bcDates>div{padding:7px 0;text-align:center;border-left:1px solid rgba(255,255,255,.35);}
+.bcHead .bcTimes{display:grid;background:#fce7f3;color:#9d174d;font-size:11px;font-weight:700;} .bcTime{padding:3px 4px;}
+.bcBerths>div{display:flex;align-items:center;justify-content:center;background:#db2777;color:#fff;font-weight:800;border-top:1px solid rgba(255,255,255,.4);box-sizing:border-box;}
+.bcBody{position:relative;background:#fafafa;overflow:hidden;}
+.bcGrid{position:absolute;inset:0;display:grid;} .bcCol{border-left:1px solid #eceff3;} .bcCol.day{border-left:1px solid #d6dbe2;}
+.bcRowLine{position:absolute;left:0;right:0;border-top:1px solid #d6dbe2;}
+.bcBlock{position:absolute;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.25);font-size:11px;display:flex;flex-direction:column;cursor:pointer;overflow:hidden;box-sizing:border-box;padding:3px 2px;}
+.bcBlock:hover{outline:3px solid #db2777;z-index:5;}
+.bcNums{display:flex;justify-content:space-between;font-size:10.5px;opacity:.9;}
+.bcMid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;} .bcRoute{font-weight:800;} .bcCode{font-size:10.5px;word-break:break-all;}
+.bcBottom{text-align:center;font-size:10.5px;}
 .vslCard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 16px 18px;margin-bottom:16px;}
 .vslCardHead{display:flex;align-items:center;margin-bottom:12px;font-size:15px;}
 .vslBerths{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
@@ -334,6 +348,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="input"><span class="ic">✏️</span>출퇴근 입력</a>
     <a data-view="combined"><span class="ic">📋</span>근태관리</a>
     <a data-view="ot"><span class="ic">🧮</span>월별 OT현황</a>
+    <a data-view="berth"><span class="ic">⚓</span>선석 조회</a>
     <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
     <div class="navttl" style="margin-top:10px;">조장관리</div>
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
@@ -649,6 +664,83 @@ function bindVesselPage(){
   if(!vslTimer) vslTimer = setInterval(()=>{
     if((VIEW==='dispatch' || VIEW==='vessel') && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000 && (VIEW==='vessel' || vslOpen)) reloadVessel();
   }, 15000);
+}
+// ===== 선석 조회(선석배정현황 그래픽) — 같은 Apps Script 주소에 ?type=berth =====
+let berthData = null, berthErr = '', berthLoading = false, berthLoadedAt = 0, berthInfo = null, berthTimer = null;
+async function reloadBerth(){
+  if(!vslApi || berthLoading) return;
+  berthLoading = true; berthLoadedAt = Date.now();
+  try{
+    const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
+    const r = await fetch(api + (api.includes('?') ? '&' : '?') + 'type=berth&t=' + Date.now());
+    const j = await r.json();
+    if(j && j.ok){ berthData = j; berthErr = ''; }
+    else if(j && j.dates === undefined) berthErr = 'Apps Script에 선석 조회 기능이 아직 없어요. 새 코드로 바꾸고 새 버전으로 배포해 주세요.';
+    else berthErr = '회사 사이트에서 선석 정보를 받지 못했어요.';
+  }catch(err){ berthErr = '선석 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'; }
+  berthLoading = false;
+  if(VIEW==='berth') render();
+}
+function textOn(bg){
+  const h = String(bg||'').replace('#',''); if(h.length<6) return '#111';
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return (0.299*r + 0.587*g + 0.114*b) > 150 ? '#111' : '#fff';
+}
+function pageBerth(){
+  const d = berthData;
+  const t = d && d.at ? (()=>{ const x = new Date(d.at); return `${String(x.getHours()).padStart(2,'0')}:${String(x.getMinutes()).padStart(2,'0')} 기준`; })() : '';
+  const msg = !vslApi ? `<div class="note">본선작업 데이터 주소가 아직 설정되지 않았어요.</div>`
+            : berthErr ? `<div class="note">${esc(berthErr)}</div>`
+            : !d ? `<div class="hint">불러오는 중…</div>` : '';
+  let chart = '';
+  if(d && d.dates && d.dates.length){
+    const rows = d.rows && d.rows.length ? d.rows : [{name:'B1',h:180},{name:'B2',h:180},{name:'B3',h:320}];
+    const H = rows.reduce((a,r)=>a+r.h,0) || 680, days = d.dates.length, cols = days*4;
+    const timeCells = Array.from({length:cols},(_,i)=>`<div class="bcTime">${[0,6,12,18][i%4]}</div>`).join('');
+    const grid = Array.from({length:cols},(_,i)=>`<div class="bcCol${i%4===0?' day':''}"></div>`).join('');
+    let y = 0;
+    const rowLines = rows.map(r=>{ y += r.h; return `<div class="bcRowLine" style="top:${y}px"></div>`; }).join('');
+    const blocks = (d.blocks||[]).map((b,i)=>{
+      const fg = textOn(b.bg);
+      return `<div class="bcBlock" data-bi="${i}" style="left:${b.left}%;width:${b.width}%;top:${b.top}px;height:${b.height}px;background:${esc(b.bg)};color:${fg};">
+        <div class="bcNums"><span>${esc(b.startNo)}</span><span>${esc(b.endNo)}</span></div>
+        <div class="bcMid"><div class="bcRoute">${esc(b.route)}</div><div class="bcCode">${esc(b.code)}</div></div>
+        <div class="bcBottom">${esc(b.bottom)}</div>
+      </div>`;
+    }).join('');
+    chart = `<div class="bcWrap"><div class="bcChart" style="--H:${H}px;">
+      <div class="bcHeadL"></div>
+      <div class="bcHead"><div class="bcDates" style="grid-template-columns:repeat(${days},1fr);">${d.dates.map(x=>`<div>${esc(x)}</div>`).join('')}</div>
+        <div class="bcTimes" style="grid-template-columns:repeat(${cols},1fr);">${timeCells}</div></div>
+      <div class="bcBerths">${rows.map(r=>`<div style="height:${r.h}px;">${esc(r.name)}</div>`).join('')}</div>
+      <div class="bcBody" style="height:${H}px;"><div class="bcGrid" style="grid-template-columns:repeat(${cols},1fr);">${grid}</div>${rowLines}${blocks}</div>
+    </div></div>`;
+  }
+  const info = berthInfo!=null && d && d.blocks && d.blocks[berthInfo] ? d.blocks[berthInfo] : null;
+  const pop = info ? `<div id="bcScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:14px;">
+      <div class="panel" style="max-width:420px;width:100%;margin:0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:14px;height:14px;border-radius:4px;background:${esc(info.bg)};display:inline-block;"></span>
+          <h3 style="margin:0;">${esc(info.code)} · ${esc(info.route)}</h3><span style="flex:1"></span><button type="button" class="btn ghost sm" id="bcClose">닫기</button></div>
+        <table class="tbl" style="font-size:12.5px;"><tbody>${Object.entries(info.info||{}).map(([k,v])=>`<tr><th style="text-align:left;white-space:nowrap;">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
+      </div></div>` : '';
+  return `
+  <h2 class="pgttl">선석 조회</h2>
+  ${msg}
+  <div class="vslCard">
+    <div class="vslCardHead"><b>선석배정현황</b><span class="hint" style="margin:0 0 0 8px;">${esc(t)}</span><span style="flex:1"></span>
+      <button type="button" class="btn ghost sm" id="bcReload">↻ 새로고침</button></div>
+    ${chart || (d ? '<div class="empty">표시할 선석 일정이 없습니다.</div>' : '')}
+    ${chart ? '<p class="hint" style="margin:8px 0 0;">배 블록을 누르면 선명·항차·접안/출항 시간·물량을 볼 수 있어요.</p>' : ''}
+  </div>
+  ${pop}`;
+}
+function bindBerthPage(){
+  const r = document.getElementById('bcReload'); if(r) r.onclick = ()=>{ berthLoadedAt = 0; reloadBerth(); };
+  document.querySelectorAll('.bcBlock').forEach(b=> b.onclick = ()=>{ berthInfo = Number(b.dataset.bi); render(); });
+  const c = document.getElementById('bcClose'); if(c) c.onclick = ()=>{ berthInfo = null; render(); };
+  const sc = document.getElementById('bcScrim'); if(sc) sc.onclick = (e)=>{ if(e.target.id==='bcScrim'){ berthInfo = null; render(); } };
+  if(vslApi && (!berthData || Date.now()-berthLoadedAt > 110000)) reloadBerth();
+  if(!berthTimer) berthTimer = setInterval(()=>{ if(VIEW==='berth' && document.visibilityState==='visible' && Date.now()-berthLoadedAt > 110000) reloadBerth(); }, 20000);
 }
 function vesselPanelHtml(){
   return `<div id="vslPanel" class="panel" style="padding:12px 14px;margin-bottom:14px;">
@@ -1590,7 +1682,7 @@ const FIREBASE_CONFIG = {
 const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
-const VIEWER_VIEWS = ['combined','ot','dispatch','splan','vessel'];
+const VIEWER_VIEWS = ['combined','ot','dispatch','splan','vessel','berth'];
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid'];
 const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats'];
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
@@ -2023,7 +2115,7 @@ function subscribeAll(){
     snap.docs.forEach(d=>{ codeDefs[d.id]=d.data(); });
     scheduleRender();
   }, dbErr);
-  unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='dispatch' || VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } } }, ()=>{});
+  unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='dispatch' || VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
     if(doc.exists){ const r = doc.data(); if(r && r.start) rotation = {start:r.start, team1: r.team1==='N'?'N':'D'}; scheduleRender(); }
@@ -2381,6 +2473,7 @@ function render(){
   else if(VIEW==='employees') el.innerHTML = pageEmployees();
   else if(VIEW==='codes') el.innerHTML = pageCodes();
   else if(VIEW==='vessel'){ el.innerHTML = pageVessel(); bindVesselPage(); }
+  else if(VIEW==='berth'){ el.innerHTML = pageBerth(); bindBerthPage(); }
   else if(VIEW==='dispatch'){
     // 본선작업 현황(외부 화면)은 다시 그릴 때마다 새로 불러오지 않도록 유지하고, 배차표 부분만 다시 그림
     if(!document.getElementById('vslPanel')){ vslLoadedAt = 0; el.innerHTML = vesselPanelHtml() + '<div id="dpBody"></div>'; }
