@@ -164,12 +164,32 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .vslBerth{border:1px dashed var(--border);border-radius:12px;background:var(--bg);min-height:200px;padding:14px;display:flex;flex-direction:column;}
 .vslBerth.on{border-style:solid;background:var(--surface);}
 .vslBerthHead{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--text-muted);font-size:15px;}
-.vslBerth.on .vslBerthHead{color:#1d4ed8;}
+.vslBerth.on .vslBerthHead{color:#db2777;}
 .vslBerthIc{width:34px;height:34px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:15px;}
 .vslBerthEmpty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px;}
+.vslBerth.on{background:#fdf2f8;border-color:#fbcfe8;}
+.vslBerthIc.on{background:#db2777;border-color:#db2777;color:#fff;}
+.vslShipNo{color:var(--text);font-weight:800;margin-left:auto;margin-right:auto;}
+.vslOp{background:#db2777;color:#fff;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:800;}
+.vslTimes{background:#fff7fb;border-radius:10px;padding:4px 12px;margin:12px 0 10px;}
+.vslTimeRow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:12.5px;border-bottom:1px solid #fce7f3;}
+.vslTimeRow:last-child{border-bottom:0;} .vslTimeRow span{color:#475569;font-weight:700;} .vslTimeRow b{font-size:12.5px;color:#0f172a;}
+.vslDot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#db2777;margin-right:7px;vertical-align:middle;}
+.vslMid{display:flex;align-items:center;gap:12px;margin:6px 0 12px;}
+.vslRing{position:relative;width:110px;height:110px;flex:0 0 auto;}
+.vslRingIn{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.vslRingIn span{font-size:26px;line-height:1;} .vslRingIn b{color:#db2777;font-size:20px;margin-top:2px;}
+.vslBoxes{display:flex;gap:8px;flex:1;min-width:0;}
+.vslBox{flex:1;border-radius:10px;padding:8px 10px;min-width:0;} .vslBox.dis{background:#fbcfe8;} .vslBox.load{background:#ffe8dd;}
+.vslBoxT{font-size:12px;font-weight:700;color:#db2777;} .vslBox.load .vslBoxT{color:#ea580c;}
+.vslBoxN b{font-size:18px;color:#0f172a;} .vslBoxN span{font-size:12px;color:#64748b;}
+.vslBar{height:5px;border-radius:5px;background:rgba(255,255,255,.8);margin-top:6px;overflow:hidden;} .vslBar i{display:block;height:100%;background:#db2777;} .vslBox.load .vslBar i{background:#ea580c;}
+.vslChips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.vslChip{background:#eef0f3;border-radius:999px;padding:6px 12px;font-size:12.5px;color:#64748b;} .vslChip b{color:#0f172a;font-size:16px;margin-left:4px;}
+.vslChip.g{background:#e7f6ec;} .vslChip.g b{color:#15803d;} .vslChip.o{background:#ffefe3;} .vslChip.o b{color:#ea580c;}
 .vslBerthBody{margin-top:10px;} .vslShip{font-weight:800;font-size:15px;margin-bottom:4px;} .vslLine{font-size:13px;margin:2px 0;}
 .vslTbl{width:100%;border-collapse:collapse;font-size:13px;}
-.vslTbl thead th{background:#eaf1ff;color:#1e40af;font-weight:800;padding:8px 6px;text-align:center;border-bottom:2px solid #1d4ed8;}
+.vslTbl thead th{background:#fce7f3;color:#9d174d;font-weight:800;padding:8px 6px;text-align:center;border-bottom:2px solid #db2777;}
 .vslTbl tbody td{padding:9px 6px;border-bottom:1px solid var(--border);}
 .vslTbl td.vslEmptyRow{text-align:center;color:var(--text-muted);padding:16px;}
 .adjCell{cursor:pointer;} .adjCell:hover{outline:2px solid var(--accent);outline-offset:-2px;} .adjMark{color:var(--accent);font-size:9px;margin-left:1px;}
@@ -548,18 +568,66 @@ function vslStsTableHtml(d){
       <tr><th>양하</th><th>적하</th><th>합계</th></tr>
     </thead><tbody>${rows || '<tr><td colspan="9" class="vslEmptyRow">데이터가 없습니다.</td></tr>'}</tbody></table></div>`;
 }
+// 회사 화면의 선석 카드 글자 줄을 항목별로 나눔
+const VSL_TIME_LABELS = ['접안예정시간','접안완료시간','작업시작시간','출항예정시간'];
+function parseBerthLines(L){
+  const isLabel = x => VSL_TIME_LABELS.includes(x) || ['양하','적하','총작업량','완료량','잔량'].includes(x);
+  const after = lab => { const i = L.indexOf(lab); return i>=0 && i+1<L.length && !isLabel(L[i+1]) ? L[i+1] : ''; };
+  const pair = lab => {
+    const i = L.indexOf(lab); if(i<0) return null;
+    let a = L[i+1]||'', b = '';
+    if(/\/\s*$/.test(a)){ b = L[i+2]||''; a = a.replace(/\/\s*$/,''); }
+    else if(a.includes('/')){ [a,b] = a.split('/'); }
+    const done = Number(String(a).replace(/[^0-9.]/g,''))||0, total = Number(String(b).replace(/[^0-9.]/g,''))||0;
+    return {done, total};
+  };
+  const pctLine = L.find(x=>/^\d+(\.\d+)?\s*%$/.test(x));
+  const ship = L[0] || '';
+  const op = L[1] && !isLabel(L[1]) && !/%$/.test(L[1]) && L[1].length<=12 ? L[1] : '';
+  return {
+    ship, op,
+    times: VSL_TIME_LABELS.map(l=>({label:l, value:/^\d{4}[-./]\d{1,2}/.test(after(l)) ? after(l) : ''})),
+    pct: pctLine ? parseFloat(pctLine) : null,
+    dis: pair('양하'), load: pair('적하'),
+    total: after('총작업량'), done: after('완료량'), remain: after('잔량'),
+    ok: !!(ship && (L.includes('양하') || L.includes('접안예정시간')))
+  };
+}
+function berthCardHtml(b){
+  const has = !b.empty && b.lines && b.lines.length;
+  if(!has) return `<div class="vslBerth"><div class="vslBerthHead"><span class="vslBerthIc">⚓</span><span>${esc(b.title)}</span></div><div class="vslBerthEmpty">작업이 없습니다.</div></div>`;
+  const p = parseBerthLines(b.lines);
+  if(!p.ok) return `<div class="vslBerth on"><div class="vslBerthHead"><span class="vslBerthIc on">⚓</span><span>${esc(b.title)}</span></div>
+      <div class="vslBerthBody">${b.lines.map((l,k)=>`<div class="${k===0?'vslShip':'vslLine'}">${esc(l)}</div>`).join('')}</div></div>`;
+  const pct = p.pct!=null ? p.pct : 0, R = 44, C = 2*Math.PI*R;
+  const bar = x => x && x.total ? Math.min(100, Math.round(x.done/x.total*100)) : 0;
+  const box = (name, x, cls) => `<div class="vslBox ${cls}"><div class="vslBoxT">${name}</div>
+      <div class="vslBoxN"><b>${x ? x.done.toLocaleString() : 0}</b><span>/${x ? x.total.toLocaleString() : 0}</span></div>
+      <div class="vslBar"><i style="width:${bar(x)}%"></i></div></div>`;
+  return `<div class="vslBerth on">
+    <div class="vslBerthHead"><span class="vslBerthIc on">⚓</span><span>${esc(b.title)}</span>
+      <span class="vslShipNo">${esc(p.ship)}</span><span style="flex:1"></span>${p.op ? `<span class="vslOp">${esc(p.op)}</span>` : ''}</div>
+    <div class="vslTimes">${p.times.map(t=>`<div class="vslTimeRow"><span><i class="vslDot"></i>${esc(t.label)}</span><b>${esc(t.value)}</b></div>`).join('')}</div>
+    <div class="vslMid">
+      <div class="vslRing"><svg viewBox="0 0 110 110" width="110" height="110">
+          <circle cx="55" cy="55" r="${R}" fill="none" stroke="#fff" stroke-width="12"/>
+          ${pct>0 ? `<circle cx="55" cy="55" r="${R}" fill="none" stroke="#db2777" stroke-width="12" stroke-linecap="round"
+            stroke-dasharray="${(C*Math.min(pct,100)/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 55 55)"/>` : ''}
+        </svg><div class="vslRingIn"><span>🚢</span><b>${pct}%</b></div></div>
+      <div class="vslBoxes">${box('양하', p.dis, 'dis')}${box('적하', p.load, 'load')}</div>
+    </div>
+    <div class="vslChips">
+      <span class="vslChip">총작업량 <b>${esc(p.total)}</b></span>
+      <span class="vslChip g">완료량 <b>${esc(p.done)}</b></span>
+      <span class="vslChip o">잔량 <b>${esc(p.remain)}</b></span>
+    </div>
+  </div>`;
+}
 function pageVessel(){
   const d = vslData;
   const canSet = userRole==='union' || userRole==='all';
   const t = d && d.at ? (()=>{ const x = new Date(d.at); return `${String(x.getHours()).padStart(2,'0')}:${String(x.getMinutes()).padStart(2,'0')} 기준`; })() : '';
-  const berths = (d && d.berths && d.berths.length ? d.berths : [{title:'선석#1',empty:true,lines:[]},{title:'선석#2',empty:true,lines:[]},{title:'선석#3',empty:true,lines:[]}]).map(b=>{
-    const has = !b.empty && b.lines && b.lines.length;
-    return `<div class="vslBerth${has?' on':''}">
-      <div class="vslBerthHead"><span class="vslBerthIc">⚓</span><span>${esc(b.title)}</span></div>
-      ${has ? `<div class="vslBerthBody">${b.lines.map((l,k)=>`<div class="${k===0?'vslShip':'vslLine'}">${esc(l)}</div>`).join('')}</div>`
-            : `<div class="vslBerthEmpty">작업이 없습니다.</div>`}
-    </div>`;
-  }).join('');
+  const berths = (d && d.berths && d.berths.length ? d.berths : [{title:'선석#1',empty:true,lines:[]},{title:'선석#2',empty:true,lines:[]},{title:'선석#3',empty:true,lines:[]}]).map(berthCardHtml).join('');
   const msg = !vslApi ? `<div class="note" style="margin-bottom:12px;">본선작업 데이터 주소가 아직 설정되지 않았어요.${canSet ? ' 배차표의 본선작업 현황 칸 아래 \'데이터 주소 설정\'에서 넣어 주세요.' : ''}</div>`
             : (vslErr ? `<div class="note" style="margin-bottom:12px;">${esc(vslErr)}</div>` : (!d ? `<div class="hint" style="margin-bottom:12px;">불러오는 중…</div>` : ''));
   return `
@@ -612,10 +680,7 @@ function vslBodyHtml(){
   const rows = (d.sts||[]).map(r=>`<tr>${r.map(c=>`<td${c.rs>1?` rowspan="${c.rs}"`:''} style="text-align:center;">${esc(c.t)}</td>`).join('')}</tr>`).join('');
   return `${vslErr ? `<p class="hint" style="margin:0 0 6px;color:var(--warn);">${esc(vslErr)} (마지막으로 받은 내용 표시 중)</p>` : ''}
     <div style="font-weight:800;margin:2px 0 8px;">STS별 작업현황</div>
-    <div class="scrollx"><table class="tbl" style="font-size:12.5px;"><thead>
-      <tr><th rowspan="2">선석</th><th rowspan="2">모선항차</th><th rowspan="2">STS</th><th rowspan="2">작업위치</th><th colspan="3">잔여량</th><th rowspan="2">생산성<br>(VAN/HR)</th><th rowspan="2">예상작업완료시간</th></tr>
-      <tr><th>양하</th><th>적하</th><th>합계</th></tr>
-    </thead><tbody>${rows || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:14px;">데이터가 없습니다.</td></tr>'}</tbody></table></div>${setup}`;
+    ${vslStsTableHtml(d)}${setup}`;
 }
 function paintVessel(){
   const b = document.getElementById('vslBody'); if(!b) return;
