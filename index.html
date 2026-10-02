@@ -172,6 +172,15 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .bcNums{display:flex;justify-content:space-between;font-size:10.5px;opacity:.9;}
 .bcMid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;} .bcRoute{font-weight:800;} .bcCode{font-size:10.5px;word-break:break-all;}
 .bcBottom{text-align:center;font-size:10.5px;}
+.bcInfo{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.18);}
+.bcInfoHead{position:relative;background:#fce7f3;color:#dc2626;font-weight:800;text-align:center;padding:9px 34px;font-size:14px;}
+.bcX{position:absolute;right:8px;top:6px;border:0;background:transparent;color:#dc2626;font-size:16px;font-weight:800;cursor:pointer;}
+.bcInfo table{width:100%;border-collapse:collapse;font-size:12.5px;color:#111;}
+.bcInfo td{padding:6px 10px;border-bottom:1px solid #f3e4ec;}
+.bcK{color:#6b7280;width:46%;} .bcK.pt{color:#dc2626;font-weight:800;} .bcV{font-weight:800;}
+.bcRemark{text-align:center;font-weight:800;}
+.bcQc th{background:#fce7f3;color:#dc2626;font-weight:800;padding:7px 6px;font-size:12.5px;}
+.bcQc td{text-align:center;font-weight:800;padding:6px;} .bcQcIc{margin-right:6px;}
 .vslCard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 16px 18px;margin-bottom:16px;}
 .vslCardHead{display:flex;align-items:center;margin-bottom:12px;font-size:15px;}
 .vslBerths{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
@@ -717,11 +726,21 @@ function pageBerth(){
     </div></div>`;
   }
   const info = berthInfo!=null && d && d.blocks && d.blocks[berthInfo] ? d.blocks[berthInfo] : null;
-  const pop = info ? `<div id="bcScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:14px;">
-      <div class="panel" style="max-width:420px;width:100%;margin:0;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="width:14px;height:14px;border-radius:4px;background:${esc(info.bg)};display:inline-block;"></span>
-          <h3 style="margin:0;">${esc(info.code)} · ${esc(info.route)}</h3><span style="flex:1"></span><button type="button" class="btn ghost sm" id="bcClose">닫기</button></div>
-        <table class="tbl" style="font-size:12.5px;"><tbody>${Object.entries(info.info||{}).map(([k,v])=>`<tr><th style="text-align:left;white-space:nowrap;">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
+  // 배 블록 팝업: 원본 'Calling Schedule Info' + QC 작업 표와 같은 구성(연분홍 머리, 빨간 글씨)
+  const list = info ? (info.infoList && info.infoList.length ? info.infoList
+      : Object.entries(info.info||{}).filter(([k])=>k!=='비고').map(([k,v])=>({k, v, pt:/^Actual/i.test(k)}))) : [];
+  const remark = info ? (info.remark || (info.info && info.info['비고']) || '') : '';
+  const pop = info ? `<div id="bcScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;display:flex;align-items:center;justify-content:center;padding:14px;">
+      <div style="max-width:440px;width:100%;">
+        <div class="bcInfo">
+          <div class="bcInfoHead">Calling Schedule Info<button type="button" id="bcClose" class="bcX" aria-label="닫기">✕</button></div>
+          <table><tbody>${list.map(r=>`<tr><td class="bcK${r.pt?' pt':''}">${esc(r.k)}</td><td class="bcV">${esc(r.v)}</td></tr>`).join('')}
+            ${remark ? `<tr><td colspan="2" class="bcRemark">${esc(remark)}</td></tr>` : ''}</tbody></table>
+        </div>
+        ${info.qc && info.qc.length ? `<div class="bcInfo" style="margin-top:8px;">
+          <table class="bcQc"><thead><tr><th>QC NO</th><th>Start Time</th><th>End Time</th></tr></thead><tbody>
+            ${info.qc.map(q=>`<tr style="color:${esc(q.color||'#d92626')};"><td><span class="bcQcIc">🏗</span>${esc(q.no)}</td><td>${esc(q.start)}</td><td>${esc(q.end)}</td></tr>`).join('')}
+          </tbody></table></div>` : ''}
       </div></div>` : '';
   return `
   <h2 class="pgttl">선석 조회</h2>
