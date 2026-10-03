@@ -1110,17 +1110,16 @@ function pageMail(){
   const start = mailWeekStart(), end = addDays(start, 6);
   const [sy,sm,sd] = start.split('-').map(Number), [ey,em,ed] = end.split('-').map(Number);
   const to = (mailConfig.to||[]).join('\n'), on = mailConfig.enabled !== false;
-  const emps = employees.filter(e=>e.name).slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
+  // 근태관리와 같은 순서(1조 → 2조, 조편성 순번)로 전원 표시
+  const emps = employees.filter(e=>e.name && e.active!==false).slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999) || String(a.name).localeCompare(String(b.name)); });
   const sum = {}; let days = '';
   for(let i=0;i<7;i++){
     const ds = addDays(start, i), [y,m,d] = ds.split('-').map(Number);
     const rows = emps.map(e=>{
-      const rec = attStore[ds+'_'+e.id]; if(!rec) return '';
-      const has = rec.checkIn || rec.checkOut || rec.supportIn || rec.supportOut || rec.honjoComp || rec.tajoComp || rec.jochul || rec.seokchul || rec.jungsik || rec.yasik;
+      const rec = attStore[ds+'_'+e.id] || {};
       const code = rec.statusCode || rec.attCode || '';
-      if(!has && !code) return '';
-      const c = computeDaily(rec, ds), sp = computeSupportDaily(rec, ds), ml = computeMealAllowance(rec);
-      const tot = (c.valid?c.premium:0) + (sp.valid?sp.premium:0) + ml;
+      let tot = 0;
+      if(rec.date){ const c = computeDaily(rec, ds), sp = computeSupportDaily(rec, ds), ml = computeMealAllowance(rec); tot = (c.valid?c.premium:0) + (sp.valid?sp.premium:0) + ml; }
       sum[e.id] = (sum[e.id]||0) + tot;
       const ck = b => b ? '✔' : '';
       return `<tr><td>${esc(e.team? e.team+'조':'')}</td><td class="namecell">${esc(e.name)}</td><td>${code ? codeBadge(code) : esc(scheduledShift(ds, e.team||''))}</td>
@@ -1150,8 +1149,6 @@ function pageMail(){
       <button class="btn ghost sm" id="mailNext">다음 주 ▶</button>
       ${mailWeekOffset===-1 ? '<span class="hint" style="margin:0;">(화요일에 보낼 주)</span>' : ''}
     </div>
-    <h4 class="mailDay">주간 총OT 합계</h4>
-    ${sumRows ? `<table class="tbl mailTbl" style="width:auto;"><thead><tr><th>조</th><th>성명</th><th>총OT</th></tr></thead><tbody>${sumRows}</tbody></table>` : '<div class="hint">기록이 없습니다.</div>'}
     ${days}
   </div>`;
 }
