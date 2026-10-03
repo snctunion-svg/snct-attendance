@@ -1103,7 +1103,7 @@ function renderDayMemo(){
     </div></div>`;
 }
 // ===== 메일 송부: 매주 화요일 09시 지난주(월~일) 출퇴근 입력 전체를 이메일로(Apps Script가 발송) =====
-let mailConfig = {}, mailWeekOffset = -1; // -1 = 지난주
+let mailConfig = {}, mailWeekOffset = -1, mailSending = false; // -1 = 지난주
 function mailWeekStart(){ return addDays(mondayOf(todayStr()), 7*mailWeekOffset); }
 function mailHm(v){ if(!v) return ''; const [h,m] = String(v).split(':'); return Number(m) ? `${Number(h)}.${String(m).replace(/0$/,'')}` : String(Number(h)); }
 function pageMail(){
@@ -1136,7 +1136,7 @@ function pageMail(){
   <h2 class="pgttl">메일 송부</h2>
   <div class="panel">
     <h3>자동 발송 설정</h3>
-    <p class="hint" style="margin:0 0 10px;"><b>매주 화요일 오전 9시</b>에 <b>지난주(월~일) 1조·2조 출퇴근 입력 전체</b>를 아래 주소로 보냅니다. (발송은 구글 Apps Script가 snctunion 계정으로 해요)</p>
+    <p class="hint" style="margin:0 0 10px;"><b>매주 화요일 오전 9시</b>에 <b>지난주(월~일) 1조·2조 출퇴근 입력 전체</b>를 아래 주소로 보냅니다.</p>
     <div class="field" style="max-width:520px;"><label>받는 사람 (한 줄에 한 명)</label>
       <textarea id="mailTo" rows="4" placeholder="예) leader@snct.co.kr" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);color:var(--text);font:inherit;">${esc(to)}</textarea></div>
     <label style="display:flex;align-items:center;gap:6px;margin:8px 0;"><input type="checkbox" id="mailOn" ${on?'checked':''}> 자동 발송 켜기</label>
@@ -1149,6 +1149,8 @@ function pageMail(){
       <b>${sm}/${sd} ~ ${em}/${ed}</b>
       <button class="btn ghost sm" id="mailNext">다음 주 ▶</button>
       ${mailWeekOffset===-1 ? '<span class="hint" style="margin:0;">(화요일에 보낼 주)</span>' : ''}
+      <span style="flex:1"></span>
+      <button class="btn sm" id="mailSendNow" ${mailSending?'disabled':''}>${mailSending ? '보내는 중…' : '📨 즉시 발송'}</button>
     </div>
     ${days}
   </div>`;
@@ -1157,6 +1159,27 @@ function bindMailPage(){
   const p = document.getElementById('mailPrev'), n = document.getElementById('mailNext'), sv = document.getElementById('mailSave');
   if(p) p.onclick = ()=>{ mailWeekOffset--; setView('mail'); };
   if(n) n.onclick = ()=>{ mailWeekOffset++; setView('mail'); };
+  const sn = document.getElementById('mailSendNow');
+  if(sn) sn.onclick = ()=>{
+    if(!requireEdit() || mailSending) return;
+    const to = mailConfig.to || [];
+    if(!to.length){ showToast('받는 사람을 먼저 입력하고 저장해 주세요.'); return; }
+    if(!vslApi){ showToast('Apps Script 웹 앱 주소가 설정되어 있지 않아요. (본선작업 화면에서 UNION이 설정)'); return; }
+    const start = mailWeekStart(), end = addDays(start, 6);
+    const [, sm, sd] = start.split('-').map(Number), [, em, ed] = end.split('-').map(Number);
+    appConfirm(`${sm}/${sd} ~ ${em}/${ed} 주간 보고를 지금 ${to.length}명에게 보낼까요?`, async ()=>{
+      mailSending = true; render();
+      try{
+        const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
+        const r = await fetch(api + (api.includes('?') ? '&' : '?') + 'type=mail&start=' + start + '&t=' + Date.now());
+        const j = await r.json();
+        if(j && j.ok) showToast(`보냈습니다. (${(j.to||to).length}명)`);
+        else if(j && j.berths !== undefined) showToast('Apps Script에 즉시 발송 기능이 아직 없어요. 새 코드로 바꾸고 새 버전으로 배포해 주세요.');
+        else showToast('보내지 못했어요: ' + ((j && j.error) || '알 수 없는 오류'));
+      }catch(err){ showToast('보내지 못했어요. 잠시 후 다시 시도해 주세요.'); }
+      mailSending = false; render();
+    });
+  };
   if(sv) sv.onclick = async ()=>{
     if(!requireEdit()) return;
     const list = document.getElementById('mailTo').value.split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean);
