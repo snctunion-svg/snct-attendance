@@ -1117,7 +1117,8 @@ function pageMail(){
     const ds = addDays(start, i), [y,m,d] = ds.split('-').map(Number);
     const rows = emps.map(e=>{
       const rec = attStore[ds+'_'+e.id] || {};
-      const code = rec.statusCode || rec.attCode || '';
+      // 근태관리 표와 같은 규칙: 직접 입력 → 원본 엑셀(1조·2조) → 저장된 값 (2조처럼 클라우드에 코드만 있는 날이 없어도 표시)
+      const code = effCode(rec, ds, String(e.name||'').trim());
       let tot = 0;
       if(rec.date){ const c = computeDaily(rec, ds), sp = computeSupportDaily(rec, ds), ml = computeMealAllowance(rec); tot = (c.valid?c.premium:0) + (sp.valid?sp.premium:0) + ml; }
       sum[e.id] = (sum[e.id]||0) + tot;
