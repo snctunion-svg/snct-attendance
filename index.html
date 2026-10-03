@@ -215,6 +215,7 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .vslTbl thead th{background:#fce7f3;color:#9d174d;font-weight:800;padding:8px 6px;text-align:center;border-bottom:2px solid #db2777;}
 .vslTbl tbody td{padding:9px 6px;border-bottom:1px solid var(--border);}
 .vslTbl td.vslEmptyRow{text-align:center;color:var(--text-muted);padding:16px;}
+.mailDay{margin:14px 0 6px;color:#9d174d;font-size:14px;} .mailTbl td{text-align:center;font-size:12.5px;padding:5px 6px;} .mailTbl th{font-size:12px;}
 .adjCell{cursor:pointer;} .adjCell:hover{outline:2px solid var(--accent);outline-offset:-2px;} .adjMark{color:var(--accent);font-size:9px;margin-left:1px;}
 .nameLink{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .nameLink:hover{color:var(--accent);}
@@ -362,6 +363,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <div class="navttl" style="margin-top:10px;">조장관리</div>
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
+    <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
     <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
@@ -1100,6 +1102,75 @@ function renderDayMemo(){
       </div>
     </div></div>`;
 }
+// ===== 메일 송부: 매주 화요일 09시 지난주(월~일) 출퇴근 입력 전체를 이메일로(Apps Script가 발송) =====
+let mailConfig = {}, mailWeekOffset = -1; // -1 = 지난주
+function mailWeekStart(){ return addDays(mondayOf(todayStr()), 7*mailWeekOffset); }
+function mailHm(v){ if(!v) return ''; const [h,m] = String(v).split(':'); return Number(m) ? `${Number(h)}.${String(m).replace(/0$/,'')}` : String(Number(h)); }
+function pageMail(){
+  const start = mailWeekStart(), end = addDays(start, 6);
+  const [sy,sm,sd] = start.split('-').map(Number), [ey,em,ed] = end.split('-').map(Number);
+  const to = (mailConfig.to||[]).join('\n'), on = mailConfig.enabled !== false;
+  const emps = employees.filter(e=>e.name).slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
+  const sum = {}; let days = '';
+  for(let i=0;i<7;i++){
+    const ds = addDays(start, i), [y,m,d] = ds.split('-').map(Number);
+    const rows = emps.map(e=>{
+      const rec = attStore[ds+'_'+e.id]; if(!rec) return '';
+      const has = rec.checkIn || rec.checkOut || rec.supportIn || rec.supportOut || rec.honjoComp || rec.tajoComp || rec.jochul || rec.seokchul || rec.jungsik || rec.yasik;
+      const code = rec.statusCode || rec.attCode || '';
+      if(!has && !code) return '';
+      const c = computeDaily(rec, ds), sp = computeSupportDaily(rec, ds), ml = computeMealAllowance(rec);
+      const tot = (c.valid?c.premium:0) + (sp.valid?sp.premium:0) + ml;
+      sum[e.id] = (sum[e.id]||0) + tot;
+      const ck = b => b ? '✔' : '';
+      return `<tr><td>${esc(e.team? e.team+'조':'')}</td><td class="namecell">${esc(e.name)}</td><td>${code ? codeBadge(code) : esc(scheduledShift(ds, e.team||''))}</td>
+        <td>${mailHm(rec.checkIn)}</td><td>${mailHm(rec.checkOut)}</td><td>${mailHm(rec.supportIn)}</td><td>${mailHm(rec.supportOut)}</td>
+        <td>${esc(rec.honjoComp||'')}</td><td>${esc(rec.tajoComp||'')}</td><td>${ck(rec.jochul)}</td><td>${ck(rec.seokchul)}</td><td>${ck(rec.jungsik)}</td><td>${ck(rec.yasik)}</td>
+        <td style="font-weight:800;color:#be185d;">${tot ? fmtH(tot) : ''}</td></tr>`;
+    }).join('');
+    days += `<h4 class="mailDay">${m}/${d}(${weekdayKr(y,m,d)})${holidays[ds] ? ' · '+esc(holidays[ds]) : ''}</h4>
+      ${rows ? `<div class="scrollx"><table class="tbl mailTbl"><thead><tr><th>조</th><th>성명</th><th>근태</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>총OT</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="hint" style="margin:0 0 6px;">입력된 기록이 없습니다.</div>'}`;
+  }
+  const sumRows = emps.filter(e=>sum[e.id]).map(e=>`<tr><td>${esc(e.team? e.team+'조':'')}</td><td class="namecell">${esc(e.name)}</td><td style="font-weight:800;color:#be185d;">${fmtH(sum[e.id])}</td></tr>`).join('');
+  return `
+  <h2 class="pgttl">메일 송부</h2>
+  <div class="panel">
+    <h3>자동 발송 설정</h3>
+    <p class="hint" style="margin:0 0 10px;"><b>매주 화요일 오전 9시</b>에 <b>지난주(월~일) 1조·2조 출퇴근 입력 전체</b>를 아래 주소로 보냅니다. (발송은 구글 Apps Script가 snctunion 계정으로 해요)</p>
+    <div class="field" style="max-width:520px;"><label>받는 사람 (한 줄에 한 명)</label>
+      <textarea id="mailTo" rows="4" placeholder="예) leader@snct.co.kr" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);color:var(--text);font:inherit;">${esc(to)}</textarea></div>
+    <label style="display:flex;align-items:center;gap:6px;margin:8px 0;"><input type="checkbox" id="mailOn" ${on?'checked':''}> 자동 발송 켜기</label>
+    <button class="btn" id="mailSave">저장</button>
+  </div>
+  <div class="panel">
+    <div class="row" style="align-items:center;margin-bottom:8px;">
+      <h3 style="margin:0;">메일 미리보기</h3>
+      <button class="btn ghost sm" id="mailPrev">◀ 이전 주</button>
+      <b>${sm}/${sd} ~ ${em}/${ed}</b>
+      <button class="btn ghost sm" id="mailNext">다음 주 ▶</button>
+      ${mailWeekOffset===-1 ? '<span class="hint" style="margin:0;">(화요일에 보낼 주)</span>' : ''}
+    </div>
+    <h4 class="mailDay">주간 총OT 합계</h4>
+    ${sumRows ? `<table class="tbl mailTbl" style="width:auto;"><thead><tr><th>조</th><th>성명</th><th>총OT</th></tr></thead><tbody>${sumRows}</tbody></table>` : '<div class="hint">기록이 없습니다.</div>'}
+    ${days}
+  </div>`;
+}
+function bindMailPage(){
+  const p = document.getElementById('mailPrev'), n = document.getElementById('mailNext'), sv = document.getElementById('mailSave');
+  if(p) p.onclick = ()=>{ mailWeekOffset--; setView('mail'); };
+  if(n) n.onclick = ()=>{ mailWeekOffset++; setView('mail'); };
+  if(sv) sv.onclick = async ()=>{
+    if(!requireEdit()) return;
+    const list = document.getElementById('mailTo').value.split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean);
+    const bad = list.filter(x=>!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if(bad.length){ showToast('이메일 형식을 확인해 주세요: ' + bad.join(', ')); return; }
+    mailConfig = {to:list, enabled: document.getElementById('mailOn').checked};
+    render();
+    if(!db || demoMode) return;
+    try{ await db.doc('meta/mailConfig').set(mailConfig); showToast('저장되었습니다.'); }
+    catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
+  };
+}
 let leaveEmpId = null;
 let leaveYear = null; // 연간 누계 연도(1/1~12/31). 처음엔 근태관리 종료일의 연도
 function renderLeaveModal(){
@@ -1702,7 +1773,7 @@ const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['combined','ot','dispatch','splan','vessel','berth'];
-const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid'];
+const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail'];
 const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats'];
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
@@ -2135,6 +2206,7 @@ function subscribeAll(){
     scheduleRender();
   }, dbErr);
   unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='dispatch' || VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
+  unsub.mailConfig = db.doc('meta/mailConfig').onSnapshot(doc=>{ mailConfig = doc.exists ? doc.data() : {}; scheduleRender(); }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
     if(doc.exists){ const r = doc.data(); if(r && r.start) rotation = {start:r.start, team1: r.team1==='N'?'N':'D'}; scheduleRender(); }
@@ -2204,6 +2276,7 @@ function ensureForView(){
     if(VIEW==='combined' && leaveEmpId && leaveYear) ensureAttendanceRange(`${leaveYear}-01-01`, `${leaveYear}-12-31`);
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
+  else if(VIEW==='mail'){ const st = mailWeekStart(); ensureAttendanceRange(st, addDays(st, 6)); }
   else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }
 }
@@ -2500,6 +2573,7 @@ function render(){
     bindVesselPanel();
   }
   else if(VIEW==='splan') el.innerHTML = pageSupportPlan();
+  else if(VIEW==='mail'){ el.innerHTML = pageMail(); bindMailPage(); }
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
 
