@@ -365,7 +365,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
-    <a data-view="codes"><span class="ic">🏷️</span>근태코드 참조</a>
+    <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
@@ -394,7 +394,7 @@ let otMatrixStart = null, otMatrixEnd = null; // 월별 OT현황: 작업기간
 let otPayYear = null, otPayMonth = null; // 월별 OT현황: 임금월(예: "10월"=9/26~10/25) 기준 연/월
 let otTeamFilter = (()=>{ try{ return localStorage.getItem('snct_team_ot')||''; }catch(e){ return ''; } })(); // 월별 OT현황 — 기기에 기억
 let dispatchTeamFilter = ''; // 배차표: '' (전체), '1', '2'
-let addCodeFormOpen = false; // 근태코드 참조: 코드 추가 폼 표시 여부
+let addCodeFormOpen = false; // 근태코드 화면: 코드 추가 폼 표시 여부
 // 임금월 계산: "M월"은 (M-1월)26일 ~ M월25일
 function payPeriodRange(y,m){
   let sy=y, sm=m-1;
@@ -971,11 +971,11 @@ const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 //  · 노란 배경 + 검은 글씨: MC   · 파란 배경 + 흰 글씨: FC
 //  · 분홍 배경 + 빨간 글씨: SP   · 흐린 회색 배경 + 진한 회색 글씨: SC
 //  · 나머지(D·N·DN·ND·DS·UJ·E·EC·CK 등): 검은 글씨만
-const RED_CODES = new Set(['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL']);
-const SKY_CODES = new Set(['VP']);
+const RED_CODES = new Set(['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL','VP']);
+const SKY_CODES = new Set([]);
 const CODE_STYLE = {FC:{bg:'#2563eb',fg:'#ffffff',txt:'#1d4ed8'}, MC:{bg:'#fde047',fg:'#111111',txt:'#a16207'},
-  SP:{bg:'#fbcfe8',fg:'#dc2626',txt:'#dc2626'}, SC:{bg:'#e5e7eb',fg:'#4b5563',txt:'#4b5563'}, VP:{bg:'#e0f2fe',fg:'#0369a1',txt:'#0369a1'}};
-const GROUP_STYLE = {red:{bg:'#dc2626',fg:'#ffffff',txt:'#dc2626'}, yellow:CODE_STYLE.MC, blue:CODE_STYLE.FC, pink:CODE_STYLE.SP, gray:CODE_STYLE.SC, sky:CODE_STYLE.VP, black:{bg:'',fg:'var(--text)',txt:'var(--text)'}};
+  SP:{bg:'#fbcfe8',fg:'#dc2626',txt:'#dc2626'}, SC:{bg:'#e5e7eb',fg:'#4b5563',txt:'#4b5563'}};
+const GROUP_STYLE = {red:{bg:'#dc2626',fg:'#ffffff',txt:'#dc2626'}, yellow:CODE_STYLE.MC, blue:CODE_STYLE.FC, pink:CODE_STYLE.SP, gray:CODE_STYLE.SC, sky:{bg:'#e0f2fe',fg:'#0369a1',txt:'#0369a1'}, black:{bg:'',fg:'var(--text)',txt:'var(--text)'}};
 function codeStyle(code){
   const cd = (typeof codeDefs!=='undefined') && codeDefs[code];
   if(cd && cd.color && GROUP_STYLE[cd.color]) return GROUP_STYLE[cd.color];
@@ -992,12 +992,12 @@ function codeGroup(code){
   const cd = (typeof codeDefs!=='undefined') && codeDefs[code];
   if(cd && cd.color) return cd.color;
   if(RED_CODES.has(code)) return 'red';
-  return ({MC:'yellow', FC:'blue', SP:'pink', SC:'gray', VP:'sky'})[code] || 'black';
+  return ({MC:'yellow', FC:'blue', SP:'pink', SC:'gray'})[code] || 'black';
 }
 const BLACK_ORDER = ['D','N','DN','ND','DS','UJ','E','EC','CK','SV'];
 function codeSortKey(code){
   const gi = CODE_GROUPS.findIndex(g=>g.key===codeGroup(code));
-  const bi = BLACK_ORDER.indexOf(code), ri = ['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL'].indexOf(code);
+  const bi = BLACK_ORDER.indexOf(code), ri = ['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL','VP'].indexOf(code);
   return gi*1000 + (bi>=0 ? bi : ri>=0 ? ri : 500);
 }
 function codeBadge(code){
@@ -1011,7 +1011,7 @@ function codeColor(code){ return codeStyle(code).txt; }
 function codeFillText(code){ return codeStyle(code).fg; }
 // 근태관리 표 칸 채우기: 색이 있는 코드(FC 파랑·MC 초록·빨강 코드)는 칸 전체를 그 색으로, 글씨는 흰색
 function codeFill(code){ return codeStyle(code).bg; }
-// 근태코드 참조에 있는(숨기지 않은) 코드만 유효 — 화면 표시와 가져오기에 공통 사용
+// 근태코드 화면에 있는(숨기지 않은) 코드만 유효 — 화면 표시와 가져오기에 공통 사용
 function refWorkCodes(){ return new Set(WORK_CODES.map(w=>w.code).filter(c=>!hiddenCodes.has(c))); }
 function refStatusCodes(){
   const custom = Object.keys(codeDefs).filter(c=>!STATUS_CODE_LIST.includes(c) && !WORK_CODES.some(w=>w.code===c));
@@ -1695,7 +1695,7 @@ const FIREBASE_CONFIG = {
 // 저장(편집)이 허용된 계정. Firestore 보안 규칙에도 같은 이메일을 넣어야 실제로 저장됩니다.
 // ===== 로그인 권한 =====
 // 조장관리(조장모드): 출퇴근 입력·근태관리·월별 OT현황·배차표·지원계획표 수정
-// UNION: 조편성 관리·공휴일 관리·근태코드 참조·백업·복원 수정
+// UNION: 조편성 관리·공휴일 관리·근태코드 화면·백업·복원 수정
 // 로그인 안 함(보기 전용): 근태관리·월별 OT현황·배차표·지원계획표 보기만
 // 조장관리 = 기존 계정(snctunion@gmail.com), UNION = 새로 만든 계정(프로젝트 자체 도메인 주소)
 const LEADER_EMAILS = ['snctunion@gmail.com'];
@@ -2927,7 +2927,7 @@ function pageCombined(){
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
   </div>
-  <p class="hint">월별 근태코드의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(조장모드). 근태코드 참조에 있는 코드만 표시됩니다.</p>
+  <p class="hint">월별 근태의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(조장모드). 근태코드 화면에 있는 코드만 표시됩니다.</p>
   ${modal}
   ${leaveEmpId ? renderLeaveModal() : ''}
   ${dayMemoOpen ? renderDayMemo() : ''}
@@ -3324,7 +3324,7 @@ function pageHolidays(){
   `;
 }
 
-/* ========================= 근태코드 참조 ========================= */
+/* ========================= 근태코드 화면 ========================= */
 function pageCodes(){
   // 근무코드 + 근태코드(기본·추가)를 한 목록으로 모아 색깔별로 묶어서 보여줌
   const customCodes = Object.keys(codeDefs).filter(c => !STATUS_CODE_LIST.includes(c) && !WORK_CODES.some(w=>w.code===c));
@@ -3352,7 +3352,7 @@ function pageCodes(){
     </div>
   </div>` : '';
   return `
-  <h2 class="pgttl">근태코드 참조</h2>
+  <h2 class="pgttl">근태코드</h2>
   <div class="note">근무코드(D/N 등)와 근태코드를 <b>색깔별로</b> 모아 보여줍니다. 설명을 고치고 저장하거나, 삭제 버튼으로 정리할 수 있어요.</div>
   <div class="panel">
     <h3>전체 코드</h3>
@@ -3999,7 +3999,7 @@ function afterRender(){
     const isWorkCode = val==='OFF' || refWorkCodes().has(val);
     const isStatusCode = refStatusCodes().has(val);
     if(!isWorkCode && !isStatusCode){
-      showToast('"'+val+'"은(는) 근태코드 참조에 없는 코드예요. 근태코드 참조에서 먼저 추가하세요.');
+      showToast('"'+val+'"은(는) 근태코드에 없는 코드예요. 근태코드 화면에서 먼저 추가하세요.');
       return;
     }
     const rec = {
@@ -4063,7 +4063,7 @@ function afterRender(){
     appConfirm('이 공휴일을 삭제할까요?', ()=> removeHoliday(x.dataset.date));
   });
 
-  // 근태코드 참조
+  // 근태코드 화면
   el.querySelectorAll('[data-act="save-code"]').forEach(x=>x.onclick=()=>{
     const code = x.dataset.code;
     const input = el.querySelector(`[data-code-label="${CSS.escape(code)}"]`);
@@ -4439,7 +4439,7 @@ function importAttendanceByName(obj){
     const id = byName[String(r.name||'').trim()];
     if(!id){ missing[r.name] = (missing[r.name]||0) + 1; return; }
     const {name, code, workCheck, rawCode: _raw, ...fields} = r;
-    // 근무코드·근태코드: 근태코드 참조에 있는 것만 반영
+    // 근무코드·근태코드: 근태코드 화면에 있는 것만 반영
     // 근태코드 칸 원래 값은 항상 attCode로 저장(지원근무 일수 계산용 — 참조표·숨김 설정과 무관)
     fields.attCode = code || '';
     if(r.rawCode) fields.rawCode = r.rawCode; // 원본 코드(AV·RV 등 — 연가 누계용)
@@ -4460,7 +4460,7 @@ function importAttendanceByName(obj){
   });
   const n = Object.keys(docs).length;
   const missTxt = Object.keys(missing).length ? ` 직원 명단에 없는 이름(${Object.entries(missing).map(([k,v])=>k+' '+v+'건').join(', ')})은 건너뜁니다.` : '';
-  const skipTxt = Object.keys(skippedCodes).length ? ` 근태코드 참조에 없는 코드(${Object.entries(skippedCodes).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' '+v+'건').join(', ')})는 넣지 않습니다.` : '';
+  const skipTxt = Object.keys(skippedCodes).length ? ` 근태코드에 없는 코드(${Object.entries(skippedCodes).sort((a,b)=>b[1]-a[1]).map(([k,v])=>k+' '+v+'건').join(', ')})는 넣지 않습니다.` : '';
   if(!n){ showToast('넣을 기록이 없습니다.' + missTxt); return; }
   const codeTxt = obj.includesCodes ? ` 근무코드·근태코드 ${nCode.toLocaleString()}건도 함께 넣습니다.` : ' 근무코드·근태코드는 그대로 둡니다.';
   const empAdj = {}; let nAdj = 0;
