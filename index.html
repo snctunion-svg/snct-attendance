@@ -117,7 +117,8 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
 .gridCodeOpt:hover{background:var(--bg);}
 /* 순번 배지: 그룹별 색 + 순위가 높을수록 진하게 */
-.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);} .g-ext{--g:#0f766e;--g-soft:#ccfbf1;--g-strong:#2dd4bf;--g-on:#042f2e;}
+.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);} .ctbl th.cntHead{font-weight:800;font-size:13px;color:var(--accent);}
+.g-ext{--g:#0f766e;--g-soft:#ccfbf1;--g-strong:#2dd4bf;--g-on:#042f2e;}
 .g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
 .g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
 .g-yel{--g:#a16207;--g-soft:#fef9c3;--g-strong:#facc15;--g-on:#3f2a00;}
@@ -3012,6 +3013,13 @@ function pageCombined(){
     const cls = dayCellClass(ds, cy, cm, d);
     return `<th class="${cls} ${weekBand(ds)} dayHead" data-act="daymemo" data-date="${esc(ds)}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(cy,cm,d)}</th>`;
   }).join('');
+  // 날짜별 근무 인원: 근태코드가 N·D·ND·DN 이거나 비어 있는(휴무 아님) 사람 수
+  const WORK_SET = new Set(['N','D','ND','DN']);
+  const countHead = monthDays.map(ds=>{
+    const d = Number(ds.slice(8,10));
+    const n = sortedEmployees.filter(e=>{ const dc = gridCode(codeStatsAttendance[ds+'_'+e.id], ds, String(e.name||'').trim()); return !dc || WORK_SET.has(dc); }).length;
+    return `<th class="${dayCellClass(ds, cy, cm, d)} ${weekBand(ds)} cntHead" title="근무 인원(N·D·ND·DN·빈칸)">${n}</th>`;
+  }).join('');
   const codeRows = sortedEmployees.map(e=>{
     const cells = monthDays.map(ds=>{
       const d = Number(ds.slice(8,10));
@@ -3063,7 +3071,7 @@ function pageCombined(){
           <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
         </div>
       </div>
-      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th><th colspan="${monthDays.length}">일자별</th></tr><tr>${dayHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
+      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
   </div>
