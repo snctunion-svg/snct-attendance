@@ -117,7 +117,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
 .gridCodeOpt:hover{background:var(--bg);}
 /* 순번 배지: 그룹별 색 + 순위가 높을수록 진하게 */
-.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);} .ctbl th.cntHead{font-weight:800;font-size:12px;color:#111827 !important;background:#e5e7eb !important;white-space:nowrap;}
+.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);} .ctbl th.cntHead{font-weight:800;font-size:12px;color:#111827 !important;background:#ffffff !important;white-space:nowrap;}
 .g-ext{--g:#0f766e;--g-soft:#ccfbf1;--g-strong:#2dd4bf;--g-on:#042f2e;}
 .g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
 .g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
@@ -3018,7 +3018,7 @@ function pageCombined(){
   const countHead = monthDays.map(ds=>{
     const d = Number(ds.slice(8,10));
     const n = sortedEmployees.filter(e=>{ const dc = gridCode(codeStatsAttendance[ds+'_'+e.id], ds, String(e.name||'').trim()); return !dc || WORK_SET.has(dc); }).length;
-    return `<th class="cntHead" title="근무 인원(N·D·ND·DN·빈칸)">${n}명</th>`;
+    return `<th class="cntHead" title="근무 인원(N·D·ND·DN·빈칸)">${n}</th>`;
   }).join('');
   const codeRows = sortedEmployees.map(e=>{
     const cells = monthDays.map(ds=>{
