@@ -1122,18 +1122,22 @@ function renderDayMemo(){
     </div></div>`;
 }
 // ===== 메일 송부: 매주 화요일 09시 지난주(월~일) 출퇴근 입력 전체를 이메일로(Apps Script가 발송) =====
-let mailConfig = {}, mailWeekOffset = -1, mailSending = false; // -1 = 지난주
-function mailWeekStart(){ return addDays(mondayOf(todayStr()), 7*mailWeekOffset); }
+let mailConfig = {}, mailSending = false, mailRange = null; // mailRange = {start, end} (처음엔 지난주 월~일)
+const MAIL_MAX_DAYS = 31;
+function mailRangeNow(){
+  if(!mailRange){ const st = addDays(mondayOf(todayStr()), -7); mailRange = {start: st, end: addDays(st, 6)}; }
+  return mailRange;
+}
+function mailDayCount(a, b){ return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000) + 1; }
 function mailHm(v){ if(!v) return ''; const [h,m] = String(v).split(':'); return Number(m) ? `${Number(h)}.${String(m).replace(/0$/,'')}` : String(Number(h)); }
 function pageMail(){
-  const start = mailWeekStart(), end = addDays(start, 6);
-  const [sy,sm,sd] = start.split('-').map(Number), [ey,em,ed] = end.split('-').map(Number);
+  const {start, end} = mailRangeNow();
   const to = (mailConfig.to||[]).join('\n'), on = mailConfig.enabled !== false;
   // 근태관리와 같은 순서(1조 → 2조, 조편성 순번)로 전원 표시
   const emps = employees.filter(e=>e.name && e.active!==false).slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999) || String(a.name).localeCompare(String(b.name)); });
   const sum = {}; let days = '';
-  for(let i=0;i<7;i++){
-    const ds = addDays(start, i), [y,m,d] = ds.split('-').map(Number);
+  for(let ds=start; ds<=end; ds=addDays(ds,1)){
+    const [y,m,d] = ds.split('-').map(Number);
     const rows = emps.map(e=>{
       const rec = attStore[ds+'_'+e.id] || {};
       // 근태관리 표와 같은 규칙: 직접 입력 → 원본 엑셀(1조·2조) → 저장된 값 (2조처럼 클라우드에 코드만 있는 날이 없어도 표시)
@@ -1164,10 +1168,9 @@ function pageMail(){
   <div class="panel">
     <div class="row" style="align-items:center;margin-bottom:8px;">
       <h3 style="margin:0;">메일 미리보기</h3>
-      <button class="btn ghost sm" id="mailPrev">◀ 이전 주</button>
-      <b>${sm}/${sd} ~ ${em}/${ed}</b>
-      <button class="btn ghost sm" id="mailNext">다음 주 ▶</button>
-      ${mailWeekOffset===-1 ? '<span class="hint" style="margin:0;">(화요일에 보낼 주)</span>' : ''}
+      <input type="date" id="mailFrom" value="${start}" style="padding:5px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;">
+      <span>~</span>
+      <input type="date" id="mailTo2" value="${end}" style="padding:5px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;">
       <span style="flex:1"></span>
       <button class="btn sm" id="mailSendNow" ${mailSending?'disabled':''}>${mailSending ? '보내는 중…' : '📨 즉시 발송'}</button>
     </div>
@@ -1175,22 +1178,31 @@ function pageMail(){
   </div>`;
 }
 function bindMailPage(){
-  const p = document.getElementById('mailPrev'), n = document.getElementById('mailNext'), sv = document.getElementById('mailSave');
-  if(p) p.onclick = ()=>{ mailWeekOffset--; setView('mail'); };
-  if(n) n.onclick = ()=>{ mailWeekOffset++; setView('mail'); };
+  const sv = document.getElementById('mailSave');
+  const fIn = document.getElementById('mailFrom'), tIn = document.getElementById('mailTo2');
+  const onRange = (which)=>{
+    let a = fIn.value, b = tIn.value;
+    if(!a || !b) return;
+    if(which==='from' && b < a) b = a;          // 시작일을 종료일 뒤로 바꾸면 종료일을 따라오게
+    if(which==='to' && b < a) a = b;
+    if(mailDayCount(a, b) > MAIL_MAX_DAYS){ showToast(`한 번에 최대 ${MAIL_MAX_DAYS}일까지 선택할 수 있어요.`); if(which==='from') b = addDays(a, MAIL_MAX_DAYS-1); else a = addDays(b, -(MAIL_MAX_DAYS-1)); }
+    mailRange = {start: a, end: b}; setView('mail');
+  };
+  if(fIn) fIn.onchange = ()=>onRange('from');
+  if(tIn) tIn.onchange = ()=>onRange('to');
   const sn = document.getElementById('mailSendNow');
   if(sn) sn.onclick = ()=>{
     if(!requireEdit() || mailSending) return;
     const to = mailConfig.to || [];
     if(!to.length){ showToast('받는 사람을 먼저 입력하고 저장해 주세요.'); return; }
     if(!vslApi){ showToast('Apps Script 웹 앱 주소가 설정되어 있지 않아요. (본선작업 화면에서 UNION이 설정)'); return; }
-    const start = mailWeekStart(), end = addDays(start, 6);
+    const {start, end} = mailRangeNow();
     const [, sm, sd] = start.split('-').map(Number), [, em, ed] = end.split('-').map(Number);
-    appConfirm(`${sm}/${sd} ~ ${em}/${ed} 주간 보고를 지금 ${to.length}명에게 보낼까요?`, async ()=>{
+    appConfirm(`${sm}/${sd} ~ ${em}/${ed} 출퇴근 입력 보고를 지금 ${to.length}명에게 보낼까요?`, async ()=>{
       mailSending = true; render();
       try{
         const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
-        const r = await fetch(api + (api.includes('?') ? '&' : '?') + 'type=mail&start=' + start + '&t=' + Date.now());
+        const r = await fetch(api + (api.includes('?') ? '&' : '?') + 'type=mail&start=' + start + '&end=' + end + '&t=' + Date.now());
         const j = await r.json();
         if(j && j.ok) showToast(`보냈습니다. (${(j.to||to).length}명)`);
         else if(j && j.berths !== undefined) showToast('Apps Script에 즉시 발송 기능이 아직 없어요. 새 코드로 바꾸고 새 버전으로 배포해 주세요.');
@@ -2316,7 +2328,7 @@ function ensureForView(){
     if(VIEW==='combined' && leaveEmpId && leaveYear) ensureAttendanceRange(`${leaveYear}-01-01`, `${leaveYear}-12-31`);
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
-  else if(VIEW==='mail'){ const st = mailWeekStart(); ensureAttendanceRange(st, addDays(st, 6)); }
+  else if(VIEW==='mail'){ const mr = mailRangeNow(); ensureAttendanceRange(mr.start, mr.end); }
   else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }
 }
@@ -2683,7 +2695,6 @@ function pageInput(){
   }).join('');
   return `
   <h2 class="pgttl">출퇴근 입력</h2>
-  <p class="pgsub">엑셀 DB 입력과 같은 방식이에요. 시각은 <b>숫자로 직접</b> 입력합니다(8 = 8:00, 15.3 = 15:30, 야간 퇴근 7.3 = 다음날 7:30). 조출·석출·중식·야식은 체크, 승무시간과 총OT는 자동 계산돼요. 다 입력한 뒤 <b>저장</b>을 누르세요.</p>
   <div class="panel">
     <div class="row" style="align-items:flex-end;margin-bottom:12px;">
       <div class="field"><label>날짜</label><input type="date" id="inDate" value="${esc(date)}"></div>
@@ -2699,7 +2710,6 @@ function pageInput(){
     <div class="row" style="margin-top:12px;align-items:center;">
       <button class="btn" id="inSave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
       <button class="btn warn ghost" id="inReset">초기화</button>
-      <span class="hint" style="margin:0;">초기화 = 저장하지 않은 입력을 지우고 저장된 값으로 되돌림. 빨간 칸은 시각 형식이 잘못된 칸이에요.</span>
     </div>
   </div>`;
 }
@@ -3011,7 +3021,6 @@ function pageCombined(){
 
   return `
   <h2 class="pgttl">근태관리</h2>
-  <p class="pgsub">왼쪽은 선택한 기간(시작일~종료일)의 집계, 오른쪽은 월별 근태코드 표입니다. 두 표는 각각 따로 움직입니다.</p>
   ${teamBtns}
   <div class="cmbWrap">
     <div class="panel cmbLeft">
@@ -3041,7 +3050,6 @@ function pageCombined(){
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
   </div>
-  <p class="hint">월별 근태의 날짜 칸을 누르면 근무코드·근태코드를 입력할 수 있습니다(조장모드). 근태코드 화면에 있는 코드만 표시됩니다.</p>
   ${modal}
   ${leaveEmpId ? renderLeaveModal() : ''}
   ${dayMemoOpen ? renderDayMemo() : ''}
@@ -3137,7 +3145,6 @@ function pageOT(){
 
   return `
   <h2 class="pgttl">월별 OT현황</h2>
-  <p class="pgsub">평일(평일+토요)·휴일(일요+공휴+휴일지원)·지원(평일지원+토요지원)·식사(조출+석출+중식+야식) 월간 합계와 일자별 상세를 한 표로 보여줍니다. 휴일(월 60시간)·지원(월 30시간)은 최소보장(보전) 시간을 함께 표시합니다.</p>
   <div class="row" style="margin-bottom:6px;align-items:center;">
     <div class="field"><label>시작일</label><input type="date" id="otRangeStartInput" value="${esc(otMatrixStart)}"></div>
     <div class="field"><label>종료일</label><input type="date" id="otRangeEndInput" value="${esc(otMatrixEnd)}"></div>
@@ -3172,7 +3179,6 @@ function pageOT(){
     </tr>
   </thead><tbody>${rows}${avgRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다.</div>`}
-  <p class="hint">임금월은 매월 26일부터 다음달 25일까지입니다 (예: "10월"=9/26~10/25). 휴일보전=MAX(휴일계,60), 지원보전=MAX(지원계,30). 출퇴근 입력에서 저장하면 이 표에도 자동으로 반영됩니다.</p>
   ${otEdit ? renderOtEdit() : ''}
   `;
 }
