@@ -121,7 +121,8 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 급여관리·급여명세서 */
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
-.payTbl input.pw{text-align:left;min-width:110px;}
+.payTbl input.tx{text-align:left;min-width:90px;}
+.payTbl input[type=date]{min-width:140px;}
 .wonBox{position:relative;}
 .wonBox input{padding-right:26px !important;min-width:120px;}
 .wonBox span{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text-muted,#6b7280);pointer-events:none;}
@@ -3253,6 +3254,13 @@ function pageOT(){
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
 const PAY_BASE_HOURS = 209; // 기본급 = 시급 × 209시간
+const PAY_TEXT_KEYS = ['dept','empNo','job','grade','birth'];
+// 명세서 비번 = 생년월일. 19770515 / 770515 / 1977-05-15 / 77.05.15 처럼 넣어도 같은 날짜면 통과
+function birthMatches(input, birth){
+  const a = String(input||'').replace(/\D/g,''), b = String(birth||'').replace(/\D/g,'');
+  if(!a || b.length!==8) return false;
+  return a===b || (a.length===6 && a===b.slice(2));
+}
 function payOf(id){ return Object.assign({}, payMgr[id]||{}, payDraft[id]||{}); }
 function slipWon(n){ return n ? Math.round(n).toLocaleString('ko-KR') : ''; }
 function pagePayroll(){
@@ -3271,10 +3279,14 @@ function pagePayroll(){
       <td style="text-align:center;">${i+1}</td>
       <td style="text-align:center;">${esc(e.team ? e.team+'조' : '')}</td>
       <td class="namecell">${esc(e.name)}</td>
+      <td><input type="text" class="tx" autocomplete="off" data-pay="dept" data-emp="${esc(e.id)}" value="${v('dept')}" placeholder="부서"></td>
+      <td><input type="text" class="tx" autocomplete="off" inputmode="numeric" data-pay="empNo" data-emp="${esc(e.id)}" value="${v('empNo')}" placeholder="사번"></td>
+      <td><input type="text" class="tx" autocomplete="off" data-pay="job" data-emp="${esc(e.id)}" value="${v('job')}" placeholder="직무"></td>
+      <td><input type="text" class="tx" autocomplete="off" data-pay="grade" data-emp="${esc(e.id)}" value="${v('grade')}" placeholder="직급"></td>
+      <td><input type="date" class="tx" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}"></td>
       <td>${money('hourly')}</td>
       <td>${money('ordinary')}</td>
       <td>${money('tenure')}</td>
-      <td><input type="text" class="pw" autocomplete="off" data-pay="pw" data-emp="${esc(e.id)}" value="${v('pw')}" placeholder="비번"></td>
     </tr>`;
   }).join('');
   return `
@@ -3286,7 +3298,7 @@ function pagePayroll(){
   </div>
   <div class="panel">
     ${list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>시급</th><th>통상시급</th><th>근속수당</th><th>비번</th>
+      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>사번</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당</th>
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
     <div class="row" style="margin-top:12px;">
       <button class="btn" id="paySave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
@@ -3298,8 +3310,8 @@ function renderPayPw(){
   const e = employees.find(x=>x.id===payPw.empId);
   return `<div class="payScrim" id="payPwScrim"><div class="pwBox" role="dialog" aria-label="암호 입력">
     <h3>암호 입력</h3>
-    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 암호를 입력하세요.</p>
-    <input type="password" id="payPwInput" autocomplete="off">
+    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 암호(생년월일 8자리, 예: 19770515)를 입력하세요.</p>
+    <input type="password" id="payPwInput" autocomplete="off" inputmode="numeric">
     <div class="pwErr" id="payPwErr">${esc(payPw.err||'')}</div>
     <div class="pwBtns"><button class="pwOk" id="payPwOk" disabled>파일 열기</button><button class="pwNo" id="payPwNo">취소</button></div>
   </div></div>`;
@@ -3353,11 +3365,11 @@ function renderPaySlip(){
     <div class="slipTop"><button id="slipPrint">인쇄</button><button id="slipClose">닫기 ✕</button></div>
     <div class="slipTitle">정규직 급여 지급명세서 &nbsp;( ${label} )</div>
     <table class="slipInfo"><tr>
-      <td><b>부서 :</b> ${esc(e.team ? e.team+'조' : '')}</td><td><b>사번 :</b></td><td><b>성명 :</b> ${esc(e.name)} &nbsp;귀하</td>
+      <td><b>부서 :</b> ${esc(p.dept||'')}</td><td><b>사번 :</b> ${esc(p.empNo||'')}</td><td><b>성명 :</b> ${esc(e.name)} &nbsp;귀하</td>
     </tr><tr>
-      <td><b>직무 :</b></td><td><b>직급 :</b></td><td><b>근무기간 :</b> ${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)}</td>
+      <td><b>직무 :</b> ${esc(p.job||'')}</td><td><b>직급 :</b> ${esc(p.grade||'')}</td><td><b>생년월일 :</b> ${esc(p.birth||'')}</td>
     </tr></table>
-    <div class="slipDates"><span><b>시급 :</b> ${slipWon(hourly)}원 &nbsp; <b>통상시급 :</b> ${slipWon(rate)}원</span><span><b>지급일자 :</b></span></div>
+    <div class="slipDates"><span><b>근무기간 :</b> ${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)} &nbsp; <b>시급 :</b> ${slipWon(hourly)}원 &nbsp; <b>통상시급 :</b> ${slipWon(rate)}원</span><span><b>지급일자 :</b></span></div>
     <div class="slipWrap"><table class="slipTbl">
       <colgroup><col style="width:12%"><col><col><col><col><col><col></colgroup>
       <tr>${H('지급내역')}${H('기본급')}${H('학자금')}${H('근속수당')}${H('직책수당')}${H('기술수당')}${H('연장근로수당')}</tr>
@@ -3387,10 +3399,11 @@ function bindPayroll(el){
   // 급여관리 화면
   el.querySelectorAll('[data-act="pay-team"]').forEach(x=>x.onclick=()=>{ payMgrTeam = x.dataset.team; render(); });
   el.querySelectorAll('input[data-pay]').forEach(x=>{
+    if(x.type==='date') x.onchange = ()=> x.oninput();
     x.oninput = ()=>{
       const id = x.dataset.emp, k = x.dataset.pay;
       payDraft[id] = payDraft[id] || {};
-      if(k==='pw'){ payDraft[id][k] = x.value; }
+      if(PAY_TEXT_KEYS.includes(k)){ payDraft[id][k] = x.value.trim(); }
       else {
         // 숫자만 남기고 1,000 단위 콤마로 다시 표시(커서는 뒤에서부터 같은 자리 유지)
         const fromEnd = x.value.length - (x.selectionStart ?? x.value.length);
@@ -3418,7 +3431,7 @@ function bindPayroll(el){
   // 월별 OT현황: 성명 → 암호 → 명세서
   el.querySelectorAll('[data-act="pay-open"]').forEach(x=>x.onclick=()=>{
     const p = payMgr[x.dataset.emp];
-    if(!p || !String(p.pw||'')){ showToast('급여 정보가 아직 등록되지 않았어요. (UNION의 급여관리에서 등록)'); return; }
+    if(!p || !String(p.birth||'')){ showToast('급여 정보(생년월일)가 아직 등록되지 않았어요. (UNION의 급여관리에서 등록)'); return; }
     payPw = {empId: x.dataset.emp, err:''}; render();
     setTimeout(()=>{ const i = document.getElementById('payPwInput'); if(i) i.focus(); }, 30);
   });
@@ -3427,7 +3440,7 @@ function bindPayroll(el){
     const ok = document.getElementById('payPwOk');
     const tryOpen = ()=>{
       const p = payMgr[payPw.empId] || {};
-      if(pi.value === String(p.pw||'')){ paySlip = {empId: payPw.empId}; payPw = null; render(); }
+      if(birthMatches(pi.value, p.birth)){ paySlip = {empId: payPw.empId}; payPw = null; render(); }
       else { document.getElementById('payPwErr').textContent = '암호가 맞지 않습니다.'; pi.select(); }
     };
     pi.oninput = ()=>{ ok.disabled = !pi.value; document.getElementById('payPwErr').textContent = ''; };
