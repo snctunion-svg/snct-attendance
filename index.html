@@ -117,7 +117,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .btn:disabled{opacity:.5;cursor:not-allowed;}
 .gridCodeOpt:hover{background:var(--bg);}
 /* 순번 배지: 그룹별 색 + 순위가 높을수록 진하게 */
-.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);}
+.g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);} .g-ext{--g:#0f766e;--g-soft:#ccfbf1;--g-strong:#2dd4bf;--g-on:#042f2e;}
 .g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
 .g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
 .g-yel{--g:#a16207;--g-soft:#fef9c3;--g-strong:#facc15;--g-on:#3f2a00;}
@@ -2900,7 +2900,7 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
   let noAttCount = 0; // 근태코드 칸 정보 없이 저장된 기록 수(예전 버전으로 가져온 경우)
   const perEmp = sortedEmployees.map(e=>{
     let codeCnt = {FCH:0,MCH:0,MCS:0,FC:0,MC:0};
-    let otHoliday=0, otWeekday=0, supDays=0, mealAllow=0;
+    let otHoliday=0, otWeekday=0, otExt=0, supDays=0, mealAllow=0;
     // 원본 기준: 코드·지원 일수는 시작일~종료일, OT는 시작일이 속한 주의 월요일부터 합산
     for(let ds=mondayOf(rangeStart); ds<=rangeEnd; ds=addDays(ds,1)){
       const rec = codeStatsAttendance[ds+'_'+e.id];
@@ -2915,8 +2915,10 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
       const c = computeDaily(rec, ds);
       const sp = computeSupportDaily(rec, ds);
       const kc = dayCategory(ds, recManguen(rec, ds), rec && rec.employeeId);
-      if(c.valid){ if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else if(c.category==='평일') otWeekday+=c.premium; }
-      if(sp.valid && (kc==='SU' || kc==='H')) otHoliday += sp.premium;
+      // 연근 체크된 날의 본근무 OT는 휴일·평일 OT에서 빼고 '연근 OT'로 따로 표시
+      if(c.valid){ if(rec.extCode) otExt+=c.premium; else if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else if(c.category==='평일') otWeekday+=c.premium; }
+      // 휴일 OT: 1조는 휴일 지원 포함, 2조는 지원 제외 / 평일 OT: 1·2조 모두 지원 제외(원래 미포함)
+      if(sp.valid && (kc==='SU' || kc==='H') && (e.team||'')==='1') otHoliday += sp.premium;
       mealAllow += computeMealAllowance(rec);
     }
     const A2 = k => adjOf(e,k) + userAdjOf(e,k); // 기존 보정 + 직접 넣은 보정
@@ -2925,7 +2927,7 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
     const gyeHol = codeCnt.FCH+codeCnt.MCH + A2('holCntAdj'), gyeWk = codeCnt.FC+codeCnt.MC + A2('wkCntAdj');
     const otWeekdayFinal = otWeekday + (codeStatsIncludeMeal? mealAllow:0) + A2('wkAdj');
     // 원본처럼 보정값(지원·휴일·평일)을 더함 — 조편성 관리의 '근태관리 보정값'에서 입력
-    return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday: otHoliday + A2('holAdj'), otWeekdayFinal, supDays: supDays + A2('supAdj')};
+    return {emp:e, codeCnt, gyeHol, gyeWk, otHoliday: otHoliday + A2('holAdj'), otWeekdayFinal, otExt, supDays: supDays + A2('supAdj')};
   });
   // 순번 제외 대상은 순위 계산에서 빼고 칸을 비움(null)
   const inAll = r => rankExcl(r.emp)!=='all';
@@ -2942,10 +2944,10 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
     return arr;
   }
   const rankSup=rankBy(r=>r.supDays,false,inAll), rankGyeHol=rankBy(r=>r.gyeHol,false,inAll), rankMCS=rankBy(r=>r.codeCnt.MCS,false,inAll);
-  const rankGyeWk=rankBy(r=>r.gyeWk,false,inAll), rankOtHol=rankBy(r=>r.otHoliday,true,inOt), rankOtWk=rankBy(r=>r.otWeekdayFinal,true,inOt);
+  const rankGyeWk=rankBy(r=>r.gyeWk,false,inAll), rankOtHol=rankBy(r=>r.otHoliday,true,inOt), rankOtWk=rankBy(r=>r.otWeekdayFinal,true,inOt), rankOtExt=rankBy(r=>r.otExt,true,inOt);
   const cntBy = ok => { const m = {}; perEmp.forEach(r=>{ if(ok(r)) m[teamOf(r)] = (m[teamOf(r)]||0) + 1; }); return m; };
   const nAllT = cntBy(inAll), nOtT = cntBy(inOt);
-  return {perEmp, rankSup, rankGyeHol, rankMCS, rankGyeWk, rankOtHol, rankOtWk, nAllT, nOtT, teamOf};
+  return {perEmp, rankSup, rankGyeHol, rankMCS, rankGyeWk, rankOtHol, rankOtWk, rankOtExt, nAllT, nOtT, teamOf};
 }
 function pageCombined(){
   // ① 근태 집계: 시작일~종료일 기간 기준
@@ -2963,17 +2965,19 @@ function pageCombined(){
     return (a.teamOrder||999)-(b.teamOrder||999);
   });
 
-  const {perEmp, rankSup, rankGyeHol, rankMCS, rankGyeWk, rankOtHol, rankOtWk, nAllT, nOtT, teamOf} = combinedData(sortedEmployees, rangeStart, rangeEnd);
+  const {perEmp, rankSup, rankGyeHol, rankMCS, rankGyeWk, rankOtHol, rankOtWk, rankOtExt, nAllT, nOtT, teamOf} = combinedData(sortedEmployees, rangeStart, rangeEnd);
 
   const statHead = `<tr>
     <th class="namehead" rowspan="2" style="min-width:34px;width:34px;">No</th><th class="namehead" rowspan="2" style="left:34px;">성명</th>
     <th colspan="2" class="gh g-blk sepL">지원근무</th>
     <th colspan="8" class="gh g-hol sepL">휴일,주야간</th>
     <th colspan="6" class="gh g-wk sepL">평일,주야간</th>
+    <th colspan="2" class="gh g-ext sepL">연근</th>
   </tr><tr>
     <th class="gc g-blk sepL">합계</th><th class="gc g-blk">순번</th>
     <th class="gc g-blue sepL">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">합계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel">OT</th><th class="gc g-yel">순번</th>
     <th class="gc g-wk sepL">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">합계</th><th class="gc g-wk">순번</th><th class="gc g-pur">OT</th><th class="gc g-pur">순번</th>
+    <th class="gc g-ext sepL">OT</th><th class="gc g-ext">순번</th>
   </tr>`;
   const c0 = v => v||'';
   const nEmp = perEmp.length;
@@ -2998,6 +3002,7 @@ function pageCombined(){
       ${A('fcAdj','FC', r.codeCnt.FC, v(r.codeCnt.FC), ' sepL')}${A('mcAdj','MC', r.codeCnt.MC, v(r.codeCnt.MC))}
       ${A('wkCntAdj','평일 합계', r.gyeWk, v(r.gyeWk))}<td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
       ${A('wkAdj','평일 OT', r.otWeekdayFinal, ot(r.otWeekdayFinal))}<td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
+      <td class="sepL" style="text-align:center;font-weight:700;">${hO || !r.otExt ? '' : fmtH(r.otExt)}</td><td style="text-align:center;">${r.otExt ? rk(rankOtExt[idx],'ext',nOt) : ''}</td>
     </tr>`;
   }).join('');
 
