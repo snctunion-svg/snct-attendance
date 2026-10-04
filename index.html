@@ -1095,12 +1095,12 @@ function renderAdjPop(){
         <div class="apNum">${f(raw)}</div>
         <div class="apOp">+</div>
         <div class="apNum" id="adjCur">${f(cur)}</div>
-        <div class="apOp"><button type="button" id="adjSign" class="apSign" data-sign="1" aria-label="더하기/빼기 바꾸기">+</button></div>
-        <input type="number" step="0.01" min="0" inputmode="decimal" id="adjInput" value="" placeholder="0">
+        <div class="apOp"><button type="button" id="adjSign" class="apSign" data-sign="${adjPop.sign===-1?'-1':'1'}" aria-label="더하기/빼기 바꾸기">${adjPop.sign===-1?'−':'+'}</button></div>
+        <input type="number" step="0.01" min="0" inputmode="decimal" id="adjInput" value="${esc(adjPop.val||'')}" placeholder="0">
         <div class="apOp">=</div>
-        <div id="adjSum" class="apNum" style="color:var(--accent);">${f(raw+cur)}</div>
+        <div id="adjSum" class="apNum" style="color:var(--accent);">${f(raw + cur + (Number(adjPop.val)||0) * (Number(adjPop.val)<0 ? 1 : (adjPop.sign||1)))}</div>
       </div>
-      <div id="adjNew" class="hint" style="margin:8px 0 0;">저장하면 보정값: <b>${f(cur)}</b></div>
+      <div id="adjNew" class="hint" style="margin:8px 0 0;">저장하면 보정값: <b>${f(cur + (Number(adjPop.val)||0) * (Number(adjPop.val)<0 ? 1 : (adjPop.sign||1)))}</b></div>
       <div class="row" style="justify-content:flex-end;margin-top:10px;">
         <button class="btn ghost sm" id="adjCancel">취소</button><button class="btn sm" id="adjSave">저장</button>
       </div>
@@ -4026,7 +4026,7 @@ function afterRender(){
   }
   el.querySelectorAll('[data-act="adj"]').forEach(x=>x.onclick=()=>{
     if(!canEdit){ requireEdit(); return; }
-    adjPop = {empId:x.dataset.emp, key:x.dataset.key, label:x.dataset.label, raw:x.dataset.raw}; render();
+    adjPop = {empId:x.dataset.emp, key:x.dataset.key, label:x.dataset.label, raw:x.dataset.raw, sign:1, val:''}; render();
     setTimeout(()=>{ const i = document.getElementById('adjInput'); if(i){ i.focus(); i.select(); } }, 30);
   });
   const adjInput = document.getElementById('adjInput');
@@ -4040,8 +4040,13 @@ function afterRender(){
       const s2 = document.getElementById('adjSum'); if(s2) s2.textContent = r2((Number(adjPop.raw)||0) + nv).toLocaleString();
       const nw = document.getElementById('adjNew'); if(nw) nw.innerHTML = '저장하면 보정값: <b>' + nv.toLocaleString() + '</b>';
     };
-    adjInput.oninput = upd;
-    if(signBtn) signBtn.onclick = ()=>{ const neg = signBtn.dataset.sign === '1'; signBtn.dataset.sign = neg ? '-1' : '1'; signBtn.textContent = neg ? '−' : '+'; upd(); adjInput.focus(); };
+    adjInput.oninput = ()=>{ adjPop.val = adjInput.value; upd(); };
+    if(signBtn){
+      // 휴대폰: 버튼을 눌러도 입력칸 포커스가 빠지지 않게(포커스가 빠지면 화면이 다시 그려져 부호가 초기화되던 문제)
+      signBtn.onpointerdown = (ev)=> ev.preventDefault();
+      signBtn.onmousedown = (ev)=> ev.preventDefault();
+      signBtn.onclick = ()=>{ const neg = signBtn.dataset.sign === '1'; signBtn.dataset.sign = neg ? '-1' : '1'; signBtn.textContent = neg ? '−' : '+'; adjPop.sign = neg ? -1 : 1; upd(); };
+    }
     const save = ()=>{
       const e0 = employees.find(x=>x.id===adjPop.empId); const p = adjPop;
       const val = r2((e0 ? userAdjOf(e0, p.key) : 0) + delta());
