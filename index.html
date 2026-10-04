@@ -552,7 +552,8 @@ const isYmd = v => /^\d{4}-\d{2}-\d{2}$/.test(v||'');
 function loadOtPrefLocal(){
   try{
     const p = JSON.parse(localStorage.getItem(OT_PREF_KEY) || 'null');
-    if(p && isYmd(p.start) && isYmd(p.end)){ otMatrixStart = p.start; otMatrixEnd = p.end; otPayYear = p.payYear; otPayMonth = p.payMonth; }
+    // 새로고침(앱을 새로 열면) 월별 OT현황은 항상 오늘이 속한 임금월로 시작 — 저장된 지난 기간은 쓰지 않음
+    void p;
   }catch(e){}
 }
 function saveOtPref(){
@@ -570,7 +571,7 @@ function applyViewPrefs(p){
   if(!p) return;
   if(isYmd(p.combinedStart) && isYmd(p.combinedEnd)){ codeStatsStart = p.combinedStart; codeStatsEnd = p.combinedEnd; }
   if(typeof p.combinedMeal==='boolean') codeStatsIncludeMeal = p.combinedMeal;
-  if(isYmd(p.otStart) && isYmd(p.otEnd)){ otMatrixStart = p.otStart; otMatrixEnd = p.otEnd; if(p.otPayYear) otPayYear = p.otPayYear; if(p.otPayMonth) otPayMonth = p.otPayMonth; }
+  // 월별 OT현황 기간은 공용 설정을 따르지 않고 각 기기에서 오늘 기준 임금월로 시작
   try{
     localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal}));
     if(otMatrixStart) localStorage.setItem(OT_PREF_KEY, JSON.stringify({start:otMatrixStart, end:otMatrixEnd, payYear:otPayYear, payMonth:otPayMonth}));
@@ -3868,6 +3869,25 @@ function pageDispatch(){
   const cd = combinedData(allSorted, codeStatsStart, codeStatsEnd);
   const otRankOf = {};
   cd.perEmp.forEach((r,i)=>{ otRankOf[r.emp.id] = {n: dayIsHol ? cd.rankOtHol[i] : cd.rankOtWk[i], tot: cd.nOtT[cd.teamOf(r)]||0}; });
+  // 근무자(근태가 D·N 계열이거나 비어 있는 사람)만 순번을 매김 — 그날 근무자끼리 조별로 1번부터 다시 번호
+  {
+    const byTeam = {};
+    sortedEmployees.forEach(e=>{
+      const rec = attendance[ds+'_'+e.id] || {};
+      const mc = gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim());
+      const dc = mc || scheduledShift(ds, e.team||'');
+      const working = !dc || DP_WORK_CODES.has(dc);
+      const o = otRankOf[e.id];
+      if(!o) return;
+      if(!working || o.n==null){ o.n = null; return; }
+      (byTeam[e.team||''] = byTeam[e.team||''] || []).push(o);
+    });
+    Object.values(byTeam).forEach(list=>{
+      list.sort((a,b)=>a.n-b.n);
+      let rank = 0, prev = null;
+      list.forEach((o,i)=>{ if(o.n!==prev){ rank = i+1; prev = o.n; } o.n = rank; o.tot = list.length; });
+    });
+  }
   const otRankCell = empId => {
     const o = otRankOf[empId]; if(!o || o.n==null) return '';
     const g = dayIsHol ? 'yel' : 'pur';
