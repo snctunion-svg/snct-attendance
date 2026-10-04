@@ -2915,10 +2915,11 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
       const c = computeDaily(rec, ds);
       const sp = computeSupportDaily(rec, ds);
       const kc = dayCategory(ds, recManguen(rec, ds), rec && rec.employeeId);
-      // 연근 체크된 날의 본근무 OT는 휴일·평일 OT에서 제외(화면에는 표시하지 않음)
-      if(c.valid){ if(rec.extCode) otExt+=c.premium; else if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else if(c.category==='평일') otWeekday+=c.premium; }
+      // 연근: 1조 휴일 OT에는 포함, 그 외(1조 평일, 2조 휴일·평일)는 제외(화면에는 표시하지 않음)
+      const isHolCat = c.category==='일요일'||c.category==='공휴일', team1 = (e.team||'')==='1';
+      if(c.valid){ if(rec.extCode && !(team1 && isHolCat)) otExt+=c.premium; else if(isHolCat) otHoliday+=c.premium; else if(c.category==='평일') otWeekday+=c.premium; }
       // 휴일 OT: 1조는 휴일 지원 포함, 2조는 지원 제외 / 평일 OT: 1·2조 모두 지원 제외(원래 미포함)
-      if(sp.valid && (kc==='SU' || kc==='H') && (e.team||'')==='1') otHoliday += sp.premium;
+      if(sp.valid && (kc==='SU' || kc==='H') && team1) otHoliday += sp.premium;
       mealAllow += computeMealAllowance(rec);
     }
     const A2 = k => adjOf(e,k) + userAdjOf(e,k); // 기존 보정 + 직접 넣은 보정
