@@ -1421,7 +1421,7 @@ function autoManguen(dateStr, empId){
   for(let i=5;i>=1;i--){
     const ds = addDays(dateStr, -i);
     const r = attStore[ds+'_'+empId];
-    const ok = (r && r.checkIn) || isHolidayFor(ds, empId) || (r && MANGUEN_CODES.has(r.statusCode));
+    const ok = (r && r.checkIn && !preSupportRec(r, ds)) || isHolidayFor(ds, empId) || (r && MANGUEN_CODES.has(r.statusCode));
     if(!ok) return false;
   }
   return true;
@@ -1453,10 +1453,23 @@ function dayCategory(dateStr, manguen, empId){
   if(w===6) return manguen ? 'SA' : 'W'; // 만근(이번주 평일 개근) 체크된 토요일만 특근(SA)으로 인정
   return 'W';
 }
+// 선지원: 편성이 야간(N)인 사람이 주간(D)에 출근(본출근 14시 이전)하면 본근무가 아니라 지원근무로 계산
+// (원본 엑셀은 이런 날을 지원출근/지원퇴근 칸에 입력함 — 본출근 칸에 넣어도 같은 결과가 나오게 자동으로 옮겨 계산)
+function preSupportRec(rec, dateStr){
+  if(!rec || !rec.checkIn || !rec.checkOut || rec.supportIn || rec.supportOut) return null;
+  if(toDec(rec.checkIn) > 14) return null;
+  // 교육·노조업무처럼 주간 본근무로 인정되는 날(원본 엑셀은 근무 칸에 D 체크)은 선지원이 아님
+  if(['E','UJ','EC'].includes(rec.statusCode)) return null;
+  if(rec.statusCode && (rec.workCode==='D' || rec.workCode==='DN')) return null;
+  const sched = rec.baseShift || ((typeof empScheduled==='function' && rec.employeeId) ? empScheduled(rec.employeeId, dateStr) : '');
+  if(sched !== 'N') return null;
+  return Object.assign({}, rec, {supportIn: rec.checkIn, supportOut: rec.checkOut, checkIn: '', checkOut: ''});
+}
 // 하루치 근태 기록으로부터 근무시간/초과/심야/가산시간을 계산 (원본 DB입력 수식 100% 대조 검증됨)
 function computeDaily(rec, dateStr){
   const zero = {totalWork:0, meal:0, overtime:0, night:0, category:'-', premium:0, valid:false};
   if(!rec || !rec.checkIn || !rec.checkOut) return zero;
+  if(preSupportRec(rec, dateStr)) return zero; // 선지원 → 지원근무로 계산(computeSupportDaily)
   // 근무코드: 월별표에서 지정한 값(D·N 등). 없으면(출퇴근 입력만 한 날) 본출근 시각으로 주간/야간을 판단.
   // 편집자가 월별표에서 직접 OFF로 지정한 날만 계산하지 않음
   let wc = (rec.workCode && rec.workCode!=='OFF') ? rec.workCode : '';
@@ -1540,6 +1553,7 @@ function computeMealAllowance(rec){
 function computeSupportDaily(rec, dateStr){
   const zero = {supTotal:0, supOT:0, supNight:0, premium:0, valid:false};
   if(!rec) return zero;
+  rec = preSupportRec(rec, dateStr) || rec; // 선지원(N편성 → 주간 출근)은 본출근·본퇴근을 지원 시간으로
   const honjo = Number(rec.honjoComp)||0, tajo = Number(rec.tajoComp)||0;
   const hasSupportShift = !!(rec.supportIn && rec.supportOut);
   if(!hasSupportShift && honjo===0 && tajo===0) return zero;
@@ -2644,7 +2658,7 @@ let inputTeam = (()=>{ try{ return localStorage.getItem('snct_input_team')||'1';
 let inputDraft = {}; // `${date}|${empId}` -> {field: 값} (저장 전 입력 내용)
 const IN_TIME = ['checkIn','checkOut','supportIn','supportOut'];
 const IN_NUM = ['honjoComp','tajoComp'];
-const IN_CHK = ['jochul','seokchul','jungsik','yasik'];
+const IN_CHK = ['jochul','seokchul','jungsik','yasik','extCode']; // extCode = 연근(휴일 2배·평일 전체 1.5배)
 // 엑셀식 시각 표기 ↔ 저장 형식: 8 → 8:00, 15.3 → 15:30, 7.3 → 7:30 (15:30 도 가능)
 function hmToExcel(hm){ if(!hm) return ''; const [h,m] = hm.split(':'); return Number(m) ? `${Number(h)}.${String(m).replace(/0$/,'')}` : String(Number(h)); }
 function excelToHm(v){
@@ -2705,8 +2719,8 @@ function pageInput(){
       <button class="btn ${inputTeam==='2'?'':'ghost'} sm" data-act="in-team" data-team="2">2조</button>
     </div>
     <div class="scrollx gridwrap"><table class="gtbl inTbl"><thead><tr>
-      <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>총OT</th>
-    </tr></thead><tbody>${rows || `<tr><td colspan="13" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
+      <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>연근</th><th>총OT</th>
+    </tr></thead><tbody>${rows || `<tr><td colspan="14" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row" style="margin-top:12px;align-items:center;">
       <button class="btn" id="inSave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
       <button class="btn warn ghost" id="inReset">초기화</button>
@@ -3902,7 +3916,7 @@ function afterRender(){
       const tmp = Object.assign({workCode:previewWorkCode, baseShift:(curRec && curRec.baseShift)||'', checkIn:checkInVal, checkOut:readTimeSelect(f,'checkOut')}, common);
       const supTmp = Object.assign({supportIn:readTimeSelect(f,'supportIn'), supportOut:readTimeSelect(f,'supportOut'), honjoComp:f.get('honjoComp'), tajoComp:f.get('tajoComp')}, common);
       const c = computeDaily(tmp, f.get('date'));
-      const s = computeSupportDaily(supTmp, f.get('date'));
+      const s = computeSupportDaily(Object.assign({}, tmp, supTmp), f.get('date')); // 선지원 판정에 본출근·편성도 필요
       const meal = computeMealAllowance(common);
       const box = document.getElementById('otPreview');
       if(!c.valid && !s.valid && meal===0){ box.innerHTML = '<div class="hint">출퇴근 시각을 입력하면 예상 근무시간이 계산됩니다.</div>'; return; }
