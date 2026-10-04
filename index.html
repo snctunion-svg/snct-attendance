@@ -2915,7 +2915,7 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
       const c = computeDaily(rec, ds);
       const sp = computeSupportDaily(rec, ds);
       const kc = dayCategory(ds, recManguen(rec, ds), rec && rec.employeeId);
-      // 연근 체크된 날의 본근무 OT는 휴일·평일 OT에서 빼고 '연근 OT'로 따로 표시
+      // 연근 체크된 날의 본근무 OT는 휴일·평일 OT에서 제외(화면에는 표시하지 않음)
       if(c.valid){ if(rec.extCode) otExt+=c.premium; else if(c.category==='일요일'||c.category==='공휴일') otHoliday+=c.premium; else if(c.category==='평일') otWeekday+=c.premium; }
       // 휴일 OT: 1조는 휴일 지원 포함, 2조는 지원 제외 / 평일 OT: 1·2조 모두 지원 제외(원래 미포함)
       if(sp.valid && (kc==='SU' || kc==='H') && (e.team||'')==='1') otHoliday += sp.premium;
@@ -2972,12 +2972,10 @@ function pageCombined(){
     <th colspan="2" class="gh g-blk sepL">지원근무</th>
     <th colspan="8" class="gh g-hol sepL">휴일,주야간</th>
     <th colspan="6" class="gh g-wk sepL">평일,주야간</th>
-    <th colspan="2" class="gh g-ext sepL">연근</th>
   </tr><tr>
     <th class="gc g-blk sepL">합계</th><th class="gc g-blk">순번</th>
     <th class="gc g-blue sepL">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">합계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel">OT</th><th class="gc g-yel">순번</th>
     <th class="gc g-wk sepL">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">합계</th><th class="gc g-wk">순번</th><th class="gc g-pur">OT</th><th class="gc g-pur">순번</th>
-    <th class="gc g-ext sepL">OT</th><th class="gc g-ext">순번</th>
   </tr>`;
   const c0 = v => v||'';
   const nEmp = perEmp.length;
@@ -3002,7 +3000,6 @@ function pageCombined(){
       ${A('fcAdj','FC', r.codeCnt.FC, v(r.codeCnt.FC), ' sepL')}${A('mcAdj','MC', r.codeCnt.MC, v(r.codeCnt.MC))}
       ${A('wkCntAdj','평일 합계', r.gyeWk, v(r.gyeWk))}<td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
       ${A('wkAdj','평일 OT', r.otWeekdayFinal, ot(r.otWeekdayFinal))}<td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
-      <td class="sepL" style="text-align:center;font-weight:700;">${hO || !r.otExt ? '' : fmtH(r.otExt)}</td><td style="text-align:center;">${r.otExt ? rk(rankOtExt[idx],'ext',nOt) : ''}</td>
     </tr>`;
   }).join('');
 
