@@ -122,6 +122,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
 .payTbl input.tx{text-align:left;min-width:90px;}
+.payTbl select.tx{width:100%;min-width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;}
 .payTbl input[type=date]{min-width:140px;}
 .wonBox{position:relative;}
 .wonBox input{padding-right:26px !important;min-width:120px;}
@@ -3254,7 +3255,13 @@ function pageOT(){
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
 const PAY_BASE_HOURS = 209; // 기본급 = 시급 × 209시간
-const PAY_TEXT_KEYS = ['dept','empNo','job','grade','birth'];
+const PAY_TEXT_KEYS = ['empNo','job','grade','birth'];
+const PAY_DEPT = '운영팀';            // 부서는 운영팀으로 고정
+const PAY_GRADES = ['선임','기장'];   // 직급 선택
+// 공제 항목(지금은 직접 입력 — 나중에 수식으로 바꿀 예정)
+const PAY_DED = [['incomeTax','소득세'],['localTax','지방소득세'],['adjIncomeTax','정산소득세'],['adjResTax','정산주민세'],['health','건강보험'],['pension','국민연금'],
+  ['employ','고용보험'],['adjHealth','정산건강보험료'],['etcDed1','기타공제1'],['etcDed2','기타공제2'],['donation','기부금'],['sunwoo','선우회비'],['unionFee','조합비']];
+let payMgrTab = 'info'; // 'info' = 인적·급여, 'ded' = 공제
 // 명세서 비번 = 생년월일. 19770515 / 770515 / 1977-05-15 / 77.05.15 처럼 넣어도 같은 날짜면 통과
 function birthMatches(input, birth){
   const a = String(input||'').replace(/\D/g,''), b = String(birth||'').replace(/\D/g,'');
@@ -3279,14 +3286,15 @@ function pagePayroll(){
       <td style="text-align:center;">${i+1}</td>
       <td style="text-align:center;">${esc(e.team ? e.team+'조' : '')}</td>
       <td class="namecell">${esc(e.name)}</td>
-      <td><input type="text" class="tx" autocomplete="off" data-pay="dept" data-emp="${esc(e.id)}" value="${v('dept')}" placeholder="부서"></td>
+      ${payMgrTab==='ded' ? PAY_DED.map(([k])=>`<td>${money(k)}</td>`).join('') + `<td style="text-align:right;font-weight:800;white-space:nowrap;padding:0 8px;">${(()=>{ const t = PAY_DED.reduce((a,[k])=>a+(Number(p[k])||0),0); return t ? t.toLocaleString('ko-KR')+' 원' : ''; })()}</td>` : `
+      <td style="text-align:center;white-space:nowrap;">${PAY_DEPT}</td>
       <td><input type="text" class="tx" autocomplete="off" inputmode="numeric" data-pay="empNo" data-emp="${esc(e.id)}" value="${v('empNo')}" placeholder="사번"></td>
       <td><input type="text" class="tx" autocomplete="off" data-pay="job" data-emp="${esc(e.id)}" value="${v('job')}" placeholder="직무"></td>
-      <td><input type="text" class="tx" autocomplete="off" data-pay="grade" data-emp="${esc(e.id)}" value="${v('grade')}" placeholder="직급"></td>
+      <td><select class="tx" data-pay="grade" data-emp="${esc(e.id)}"><option value=""></option>${PAY_GRADES.map(g=>`<option${p.grade===g?' selected':''}>${g}</option>`).join('')}</select></td>
       <td><input type="date" class="tx" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}"></td>
       <td>${money('hourly')}</td>
       <td>${money('ordinary')}</td>
-      <td>${money('tenure')}</td>
+      <td>${money('tenure')}</td>`}
     </tr>`;
   }).join('');
   return `
@@ -3295,10 +3303,14 @@ function pagePayroll(){
     <button class="btn ${payMgrTeam===''?'':'ghost'} sm" data-act="pay-team" data-team="">전체</button>
     <button class="btn ${payMgrTeam==='1'?'':'ghost'} sm" data-act="pay-team" data-team="1">1조</button>
     <button class="btn ${payMgrTeam==='2'?'':'ghost'} sm" data-act="pay-team" data-team="2">2조</button>
+    <span style="flex:1"></span>
+    <button class="btn ${payMgrTab==='info'?'':'ghost'} sm" data-act="pay-tab" data-tab="info">인적·급여</button>
+    <button class="btn ${payMgrTab==='ded'?'':'ghost'} sm" data-act="pay-tab" data-tab="ded">공제내역</button>
   </div>
   <div class="panel">
     ${list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>사번</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당</th>
+      <th>No</th><th>조</th><th>성명</th>${payMgrTab==='ded' ? PAY_DED.map(([,t])=>`<th>${t}</th>`).join('') + '<th>공제총액</th>'
+        : '<th>부서</th><th>사번</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당</th>'}
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
     <div class="row" style="margin-top:12px;">
       <button class="btn" id="paySave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
@@ -3356,6 +3368,7 @@ function renderPaySlip(){
     etc: r10(pc.diff*rate)                                // 기타수당(보전 OT − 실 OT)
   };
   const total = a.base + a.tenure + a.ext + a.night + a.hol + a.holOT + a.holN + a.etc;
+  const dedTotal = PAY_DED.reduce((x,[k])=> x + (Number(p[k])||0), 0);
   const H = t => `<td class="h">${t}</td>`, V = v => `<td>${v}</td>`, E6 = '<td></td>'.repeat(6);
   const sec = (t, n) => `<td class="sec" rowspan="${n}">${t}</td>`;
   const alt = n => Array.from({length:n}, (_,i)=>`<tr class="${i%2===0?'alt':''}">${E6}</tr>`).join('');
@@ -3365,7 +3378,7 @@ function renderPaySlip(){
     <div class="slipTop"><button id="slipPrint">인쇄</button><button id="slipClose">닫기 ✕</button></div>
     <div class="slipTitle">정규직 급여 지급명세서 &nbsp;( ${label} )</div>
     <table class="slipInfo"><tr>
-      <td><b>부서 :</b> ${esc(p.dept||'')}</td><td><b>사번 :</b> ${esc(p.empNo||'')}</td><td><b>성명 :</b> ${esc(e.name)} &nbsp;귀하</td>
+      <td><b>부서 :</b> ${PAY_DEPT}</td><td><b>사번 :</b> ${esc(p.empNo||'')}</td><td><b>성명 :</b> ${esc(e.name)} &nbsp;귀하</td>
     </tr><tr>
       <td><b>직무 :</b> ${esc(p.job||'')}</td><td><b>직급 :</b> ${esc(p.grade||'')}</td><td><b>생년월일 :</b> ${esc(p.birth||'')}</td>
     </tr></table>
@@ -3379,25 +3392,30 @@ function renderPaySlip(){
       <tr>${H('고공(위험)수당')}${H('식대')}${H('기타수당')}${H('타조지원')}${H('비상정비')}${H('무사고포상금')}</tr>
       <tr>${V('')}${V('')}${V(slipWon(a.etc))}${V('')}${V('')}${V('')}</tr>
       ${alt(4)}
-      <tr class="bt">${H('공제내역')}${H('소득세')}${H('지방소득세')}${H('정산소득세')}${H('정산주민세')}${H('건강보험')}${H('국민연금')}</tr>
-      <tr>${sec('',9)}${E6}</tr>
-      <tr>${H('고용보험')}${H('정산건강보험료')}${H('기타공제1')}${H('기타공제2')}${H('기부금')}${H('선우회비')}</tr>
-      <tr>${E6}</tr>
-      <tr>${H('조합비')}<td class="h"></td><td class="h"></td><td class="h"></td><td class="h"></td><td class="h"></td></tr>
-      <tr>${E6}</tr>
+      <tr class="bt">${H('공제내역')}${PAY_DED.slice(0,6).map(([,t])=>H(t)).join('')}</tr>
+      <tr>${sec('',9)}${PAY_DED.slice(0,6).map(([k])=>V(slipWon(p[k]))).join('')}</tr>
+      <tr>${PAY_DED.slice(6,12).map(([,t])=>H(t)).join('')}</tr>
+      <tr>${PAY_DED.slice(6,12).map(([k])=>V(slipWon(p[k]))).join('')}</tr>
+      <tr>${H(PAY_DED[12][1])}<td class="h"></td><td class="h"></td><td class="h"></td><td class="h"></td><td class="h"></td></tr>
+      <tr>${V(slipWon(p[PAY_DED[12][0]]))}<td></td><td></td><td></td><td></td><td></td></tr>
       ${alt(4)}
       <tr class="bt">${H('근태사항')}${H('평일연장근로시간')}${H('평일야간근로시간')}${H('휴일근로시간')}${H('휴일연장근로시간')}${H('휴일야간근로시간')}<td class="h"></td></tr>
       <tr>${sec('',5)}${V(hm2(pc.extHours))}${V(hm2(pc.wkNight))}${V(hm2(pc.holWork))}${V(hm2(pc.holOT))}${V(hm2(pc.holNight))}${V('')}</tr>
       ${alt(4)}
       <tr class="bt">${H('합계')}<td class="h"></td><td class="h" colspan="2">지급총액</td><td class="h" colspan="2">공제총액</td><td class="h">실지급액</td></tr>
-      <tr><td class="h"></td><td></td><td colspan="2">${slipWon(total)}</td><td colspan="2"></td><td></td></tr>
+      <tr><td class="h"></td><td></td><td colspan="2">${slipWon(total)}</td><td colspan="2">${slipWon(dedTotal)}</td><td>${slipWon(total - dedTotal)}</td></tr>
     </table></div>
-    <div class="slipNote">※ 출퇴근 기록으로 계산한 예상 금액입니다. 기본급 = 시급 × ${PAY_BASE_HOURS}시간(10원 미만 버림), 수당은 통상시급 기준(10원 단위 반올림), 기타수당 = (보전 OT − 실 OT) × 통상시급. 시간은 '시간.분'(28.3 = 28시간 30분). 공제내역은 포함되지 않습니다.</div>
+    <div class="slipNote">※ 출퇴근 기록으로 계산한 예상 금액입니다. 기본급 = 시급 × ${PAY_BASE_HOURS}시간(10원 미만 버림), 수당은 통상시급 기준(10원 단위 반올림), 기타수당 = (보전 OT − 실 OT) × 통상시급. 시간은 '시간.분'(28.3 = 28시간 30분). 공제내역은 급여관리에 입력한 금액입니다.</div>
   </div></div>`;
 }
 function bindPayroll(el){
   // 급여관리 화면
   el.querySelectorAll('[data-act="pay-team"]').forEach(x=>x.onclick=()=>{ payMgrTeam = x.dataset.team; render(); });
+  el.querySelectorAll('[data-act="pay-tab"]').forEach(x=>x.onclick=()=>{ payMgrTab = x.dataset.tab; render(); });
+  el.querySelectorAll('select[data-pay]').forEach(x=> x.onchange = ()=>{
+    const id = x.dataset.emp; payDraft[id] = payDraft[id] || {}; payDraft[id][x.dataset.pay] = x.value;
+    const b = document.getElementById('paySave'); if(b) b.textContent = `저장 (${Object.keys(payDraft).length}명 변경)`;
+  });
   el.querySelectorAll('input[data-pay]').forEach(x=>{
     if(x.type==='date') x.onchange = ()=> x.oninput();
     x.oninput = ()=>{
