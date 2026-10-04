@@ -1122,10 +1122,10 @@ function renderDayMemo(){
     </div></div>`;
 }
 // ===== 메일 송부: 매주 화요일 09시 지난주(월~일) 출퇴근 입력 전체를 이메일로(Apps Script가 발송) =====
-let mailConfig = {}, mailSending = false, mailRange = null; // mailRange = {start, end} (처음엔 지난주 월~일)
+let mailConfig = {}, mailSending = false, mailRange = null; // mailRange = {start, end} (처음엔 오늘)
 const MAIL_MAX_DAYS = 31;
 function mailRangeNow(){
-  if(!mailRange){ const st = addDays(mondayOf(todayStr()), -7); mailRange = {start: st, end: addDays(st, 6)}; }
+  if(!mailRange){ const t = todayStr(); mailRange = {start: t, end: t}; } // 처음 열면 오늘 날짜
   return mailRange;
 }
 function mailDayCount(a, b){ return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000) + 1; }
