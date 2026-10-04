@@ -118,6 +118,40 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .gridCodeOpt:hover{background:var(--bg);}
 /* 순번 배지: 그룹별 색 + 순위가 높을수록 진하게 */
 .g-sup{--g:var(--sup);--g-soft:var(--sup-soft);} .g-hol{--g:var(--hol);--g-soft:var(--hol-soft);} .g-wk{--g:var(--wk);--g-soft:var(--wk-soft);} .g-ot{--g:var(--ot);--g-soft:var(--ot-soft);} .ctbl th.cntHead{font-weight:800;font-size:12px;color:#111827 !important;background:#ffffff !important;white-space:nowrap;}
+/* 급여관리·급여명세서 */
+.payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
+.payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
+.payTbl input.pw{text-align:left;min-width:110px;}
+.payScrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:flex;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 8px calc(14px + env(safe-area-inset-bottom,0px));}
+.pwBox{margin:auto;background:#fff;color:#222;border-radius:8px;padding:22px 22px 18px;width:100%;max-width:400px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+.pwBox h3{margin:0 0 12px;font-size:21px;color:#222;}
+.pwBox p{margin:0 0 14px;font-size:14px;line-height:1.5;color:#333;}
+.pwBox input{width:100%;box-sizing:border-box;padding:9px 10px;border:2px solid #888;border-radius:3px;font-size:15px;background:#fff;color:#111;}
+.pwBox .pwErr{color:#dc2626;font-size:13px;margin-top:6px;min-height:18px;}
+.pwBtns{display:flex;gap:10px;margin-top:8px;}
+.pwBtns button{flex:1;border:0;border-radius:3px;padding:10px;font-size:15px;font-weight:700;cursor:pointer;}
+.pwOk{background:#0f6cbd;color:#fff;} .pwOk:disabled{background:#b3d4f0;cursor:default;}
+.pwNo{background:#ececec;color:#222;}
+.slipBox{margin:auto;background:#fff;color:#111;width:100%;max-width:820px;padding:18px 16px 16px;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.25);font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;}
+.slipTop{display:flex;justify-content:flex-end;gap:8px;margin-bottom:6px;}
+.slipTop button{border:1px solid #ccc;background:#fff;border-radius:6px;padding:5px 12px;font-size:13px;cursor:pointer;color:#111;}
+.slipTitle{text-align:center;font-size:24px;font-weight:800;letter-spacing:1px;margin:2px 0 10px;}
+.slipInfo{width:90%;margin:0 auto 18px;border-collapse:collapse;font-size:13px;}
+.slipInfo td{padding:6px 4px;border-bottom:1px solid #333;}
+.slipInfo tr:first-child td{border-top:2px solid #333;}
+.slipInfo b{font-weight:800;}
+.slipDates{display:flex;justify-content:space-between;font-size:12px;margin:0 2px 4px;}
+.slipWrap{overflow-x:auto;}
+.slipTbl{width:100%;min-width:640px;border-collapse:collapse;table-layout:fixed;font-size:12.5px;}
+.slipTbl td{border:1px solid #444;height:26px;padding:2px 6px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.slipTbl td.h{background:#e3e3e3;text-align:center;font-weight:800;white-space:normal;font-size:11.5px;line-height:1.2;letter-spacing:-0.3px;}
+.slipTbl td.sec{background:#e3e3e3;text-align:center;font-weight:800;vertical-align:top;}
+.slipTbl tr.alt td:not(.sec){background:#e3e3e3;}
+.slipTbl .bt td{border-top:2px solid #222;}
+.slipNote{font-size:11.5px;color:#666;margin-top:8px;}
+@media print{ body *{visibility:hidden;} .slipBox,.slipBox *{visibility:visible;} .slipBox{position:absolute;left:0;top:0;box-shadow:none;max-width:none;} .slipTop{display:none;} }
+
 .g-ext{--g:#0f766e;--g-soft:#ccfbf1;--g-strong:#2dd4bf;--g-on:#042f2e;}
 .g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
 .g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
@@ -384,6 +418,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
+    <a data-view="payroll"><span class="ic">💰</span>급여관리</a>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
@@ -1841,7 +1876,7 @@ const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['combined','ot','dispatch','splan','vessel','berth'];
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail'];
-const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats'];
+const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll'];
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
   const e = String(email||'').toLowerCase();
@@ -2036,7 +2071,7 @@ function updateNavForRole(){
 }
 // 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
 function applyReadonly(el){
-  const allow = new Set(['codeStatsStartInput','codeStatsEndInput','codeStatsMealChk','otRangeStartInput','otRangeEndInput','dpDate','dpShift','vslReload','vslToggle','fDate','fEmp1','fEmp2']);
+  const allow = new Set(['payPwInput','codeStatsStartInput','codeStatsEndInput','codeStatsMealChk','otRangeStartInput','otRangeEndInput','dpDate','dpShift','vslReload','vslToggle','fDate','fEmp1','fEmp2']);
   el.querySelectorAll('input,select,textarea').forEach(x=>{ if(!allow.has(x.id) && x.type!=='file') x.disabled = true; });
   el.querySelectorAll('#holForm,#teamAddForm,#showAddCodeBtn,#splanResetBtn,#backupImportBtn,#delRecBtn,#attForm button[type="submit"],[data-act="del-emp"],[data-act="del-hol"],[data-act="delete-code"],[data-act="restore-code"],[data-act="save-code"],.dpCatBtn,.editor-only')
     .forEach(x=> x.style.display = 'none');
@@ -2273,6 +2308,7 @@ function subscribeAll(){
     scheduleRender();
   }, dbErr);
   unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='dispatch' || VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
+  unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ payMgr = doc.exists ? ((doc.data()||{}).byEmp||{}) : {}; scheduleRender(); }, ()=>{});
   unsub.mailConfig = db.doc('meta/mailConfig').onSnapshot(doc=>{ mailConfig = doc.exists ? doc.data() : {}; scheduleRender(); }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
@@ -2643,6 +2679,7 @@ function render(){
   else if(VIEW==='mail'){ el.innerHTML = pageMail(); bindMailPage(); }
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
+  else if(VIEW==='payroll') el.innerHTML = pagePayroll();
 
   afterRender();
   if(!canEdit) applyReadonly(el);
@@ -3138,7 +3175,7 @@ function pageOT(){
     }).join('');
     return `<tr>
       <td style="text-align:center;">${esc(noCell)}</td>
-      <td class="namecell">${esc(r.emp.name)}</td>
+      <td class="namecell payName" data-act="pay-open" data-emp="${esc(r.emp.id)}" title="급여명세서 보기">${esc(r.emp.name)}</td>
       <td style="text-align:center;">${z(r.mealTotal)}</td>
       <td class="gc g-wk" style="text-align:center;font-weight:700;">${z(r.wkTotal)}</td>
       <td class="gc g-sup" style="text-align:center;">${z(r.spTotal)}</td>
@@ -3205,8 +3242,195 @@ function pageOT(){
   </thead><tbody>${rows}${avgRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다.</div>`}
   ${otEdit ? renderOtEdit() : ''}
+  ${payPw ? renderPayPw() : ''}
+  ${paySlip ? renderPaySlip() : ''}
   `;
 }
+/* ========================= 급여관리(UNION) · 급여명세서 ========================= */
+// 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
+let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
+const PAY_BASE_HOURS = 209; // 기본급 = 시급 × 209시간
+function payOf(id){ return Object.assign({}, payMgr[id]||{}, payDraft[id]||{}); }
+function slipWon(n){ return n ? Math.round(n).toLocaleString('ko-KR') : ''; }
+function pagePayroll(){
+  const list = employees.slice().filter(e=> !payMgrTeam || (e.team||'')===payMgrTeam).sort((a,b)=>{
+    const ta = a.team||'9', tb = b.team||'9';
+    if(ta!==tb) return ta<tb?-1:1;
+    return (a.teamOrder||999)-(b.teamOrder||999);
+  });
+  const dirtyN = Object.keys(payDraft).length;
+  const rows = list.map((e,i)=>{
+    const p = payOf(e.id);
+    const v = k => p[k]===undefined || p[k]===null ? '' : esc(String(p[k]));
+    return `<tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td style="text-align:center;">${esc(e.team ? e.team+'조' : '')}</td>
+      <td class="namecell">${esc(e.name)}</td>
+      <td><input type="number" inputmode="decimal" step="1" data-pay="hourly" data-emp="${esc(e.id)}" value="${v('hourly')}" placeholder="0"></td>
+      <td><input type="number" inputmode="decimal" step="1" data-pay="ordinary" data-emp="${esc(e.id)}" value="${v('ordinary')}" placeholder="0"></td>
+      <td><input type="number" inputmode="numeric" step="1" data-pay="tenure" data-emp="${esc(e.id)}" value="${v('tenure')}" placeholder="0"></td>
+      <td><input type="text" class="pw" autocomplete="off" data-pay="pw" data-emp="${esc(e.id)}" value="${v('pw')}" placeholder="비번"></td>
+    </tr>`;
+  }).join('');
+  return `
+  <h2 class="pgttl">급여관리</h2>
+  <div class="row" style="margin-bottom:14px;">
+    <button class="btn ${payMgrTeam===''?'':'ghost'} sm" data-act="pay-team" data-team="">전체</button>
+    <button class="btn ${payMgrTeam==='1'?'':'ghost'} sm" data-act="pay-team" data-team="1">1조</button>
+    <button class="btn ${payMgrTeam==='2'?'':'ghost'} sm" data-act="pay-team" data-team="2">2조</button>
+  </div>
+  <div class="panel">
+    ${list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
+      <th>No</th><th>조</th><th>성명</th><th>시급(원)</th><th>통상시급(원)</th><th>근속수당(원)</th><th>비번</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
+    <div class="row" style="margin-top:12px;">
+      <button class="btn" id="paySave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
+      <button class="btn warn ghost" id="payReset">초기화</button>
+    </div>
+  </div>`;
+}
+function renderPayPw(){
+  const e = employees.find(x=>x.id===payPw.empId);
+  return `<div class="payScrim" id="payPwScrim"><div class="pwBox" role="dialog" aria-label="암호 입력">
+    <h3>암호 입력</h3>
+    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 암호를 입력하세요.</p>
+    <input type="password" id="payPwInput" autocomplete="off">
+    <div class="pwErr" id="payPwErr">${esc(payPw.err||'')}</div>
+    <div class="pwBtns"><button class="pwOk" id="payPwOk" disabled>파일 열기</button><button class="pwNo" id="payPwNo">취소</button></div>
+  </div></div>`;
+}
+// 기존에 2023년 2월 명세서로 대조 확인한 계산(payCalc)과 같은 방식 — 월별 OT현황에 불러온 기록을 사용
+function slipCalc(e, start, end){
+  let wk=0, ho=0, sp=0, meal=0, holWork=0, holOT=0, holNight=0, holExtra=0, wkNight=0, wkGroupPrem=0;
+  for(let ds=start; ds<=end; ds=addDays(ds,1)){
+    const rec = otMatrixAttendance[ds+'_'+e.id]; if(!rec) continue;
+    const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds), m = computeMealAllowance(rec);
+    if(c.valid){
+      if(c.category==='일요일' || c.category==='공휴일'){
+        ho += c.premium; holWork += c.totalWork - c.overtime; holOT += c.overtime; holNight += c.night;
+        holExtra += c.premium - (c.totalWork*1.5 + c.overtime*0.5 + c.night*0.5); // 연근 등 추가분
+      } else { wk += c.premium; wkNight += c.night; wkGroupPrem += c.premium; }
+    }
+    if(p.valid){
+      const k = dayCategory(ds, recManguen(rec, ds), rec && rec.employeeId);
+      if(k==='SU' || k==='H') ho += p.premium; else sp += p.premium;
+      wkNight += p.supNight; wkGroupPrem += p.premium;
+    }
+    meal += m; wkGroupPrem += m;
+  }
+  const real = wk + ho + sp + meal, guar = wk + Math.max(ho,60) + Math.max(sp,30) + meal;
+  return {diff: Math.max(guar-real,0), extHours: Math.max((wkGroupPrem - wkNight*0.5)/1.5, 0), wkNight, holWork, holOT, holNight, holExtra};
+}
+function renderPaySlip(){
+  const e = employees.find(x=>x.id===paySlip.empId);
+  if(!e) return '';
+  const p = payMgr[e.id] || {};
+  const hourly = Number(p.hourly)||0, rate = Number(p.ordinary)||0, tenure = Number(p.tenure)||0;
+  const pc = slipCalc(e, otMatrixStart, otMatrixEnd);
+  const r10 = v => Math.round(v/10)*10;
+  const a = {
+    base: Math.floor(hourly * PAY_BASE_HOURS / 10) * 10, // 10원 미만 버림(명세서: 20,731×209 = 4,332,770)
+    tenure,
+    ext: r10(pc.extHours*rate*1.5),                       // 연장근로수당
+    night: r10(pc.wkNight*rate*0.5),                      // 평일야간근로수당
+    hol: r10((pc.holWork*1.5 + pc.holExtra)*rate),        // 휴일근로수당
+    holOT: r10(pc.holOT*rate*2),                          // 휴일연장근로수당
+    holN: r10(pc.holNight*rate*0.5),                      // 휴일야간근로수당
+    etc: r10(pc.diff*rate)                                // 기타수당(보전 OT − 실 OT)
+  };
+  const total = a.base + a.tenure + a.ext + a.night + a.hol + a.holOT + a.holN + a.etc;
+  const H = t => `<td class="h">${t}</td>`, V = v => `<td>${v}</td>`, E6 = '<td></td>'.repeat(6);
+  const sec = (t, n) => `<td class="sec" rowspan="${n}">${t}</td>`;
+  const alt = n => Array.from({length:n}, (_,i)=>`<tr class="${i%2===0?'alt':''}">${E6}</tr>`).join('');
+  const hm2 = v => v ? hm(v) : '';
+  const label = `${otPayYear}년 ${String(otPayMonth).padStart(2,'0')}월`;
+  return `<div class="payScrim" id="slipScrim"><div class="slipBox">
+    <div class="slipTop"><button id="slipPrint">인쇄</button><button id="slipClose">닫기 ✕</button></div>
+    <div class="slipTitle">정규직 급여 지급명세서 &nbsp;( ${label} )</div>
+    <table class="slipInfo"><tr>
+      <td><b>부서 :</b> ${esc(e.team ? e.team+'조' : '')}</td><td><b>사번 :</b></td><td><b>성명 :</b> ${esc(e.name)} &nbsp;귀하</td>
+    </tr><tr>
+      <td><b>직무 :</b></td><td><b>직급 :</b></td><td><b>근무기간 :</b> ${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)}</td>
+    </tr></table>
+    <div class="slipDates"><span><b>시급 :</b> ${slipWon(hourly)}원 &nbsp; <b>통상시급 :</b> ${slipWon(rate)}원</span><span><b>지급일자 :</b></span></div>
+    <div class="slipWrap"><table class="slipTbl">
+      <colgroup><col style="width:12%"><col><col><col><col><col><col></colgroup>
+      <tr>${H('지급내역')}${H('기본급')}${H('학자금')}${H('근속수당')}${H('직책수당')}${H('기술수당')}${H('연장근로수당')}</tr>
+      <tr>${sec('',9)}${V(slipWon(a.base))}${V('')}${V(slipWon(a.tenure))}${V('')}${V('')}${V(slipWon(a.ext))}</tr>
+      <tr>${H('평일야간근로수당')}${H('휴일근로수당')}${H('휴일연장근로수당')}${H('휴일야간근로수당')}${H('특근수당')}${H('보전수당')}</tr>
+      <tr>${V(slipWon(a.night))}${V(slipWon(a.hol))}${V(slipWon(a.holOT))}${V(slipWon(a.holN))}${V('')}${V('')}</tr>
+      <tr>${H('고공(위험)수당')}${H('식대')}${H('기타수당')}${H('타조지원')}${H('비상정비')}${H('무사고포상금')}</tr>
+      <tr>${V('')}${V('')}${V(slipWon(a.etc))}${V('')}${V('')}${V('')}</tr>
+      ${alt(4)}
+      <tr class="bt">${H('공제내역')}${H('소득세')}${H('지방소득세')}${H('정산소득세')}${H('정산주민세')}${H('건강보험')}${H('국민연금')}</tr>
+      <tr>${sec('',9)}${E6}</tr>
+      <tr>${H('고용보험')}${H('정산건강보험료')}${H('기타공제1')}${H('기타공제2')}${H('기부금')}${H('선우회비')}</tr>
+      <tr>${E6}</tr>
+      <tr>${H('조합비')}<td class="h"></td><td class="h"></td><td class="h"></td><td class="h"></td><td class="h"></td></tr>
+      <tr>${E6}</tr>
+      ${alt(4)}
+      <tr class="bt">${H('근태사항')}${H('평일연장근로시간')}${H('평일야간근로시간')}${H('휴일근로시간')}${H('휴일연장근로시간')}${H('휴일야간근로시간')}<td class="h"></td></tr>
+      <tr>${sec('',5)}${V(hm2(pc.extHours))}${V(hm2(pc.wkNight))}${V(hm2(pc.holWork))}${V(hm2(pc.holOT))}${V(hm2(pc.holNight))}${V('')}</tr>
+      ${alt(4)}
+      <tr class="bt">${H('합계')}<td class="h"></td><td class="h" colspan="2">지급총액</td><td class="h" colspan="2">공제총액</td><td class="h">실지급액</td></tr>
+      <tr><td class="h"></td><td></td><td colspan="2">${slipWon(total)}</td><td colspan="2"></td><td></td></tr>
+    </table></div>
+    <div class="slipNote">※ 출퇴근 기록으로 계산한 예상 금액입니다. 기본급 = 시급 × ${PAY_BASE_HOURS}시간(10원 미만 버림), 수당은 통상시급 기준(10원 단위 반올림), 기타수당 = (보전 OT − 실 OT) × 통상시급. 시간은 '시간.분'(28.3 = 28시간 30분). 공제내역은 포함되지 않습니다.</div>
+  </div></div>`;
+}
+function bindPayroll(el){
+  // 급여관리 화면
+  el.querySelectorAll('[data-act="pay-team"]').forEach(x=>x.onclick=()=>{ payMgrTeam = x.dataset.team; render(); });
+  el.querySelectorAll('input[data-pay]').forEach(x=>{
+    x.oninput = ()=>{
+      const id = x.dataset.emp, k = x.dataset.pay;
+      payDraft[id] = payDraft[id] || {};
+      payDraft[id][k] = k==='pw' ? x.value : (x.value==='' ? '' : Number(x.value));
+      const b = document.getElementById('paySave'); if(b) b.textContent = `저장 (${Object.keys(payDraft).length}명 변경)`;
+    };
+  });
+  const ps = document.getElementById('paySave');
+  if(ps) ps.onclick = async ()=>{
+    if(!requireEdit()) return;
+    if(!Object.keys(payDraft).length){ showToast('바뀐 내용이 없어요.'); return; }
+    const next = Object.assign({}, payMgr);
+    Object.keys(payDraft).forEach(id=>{ next[id] = Object.assign({}, payMgr[id]||{}, payDraft[id]); });
+    payMgr = next; payDraft = {}; render();
+    if(!db) return;
+    try{ await db.doc('meta/payroll').set({byEmp: next}); showToast('저장되었습니다.'); }
+    catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
+  };
+  const pr = document.getElementById('payReset');
+  if(pr) pr.onclick = ()=>{ payDraft = {}; render(); };
+  // 월별 OT현황: 성명 → 암호 → 명세서
+  el.querySelectorAll('[data-act="pay-open"]').forEach(x=>x.onclick=()=>{
+    const p = payMgr[x.dataset.emp];
+    if(!p || !String(p.pw||'')){ showToast('급여 정보가 아직 등록되지 않았어요. (UNION의 급여관리에서 등록)'); return; }
+    payPw = {empId: x.dataset.emp, err:''}; render();
+    setTimeout(()=>{ const i = document.getElementById('payPwInput'); if(i) i.focus(); }, 30);
+  });
+  const pi = document.getElementById('payPwInput');
+  if(pi){
+    const ok = document.getElementById('payPwOk');
+    const tryOpen = ()=>{
+      const p = payMgr[payPw.empId] || {};
+      if(pi.value === String(p.pw||'')){ paySlip = {empId: payPw.empId}; payPw = null; render(); }
+      else { document.getElementById('payPwErr').textContent = '암호가 맞지 않습니다.'; pi.select(); }
+    };
+    pi.oninput = ()=>{ ok.disabled = !pi.value; document.getElementById('payPwErr').textContent = ''; };
+    pi.onkeydown = ev=>{ if(ev.key==='Enter' && pi.value){ ev.preventDefault(); tryOpen(); } else if(ev.key==='Escape'){ payPw = null; render(); } };
+    ok.onpointerdown = ev=> ev.preventDefault();
+    ok.onclick = tryOpen;
+    document.getElementById('payPwNo').onclick = ()=>{ payPw = null; render(); };
+  }
+  const sc = document.getElementById('slipScrim');
+  if(sc){
+    sc.onclick = ev=>{ if(ev.target===sc){ paySlip = null; render(); } };
+    document.getElementById('slipClose').onclick = ()=>{ paySlip = null; render(); };
+    document.getElementById('slipPrint').onclick = ()=> window.print();
+  }
+}
+
 /* ========================= 조별 월간집계 ========================= */
 function pageTeamOT(){
   const sortedEmployees = employees.slice().filter(e=> !teamOtFilter || (e.team||'')===teamOtFilter).sort((a,b)=>{
@@ -3972,6 +4196,7 @@ function afterRender(){
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; autoDispatchShift(); render(); });
+  bindPayroll(el);
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
