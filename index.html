@@ -181,6 +181,13 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .bcRemark{text-align:center;font-weight:800;}
 .bcQc th{background:#fce7f3;color:#dc2626;font-weight:800;padding:7px 6px;font-size:12.5px;}
 .bcQc td{text-align:center;font-weight:800;padding:6px;} .bcQcIc{margin-right:6px;}
+/* 근태관리 보정값 팝업: 현재값 + 보정값 ± 입력값 = 합계 */
+.adjRow{display:flex;align-items:flex-end;gap:4px;}
+.adjCell{flex:1;min-width:0;display:flex;flex-direction:column;}
+.adjCell label{font-size:12px;color:var(--muted,#6b7280);margin-bottom:4px;white-space:nowrap;}
+.adjNum{padding:8px 2px;font-weight:800;white-space:nowrap;}
+.adjOp{padding:0 0 9px;font-weight:800;flex:0 0 auto;}
+.adjSign{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--accent);font-size:17px;font-weight:800;cursor:pointer;padding:0;line-height:1;}
 /* 선석 팝업: 휴대폰에서 화면보다 길면 잘리지 않고 위아래로 스크롤 */
 .bcScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;display:flex;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   padding:calc(14px + env(safe-area-inset-top,0px)) 10px calc(14px + env(safe-area-inset-bottom,0px));}
@@ -1080,16 +1087,19 @@ function renderAdjPop(){
   const cur = userAdjOf(e, adjPop.key), raw = Number(adjPop.raw)||0;
   const f = x => (Math.round(x*100)/100).toLocaleString();
   return `<div id="adjScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
-    <div class="panel" style="max-width:340px;width:92%;margin:0;">
+    <div class="panel" style="max-width:420px;width:94%;margin:0;">
       <h3 style="margin:0 0 4px;">${esc(e.name)} · ${esc(adjPop.label)}</h3>
-      <p class="hint" style="margin:0 0 12px;">근태 집계에는 <b>현재값 + 보정값</b>이 표시됩니다(순번에도 반영).</p>
-      <div class="row" style="align-items:flex-end;flex-wrap:nowrap;">
-        <div class="field" style="min-width:0;flex:1;"><label>현재값</label><div style="padding:8px 2px;font-weight:700;">${f(raw)}</div></div>
-        <div style="padding:0 0 10px;font-weight:800;">+</div>
-        <div class="field" style="min-width:0;flex:1;"><label>보정값</label><input type="number" step="0.01" id="adjInput" value="${cur||''}" placeholder="0" style="width:100%;"></div>
-        <div style="padding:0 0 10px;font-weight:800;">=</div>
-        <div class="field" style="min-width:0;flex:1;"><label>합계</label><div id="adjSum" style="padding:8px 2px;font-weight:800;color:var(--accent);">${f(raw+cur)}</div></div>
+      <p class="hint" style="margin:0 0 12px;">근태 집계에는 <b>현재값 + 보정값</b>이 표시됩니다(순번에도 반영). <b>입력값</b>에 더하거나 뺄 숫자만 넣으면 보정값에 더해져요.</p>
+      <div class="adjRow">
+        <div class="adjCell"><label>현재값</label><div class="adjNum">${f(raw)}</div></div>
+        <div class="adjOp">+</div>
+        <div class="adjCell"><label>보정값</label><div class="adjNum" id="adjCur">${f(cur)}</div></div>
+        <div class="adjOp"><button type="button" id="adjSign" class="adjSign" data-sign="1" aria-label="더하기/빼기 바꾸기">+</button></div>
+        <div class="adjCell" style="flex:1.3;"><label>입력값</label><input type="number" step="0.01" min="0" inputmode="decimal" id="adjInput" value="" placeholder="0" style="width:100%;"></div>
+        <div class="adjOp">=</div>
+        <div class="adjCell"><label>합계</label><div id="adjSum" class="adjNum" style="color:var(--accent);">${f(raw+cur)}</div></div>
       </div>
+      <div id="adjNew" class="hint" style="margin:8px 0 0;">저장하면 보정값: <b>${f(cur)}</b></div>
       <div class="row" style="justify-content:flex-end;margin-top:10px;">
         <button class="btn ghost sm" id="adjCancel">취소</button><button class="btn sm" id="adjSave">저장</button>
       </div>
@@ -4014,9 +4024,22 @@ function afterRender(){
   });
   const adjInput = document.getElementById('adjInput');
   if(adjInput){
-    const upd = ()=>{ const s2 = document.getElementById('adjSum'); if(s2) s2.textContent = (Math.round(((Number(adjPop.raw)||0) + (Number(adjInput.value)||0))*100)/100).toLocaleString(); };
+    const signBtn = document.getElementById('adjSign');
+    const delta = ()=>{ const n = Number(adjInput.value)||0; return n < 0 ? n : n * (Number(signBtn && signBtn.dataset.sign)||1); };
+    const r2 = x => Math.round(x*100)/100;
+    const upd = ()=>{
+      const e0 = employees.find(x=>x.id===adjPop.empId); if(!e0) return;
+      const cur = userAdjOf(e0, adjPop.key), nv = r2(cur + delta());
+      const s2 = document.getElementById('adjSum'); if(s2) s2.textContent = r2((Number(adjPop.raw)||0) + nv).toLocaleString();
+      const nw = document.getElementById('adjNew'); if(nw) nw.innerHTML = '저장하면 보정값: <b>' + nv.toLocaleString() + '</b>';
+    };
     adjInput.oninput = upd;
-    const save = ()=>{ const val = adjInput.value==='' ? 0 : Number(adjInput.value)||0; const p = adjPop; adjPop = null; updateEmployee(p.empId, {['u_'+p.key]: val}); };
+    if(signBtn) signBtn.onclick = ()=>{ const neg = signBtn.dataset.sign === '1'; signBtn.dataset.sign = neg ? '-1' : '1'; signBtn.textContent = neg ? '−' : '+'; upd(); adjInput.focus(); };
+    const save = ()=>{
+      const e0 = employees.find(x=>x.id===adjPop.empId); const p = adjPop;
+      const val = r2((e0 ? userAdjOf(e0, p.key) : 0) + delta());
+      adjPop = null; updateEmployee(p.empId, {['u_'+p.key]: val});
+    };
     document.getElementById('adjSave').onclick = save;
     adjInput.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); save(); } };
     document.getElementById('adjCancel').onclick = ()=>{ adjPop = null; render(); };
