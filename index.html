@@ -182,12 +182,12 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .bcQc th{background:#fce7f3;color:#dc2626;font-weight:800;padding:7px 6px;font-size:12.5px;}
 .bcQc td{text-align:center;font-weight:800;padding:6px;} .bcQcIc{margin-right:6px;}
 /* 근태관리 보정값 팝업: 현재값 + 보정값 ± 입력값 = 합계 */
-.adjRow{display:flex;align-items:flex-end;gap:4px;}
-.adjCell{flex:1;min-width:0;display:flex;flex-direction:column;}
-.adjCell label{font-size:12px;color:var(--muted,#6b7280);margin-bottom:4px;white-space:nowrap;}
-.adjNum{padding:8px 2px;font-weight:800;white-space:nowrap;}
-.adjOp{padding:0 0 9px;font-weight:800;flex:0 0 auto;}
-.adjSign{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--accent);font-size:17px;font-weight:800;cursor:pointer;padding:0;line-height:1;}
+.apRow{display:flex;align-items:flex-end;gap:4px;}
+.apCell{flex:1;min-width:0;display:flex;flex-direction:column;}
+.apCell label{font-size:12px;color:var(--muted,#6b7280);margin-bottom:4px;white-space:nowrap;}
+.apNum{padding:8px 2px;font-weight:800;white-space:nowrap;}
+.apOp{padding:0 0 9px;font-weight:800;flex:0 0 auto;}
+.apSign{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--accent);font-size:17px;font-weight:800;cursor:pointer;padding:0;line-height:1;}
 /* 선석 팝업: 휴대폰에서 화면보다 길면 잘리지 않고 위아래로 스크롤 */
 .bcScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;display:flex;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   padding:calc(14px + env(safe-area-inset-top,0px)) 10px calc(14px + env(safe-area-inset-bottom,0px));}
@@ -1090,14 +1090,14 @@ function renderAdjPop(){
     <div class="panel" style="max-width:420px;width:94%;margin:0;">
       <h3 style="margin:0 0 4px;">${esc(e.name)} · ${esc(adjPop.label)}</h3>
       <p class="hint" style="margin:0 0 12px;">근태 집계에는 <b>현재값 + 보정값</b>이 표시됩니다(순번에도 반영). <b>입력값</b>에 더하거나 뺄 숫자만 넣으면 보정값에 더해져요.</p>
-      <div class="adjRow">
-        <div class="adjCell"><label>현재값</label><div class="adjNum">${f(raw)}</div></div>
-        <div class="adjOp">+</div>
-        <div class="adjCell"><label>보정값</label><div class="adjNum" id="adjCur">${f(cur)}</div></div>
-        <div class="adjOp"><button type="button" id="adjSign" class="adjSign" data-sign="1" aria-label="더하기/빼기 바꾸기">+</button></div>
-        <div class="adjCell" style="flex:1.3;"><label>입력값</label><input type="number" step="0.01" min="0" inputmode="decimal" id="adjInput" value="" placeholder="0" style="width:100%;"></div>
-        <div class="adjOp">=</div>
-        <div class="adjCell"><label>합계</label><div id="adjSum" class="adjNum" style="color:var(--accent);">${f(raw+cur)}</div></div>
+      <div class="apRow">
+        <div class="apCell"><label>현재값</label><div class="apNum">${f(raw)}</div></div>
+        <div class="apOp">+</div>
+        <div class="apCell"><label>보정값</label><div class="apNum" id="adjCur">${f(cur)}</div></div>
+        <div class="apOp"><button type="button" id="adjSign" class="apSign" data-sign="1" aria-label="더하기/빼기 바꾸기">+</button></div>
+        <div class="apCell" style="flex:1.3;"><label>입력값</label><input type="number" step="0.01" min="0" inputmode="decimal" id="adjInput" value="" placeholder="0" style="width:100%;"></div>
+        <div class="apOp">=</div>
+        <div class="apCell"><label>합계</label><div id="adjSum" class="apNum" style="color:var(--accent);">${f(raw+cur)}</div></div>
       </div>
       <div id="adjNew" class="hint" style="margin:8px 0 0;">저장하면 보정값: <b>${f(cur)}</b></div>
       <div class="row" style="justify-content:flex-end;margin-top:10px;">
