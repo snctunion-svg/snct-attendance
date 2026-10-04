@@ -122,6 +122,9 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
 .payTbl input.pw{text-align:left;min-width:110px;}
+.wonBox{position:relative;}
+.wonBox input{padding-right:26px !important;min-width:120px;}
+.wonBox span{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text-muted,#6b7280);pointer-events:none;}
 .payScrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:flex;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   padding:calc(14px + env(safe-area-inset-top,0px)) 8px calc(14px + env(safe-area-inset-bottom,0px));}
 .pwBox{margin:auto;background:#fff;color:#222;border-radius:8px;padding:22px 22px 18px;width:100%;max-width:400px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
@@ -3262,13 +3265,15 @@ function pagePayroll(){
   const rows = list.map((e,i)=>{
     const p = payOf(e.id);
     const v = k => p[k]===undefined || p[k]===null ? '' : esc(String(p[k]));
+    const n = k => { const x = Number(p[k]); return p[k]==='' || p[k]===undefined || p[k]===null || !Number.isFinite(x) ? '' : x.toLocaleString('ko-KR'); };
+    const money = k => `<div class="wonBox"><input type="text" inputmode="numeric" data-pay="${k}" data-emp="${esc(e.id)}" value="${n(k)}" placeholder="0"><span>원</span></div>`;
     return `<tr>
       <td style="text-align:center;">${i+1}</td>
       <td style="text-align:center;">${esc(e.team ? e.team+'조' : '')}</td>
       <td class="namecell">${esc(e.name)}</td>
-      <td><input type="number" inputmode="decimal" step="1" data-pay="hourly" data-emp="${esc(e.id)}" value="${v('hourly')}" placeholder="0"></td>
-      <td><input type="number" inputmode="decimal" step="1" data-pay="ordinary" data-emp="${esc(e.id)}" value="${v('ordinary')}" placeholder="0"></td>
-      <td><input type="number" inputmode="numeric" step="1" data-pay="tenure" data-emp="${esc(e.id)}" value="${v('tenure')}" placeholder="0"></td>
+      <td>${money('hourly')}</td>
+      <td>${money('ordinary')}</td>
+      <td>${money('tenure')}</td>
       <td><input type="text" class="pw" autocomplete="off" data-pay="pw" data-emp="${esc(e.id)}" value="${v('pw')}" placeholder="비번"></td>
     </tr>`;
   }).join('');
@@ -3281,7 +3286,7 @@ function pagePayroll(){
   </div>
   <div class="panel">
     ${list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>시급(원)</th><th>통상시급(원)</th><th>근속수당(원)</th><th>비번</th>
+      <th>No</th><th>조</th><th>성명</th><th>시급</th><th>통상시급</th><th>근속수당</th><th>비번</th>
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
     <div class="row" style="margin-top:12px;">
       <button class="btn" id="paySave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
@@ -3385,7 +3390,15 @@ function bindPayroll(el){
     x.oninput = ()=>{
       const id = x.dataset.emp, k = x.dataset.pay;
       payDraft[id] = payDraft[id] || {};
-      payDraft[id][k] = k==='pw' ? x.value : (x.value==='' ? '' : Number(x.value));
+      if(k==='pw'){ payDraft[id][k] = x.value; }
+      else {
+        // 숫자만 남기고 1,000 단위 콤마로 다시 표시(커서는 뒤에서부터 같은 자리 유지)
+        const fromEnd = x.value.length - (x.selectionStart ?? x.value.length);
+        const digits = x.value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+        x.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
+        const pos = Math.max(0, x.value.length - fromEnd); try{ x.setSelectionRange(pos, pos); }catch(_){}
+        payDraft[id][k] = digits ? Number(digits) : '';
+      }
       const b = document.getElementById('paySave'); if(b) b.textContent = `저장 (${Object.keys(payDraft).length}명 변경)`;
     };
   });
