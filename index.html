@@ -624,13 +624,106 @@ function renderDpPop(){
     </div></div>`;
 }
 // 배차표 칸 안에서 바로 글씨 입력(두 번 누르기)
-function startDpInlineEdit(td){
+// ===== 배차표: 엑셀처럼 칸 선택 → 팔레트(수정·초반·후반…) 누르면 선택한 칸에 적용 =====
+// 선택은 {aEmp,aSlot}(처음 누른 칸) ~ {fEmp,fSlot}(끝 칸) 사각형. 다시 그려도 사람·시간으로 기억해서 유지
+let dpSel = null, dpSelDragging = false;
+function dpGridRows(){
+  const table = document.getElementById('dpTable'); if(!table) return [];
+  const anchorEmp = dpSel ? dpSel.aEmp : null;
+  return Array.from(table.querySelectorAll('tbody tr')).filter(tr=>{
+    const first = tr.querySelector('.dpCell'); if(!first) return false;
+    // 휴무(회색) 줄은 건너뜀 — 처음 누른 줄이면 포함
+    return !tr.classList.contains('dpOff') || first.dataset.dispatchEmp===anchorEmp;
+  }).map(tr=> Array.from(tr.querySelectorAll('.dpCell')));
+}
+function dpSelRect(rows){
+  if(!dpSel) return null;
+  const find = (emp, slot)=>{ for(let r=0;r<rows.length;r++){ const c = rows[r].findIndex(td=> td.dataset.dispatchEmp===emp && td.dataset.dispatchSlot===slot); if(c>=0) return [r,c]; } return null; };
+  const a = find(dpSel.aEmp, dpSel.aSlot), f = find(dpSel.fEmp, dpSel.fSlot) || a;
+  if(!a) return null;
+  return {r0: Math.min(a[0], f[0]), r1: Math.max(a[0], f[0]), c0: Math.min(a[1], f[1]), c1: Math.max(a[1], f[1])};
+}
+function dpSelCells(){
+  const rows = dpGridRows(), R = dpSelRect(rows); if(!R) return [];
+  const out = [];
+  for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++) if(rows[r][c]) out.push(rows[r][c]);
+  return out;
+}
+function dpApplySel(){
+  const table = document.getElementById('dpTable'); if(!table) return;
+  table.querySelectorAll('.dpCell.dpSelOn').forEach(td=>{ td.classList.remove('dpSelOn'); td.style.boxShadow = ''; });
+  const rows = dpGridRows(), R = dpSelRect(rows); if(!R) return;
+  const G = '#217346';
+  for(let r=R.r0;r<=R.r1;r++) for(let c=R.c0;c<=R.c1;c++){
+    const td = rows[r][c]; if(!td) continue;
+    const sh = ['inset 0 0 0 999px rgba(0,0,0,.16)'];
+    if(r===R.r0) sh.push(`inset 0 2px 0 ${G}`);
+    if(r===R.r1) sh.push(`inset 0 -2px 0 ${G}`);
+    if(c===R.c0) sh.push(`inset 2px 0 0 ${G}`);
+    if(c===R.c1) sh.push(`inset -2px 0 0 ${G}`);
+    td.style.boxShadow = sh.join(','); td.classList.add('dpSelOn');
+  }
+}
+// 팔레트 적용: 초반·후반 등은 색칠, 수정은 색과 글자 모두 지움
+function dpApplyCatToSel(catKey){
+  if(!canEdit){ requireEdit(); return; }
+  const cells = dpSelCells();
+  if(!cells.length){ showToast('먼저 배차표에서 칸을 선택하세요.'); return; }
+  const erase = catKey==='수정', val = erase ? '' : catKey, byEmp = {};
+  cells.forEach(td=>{
+    const emp = td.dataset.dispatchEmp, slot = td.dataset.dispatchSlot;
+    const g = byEmp[emp] = byEmp[emp] || {changes:{}, clear:[]};
+    if((td.dataset.dispatchCur||'') !== val){ g.changes[slot] = val; applyPaintToCell(td, val); }
+    if(erase){ const note = (((dispatch[`${dispatchDate}_${dispatchShift}_${emp}`]||{}).notes)||{})[slot]; if(note){ g.clear.push(slot); td.innerHTML = ''; td.removeAttribute('title'); } }
+  });
+  const slots = new Set(cells.map(td=> td.dataset.dispatchSlot));
+  slots.forEach(updateCountLive);
+  Object.entries(byEmp).forEach(([emp, g])=>{
+    if(Object.keys(g.changes).length || g.clear.length) saveDispatchSlots(dispatchDate, dispatchShift, emp, g.changes, g.clear);
+  });
+  Object.keys(byEmp).forEach(updateSuwuLive);
+  dpApplySel();
+}
+// 글자 입력: 선택한 칸(처음 누른 칸)에 바로 입력. 첫 글자를 넘겨받으면 그 글자부터 시작(엑셀처럼)
+function dpStartTyping(td, firstChar){
+  if(!td || !canEdit) return;
+  startDpInlineEdit(td, firstChar);
+}
+function dpAnchorCell(){
+  if(!dpSel) return null;
+  const table = document.getElementById('dpTable'); if(!table) return null;
+  return Array.from(table.querySelectorAll('.dpCell')).find(td=> td.dataset.dispatchEmp===dpSel.aEmp && td.dataset.dispatchSlot===dpSel.aSlot) || null;
+}
+// 키보드(PC): 글자 치면 입력, Delete/Backspace는 선택 칸 지우기(=수정), Esc는 선택 해제, 화살표는 한 칸 이동
+document.addEventListener('keydown', (ev)=>{
+  if(VIEW!=='dispatch' || !dpSel) return;
+  const t = ev.target; if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT' || t.isContentEditable)) return;
+  if(ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  if(ev.key==='Escape'){ dpSel = null; dpApplySel(); return; }
+  if(ev.key==='Delete' || ev.key==='Backspace'){ ev.preventDefault(); dpApplyCatToSel('수정'); return; }
+  if(ev.key==='Enter' || ev.key==='F2'){ ev.preventDefault(); dpStartTyping(dpAnchorCell(), null); return; }
+  const arrows = {ArrowLeft:[0,-1], ArrowRight:[0,1], ArrowUp:[-1,0], ArrowDown:[1,0]};
+  if(arrows[ev.key]){
+    ev.preventDefault();
+    const rows = dpGridRows(), R = dpSelRect(rows); if(!R) return;
+    const a = dpAnchorCell(); if(!a) return;
+    let r = rows.findIndex(cs=> cs.includes(a)), c = rows[r].indexOf(a);
+    r = Math.max(0, Math.min(rows.length-1, r + arrows[ev.key][0])); c = Math.max(0, Math.min(rows[r].length-1, c + arrows[ev.key][1]));
+    const td = rows[r][c]; dpSel = {aEmp: td.dataset.dispatchEmp, aSlot: td.dataset.dispatchSlot, fEmp: td.dataset.dispatchEmp, fSlot: td.dataset.dispatchSlot};
+    dpApplySel(); td.scrollIntoView({block:'nearest', inline:'nearest'});
+    return;
+  }
+  if(ev.key.length===1){ ev.preventDefault(); dpStartTyping(dpAnchorCell(), ev.key); }
+});
+
+function startDpInlineEdit(td, firstChar){
   const empId = td.dataset.dispatchEmp, slot = td.dataset.dispatchSlot;
   const id = `${dispatchDate}_${dispatchShift}_${empId}`;
   const prev = ((dispatch[id]||{}).notes||{})[slot] || '';
-  td.innerHTML = `<input type="text" class="dpInline" maxlength="10" value="${esc(prev)}">`;
+  td.innerHTML = `<input type="text" class="dpInline" maxlength="10" value="${esc(firstChar!=null ? firstChar : prev)}">`;
   const inp = td.querySelector('input');
-  inp.focus(); inp.select();
+  inp.focus();
+  if(firstChar!=null){ const n = inp.value.length; inp.setSelectionRange(n, n); } else inp.select();
   let done = false;
   const finish = (save)=>{ if(done) return; done = true; const v = inp.value.trim(); if(save && v!==prev){ saveDispatchNote(dispatchDate, dispatchShift, empId, slot, v); } render(); };
   inp.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); finish(true); } else if(ev.key==='Escape'){ finish(false); } };
@@ -3939,7 +4032,7 @@ function pageDispatch(){
   });
 
   const palette = DISPATCH_CATS.map(c=>`<button type="button" class="dpCatBtn" data-cat="${esc(c.key)}"
-      style="background:${c.bg};color:${c.fg};border:2px solid ${dispatchPaint===c.key?'var(--text)':c.border};border-radius:10px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:${dispatchPaint===c.key?'0 0 0 2px var(--accent)':'none'};">${esc(c.key)}</button>`).join('');
+      style="background:${c.bg};color:${c.fg};border:2px solid ${c.border};border-radius:10px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:${false?'':'none'};">${esc(c.key)}</button>`).join('');
 
   // 빨간 시간 묶음(예: 07·30)의 바깥쪽에만 빨간 테두리: 묶음의 왼쪽 끝 mL, 오른쪽 끝 mR
   const mealEdge = s => {
@@ -4680,9 +4773,10 @@ function afterRender(){
 
   // 배차표
   const dpDate = document.getElementById('dpDate'), dpShift = document.getElementById('dpShift');
-  if(dpDate) dpDate.onchange = ()=>{ dispatchDate = dpDate.value; autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
+  if(dpDate) dpDate.onchange = ()=>{ dpSel = null; dispatchDate = dpDate.value; autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
   if(dpShift) dpShift.onchange = ()=>{ dispatchShift = dpShift.value; render(); };
-  el.querySelectorAll('.dpCatBtn').forEach(x=>x.onclick=()=>{ dispatchPaint = x.dataset.cat; render(); });
+  // 팔레트: 선택한 칸에 바로 적용(선택이 없으면 안내)
+  el.querySelectorAll('.dpCatBtn').forEach(x=>{ x.onpointerdown = ev=> ev.preventDefault(); x.onclick = ()=> dpApplyCatToSel(x.dataset.cat); });
   el.querySelectorAll('[data-act="dp-sun-part"]').forEach(x=>x.onclick=()=>{ dispatchSunPart = x.dataset.part; window._dpScrollLeft = 0; render(); });
   const dpWrapEl = document.getElementById('dpWrap');
   if(dpWrapEl){
@@ -4694,51 +4788,53 @@ function afterRender(){
   });
   const dpTable = document.getElementById('dpTable');
   if(dpTable){
-    // 한 번 누르면 → 칸에서 바로 글씨 입력. 눌러서 옆 칸으로 끌면 → 팔레트 색으로 칠하기
-    // PC(마우스): 한 번 누르면 글씨 입력, 눌러서 끌면 칠하기
-    // 휴대폰(터치): 밀면 표 스크롤, 짧게 누르면 글씨 입력, 꾹 누른 뒤(0.45초) 끌면 칠하기
-    // 보기 전용: 아무 동작 없이 스크롤만(안내 문구 안 띄움)
-    let dpPending = null, dpStartXY = [0,0], dpTouch = false, dpLongTimer = null;
+    // 엑셀처럼: 칸을 누르거나 끌어서 '선택' → 위 팔레트(수정·초반·후반…)를 누르면 선택한 칸에 적용
+    // PC: 누르기=한 칸 선택, 끌기=여러 칸(옆·위아래) 선택, 선택 후 글자를 치면 그 칸에 바로 입력, 두 번 누르면 입력칸
+    // 휴대폰: 짧게 누르기=한 칸 선택, 꾹 누른 뒤 끌기=여러 칸 선택, 두 번 누르기=입력칸(밀면 표 스크롤)
+    let dpDown = null, dpTouch = false, dpLongTimer = null, dpLastTapAt = 0, dpLastTapKey = '';
+    const cellAt = (x,y)=>{ const el = document.elementFromPoint(x,y); return el ? el.closest('#dpTable .dpCell') : null; };
+    const selectOne = td=>{ dpSel = {aEmp: td.dataset.dispatchEmp, aSlot: td.dataset.dispatchSlot, fEmp: td.dataset.dispatchEmp, fSlot: td.dataset.dispatchSlot}; dpApplySel(); };
+    const extendTo = td=>{ if(!dpSel || !td) return; if(dpSel.fEmp===td.dataset.dispatchEmp && dpSel.fSlot===td.dataset.dispatchSlot) return; dpSel.fEmp = td.dataset.dispatchEmp; dpSel.fSlot = td.dataset.dispatchSlot; dpApplySel(); };
     dpTable.onpointerdown = (e)=>{
       const td = e.target.closest('.dpCell');
-      if(!td || !canEdit) return;
-      dpPending = td; dpStartXY = [e.clientX, e.clientY]; dpTouch = e.pointerType==='touch' || e.pointerType==='pen';
+      if(!td || !canEdit || e.target.closest('.dpInline')) return;
+      dpTouch = e.pointerType==='touch' || e.pointerType==='pen';
+      dpDown = {td, x: e.clientX, y: e.clientY, moved: false};
       if(!dpTouch){
         e.preventDefault();
+        if(e.shiftKey && dpSel) extendTo(td); else selectOne(td);
+        dpSelDragging = true;
         try{ dpTable.setPointerCapture(e.pointerId); }catch(err){}
       } else {
         clearTimeout(dpLongTimer);
         const pid = e.pointerId;
-        dpLongTimer = setTimeout(()=>{
-          if(dpPending===td){ dpPending = null; dispatchStartPaint(td); try{ dpTable.setPointerCapture(pid); }catch(err){} if(navigator.vibrate) navigator.vibrate(15); }
-        }, 450);
+        dpLongTimer = setTimeout(()=>{ if(dpDown && !dpDown.moved){ selectOne(td); dpSelDragging = true; dpDown.long = true; try{ dpTable.setPointerCapture(pid); }catch(err){} if(navigator.vibrate) navigator.vibrate(15); } }, 450);
       }
     };
     dpTable.onpointermove = (e)=>{
-      if(dpPending){
-        const moved = Math.hypot(e.clientX - dpStartXY[0], e.clientY - dpStartXY[1]);
-        if(moved > 10){
-          if(dpTouch){ clearTimeout(dpLongTimer); dpPending = null; return; } // 터치로 밀면 스크롤
-          const atPoint = document.elementFromPoint(e.clientX, e.clientY);
-          const td = atPoint ? atPoint.closest('.dpCell') : null;
-          if(td && td!==dpPending){ const st = dpPending; dpPending = null; dispatchStartPaint(st); dispatchContinuePaint(td); }
-        }
-        return;
+      if(!dpDown) return;
+      if(!dpDown.moved && Math.hypot(e.clientX-dpDown.x, e.clientY-dpDown.y) > 8){
+        dpDown.moved = true;
+        if(dpTouch && !dpSelDragging){ clearTimeout(dpLongTimer); dpDown = null; return; } // 터치로 밀면 스크롤
       }
-      if(paintSession){
-        const atPoint = document.elementFromPoint(e.clientX, e.clientY);
-        dispatchContinuePaint(atPoint ? atPoint.closest('.dpCell') : null);
-      }
+      if(dpSelDragging) extendTo(cellAt(e.clientX, e.clientY));
     };
-    dpTable.onpointerup = ()=>{
+    dpTable.onpointerup = (e)=>{
       clearTimeout(dpLongTimer);
-      if(dpPending){ const td = dpPending; dpPending = null; dispatchTapCell(td); return; }
-      dispatchFinishPaint();
+      const d = dpDown; dpDown = null; const wasDrag = dpSelDragging; dpSelDragging = false;
+      if(!d) return;
+      if(dpTouch && !d.moved && !d.long) selectOne(d.td); // 짧게 탭 = 한 칸 선택
+      if(!d.moved && !(dpTouch && d.long)){
+        const key = d.td.dataset.dispatchEmp+'|'+d.td.dataset.dispatchSlot, now = Date.now();
+        if(key===dpLastTapKey && now - dpLastTapAt < 400){ dpLastTapAt = 0; dpStartTyping(d.td, null); return; } // 두 번 누르기 = 입력
+        dpLastTapKey = key; dpLastTapAt = now;
+      }
+      void wasDrag;
     };
-    dpTable.onpointercancel = ()=>{ clearTimeout(dpLongTimer); dpPending = null; dispatchFinishPaint(); };
-    // 두 번 누르기(글자 입력)는 dispatchTapCell에서 처리
-    // 꾹 눌러 칠하는 중에는 화면이 스크롤되지 않게
-    dpTable.addEventListener('touchmove', (ev)=>{ if(paintSession) ev.preventDefault(); }, {passive:false});
+    dpTable.onpointercancel = ()=>{ clearTimeout(dpLongTimer); dpDown = null; dpSelDragging = false; };
+    // 꾹 눌러 선택하는 중에는 화면이 스크롤되지 않게
+    dpTable.addEventListener('touchmove', (ev)=>{ if(dpSelDragging) ev.preventDefault(); }, {passive:false});
+    dpApplySel(); // 다시 그려도 선택 유지
   }
   if(dpPop){
     const close = ()=>{ dpPop = null; render(); };
