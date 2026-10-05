@@ -464,6 +464,7 @@ function payPeriodRange(y,m){
 let otMatrixAttendance = {}; // 기사별 OT현황 전용 출퇴근 데이터(작업기간 전체 구독)
 let holYearFilter = null;
 let dispatchDate = null, dispatchShift = 'day', dispatchPaint = '초반'; // 배차표 화면 상태
+let dispatchSunPart = 'all'; // 일요일 24시간 배차표 보기: all(24시간) / day(주간만) / night(야간만) — 같은 배차표를 나눠 보기만 함
 let paintSession = null; // {empId, changes:{slot:value}} - 배차표 드래그 색칠 중 임시 상태
 let gridEdit = null; // {date, employeeId} - 월별표에서 셀 클릭 시 근무코드/근태코드 인라인 편집
 let otDetailEmpId = null;
@@ -3853,9 +3854,12 @@ function pageDispatch(){
   if(!dispatchDate) dispatchDate = todayStr();
   const ds = dispatchDate;
   if(isSundayDs(ds)) dispatchShift = 'full'; else if(dispatchShift==='full') autoDispatchShift();
-  const slots = dispatchShift==='full' ? FULL_SLOTS_FN() : dispatchShift==='day' ? DAY_SLOTS : NIGHT_SLOTS;
+  const fullAll = FULL_SLOTS_FN(), cut = fullAll.indexOf('19:00');
+  const slots = dispatchShift==='full'
+    ? (dispatchSunPart==='day' ? fullAll.slice(0, cut) : dispatchSunPart==='night' ? fullAll.slice(cut) : fullAll)
+    : dispatchShift==='day' ? DAY_SLOTS : NIGHT_SLOTS;
   const [dy,dm,dd] = ds.split('-').map(Number);
-  const dateBanner = `${dy}년 ${dm}월 ${dd}일 ${weekdayKr(dy,dm,dd)}요일 · ${dispatchShift==='full' ? '24시간(주간 07~19시 + 야간 19~익일 07시)' : dispatchShift==='night' ? '야간(18~07시)' : '주간(07~19시)'}`;
+  const dateBanner = `${dy}년 ${dm}월 ${dd}일 ${weekdayKr(dy,dm,dd)}요일 · ${dispatchShift==='full' ? (dispatchSunPart==='day' ? '주간(07~19시)' : dispatchSunPart==='night' ? '야간(19~익일 07시)' : '24시간(주간 07~19시 + 야간 19~익일 07시)') : dispatchShift==='night' ? '야간(18~07시)' : '주간(07~19시)'}`;
 
   // 전 직원을 조편성 순서(조 → 순번) 기준으로 정렬해서 항상 표시 (조별 필터 적용)
   const sortedEmployees = employees.slice().filter(e=> !dispatchTeamFilter || (e.team||'')===dispatchTeamFilter).sort((a,b)=>{
@@ -3950,7 +3954,7 @@ function pageDispatch(){
       <td class="dpI dpI2" style="text-align:left;">${esc(e.name)}</td>
       <td class="dpI dpI3">${mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
       <td class="dpI dpI4">${otRankCell(e.id)}</td>
-      <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${paintedSlots?fmtH(paintedSlots*0.5):''}</td>
+      <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(Boolean).length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
       ${cells}
     </tr>`;
   }).join('');
@@ -3991,6 +3995,10 @@ function pageDispatch(){
     <button class="btn ${dispatchTeamFilter===''?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="">전체</button>
     <button class="btn ${dispatchTeamFilter==='1'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="1">1조</button>
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
+    ${dispatchShift==='full' ? `<span style="width:10px;"></span>
+    <button class="btn ${dispatchSunPart==='all'?'':'ghost'} sm" data-act="dp-sun-part" data-part="all">24시간</button>
+    <button class="btn ${dispatchSunPart==='day'?'':'ghost'} sm" data-act="dp-sun-part" data-part="day">주간</button>
+    <button class="btn ${dispatchSunPart==='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="night">야간</button>` : ''}
   </div>
   ${canEdit ? `<div class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>` : ''}
   <div style="background:#fce7f3;color:#9d174d;font-weight:800;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;border:1px solid #fbcfe8;border-bottom:0;">${esc(dateBanner)}</div>
@@ -4610,6 +4618,7 @@ function afterRender(){
   if(dpDate) dpDate.onchange = ()=>{ dispatchDate = dpDate.value; autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
   if(dpShift) dpShift.onchange = ()=>{ dispatchShift = dpShift.value; render(); };
   el.querySelectorAll('.dpCatBtn').forEach(x=>x.onclick=()=>{ dispatchPaint = x.dataset.cat; render(); });
+  el.querySelectorAll('[data-act="dp-sun-part"]').forEach(x=>x.onclick=()=>{ dispatchSunPart = x.dataset.part; window._dpScrollLeft = 0; render(); });
   const dpWrapEl = document.getElementById('dpWrap');
   if(dpWrapEl){
     if(window._dpScrollLeft) dpWrapEl.scrollLeft = window._dpScrollLeft; // 다시 그려도 보던 위치 유지
