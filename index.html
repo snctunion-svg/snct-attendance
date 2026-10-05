@@ -974,8 +974,9 @@ function dispatchStartPaint(td){
   if(!canEdit){ requireEdit(); return; }
   const cells = dpRowCells(td);
   const orig = {};
-  cells.forEach(c=>{ orig[c.dataset.dispatchSlot] = c.dataset.dispatchCur || ''; });
-  paintSession = {empId: td.dataset.dispatchEmp, cells, orig, startIdx: cells.indexOf(td), lastIdx: -1, value: dispatchPaintValue()};
+  const origHtml = {};
+  cells.forEach(c=>{ orig[c.dataset.dispatchSlot] = c.dataset.dispatchCur || ''; origHtml[c.dataset.dispatchSlot] = c.innerHTML; });
+  paintSession = {empId: td.dataset.dispatchEmp, cells, orig, origHtml, startIdx: cells.indexOf(td), lastIdx: -1, value: dispatchPaintValue(), erase: dispatchPaint==='수정'};
   dispatchContinuePaint(td);
 }
 function dispatchContinuePaint(td){
@@ -987,26 +988,37 @@ function dispatchContinuePaint(td){
   const lo = Math.min(ps.startIdx, idx), hi = Math.max(ps.startIdx, idx);
   ps.cells.forEach((c,i)=>{
     const slot = c.dataset.dispatchSlot;
-    const want = (i>=lo && i<=hi) ? ps.value : ps.orig[slot];
+    const inRange = i>=lo && i<=hi;
+    const want = inRange ? ps.value : ps.orig[slot];
     if((c.dataset.dispatchCur||'') !== want){ applyPaintToCell(c, want); updateCountLive(slot); }
+    if(ps.erase){ // 수정: 범위 안 칸은 글자도 지워 보이게, 벗어나면 원래 글자 복원
+      const html = inRange ? '' : ps.origHtml[slot];
+      if(c.innerHTML !== html){ c.innerHTML = html; c.dataset.dpErased = inRange ? '1' : ''; }
+    }
   });
   updateSuwuLive(ps.empId);
 }
 function dispatchFinishPaint(){
   if(!paintSession) return;
-  const {empId, cells, orig} = paintSession;
+  const {empId, cells, orig, erase} = paintSession;
   paintSession = null;
-  const changes = {};
-  cells.forEach(c=>{ const slot = c.dataset.dispatchSlot, v = c.dataset.dispatchCur || ''; if(v !== (orig[slot]||'')) changes[slot] = v; });
-  if(Object.keys(changes).length) saveDispatchSlots(dispatchDate, dispatchShift, empId, changes);
+  const changes = {}, clearNotes = [];
+  cells.forEach(c=>{
+    const slot = c.dataset.dispatchSlot, v = c.dataset.dispatchCur || '';
+    if(v !== (orig[slot]||'')) changes[slot] = v;
+    if(erase && c.dataset.dpErased==='1'){ clearNotes.push(slot); c.removeAttribute('title'); }
+  });
+  if(Object.keys(changes).length || clearNotes.length) saveDispatchSlots(dispatchDate, dispatchShift, empId, changes, clearNotes);
 }
-// '수정'으로 한 칸만 눌렀을 때: 칠해진 칸이면 색만 지움(글자는 그대로). 색이 없는 칸이면 글자 입력
+// '수정'으로 한 칸만 눌렀을 때: 그 칸의 색과 글자를 모두 지움(지울 것이 없으면 아무 일 없음)
 function dispatchTapCell(td){
   if(!td || !canEdit) return;
-  if(dispatchPaint==='수정' && td.dataset.dispatchCur){
+  if(dispatchPaint==='수정'){
     const slot = td.dataset.dispatchSlot, empId = td.dataset.dispatchEmp;
-    applyPaintToCell(td, ''); updateCountLive(slot);
-    saveDispatchSlots(dispatchDate, dispatchShift, empId, {[slot]: ''});
+    const note = (((dispatch[`${dispatchDate}_${dispatchShift}_${empId}`]||{}).notes)||{})[slot];
+    if(!td.dataset.dispatchCur && !note) return;
+    applyPaintToCell(td, ''); td.innerHTML = ''; td.removeAttribute('title'); updateCountLive(slot);
+    saveDispatchSlots(dispatchDate, dispatchShift, empId, {[slot]: ''}, note ? [slot] : []);
     updateSuwuLive(empId);
     return;
   }
@@ -2589,11 +2601,12 @@ async function restoreCodeDef(code){
   try{ await db.doc('meta/hiddenCodes').set({codes: Array.from(hiddenCodes)}); showToast('복원되었습니다.'); }
   catch(err){ console.error(err); showToast(saveErrMsg('복원에 실패했습니다.', err)); }
 }
-async function saveDispatchSlots(dateStr, shift, empId, changes){
+async function saveDispatchSlots(dateStr, shift, empId, changes, clearNotes){
   if(!requireEdit()) return;
   const id = `${dateStr}_${shift}_${empId}`;
   const cur = Object.assign({date:dateStr, shift, employeeId:empId, slots:{}}, dispatch[id]||{});
   cur.slots = Object.assign({}, cur.slots, changes);
+  if(clearNotes && clearNotes.length){ cur.notes = Object.assign({}, cur.notes||{}); clearNotes.forEach(k=> delete cur.notes[k]); } // '수정'은 글자도 지움
   dispatch[id] = cur; // 낙관적 로컬 업데이트: 저장 성공 여부와 무관하게 화면엔 즉시 반영
   if(!db){ render(); return; }
   try{ await db.collection('dispatch').doc(id).set(cur); }
