@@ -3356,7 +3356,7 @@ function renderPayPw(){
 }
 // 기존에 2023년 2월 명세서로 대조 확인한 계산(payCalc)과 같은 방식 — 월별 OT현황에 불러온 기록을 사용
 function slipCalc(e, start, end){
-  let wk=0, ho=0, sp=0, meal=0, holWork=0, holOT=0, holNight=0, holExtra=0, wkNight=0, wkGroupPrem=0, supPrem=0;
+  let wk=0, ho=0, sp=0, meal=0, holWork=0, holOT=0, holNight=0, holExtra=0, wkNight=0, wkGroupPrem=0, supPrem=0, tkDays=0;
   for(let ds=start; ds<=end; ds=addDays(ds,1)){
     const rec = otMatrixAttendance[ds+'_'+e.id]; if(!rec) continue;
     const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds), m = computeMealAllowance(rec);
@@ -3369,12 +3369,19 @@ function slipCalc(e, start, end){
     if(p.valid){
       const k = dayCategory(ds, recManguen(rec, ds), rec && rec.employeeId);
       if(k==='SU' || k==='H') ho += p.premium; else sp += p.premium;
-      supPrem += p.premium; // 지원근무는 연장·야간이 아니라 '타조지원' 줄로 따로 지급(2026년 9월 명세서와 대조)
+      // 2026년 9월 명세서(전재필)와 대조한 규칙:
+      //  · 근태코드가 D·N(근무 없는 날 다른 조 지원)인 날의 지원 OT → '타조지원'
+      //  · 그 밖의 지원(DN·ND 연장 지원, SC 지원휴무 등) → 연장근로·평일야간에 포함
+      //  · SC(지원휴무) 지원일은 하루 8시간 × 시급을 '특근수당'으로 추가
+      const code = effCode(rec, ds, String(e.name||'').trim());
+      if(code==='D' || code==='N') supPrem += p.premium;
+      else { wkNight += p.supNight; wkGroupPrem += p.premium; }
+      if(code==='SC') tkDays++;
     }
     meal += m; wkGroupPrem += m;
   }
   const real = wk + ho + sp + meal, guar = wk + Math.max(ho,60) + Math.max(sp,30) + meal;
-  return {diff: Math.max(guar-real,0), extHours: Math.max((wkGroupPrem - wkNight*0.5)/1.5, 0), wkNight, holWork, holOT, holNight, holExtra, supPrem};
+  return {guar, diff: Math.max(guar-real,0), extHours: Math.max((wkGroupPrem - wkNight*0.5)/1.5, 0), wkNight, holWork, holOT, holNight, holExtra, supPrem, tkDays};
 }
 function renderPaySlip(){
   const e = employees.find(x=>x.id===paySlip.empId);
@@ -3393,9 +3400,12 @@ function renderPaySlip(){
     holOT: r10(pc.holOT*rate*2),                          // 휴일연장근로수당
     holN: r10(pc.holNight*rate*0.5),                      // 휴일야간근로수당
     etc: r10(pc.diff*rate),                               // 기타수당(보전 OT − 실 OT)
-    sup: r10(pc.supPrem*rate)                             // 타조지원(지원근무 OT)
+    sup: Math.ceil(pc.supPrem*rate/10)*10,                // 타조지원(D·N 지원일 OT) — 10원 올림(9월 명세서: 661,312.5 → 661,320)
+    tk: r10(pc.tkDays*8*hourly)                           // 특근수당(SC 지원휴무일 × 8시간 × 시급)
   };
-  const total = a.base + a.tenure + a.ext + a.night + a.hol + a.holOT + a.holN + a.etc + a.sup;
+  // 기타수당 = 보전 OT 총액 − 다른 OT 수당 합계(10원 단위 차이를 기타수당에서 맞춤 — 9월 명세서와 같은 방식)
+  if(pc.diff > 0) a.etc = Math.max(r10(pc.guar*rate) - (a.ext + a.night + a.hol + a.holOT + a.holN + a.sup), 0);
+  const total = a.base + a.tenure + a.ext + a.night + a.hol + a.holOT + a.holN + a.etc + a.sup + a.tk;
   const ded = {}; PAY_DED.forEach(([k])=>{ ded[k] = dedAmount(payDedRates[k], total); });
   const dedTotal = PAY_DED.reduce((x,[k])=> x + ded[k], 0);
   const H = t => `<td class="h">${t}</td>`, V = v => `<td>${v}</td>`, E6 = '<td></td>'.repeat(6);
@@ -3417,7 +3427,7 @@ function renderPaySlip(){
       <tr>${H('지급내역')}${H('기본급')}${H('학자금')}${H('근속수당')}${H('직책수당')}${H('기술수당')}${H('연장근로수당')}</tr>
       <tr>${sec('',9)}${V(slipWon(a.base))}${V('')}${V(slipWon(a.tenure))}${V('')}${V('')}${V(slipWon(a.ext))}</tr>
       <tr>${H('평일야간근로수당')}${H('휴일근로수당')}${H('휴일연장근로수당')}${H('휴일야간근로수당')}${H('특근수당')}${H('보전수당')}</tr>
-      <tr>${V(slipWon(a.night))}${V(slipWon(a.hol))}${V(slipWon(a.holOT))}${V(slipWon(a.holN))}${V('')}${V('')}</tr>
+      <tr>${V(slipWon(a.night))}${V(slipWon(a.hol))}${V(slipWon(a.holOT))}${V(slipWon(a.holN))}${V(slipWon(a.tk))}${V('')}</tr>
       <tr>${H('고공(위험)수당')}${H('식대')}${H('기타수당')}${H('타조지원')}${H('비상정비')}${H('무사고포상금')}</tr>
       <tr>${V('')}${V('')}${V(slipWon(a.etc))}${V(slipWon(a.sup))}${V('')}${V('')}</tr>
       ${alt(4)}
@@ -3434,7 +3444,7 @@ function renderPaySlip(){
       <tr class="bt">${H('합계')}<td class="h"></td><td class="h" colspan="2">지급총액</td><td class="h" colspan="2">공제총액</td><td class="h">실지급액</td></tr>
       <tr><td class="h"></td><td></td><td colspan="2">${slipWon(total)}</td><td colspan="2">${slipWon(dedTotal)}</td><td>${slipWon(total - dedTotal)}</td></tr>
     </table></div>
-    <div class="slipNote">※ 출퇴근 기록으로 계산한 예상 금액입니다. 기본급 = 시급 × ${PAY_BASE_HOURS}시간(10원 미만 버림), 수당은 통상시급 기준(10원 단위 반올림), 기타수당 = (보전 OT − 실 OT) × 통상시급, 타조지원 = 지원근무 OT × 통상시급. 시간은 '시간.분'(28.3 = 28시간 30분). 공제내역은 급여관리의 공제율(지급총액 기준 %, 10원 미만 버림)로 계산한 금액입니다.</div>
+    <div class="slipNote">※ 출퇴근 기록으로 계산한 예상 금액입니다. 기본급 = 시급 × ${PAY_BASE_HOURS}시간(10원 미만 버림), 수당은 통상시급 기준(10원 단위 반올림), 기타수당 = (보전 OT − 실 OT) × 통상시급, 타조지원 = D·N 지원일 OT × 통상시급, 특근수당 = SC 지원일 × 8시간 × 시급. 시간은 '시간.분'(28.3 = 28시간 30분). 공제내역은 급여관리의 공제율(지급총액 기준 %, 10원 미만 버림)로 계산한 금액입니다.</div>
   </div></div>`;
 }
 function bindPayroll(el){
