@@ -3260,7 +3260,7 @@ let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
 const PAY_BASE_HOURS = 209; // 기본급 = 시급 × 209시간
 const PAY_TEXT_KEYS = ['empNo','job','grade','birth'];
 const PAY_DEPT = '운영팀';            // 부서는 운영팀으로 고정
-const PAY_GRADES = ['선임','기장'];   // 직급 선택
+const PAY_GRADES = ['반장','선임','기장'];   // 직급 선택
 // 공제 항목: 항목마다 '지급총액의 몇 %'(또는 정액 원)를 한 번만 정하면 모든 사람 명세서에 일괄 적용
 // 저장 위치: meta/payroll 문서의 dedRates = { 항목키: {v: 숫자, unit: '%' | '원'} }
 const PAY_DED = [['incomeTax','소득세'],['localTax','지방소득세'],['adjIncomeTax','정산소득세'],['adjResTax','정산주민세'],['health','건강보험'],['pension','국민연금'],
