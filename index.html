@@ -3485,6 +3485,11 @@ function bindPayroll(el){
         const pos = Math.max(0, x.value.length - fromEnd); try{ x.setSelectionRange(pos, pos); }catch(_){}
         payDraft[id][k] = digits ? Number(digits) : '';
       }
+      // 시급·근속수당을 바꾸면 같은 줄 통상시급 칸의 '자동' 값도 바로 바뀜(사람마다 근속수당이 달라서)
+      if(k==='hourly' || k==='tenure'){
+        const o = el.querySelector(`input[data-pay="ordinary"][data-emp="${CSS.escape(id)}"]`);
+        if(o){ const v = autoOrdinary(payOf(id)); o.placeholder = v ? '자동 '+v.toLocaleString('ko-KR') : '0'; }
+      }
       markDirty();
     };
   });
