@@ -345,10 +345,10 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
 #dpTable th,#dpTable td{height:36px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;padding:0 4px;white-space:nowrap;}
 #dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
-#dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:pan-x pan-y;-webkit-touch-callout:none;}
+#dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;} /* manipulation = 스크롤+두 손가락 확대·축소 허용 */
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
 #dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;}
-#dpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:11px;text-align:center;padding:0;}
+#dpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:16px;text-align:center;padding:0;box-sizing:border-box;} /* 16px 미만이면 아이폰이 입력할 때 화면을 자동 확대함 */
 #dpTable tr.dpOff td:not(.dpPainted){background:#e5e7eb !important;color:#6b7280;}
 #dpTable tr.dpOff .dpNote{color:#9ca3af;}
 #dpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
@@ -667,6 +667,7 @@ function dpApplySel(){
 // 팔레트 적용: 초반·후반 등은 색칠, 수정은 색과 글자 모두 지움
 function dpApplyCatToSel(catKey){
   if(!canEdit){ requireEdit(); return; }
+  if(dpInlineCommit) dpInlineCommit(true);
   const cells = dpSelCells();
   if(!cells.length){ showToast('먼저 배차표에서 칸을 선택하세요.'); return; }
   const erase = catKey==='수정', val = erase ? '' : catKey, byEmp = {};
@@ -689,6 +690,14 @@ function dpStartTyping(td, firstChar){
   if(!td || !canEdit) return;
   startDpInlineEdit(td, firstChar);
 }
+function dpMoveSel(dr, dc){
+  const rows = dpGridRows(); const a = dpAnchorCell(); if(!a || !rows.length) return;
+  let r = rows.findIndex(cs=> cs.includes(a)); if(r<0) return;
+  let c = rows[r].indexOf(a);
+  r = Math.max(0, Math.min(rows.length-1, r + dr)); c = Math.max(0, Math.min(rows[r].length-1, c + dc));
+  const td = rows[r][c]; dpSel = {aEmp: td.dataset.dispatchEmp, aSlot: td.dataset.dispatchSlot, fEmp: td.dataset.dispatchEmp, fSlot: td.dataset.dispatchSlot};
+  dpApplySel(); td.scrollIntoView({block:'nearest', inline:'nearest'});
+}
 function dpAnchorCell(){
   if(!dpSel) return null;
   const table = document.getElementById('dpTable'); if(!table) return null;
@@ -703,30 +712,42 @@ document.addEventListener('keydown', (ev)=>{
   if(ev.key==='Delete' || ev.key==='Backspace'){ ev.preventDefault(); dpApplyCatToSel('수정'); return; }
   if(ev.key==='Enter' || ev.key==='F2'){ ev.preventDefault(); dpStartTyping(dpAnchorCell(), null); return; }
   const arrows = {ArrowLeft:[0,-1], ArrowRight:[0,1], ArrowUp:[-1,0], ArrowDown:[1,0]};
-  if(arrows[ev.key]){
-    ev.preventDefault();
-    const rows = dpGridRows(), R = dpSelRect(rows); if(!R) return;
-    const a = dpAnchorCell(); if(!a) return;
-    let r = rows.findIndex(cs=> cs.includes(a)), c = rows[r].indexOf(a);
-    r = Math.max(0, Math.min(rows.length-1, r + arrows[ev.key][0])); c = Math.max(0, Math.min(rows[r].length-1, c + arrows[ev.key][1]));
-    const td = rows[r][c]; dpSel = {aEmp: td.dataset.dispatchEmp, aSlot: td.dataset.dispatchSlot, fEmp: td.dataset.dispatchEmp, fSlot: td.dataset.dispatchSlot};
-    dpApplySel(); td.scrollIntoView({block:'nearest', inline:'nearest'});
-    return;
-  }
+  if(arrows[ev.key]){ ev.preventDefault(); dpMoveSel(arrows[ev.key][0], arrows[ev.key][1]); return; }
   if(ev.key.length===1){ ev.preventDefault(); dpStartTyping(dpAnchorCell(), ev.key); }
 });
 
+let dpInlineCommit = null; // 열려 있는 입력칸을 저장하고 닫는 함수(다른 칸을 누르거나 팔레트를 누를 때 먼저 호출)
 function startDpInlineEdit(td, firstChar){
+  if(!td || !canEdit) return;
+  if(dpInlineCommit) dpInlineCommit(true);
   const empId = td.dataset.dispatchEmp, slot = td.dataset.dispatchSlot;
   const id = `${dispatchDate}_${dispatchShift}_${empId}`;
   const prev = ((dispatch[id]||{}).notes||{})[slot] || '';
-  td.innerHTML = `<input type="text" class="dpInline" maxlength="10" value="${esc(firstChar!=null ? firstChar : prev)}">`;
+  const prevHtml = td.innerHTML, prevTitle = td.getAttribute('title');
+  td.innerHTML = `<input type="text" class="dpInline" maxlength="10" autocomplete="off" value="${esc(firstChar!=null ? firstChar : prev)}">`;
   const inp = td.querySelector('input');
-  inp.focus();
+  inp.focus({preventScroll:true});
   if(firstChar!=null){ const n = inp.value.length; inp.setSelectionRange(n, n); } else inp.select();
   let done = false;
-  const finish = (save)=>{ if(done) return; done = true; const v = inp.value.trim(); if(save && v!==prev){ saveDispatchNote(dispatchDate, dispatchShift, empId, slot, v); } render(); };
-  inp.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); finish(true); } else if(ev.key==='Escape'){ finish(false); } };
+  const finish = (save)=>{
+    if(done) return; done = true; dpInlineCommit = null;
+    const v = inp.value.trim();
+    if(save && v!==prev){
+      // 화면을 통째로 다시 그리지 않고 그 칸만 바로 바꿔서, 다른 칸으로 옮겨도 글자가 그대로 보이게
+      td.innerHTML = v ? `<span class="dpTxt">${esc(v)}</span>` : '';
+      if(v) td.setAttribute('title', v); else td.removeAttribute('title');
+      saveDispatchNote(dispatchDate, dispatchShift, empId, slot, v);
+    } else {
+      td.innerHTML = prevHtml;
+      if(prevTitle!=null) td.setAttribute('title', prevTitle); else td.removeAttribute('title');
+    }
+  };
+  dpInlineCommit = finish;
+  inp.onkeydown = (ev)=>{
+    if(ev.key==='Enter'){ ev.preventDefault(); finish(true); dpMoveSel(1, 0); }      // 엔터: 저장하고 아래 칸으로
+    else if(ev.key==='Tab'){ ev.preventDefault(); finish(true); dpMoveSel(0, ev.shiftKey ? -1 : 1); }
+    else if(ev.key==='Escape'){ ev.preventDefault(); finish(false); }
+  };
   inp.onblur = ()=> finish(true);
   inp.onpointerdown = (ev)=> ev.stopPropagation();
 }
@@ -4789,9 +4810,9 @@ function afterRender(){
   const dpTable = document.getElementById('dpTable');
   if(dpTable){
     // 엑셀처럼: 칸을 누르거나 끌어서 '선택' → 위 팔레트(수정·초반·후반…)를 누르면 선택한 칸에 적용
-    // PC: 누르기=한 칸 선택, 끌기=여러 칸(옆·위아래) 선택, 선택 후 글자를 치면 그 칸에 바로 입력, 두 번 누르면 입력칸
-    // 휴대폰: 짧게 누르기=한 칸 선택, 꾹 누른 뒤 끌기=여러 칸 선택, 두 번 누르기=입력칸(밀면 표 스크롤)
-    let dpDown = null, dpTouch = false, dpLongTimer = null, dpLastTapAt = 0, dpLastTapKey = '';
+    // PC: 누르기=한 칸 선택, 끌기=여러 칸(옆·위아래) 선택, 선택 후 글자를 치면 그 칸에 바로 입력(엔터=저장 후 아래 칸)
+    // 휴대폰: 한 번 탭=그 칸 입력, 꾹 누른 뒤 끌기=여러 칸 선택, 밀기=스크롤, 두 손가락=확대·축소
+    let dpDown = null, dpTouch = false, dpLongTimer = null;
     const cellAt = (x,y)=>{ const el = document.elementFromPoint(x,y); return el ? el.closest('#dpTable .dpCell') : null; };
     const selectOne = td=>{ dpSel = {aEmp: td.dataset.dispatchEmp, aSlot: td.dataset.dispatchSlot, fEmp: td.dataset.dispatchEmp, fSlot: td.dataset.dispatchSlot}; dpApplySel(); };
     const extendTo = td=>{ if(!dpSel || !td) return; if(dpSel.fEmp===td.dataset.dispatchEmp && dpSel.fSlot===td.dataset.dispatchSlot) return; dpSel.fEmp = td.dataset.dispatchEmp; dpSel.fSlot = td.dataset.dispatchSlot; dpApplySel(); };
@@ -4799,6 +4820,9 @@ function afterRender(){
       const td = e.target.closest('.dpCell');
       if(!td || !canEdit || e.target.closest('.dpInline')) return;
       dpTouch = e.pointerType==='touch' || e.pointerType==='pen';
+      // 두 번째 손가락이 닿으면(확대·축소) 선택·입력을 모두 멈추고 브라우저 확대·축소에 맡김
+      if(dpTouch && !e.isPrimary){ clearTimeout(dpLongTimer); dpDown = null; dpSelDragging = false; return; }
+      if(dpInlineCommit) dpInlineCommit(true); // 입력 중이던 칸 먼저 저장(글자 그대로 보임)
       dpDown = {td, x: e.clientX, y: e.clientY, moved: false};
       if(!dpTouch){
         e.preventDefault();
@@ -4823,17 +4847,14 @@ function afterRender(){
       clearTimeout(dpLongTimer);
       const d = dpDown; dpDown = null; const wasDrag = dpSelDragging; dpSelDragging = false;
       if(!d) return;
-      if(dpTouch && !d.moved && !d.long) selectOne(d.td); // 짧게 탭 = 한 칸 선택
-      if(!d.moved && !(dpTouch && d.long)){
-        const key = d.td.dataset.dispatchEmp+'|'+d.td.dataset.dispatchSlot, now = Date.now();
-        if(key===dpLastTapKey && now - dpLastTapAt < 400){ dpLastTapAt = 0; dpStartTyping(d.td, null); return; } // 두 번 누르기 = 입력
-        dpLastTapKey = key; dpLastTapAt = now;
-      }
+      // 휴대폰: 짧게 한 번 탭 = 그 칸 선택 + 바로 입력(키패드). 꾹 눌러 끌면 여러 칸 선택
+      if(dpTouch && !d.moved && !d.long){ selectOne(d.td); dpStartTyping(d.td, null); }
       void wasDrag;
     };
     dpTable.onpointercancel = ()=>{ clearTimeout(dpLongTimer); dpDown = null; dpSelDragging = false; };
     // 꾹 눌러 선택하는 중에는 화면이 스크롤되지 않게
-    dpTable.addEventListener('touchmove', (ev)=>{ if(dpSelDragging) ev.preventDefault(); }, {passive:false});
+    dpTable.addEventListener('touchmove', (ev)=>{ if(dpSelDragging && ev.touches.length===1) ev.preventDefault(); }, {passive:false});
+    dpTable.addEventListener('touchstart', (ev)=>{ if(ev.touches.length>1){ clearTimeout(dpLongTimer); dpDown = null; dpSelDragging = false; } }, {passive:true});
     dpApplySel(); // 다시 그려도 선택 유지
   }
   if(dpPop){
