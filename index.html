@@ -931,7 +931,8 @@ function dispatchCat(key){ return DISPATCH_CATS.find(c=>c.key===key); }
 function currentEmpSlots(empId){
   const id = `${dispatchDate}_${dispatchShift}_${empId}`;
   const base = (dispatch[id] && dispatch[id].slots) || {};
-  const overlay = (paintSession && paintSession.empId===empId) ? paintSession.changes : {};
+  const overlay = {};
+  if(paintSession && paintSession.empId===empId) paintSession.cells.forEach(c=>{ overlay[c.dataset.dispatchSlot] = c.dataset.dispatchCur || ''; });
   return Object.assign({}, base, overlay);
 }
 function countPaintedHours(empId){
@@ -962,31 +963,54 @@ function updateCountLive(slot){
   }
 }
 function dispatchPaintValue(){ return dispatchPaint==='수정' ? '' : dispatchPaint; }
+// 끌어서 칠하기: 처음 누른 칸 ~ 지금 마우스(손가락)가 있는 칸까지만 칠함.
+// 3칸 끌었다가 1칸 되돌아가면 2칸만 칠해지고, 벗어난 칸은 원래 색으로 돌아감
+function dpRowCells(td){
+  const tr = td.closest('tr'); if(!tr) return [];
+  return Array.from(tr.querySelectorAll('.dpCell'));
+}
 function dispatchStartPaint(td){
   if(!td || !td.classList.contains('dpCell')) return;
   if(!canEdit){ requireEdit(); return; }
-  const empId = td.dataset.dispatchEmp, slot = td.dataset.dispatchSlot;
-  paintSession = {empId, changes:{}};
-  paintSession.changes[slot] = dispatchPaintValue();
-  applyPaintToCell(td, paintSession.changes[slot]);
-  updateSuwuLive(empId);
-  updateCountLive(slot);
+  const cells = dpRowCells(td);
+  const orig = {};
+  cells.forEach(c=>{ orig[c.dataset.dispatchSlot] = c.dataset.dispatchCur || ''; });
+  paintSession = {empId: td.dataset.dispatchEmp, cells, orig, startIdx: cells.indexOf(td), lastIdx: -1, value: dispatchPaintValue()};
+  dispatchContinuePaint(td);
 }
 function dispatchContinuePaint(td){
   if(!paintSession || !td || !td.classList.contains('dpCell')) return;
   if(td.dataset.dispatchEmp !== paintSession.empId) return;
-  const slot = td.dataset.dispatchSlot;
-  if(slot in paintSession.changes) return;
-  paintSession.changes[slot] = dispatchPaintValue();
-  applyPaintToCell(td, paintSession.changes[slot]);
-  updateSuwuLive(paintSession.empId);
-  updateCountLive(slot);
+  const ps = paintSession, idx = ps.cells.indexOf(td);
+  if(idx < 0 || idx === ps.lastIdx) return;
+  ps.lastIdx = idx;
+  const lo = Math.min(ps.startIdx, idx), hi = Math.max(ps.startIdx, idx);
+  ps.cells.forEach((c,i)=>{
+    const slot = c.dataset.dispatchSlot;
+    const want = (i>=lo && i<=hi) ? ps.value : ps.orig[slot];
+    if((c.dataset.dispatchCur||'') !== want){ applyPaintToCell(c, want); updateCountLive(slot); }
+  });
+  updateSuwuLive(ps.empId);
 }
 function dispatchFinishPaint(){
   if(!paintSession) return;
-  const {empId, changes} = paintSession;
+  const {empId, cells, orig} = paintSession;
   paintSession = null;
-  saveDispatchSlots(dispatchDate, dispatchShift, empId, changes);
+  const changes = {};
+  cells.forEach(c=>{ const slot = c.dataset.dispatchSlot, v = c.dataset.dispatchCur || ''; if(v !== (orig[slot]||'')) changes[slot] = v; });
+  if(Object.keys(changes).length) saveDispatchSlots(dispatchDate, dispatchShift, empId, changes);
+}
+// '수정'으로 한 칸만 눌렀을 때: 칠해진 칸이면 색만 지움(글자는 그대로). 색이 없는 칸이면 글자 입력
+function dispatchTapCell(td){
+  if(!td || !canEdit) return;
+  if(dispatchPaint==='수정' && td.dataset.dispatchCur){
+    const slot = td.dataset.dispatchSlot, empId = td.dataset.dispatchEmp;
+    applyPaintToCell(td, ''); updateCountLive(slot);
+    saveDispatchSlots(dispatchDate, dispatchShift, empId, {[slot]: ''});
+    updateSuwuLive(empId);
+    return;
+  }
+  startDpInlineEdit(td);
 }
 function mondayOf(dateStr){
   const [y,m,d]=dateStr.split('-').map(Number);
@@ -4661,7 +4685,7 @@ function afterRender(){
           if(dpTouch){ clearTimeout(dpLongTimer); dpPending = null; return; } // 터치로 밀면 스크롤
           const atPoint = document.elementFromPoint(e.clientX, e.clientY);
           const td = atPoint ? atPoint.closest('.dpCell') : null;
-          if(td && td!==dpPending){ dispatchStartPaint(dpPending); dispatchContinuePaint(td); dpPending = null; }
+          if(td && td!==dpPending){ const st = dpPending; dpPending = null; dispatchStartPaint(st); dispatchContinuePaint(td); }
         }
         return;
       }
@@ -4672,10 +4696,12 @@ function afterRender(){
     };
     dpTable.onpointerup = ()=>{
       clearTimeout(dpLongTimer);
-      if(dpPending){ const td = dpPending; dpPending = null; startDpInlineEdit(td); return; }
+      if(dpPending){ const td = dpPending; dpPending = null; dispatchTapCell(td); return; }
       dispatchFinishPaint();
     };
     dpTable.onpointercancel = ()=>{ clearTimeout(dpLongTimer); dpPending = null; dispatchFinishPaint(); };
+    // 두 번 누르면 언제나 글자 입력(색칠과 별개)
+    dpTable.ondblclick = (e)=>{ const td = e.target.closest('.dpCell'); if(td && canEdit && !td.querySelector('.dpInline')) startDpInlineEdit(td); };
     // 꾹 눌러 칠하는 중에는 화면이 스크롤되지 않게
     dpTable.addEventListener('touchmove', (ev)=>{ if(paintSession) ev.preventDefault(); }, {passive:false});
   }
