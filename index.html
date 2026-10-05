@@ -582,6 +582,8 @@ let dispatch = {}; // `${date}_${shift}_${empId}` -> {slots:{slot:catKey}}
 let weekStart = null; // 지원계획표 화면 상태 (해당 주의 월요일, YYYY-MM-DD)
 let supportPlan = {}; // `${date}_${shift}` -> {capacity,quota,offCount,leadCount,preSupport,supportOff,support}
 const DAY_SLOTS = ['07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00'];
+// 일요일 24시간 배차표: 주간 07:00~18:30 + 야간 19:00~06:30 (다음날 07:00 교대까지)
+const FULL_SLOTS_FN = ()=> DAY_SLOTS.slice(0, DAY_SLOTS.indexOf('19:00')).concat(NIGHT_SLOTS.slice(NIGHT_SLOTS.indexOf('19:00'), -1));
 const NIGHT_SLOTS = ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00','23:30','24:00','00:30','01:00','01:30','02:00','02:30','03:00','03:30','04:00','04:30','05:00','05:30','06:00','06:30','07:00'];
 const DISPATCH_CATS = [
   {key:'수정', bg:'#FFFFFF', fg:'#333333', border:'#c7cad1'},
@@ -633,7 +635,9 @@ function startDpInlineEdit(td){
   inp.onpointerdown = (ev)=> ev.stopPropagation();
 }
 // 1조/2조를 고르면 그 조의 그날 근무(교대 순환)에 맞춰 D → 주간(07~19시), N → 야간(18~07시)
+function isSundayDs(ds){ const [y,m,d] = String(ds).split('-').map(Number); return new Date(y, m-1, d).getDay()===0; }
 function autoDispatchShift(){
+  if(isSundayDs(dispatchDate || todayStr())){ dispatchShift = 'full'; return; } // 일요일은 24시간(주간+야간 한 장)
   const team = (dispatchTeamFilter==='1' || dispatchTeamFilter==='2') ? dispatchTeamFilter : '1';
   const c = scheduledShift(dispatchDate || todayStr(), team);
   if(c) dispatchShift = c==='N' ? 'night' : 'day';
@@ -732,7 +736,7 @@ function bindVesselPage(){
   const b = document.getElementById('vslPageReload'); if(b) b.onclick = ()=>{ vslLoadedAt = 0; reloadVessel(); };
   if(vslApi && (!vslData || Date.now()-vslLoadedAt > 55000)) reloadVessel();
   if(!vslTimer) vslTimer = setInterval(()=>{
-    if((VIEW==='dispatch' || VIEW==='vessel') && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000 && (VIEW==='vessel' || vslOpen)) reloadVessel();
+    if(VIEW==='vessel' && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000 && (VIEW==='vessel' || vslOpen)) reloadVessel();
   }, 15000);
 }
 // ===== 선석 조회(선석배정현황 그래픽) — 같은 Apps Script 주소에 ?type=berth =====
@@ -897,7 +901,7 @@ function bindVesselPanel(){
   if(body && !body.dataset.painted){ body.dataset.painted = '1'; paintVessel(); }
   if(!vslLoadedAt && vslOpen) reloadVessel();
   if(!vslTimer) vslTimer = setInterval(()=>{
-    if((VIEW==='dispatch' || VIEW==='vessel') && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000 && (VIEW==='vessel' || vslOpen)) reloadVessel();
+    if(VIEW==='vessel' && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000 && (VIEW==='vessel' || vslOpen)) reloadVessel();
   }, 15000);
 }
 function isMealSlot(s){ const hh = String(s).split(':')[0]; return hh==='07' || hh==='12' || hh==='18' || hh==='24'; }
@@ -2315,7 +2319,7 @@ function subscribeAll(){
     snap.docs.forEach(d=>{ codeDefs[d.id]=d.data(); });
     scheduleRender();
   }, dbErr);
-  unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='dispatch' || VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
+  unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
   unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{});
   unsub.mailConfig = db.doc('meta/mailConfig').onSnapshot(doc=>{ mailConfig = doc.exists ? doc.data() : {}; scheduleRender(); }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
@@ -2677,12 +2681,7 @@ function render(){
   else if(VIEW==='codes') el.innerHTML = pageCodes();
   else if(VIEW==='vessel'){ el.innerHTML = pageVessel(); bindVesselPage(); }
   else if(VIEW==='berth'){ el.innerHTML = pageBerth(); bindBerthPage(); }
-  else if(VIEW==='dispatch'){
-    // 본선작업 현황(외부 화면)은 다시 그릴 때마다 새로 불러오지 않도록 유지하고, 배차표 부분만 다시 그림
-    if(!document.getElementById('vslPanel')){ vslLoadedAt = 0; el.innerHTML = vesselPanelHtml() + '<div id="dpBody"></div>'; }
-    document.getElementById('dpBody').innerHTML = pageDispatch();
-    bindVesselPanel();
-  }
+  else if(VIEW==='dispatch') el.innerHTML = pageDispatch(); // 본선작업 현황은 '본선작업' 메뉴에서만 보여 줌
   else if(VIEW==='splan') el.innerHTML = pageSupportPlan();
   else if(VIEW==='mail'){ el.innerHTML = pageMail(); bindMailPage(); }
   else if(VIEW==='team') el.innerHTML = pageTeam();
@@ -2741,7 +2740,7 @@ function pageInput(){
     const chk = f => (dr[f]!==undefined ? dr[f] : base[f]) ? 'checked' : '';
     const bad = f => IN_TIME.includes(f) && dr[f]!==undefined && excelToHm(dr[f])===null ? ' bad' : '';
     const t = f => `<td><input type="text" inputmode="decimal" class="inCell${bad(f)}" data-emp="${esc(e.id)}" data-f="${f}" value="${esc(val(f))}"></td>`;
-    const suwu = ['day','night'].reduce((a,sh)=>{ const dd = dispatch[`${date}_${sh}_${e.id}`]; return a + (dd && dd.slots ? Object.values(dd.slots).filter(Boolean).length*0.5 : 0); }, 0);
+    const suwu = ['day','night','full'].reduce((a,sh)=>{ const dd = dispatch[`${date}_${sh}_${e.id}`]; return a + (dd && dd.slots ? Object.values(dd.slots).filter(Boolean).length*0.5 : 0); }, 0);
     const dc = gridCode(base, date, String(e.name||'').trim()) || scheduledShift(date, e.team||'');
     const tot = inputRowTotal(date, e);
     return `<tr class="${dr && Object.keys(dr).length ? 'inDirty' : ''}">
@@ -3853,9 +3852,10 @@ function pageCodes(){
 function pageDispatch(){
   if(!dispatchDate) dispatchDate = todayStr();
   const ds = dispatchDate;
-  const slots = dispatchShift==='day' ? DAY_SLOTS : NIGHT_SLOTS;
+  if(isSundayDs(ds)) dispatchShift = 'full'; else if(dispatchShift==='full') autoDispatchShift();
+  const slots = dispatchShift==='full' ? FULL_SLOTS_FN() : dispatchShift==='day' ? DAY_SLOTS : NIGHT_SLOTS;
   const [dy,dm,dd] = ds.split('-').map(Number);
-  const dateBanner = `${dy}년 ${dm}월 ${dd}일 ${weekdayKr(dy,dm,dd)}요일 · ${dispatchShift==='night' ? '야간(18~07시)' : '주간(07~19시)'}`;
+  const dateBanner = `${dy}년 ${dm}월 ${dd}일 ${weekdayKr(dy,dm,dd)}요일 · ${dispatchShift==='full' ? '24시간(주간 07~19시 + 야간 19~익일 07시)' : dispatchShift==='night' ? '야간(18~07시)' : '주간(07~19시)'}`;
 
   // 전 직원을 조편성 순서(조 → 순번) 기준으로 정렬해서 항상 표시 (조별 필터 적용)
   const sortedEmployees = employees.slice().filter(e=> !dispatchTeamFilter || (e.team||'')===dispatchTeamFilter).sort((a,b)=>{
