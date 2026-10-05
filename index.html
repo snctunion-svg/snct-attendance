@@ -584,8 +584,10 @@ let weekStart = null; // 지원계획표 화면 상태 (해당 주의 월요일,
 let supportPlan = {}; // `${date}_${shift}` -> {capacity,quota,offCount,leadCount,preSupport,supportOff,support}
 const DAY_SLOTS = ['07:00','07:30','08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00'];
 // 일요일 24시간 배차표: 주간 07:00~18:30 + 야간 19:00~06:30 (다음날 07:00 교대까지)
-const FULL_SLOTS_FN = ()=> DAY_SLOTS.slice(0, DAY_SLOTS.indexOf('19:00')).concat(NIGHT_SLOTS.slice(NIGHT_SLOTS.indexOf('19:00'), -1));
-const NIGHT_SLOTS = ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00','23:30','24:00','00:30','01:00','01:30','02:00','02:30','03:00','03:30','04:00','04:30','05:00','05:30','06:00','06:30','07:00'];
+const FULL_SLOTS_FN = ()=> DAY_SLOTS.slice(0, DAY_SLOTS.indexOf('19:00')).concat(NIGHT_SLOTS.slice(NIGHT_SLOTS.indexOf('19:00'), NIGHT_SLOTS.indexOf('07:00')));
+// 일요일 야간 보기: 18~19(교대 겹침) + 19:00~06:30 + 다음날 07~08
+const SUN_NIGHT_SLOTS_FN = ()=> ['18:00','18:30'].concat(NIGHT_SLOTS.slice(NIGHT_SLOTS.indexOf('19:00'), NIGHT_SLOTS.indexOf('07:00')), ['31:00','31:30']);
+const NIGHT_SLOTS = ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00','23:30','24:00','00:30','01:00','01:30','02:00','02:30','03:00','03:30','04:00','04:30','05:00','05:30','06:00','06:30','07:00','07:30'];
 const DISPATCH_CATS = [
   {key:'수정', bg:'#FFFFFF', fg:'#333333', border:'#c7cad1'},
   {key:'초반', bg:'#8CE24C', fg:'#1a3d00', border:'#8CE24C'},
@@ -910,7 +912,10 @@ function bindVesselPanel(){
     if(VIEW==='vessel' && document.visibilityState==='visible' && Date.now()-vslLoadedAt > 55000 && (VIEW==='vessel' || vslOpen)) reloadVessel();
   }, 15000);
 }
-function isMealSlot(s){ const hh = String(s).split(':')[0]; return hh==='07' || hh==='12' || hh==='18' || hh==='24'; }
+// 일요일 야간의 다음날 아침 07시대는 주간 07시와 겹치지 않도록 '31:00'·'31:30'(=07시)으로 저장
+function slotHourLabel(s){ const h = Number(String(s).split(':')[0]); return h>=25 ? String(h-24).padStart(2,'0') : String(s).split(':')[0]; }
+// 빨간 칸(식사·교대): 07~08 · 12~13 · 18~19 · 24~01
+function isMealSlot(s){ const hh = slotHourLabel(s); return hh==='07' || hh==='12' || hh==='18' || hh==='24' || hh==='00'; }
 async function saveDispatchNote(dateStr, shift, empId, slot, text){
   if(!requireEdit()) return;
   const id = `${dateStr}_${shift}_${empId}`;
@@ -3861,10 +3866,10 @@ function pageDispatch(){
   if(isSundayDs(ds)) dispatchShift = 'full'; else if(dispatchShift==='full') autoDispatchShift();
   const fullAll = FULL_SLOTS_FN(), cut = fullAll.indexOf('19:00');
   const slots = dispatchShift==='full'
-    ? (dispatchSunPart==='night' ? fullAll.slice(cut) : fullAll.slice(0, cut))
-    : dispatchShift==='day' ? DAY_SLOTS : NIGHT_SLOTS;
+    ? (dispatchSunPart==='night' ? SUN_NIGHT_SLOTS_FN() : fullAll.slice(0, cut))
+    : dispatchShift==='day' ? DAY_SLOTS.filter(x=>x!=='19:00') : NIGHT_SLOTS; // 주간은 19시 칸 없이 07:00~18:30
   const [dy,dm,dd] = ds.split('-').map(Number);
-  const dateBanner = `${dy}년 ${dm}월 ${dd}일 ${weekdayKr(dy,dm,dd)}요일 · ${dispatchShift==='full' ? (dispatchSunPart==='night' ? '야간(19~익일 07시)' : '주간(07~19시)') : dispatchShift==='night' ? '야간(18~07시)' : '주간(07~19시)'}`;
+  const dateBanner = `${dy}년 ${dm}월 ${dd}일 ${weekdayKr(dy,dm,dd)}요일 · ${dispatchShift==='full' ? (dispatchSunPart==='night' ? '야간(18~익일 08시)' : '주간(07~19시)') : dispatchShift==='night' ? '야간(18~08시)' : '주간(07~19시)'}`;
 
   // 전 직원을 조편성 순서(조 → 순번) 기준으로 정렬해서 항상 표시 (조별 필터 적용)
   const sortedEmployees = employees.slice().filter(e=> !dispatchTeamFilter || (e.team||'')===dispatchTeamFilter).sort((a,b)=>{
@@ -3883,13 +3888,11 @@ function pageDispatch(){
     return (i===0 || !isMealSlot(slots[i-1]) ? ' mL' : '') + (i===slots.length-1 || !isMealSlot(slots[i+1]) ? ' mR' : '');
   };
   function slotCell(empId, s, catKey, note){
-    if(isMealSlot(s)){
-      return `<td class="dpMeal${mealEdge(s)}"><input type="text" class="dpNote" data-dp-note-emp="${esc(empId)}" data-dp-note-slot="${esc(s)}" value="${esc(note||'')}" maxlength="6"></td>`;
-    }
+    // 빨간 칸(식사·교대 시간)도 초반·후반·당직 등을 칠할 수 있음 — 빨간 테두리만 유지
     const cat = dispatchCat(catKey);
     const bg = cat ? cat.bg : 'transparent';
     const fg = cat ? cat.fg : 'var(--text)';
-    return `<td class="dpCell${cat?' dpPainted':''}" data-dispatch-emp="${esc(empId)}" data-dispatch-slot="${esc(s)}" data-dispatch-cur="${esc(catKey||'')}"
+    return `<td class="dpCell${cat?' dpPainted':''}${isMealSlot(s) ? ' dpMeal'+mealEdge(s) : ''}" data-dispatch-emp="${esc(empId)}" data-dispatch-slot="${esc(s)}" data-dispatch-cur="${esc(catKey||'')}"
       style="background:${bg};color:${fg};"${note?` title="${esc(note)}"`:''}>${note?`<span class="dpTxt">${esc(note)}</span>`:''}</td>`;
   }
 
@@ -3926,7 +3929,7 @@ function pageDispatch(){
   };
   const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${dayIsHol?'yel':'pur'}" title="근태관리 집계 기간(${esc(codeStatsStart)}~${esc(codeStatsEnd)}) 기준">${dayIsHol?'휴일':'평일'}<br>OT순번</th><th class="dpI dpI5">승무</th>` +
     slots.map(s=>{
-      const [hh,mm] = s.split(':');
+      const mm = s.split(':')[1], hh = slotHourLabel(s);
       const isRed = isMealSlot(s);
       const color = isRed ? '#E03131' : '#000000';
       const cls = 'dpSlotH' + (isRed ? ' dpMealH' + mealEdge(s) : '');
@@ -3946,8 +3949,7 @@ function pageDispatch(){
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
-      if(isMealSlot(s)){ if(note) slotCounts[si]++; return slotCell(e.id, s, '', note); }
-      if(v){ paintedSlots++; slotCounts[si]++; }
+      if(v){ paintedSlots++; slotCounts[si]++; } else if(note && isMealSlot(s)) slotCounts[si]++;
       return slotCell(e.id, s, v, note);
     }).join('');
     // 근태: 월별 근태코드 표와 같은 코드(FC·MC·SC·AV·DN 등). 없으면 교대 순환 근무(D/N)
@@ -3975,8 +3977,7 @@ function pageDispatch(){
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
-      if(isMealSlot(s)){ if(note) slotCounts[si]++; return slotCell(supId, s, '', note); }
-      if(v){ supPainted++; slotCounts[si]++; }
+      if(v){ supPainted++; slotCounts[si]++; } else if(note && isMealSlot(s)) slotCounts[si]++;
       return slotCell(supId, s, v, note);
     }).join('');
     const supLabel = i===0 ? `<td class="dpI dpI1" rowspan="${SUP_COUNT}" style="vertical-align:middle;">지원</td>` : '';
