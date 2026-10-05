@@ -3348,7 +3348,7 @@ function renderPayPw(){
   const e = employees.find(x=>x.id===payPw.empId);
   return `<div class="payScrim" id="payPwScrim"><div class="pwBox" role="dialog" aria-label="암호 입력">
     <h3>암호 입력</h3>
-    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 암호(생년월일 8자리, 예: 19770515)를 입력하세요.</p>
+    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 암호(생년월일 6자리)를 입력하세요.</p>
     <input type="password" id="payPwInput" autocomplete="off" inputmode="numeric">
     <div class="pwErr" id="payPwErr">${esc(payPw.err||'')}</div>
     <div class="pwBtns"><button class="pwOk" id="payPwOk" disabled>파일 열기</button><button class="pwNo" id="payPwNo">취소</button></div>
