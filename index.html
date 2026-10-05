@@ -685,6 +685,20 @@ function dpApplyCatToSel(catKey){
   Object.keys(byEmp).forEach(updateSuwuLive);
   dpApplySel();
 }
+// Delete·Backspace: 선택한 칸의 '글자만' 지움 — 칠한 색은 그대로(색 지우기는 '수정' 버튼으로만)
+function dpClearNotesInSel(){
+  if(!canEdit){ requireEdit(); return; }
+  const cells = dpSelCells(), byEmp = {};
+  cells.forEach(td=>{
+    const emp = td.dataset.dispatchEmp, slot = td.dataset.dispatchSlot;
+    const note = (((dispatch[`${dispatchDate}_${dispatchShift}_${emp}`]||{}).notes)||{})[slot];
+    if(!note) return;
+    (byEmp[emp] = byEmp[emp] || []).push(slot);
+    td.innerHTML = ''; td.removeAttribute('title');
+  });
+  Object.entries(byEmp).forEach(([emp, slots])=> saveDispatchSlots(dispatchDate, dispatchShift, emp, {}, slots));
+  dpApplySel();
+}
 // 글자 입력: 선택한 칸(처음 누른 칸)에 바로 입력. 첫 글자를 넘겨받으면 그 글자부터 시작(엑셀처럼)
 function dpStartTyping(td, firstChar){
   if(!td || !canEdit) return;
@@ -709,7 +723,7 @@ document.addEventListener('keydown', (ev)=>{
   const t = ev.target; if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT' || t.isContentEditable)) return;
   if(ev.ctrlKey || ev.metaKey || ev.altKey) return;
   if(ev.key==='Escape'){ dpSel = null; dpApplySel(); return; }
-  if(ev.key==='Delete' || ev.key==='Backspace'){ ev.preventDefault(); dpApplyCatToSel('수정'); return; }
+  if(ev.key==='Delete' || ev.key==='Backspace'){ ev.preventDefault(); dpClearNotesInSel(); return; } // 글자만 지움(색은 '수정'으로만)
   if(ev.key==='Enter' || ev.key==='F2'){ ev.preventDefault(); dpStartTyping(dpAnchorCell(), null); return; }
   const arrows = {ArrowLeft:[0,-1], ArrowRight:[0,1], ArrowUp:[-1,0], ArrowDown:[1,0]};
   if(arrows[ev.key]){ ev.preventDefault(); dpMoveSel(arrows[ev.key][0], arrows[ev.key][1]); return; }
