@@ -932,7 +932,7 @@ function currentEmpSlots(empId){
   const id = `${dispatchDate}_${dispatchShift}_${empId}`;
   const base = (dispatch[id] && dispatch[id].slots) || {};
   const overlay = {};
-  if(paintSession && paintSession.empId===empId) paintSession.cells.forEach(c=>{ overlay[c.dataset.dispatchSlot] = c.dataset.dispatchCur || ''; });
+  if(paintSession) paintSession.rows.forEach(cells=> cells.forEach(c=>{ if(c.dataset.dispatchEmp===empId) overlay[c.dataset.dispatchSlot] = c.dataset.dispatchCur || ''; }));
   return Object.assign({}, base, overlay);
 }
 function countPaintedHours(empId){
@@ -963,66 +963,89 @@ function updateCountLive(slot){
   }
 }
 function dispatchPaintValue(){ return dispatchPaint==='수정' ? '' : dispatchPaint; }
-// 끌어서 칠하기: 처음 누른 칸 ~ 지금 마우스(손가락)가 있는 칸까지만 칠함.
-// 3칸 끌었다가 1칸 되돌아가면 2칸만 칠해지고, 벗어난 칸은 원래 색으로 돌아감
-function dpRowCells(td){
-  const tr = td.closest('tr'); if(!tr) return [];
-  return Array.from(tr.querySelectorAll('.dpCell'));
-}
+// 끌어서 칠하기: 처음 누른 칸 ~ 지금 마우스(손가락)가 있는 칸까지 '사각형'으로 칠함(옆으로·위아래로 모두).
+// 끌다가 되돌아오면 벗어난 칸은 원래 색·글자로 돌아감. 휴무(회색) 줄은 건너뜀(처음 누른 줄이 회색이면 포함)
 function dispatchStartPaint(td){
   if(!td || !td.classList.contains('dpCell')) return;
   if(!canEdit){ requireEdit(); return; }
-  const cells = dpRowCells(td);
-  const orig = {};
-  const origHtml = {};
-  cells.forEach(c=>{ orig[c.dataset.dispatchSlot] = c.dataset.dispatchCur || ''; origHtml[c.dataset.dispatchSlot] = c.innerHTML; });
-  paintSession = {empId: td.dataset.dispatchEmp, cells, orig, origHtml, startIdx: cells.indexOf(td), lastIdx: -1, value: dispatchPaintValue(), erase: dispatchPaint==='수정'};
+  const table = td.closest('table'); if(!table) return;
+  const startTr = td.closest('tr');
+  const rows = Array.from(table.querySelectorAll('tbody tr')).filter(tr=> tr.querySelector('.dpCell') && (tr===startTr || !tr.classList.contains('dpOff')))
+    .map(tr=> Array.from(tr.querySelectorAll('.dpCell')));
+  const orig = new Map();
+  rows.forEach(cells=> cells.forEach(c=> orig.set(c, {cur: c.dataset.dispatchCur || '', html: c.innerHTML})));
+  const r0 = rows.findIndex(cells=> cells.includes(td));
+  paintSession = {rows, orig, r0, c0: rows[r0].indexOf(td), last: '', value: dispatchPaintValue(), erase: dispatchPaint==='수정', touched: new Set()};
   dispatchContinuePaint(td);
 }
 function dispatchContinuePaint(td){
   if(!paintSession || !td || !td.classList.contains('dpCell')) return;
-  if(td.dataset.dispatchEmp !== paintSession.empId) return;
-  const ps = paintSession, idx = ps.cells.indexOf(td);
-  if(idx < 0 || idx === ps.lastIdx) return;
-  ps.lastIdx = idx;
-  const lo = Math.min(ps.startIdx, idx), hi = Math.max(ps.startIdx, idx);
-  ps.cells.forEach((c,i)=>{
-    const slot = c.dataset.dispatchSlot;
-    const inRange = i>=lo && i<=hi;
-    const want = inRange ? ps.value : ps.orig[slot];
-    if((c.dataset.dispatchCur||'') !== want){ applyPaintToCell(c, want); updateCountLive(slot); }
+  const ps = paintSession;
+  const r = ps.rows.findIndex(cells=> cells.includes(td)); if(r < 0) return;
+  const c = ps.rows[r].indexOf(td);
+  const key = r+'_'+c; if(key === ps.last) return; ps.last = key;
+  const rlo = Math.min(ps.r0, r), rhi = Math.max(ps.r0, r), clo = Math.min(ps.c0, c), chi = Math.max(ps.c0, c);
+  const slotsChanged = new Set(), empsChanged = new Set();
+  ps.rows.forEach((cells, ri)=> cells.forEach((cell, ci)=>{
+    const inRect = ri>=rlo && ri<=rhi && ci>=clo && ci<=chi;
+    if(!inRect && !ps.touched.has(cell)) return; // 한 번도 안 건드린 칸은 그대로
+    const o = ps.orig.get(cell);
+    const want = inRect ? ps.value : o.cur;
+    if((cell.dataset.dispatchCur||'') !== want){ applyPaintToCell(cell, want); slotsChanged.add(cell.dataset.dispatchSlot); empsChanged.add(cell.dataset.dispatchEmp); }
     if(ps.erase){ // 수정: 범위 안 칸은 글자도 지워 보이게, 벗어나면 원래 글자 복원
-      const html = inRange ? '' : ps.origHtml[slot];
-      if(c.innerHTML !== html){ c.innerHTML = html; c.dataset.dpErased = inRange ? '1' : ''; }
+      const html = inRect ? '' : o.html;
+      if(cell.innerHTML !== html) cell.innerHTML = html;
     }
-  });
-  updateSuwuLive(ps.empId);
+    if(inRect) ps.touched.add(cell); else ps.touched.delete(cell);
+  }));
+  slotsChanged.forEach(updateCountLive);
+  empsChanged.forEach(updateSuwuLive);
 }
 function dispatchFinishPaint(){
   if(!paintSession) return;
-  const {empId, cells, orig, erase} = paintSession;
+  const {rows, orig, erase, touched} = paintSession;
   paintSession = null;
-  const changes = {}, clearNotes = [];
-  cells.forEach(c=>{
-    const slot = c.dataset.dispatchSlot, v = c.dataset.dispatchCur || '';
-    if(v !== (orig[slot]||'')) changes[slot] = v;
-    if(erase && c.dataset.dpErased==='1'){ clearNotes.push(slot); c.removeAttribute('title'); }
+  const byEmp = {}; // 사람마다 바뀐 칸만 모아서 저장
+  rows.forEach(cells=> cells.forEach(cell=>{
+    const o = orig.get(cell), slot = cell.dataset.dispatchSlot, emp = cell.dataset.dispatchEmp, v = cell.dataset.dispatchCur || '';
+    const g = byEmp[emp] = byEmp[emp] || {changes:{}, clear:[]};
+    if(v !== o.cur) g.changes[slot] = v;
+    if(erase && touched.has(cell)){ const note = (((dispatch[`${dispatchDate}_${dispatchShift}_${emp}`]||{}).notes)||{})[slot]; if(note){ g.clear.push(slot); cell.removeAttribute('title'); } }
+  }));
+  Object.entries(byEmp).forEach(([emp, g])=>{
+    if(Object.keys(g.changes).length || g.clear.length) saveDispatchSlots(dispatchDate, dispatchShift, emp, g.changes, g.clear);
   });
-  if(Object.keys(changes).length || clearNotes.length) saveDispatchSlots(dispatchDate, dispatchShift, empId, changes, clearNotes);
 }
-// '수정'으로 한 칸만 눌렀을 때: 그 칸의 색과 글자를 모두 지움(지울 것이 없으면 아무 일 없음)
+// 한 칸만 누르기: 초반·후반 등은 그 칸만 칠하기, 수정은 그 칸의 색·글자 지우기
+// 같은 칸을 빨리 두 번 누르면(더블클릭·더블탭) 방금 바꾼 것을 되돌리고 글자 입력칸을 엶
+let dpLastTap = null;
 function dispatchTapCell(td){
   if(!td || !canEdit) return;
+  const slot = td.dataset.dispatchSlot, empId = td.dataset.dispatchEmp, now = Date.now();
+  if(dpLastTap && dpLastTap.slot===slot && dpLastTap.emp===empId && now - dpLastTap.t < 400){
+    const u = dpLastTap; dpLastTap = null;
+    if(u.changed) saveDispatchSlots(dispatchDate, dispatchShift, empId, {[slot]: u.prevCur}, []).then(()=>{});
+    if(u.prevNote && u.clearedNote) saveDispatchNote(dispatchDate, dispatchShift, empId, slot, u.prevNote);
+    applyPaintToCell(td, u.prevCur);
+    startDpInlineEdit(td);
+    return;
+  }
+  const prevCur = td.dataset.dispatchCur || '';
+  const prevNote = (((dispatch[`${dispatchDate}_${dispatchShift}_${empId}`]||{}).notes)||{})[slot] || '';
   if(dispatchPaint==='수정'){
-    const slot = td.dataset.dispatchSlot, empId = td.dataset.dispatchEmp;
-    const note = (((dispatch[`${dispatchDate}_${dispatchShift}_${empId}`]||{}).notes)||{})[slot];
-    if(!td.dataset.dispatchCur && !note) return;
+    dpLastTap = {slot, emp: empId, t: now, prevCur, prevNote, changed: !!prevCur, clearedNote: !!prevNote};
+    if(!prevCur && !prevNote) return;
     applyPaintToCell(td, ''); td.innerHTML = ''; td.removeAttribute('title'); updateCountLive(slot);
-    saveDispatchSlots(dispatchDate, dispatchShift, empId, {[slot]: ''}, note ? [slot] : []);
+    saveDispatchSlots(dispatchDate, dispatchShift, empId, {[slot]: ''}, prevNote ? [slot] : []);
     updateSuwuLive(empId);
     return;
   }
-  startDpInlineEdit(td);
+  const val = dispatchPaintValue();
+  dpLastTap = {slot, emp: empId, t: now, prevCur, prevNote, changed: prevCur!==val, clearedNote: false};
+  if(prevCur === val) return;
+  applyPaintToCell(td, val); updateCountLive(slot);
+  saveDispatchSlots(dispatchDate, dispatchShift, empId, {[slot]: val});
+  updateSuwuLive(empId);
 }
 function mondayOf(dateStr){
   const [y,m,d]=dateStr.split('-').map(Number);
@@ -4713,8 +4736,7 @@ function afterRender(){
       dispatchFinishPaint();
     };
     dpTable.onpointercancel = ()=>{ clearTimeout(dpLongTimer); dpPending = null; dispatchFinishPaint(); };
-    // 두 번 누르면 언제나 글자 입력(색칠과 별개)
-    dpTable.ondblclick = (e)=>{ const td = e.target.closest('.dpCell'); if(td && canEdit && !td.querySelector('.dpInline')) startDpInlineEdit(td); };
+    // 두 번 누르기(글자 입력)는 dispatchTapCell에서 처리
     // 꾹 눌러 칠하는 중에는 화면이 스크롤되지 않게
     dpTable.addEventListener('touchmove', (ev)=>{ if(paintSession) ev.preventDefault(); }, {passive:false});
   }
