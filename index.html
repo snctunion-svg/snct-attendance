@@ -347,6 +347,10 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .gtbl td.daycell.wkA{background:#fdf2f8;} .gtbl td.daycell.wkB{background:#eff6ff;}
 /* 월별 근태: 날짜 머리글만 주 단위 색, 본문 칸은 흰색 */
 .ctbl td.daycell.wkA,.ctbl td.daycell.wkB{background:var(--surface);}
+/* 오늘 날짜 세로줄: 바깥 테두리보다 얇은 검은 테두리 */
+.ctbl .todayCol{box-shadow:inset 1.5px 0 0 #111, inset -1.5px 0 0 #111;}
+.ctbl .todayCol.todayTop{box-shadow:inset 1.5px 0 0 #111, inset -1.5px 0 0 #111, inset 0 1.5px 0 #111;}
+.ctbl .todayCol.todayBot{box-shadow:inset 1.5px 0 0 #111, inset -1.5px 0 0 #111, inset 0 -1.5px 0 #111;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
   :root:not([data-theme="light"]) .gtbl td.daycell.wkA{background:#161d2b;} :root:not([data-theme="light"]) .gtbl td.daycell.wkB{background:#1d2637;} }
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
@@ -3292,17 +3296,19 @@ function pageCombined(){
   // 월별 근태코드 표
   const {y:cy, m:cm} = combinedYm;
   const monthDays = Array.from({length:daysInMonth(cy,cm)}, (_,i)=>dstr(cy,cm,i+1));
+  const TODAY = todayStr(); // 오늘 날짜 칸은 얇은 검은 테두리(매일 바뀜)
+  const lastEmpId = sortedEmployees.length ? sortedEmployees[sortedEmployees.length-1].id : '';
   const dayHead = monthDays.map(ds=>{
     const d = Number(ds.slice(8,10));
     const cls = dayCellClass(ds, cy, cm, d);
-    return `<th class="${cls} ${weekBand(ds)} dayHead" data-act="daymemo" data-date="${esc(ds)}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(cy,cm,d)}</th>`;
+    return `<th class="${cls} ${weekBand(ds)} dayHead${ds===TODAY?' todayCol todayTop':''}" data-act="daymemo" data-date="${esc(ds)}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(cy,cm,d)}</th>`;
   }).join('');
   // 날짜별 근무 인원: 근태코드가 N·D·ND·DN 이거나 비어 있는(휴무 아님) 사람 수
   const WORK_SET = new Set(['N','D','ND','DN']);
   const countHead = monthDays.map(ds=>{
     const d = Number(ds.slice(8,10));
     const n = sortedEmployees.filter(e=>{ const dc = gridCode(codeStatsAttendance[ds+'_'+e.id], ds, String(e.name||'').trim()); return !dc || WORK_SET.has(dc); }).length;
-    return `<th class="cntHead" title="근무 인원(N·D·ND·DN·빈칸)">${n}</th>`;
+    return `<th class="cntHead${ds===TODAY?' todayCol':''}" title="근무 인원(N·D·ND·DN·빈칸)">${n}</th>`;
   }).join('');
   const codeRows = sortedEmployees.map(e=>{
     const cells = monthDays.map(ds=>{
@@ -3316,7 +3322,7 @@ function pageCombined(){
         if(dc) inner = `<span class="mini" style="color:${fill ? codeFillText(dc) : codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
       const memo = rec && rec.note ? String(rec.note) : '';
-      return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
+      return `<td class="daycell ${cls} ${weekBand(ds)}${fill?' filled':''}${ds===TODAY ? (' todayCol'+(e.id===lastEmpId?' todayBot':'')) : ''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
   }).join('');
@@ -3561,6 +3567,11 @@ function fitCombined(){
   wrap.style.zoom = '';
   wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70}));
 }
+// 자정이 지나면 화면을 다시 그려서 '오늘' 표시가 다음 날로 옮겨지게
+(function scheduleMidnight(){
+  const n = new Date(), next = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1, 0, 0, 5);
+  setTimeout(()=>{ try{ render(); }catch(e){} scheduleMidnight(); }, next - n);
+})();
 window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
