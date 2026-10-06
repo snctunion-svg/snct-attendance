@@ -175,6 +175,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 }
 @media print{ body *{visibility:hidden;} .slipBox,.slipBox *{visibility:visible;} .slipBox{position:absolute;left:0;top:0;box-shadow:none;max-width:none;} .slipTop{display:none;} }
 
+.g-meal{--g:#0e7490;--g-soft:#cffafe;--g-strong:#22d3ee;--g-on:#083344;} /* 식사(청록) */
 .g-ext{--g:#0f766e;--g-soft:#ccfbf1;--g-strong:#2dd4bf;--g-on:#042f2e;}
 .g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
 .g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
@@ -3462,7 +3463,7 @@ function pageOT(){
     return `<tr>
       <td class="stNo" style="text-align:center;">${esc(noCell)}</td>
       <td class="namecell stName payName" data-act="pay-open" data-emp="${esc(r.emp.id)}" title="급여명세서 보기">${esc(r.emp.name)}</td>
-      <td style="text-align:center;">${z(r.mealTotal)}</td>
+      <td class="gc g-meal" style="text-align:center;font-weight:700;">${z(r.mealTotal)}</td>
       <td class="gc g-wk" style="text-align:center;font-weight:700;">${z(r.wkTotal)}</td>
       <td class="gc g-sup" style="text-align:center;">${z(r.spTotal)}</td>
       <td class="gc g-sup" style="text-align:center;font-weight:800;">${z(r.spGuar)}</td>
@@ -3509,7 +3510,7 @@ function pageOT(){
   ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl otSum"><thead>
     <tr>
       <th rowspan="2" class="namehead">No</th><th rowspan="2" class="namehead" style="left:34px;">성명</th>
-      <th>식사</th>
+      <th class="gh g-meal">식사</th>
       <th class="gh g-wk">평일</th>
       <th colspan="2" class="gh g-sup">지원</th>
       <th colspan="2" class="gh g-hol">휴일</th>
@@ -3518,7 +3519,7 @@ function pageOT(){
       <th colspan="${days.length}">일자별</th>
     </tr>
     <tr>
-      <th>합계</th>
+      <th class="gc g-meal">합계</th>
       <th class="gc g-wk">합계</th>
       <th class="gc g-sup">합계</th><th class="gc g-sup">보전</th>
       <th class="gc g-hol">합계</th><th class="gc g-hol">보전</th>
