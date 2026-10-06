@@ -332,6 +332,8 @@ table.tbl{border-collapse:collapse;width:100%;font-size:12.5px;}
 td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .gtbl th.wkA{background:#fce7f3 !important;} .gtbl th.wkB{background:#dbeafe !important;}
 .gtbl td.daycell.wkA{background:#fdf2f8;} .gtbl td.daycell.wkB{background:#eff6ff;}
+/* 월별 근태: 날짜 머리글만 주 단위 색, 본문 칸은 흰색 */
+.ctbl td.daycell.wkA,.ctbl td.daycell.wkB{background:var(--surface);}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
   :root:not([data-theme="light"]) .gtbl td.daycell.wkA{background:#161d2b;} :root:not([data-theme="light"]) .gtbl td.daycell.wkB{background:#1d2637;} }
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
