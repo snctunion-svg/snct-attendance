@@ -126,6 +126,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .rateTbl td{padding:3px 4px;}
 .payTbl select.tx{width:100%;min-width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;}
 .payTbl input[type=date]{min-width:140px;}
+.payTbl input.dt{min-width:96px;text-align:center;letter-spacing:.5px;}
 .wonBox{position:relative;}
 .wonBox input{padding-right:26px !important;min-width:120px;}
 .wonBox span{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text-muted,#6b7280);pointer-events:none;}
@@ -3456,7 +3457,8 @@ function pageOT(){
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
 const PAY_BASE_HOURS = 209; // 기본급 = 시급 × 209시간
-const PAY_TEXT_KEYS = ['empNo','job','grade','birth'];
+const PAY_TEXT_KEYS = ['hire','job','grade','birth'];
+const PAY_DATE_KEYS = ['hire','birth']; // oo-oo-oo 형식(숫자만 쳐도 자동으로 - 넣음)
 const PAY_DEPT = '운영팀';            // 부서는 운영팀으로 고정
 const PAY_GRADES = ['반장','선임','기장'];   // 직급 선택
 // 공제 항목: 항목마다 '지급총액의 몇 %'(또는 정액 원)를 한 번만 정하면 모든 사람 명세서에 일괄 적용
@@ -3468,9 +3470,34 @@ let payDedRates = {}, payRateDraft = null;
 function dedRatesNow(){ return payRateDraft || payDedRates; }
 // 공제액 계산: % 는 지급총액 × 비율, 10원 미만 버림 / 원 은 그 금액 그대로
 // 통상시급 자동값: (기본급 + 근속수당) ÷ 209, 원 단위 반올림 — 9월 명세서: (4,332,770+90,000)/209 = 21,162
-function autoOrdinary(p){
+function autoOrdinary(p, asOf){
   const base = Math.floor((Number(p.hourly)||0) * PAY_BASE_HOURS / 10) * 10;
-  return base ? Math.round((base + (Number(p.tenure)||0)) / PAY_BASE_HOURS) : 0;
+  return base ? Math.round((base + tenureAllowance(p.hire, asOf)) / PAY_BASE_HOURS) : 0;
+}
+// 'oo-oo-oo'(또는 8자리) → 'YYYY-MM-DD'. 두 자리 연도는 올해 이하면 20xx, 아니면 19xx
+function payDateFull(str){
+  const d = String(str||'').replace(/\D/g,'');
+  let y, m, dd;
+  if(d.length===8){ y = +d.slice(0,4); m = +d.slice(4,6); dd = +d.slice(6,8); }
+  else if(d.length===6){ const yy = +d.slice(0,2), cy = new Date().getFullYear()%100; y = yy<=cy ? 2000+yy : 1900+yy; m = +d.slice(2,4); dd = +d.slice(4,6); }
+  else return '';
+  if(m<1 || m>12 || dd<1 || dd>31) return '';
+  return dstr(y, m, dd);
+}
+function payDateFmt(raw){ // 입력하는 대로 oo-oo-oo 모양으로
+  const d = String(raw||'').replace(/\D/g,'').slice(0,6);
+  return d.length>4 ? d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4) : d.length>2 ? d.slice(0,2)+'-'+d.slice(2) : d;
+}
+// 근속수당: 입사일 기준 만 5년 = 10,000원, 5년 초과 1년마다 5,000원 가산(5년 미만 0원). asOf = 기준일(명세서는 근무기간 끝날)
+function tenureYears(hire, asOf){
+  const h = payDateFull(hire); if(!h) return 0;
+  const [hy,hm,hd] = h.split('-').map(Number), [ay,am,ad] = (asOf || todayStr()).split('-').map(Number);
+  let y = ay - hy; if(am < hm || (am===hm && ad < hd)) y--;
+  return Math.max(0, y);
+}
+function tenureAllowance(hire, asOf){
+  const y = tenureYears(hire, asOf);
+  return y < 5 ? 0 : 10000 + (y - 5) * 5000;
 }
 function dedAmount(rate, gross){
   if(!rate) return 0;
@@ -3480,9 +3507,15 @@ function dedAmount(rate, gross){
 function payDirtyN(){ return Object.keys(payDraft).length + (payRateDraft ? 1 : 0); }
 // 명세서 비번 = 생년월일. 19770515 / 770515 / 1977-05-15 / 77.05.15 처럼 넣어도 같은 날짜면 통과
 function birthMatches(input, birth){
-  const a = String(input||'').replace(/\D/g,''), b = String(birth||'').replace(/\D/g,'');
-  if(!a || b.length!==8) return false;
-  return a===b || (a.length===6 && a===b.slice(2));
+  const a = String(input||'').replace(/\D/g,''), full = payDateFull(birth);
+  if(!a || !full) return false;
+  const b8 = full.replace(/-/g,''), b6 = b8.slice(2);
+  return a===b6 || a===b8;
+}
+function tenureCellHtml(p){
+  const y = tenureYears(p.hire), t = tenureAllowance(p.hire);
+  if(!payDateFull(p.hire)) return '<span class="hint">입사일 입력</span>';
+  return `${t ? t.toLocaleString('ko-KR')+' 원' : '0 원'}<br><span class="hint" style="font-weight:400;">근속 ${y}년</span>`;
 }
 function payOf(id){ return Object.assign({}, payMgr[id]||{}, payDraft[id]||{}); }
 function slipWon(n){ return n ? Math.round(n).toLocaleString('ko-KR') : ''; }
@@ -3512,13 +3545,13 @@ function pagePayroll(){
       <td style="text-align:center;">${esc(e.team ? e.team+'조' : '')}</td>
       <td class="namecell">${esc(e.name)}</td>
       <td style="text-align:center;white-space:nowrap;">${PAY_DEPT}</td>
-      <td><input type="text" class="tx" autocomplete="off" inputmode="numeric" data-pay="empNo" data-emp="${esc(e.id)}" value="${v('empNo')}" placeholder="사번"></td>
+      <td><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="hire" data-emp="${esc(e.id)}" value="${v('hire')}" placeholder="oo-oo-oo"></td>
       <td><input type="text" class="tx" autocomplete="off" data-pay="job" data-emp="${esc(e.id)}" value="${v('job')}" placeholder="직무"></td>
       <td><select class="tx" data-pay="grade" data-emp="${esc(e.id)}"><option value=""></option>${PAY_GRADES.map(g=>`<option${p.grade===g?' selected':''}>${g}</option>`).join('')}</select></td>
-      <td><input type="date" class="tx" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}"></td>
+      <td><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}" placeholder="oo-oo-oo"></td>
       <td>${money('hourly')}</td>
       <td>${money('ordinary')}</td>
-      <td>${money('tenure')}</td>
+      <td class="tenureCell" data-emp="${esc(e.id)}" style="text-align:right;white-space:nowrap;padding:0 10px;font-weight:700;">${tenureCellHtml(p)}</td>
     </tr>`;
   }).join('');
   return `
@@ -3538,7 +3571,7 @@ function pagePayroll(){
     ${payMgrTab==='ded' ? `<p class="hint" style="margin:0 0 10px;">항목마다 한 번만 정하면 <b>모든 사람의 급여명세서</b>에 일괄 적용돼요. % 는 지급총액 기준(10원 미만 버림), 원 은 모든 사람 같은 금액이에요.</p>
       <div class="scrollx"><table class="payTbl rateTbl"><thead><tr><th>공제 항목</th><th>값</th><th>단위</th><th></th></tr></thead><tbody>${rateRows}</tbody></table></div>`
     : list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>사번</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당</th>
+      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th>
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
   </div>`;
 }
@@ -3585,8 +3618,8 @@ function renderPaySlip(){
   const e = employees.find(x=>x.id===paySlip.empId);
   if(!e) return '';
   const p = payMgr[e.id] || {};
-  const hourly = Number(p.hourly)||0, tenure = Number(p.tenure)||0;
-  const rate = Number(p.ordinary) || autoOrdinary(p); // 통상시급: 입력값, 비어 있으면 (기본급+근속수당)/209
+  const hourly = Number(p.hourly)||0, tenure = tenureAllowance(p.hire, otMatrixEnd); // 근속수당: 입사일 기준(근무기간 끝날 기준 근속연수)
+  const rate = Number(p.ordinary) || autoOrdinary(p, otMatrixEnd); // 통상시급: 입력값, 비어 있으면 (기본급+근속수당)/209
   const pc = slipCalc(e, otMatrixStart, otMatrixEnd);
   const r10 = v => Math.round(v/10)*10;
   const a = {
@@ -3617,9 +3650,9 @@ function renderPaySlip(){
     <table class="slipInfo"><tr>
       <td><b>부서 :</b> ${PAY_DEPT}</td><td><b>사번 :</b> ${esc(p.empNo||'')}</td><td><b>성명 :</b> ${esc(e.name)} &nbsp;귀하</td>
     </tr><tr>
-      <td><b>직무 :</b> ${esc(p.job||'')}</td><td><b>직급 :</b> ${esc(p.grade||'')}</td><td><b>생년월일 :</b> ${esc(p.birth||'')}</td>
+      <td><b>직무 :</b> ${esc(p.job||'')}</td><td><b>직급 :</b> ${esc(p.grade||'')}</td><td><b>생년월일 :</b> ${esc(payDateFull(p.birth) || p.birth || '')}</td>
     </tr></table>
-    <div class="slipDates"><span><b>근무기간 :</b> ${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)} &nbsp; <b>시급 :</b> ${slipWon(hourly)}원 &nbsp; <b>통상시급 :</b> ${slipWon(rate)}원${Number(p.ordinary) ? '' : ' (자동)'}</span><span><b>지급일자 :</b></span></div>
+    <div class="slipDates"><span><b>입사일자 :</b> ${esc(payDateFull(p.hire)||'')} &nbsp; <b>근무기간 :</b> ${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)} &nbsp; <b>시급 :</b> ${slipWon(hourly)}원 &nbsp; <b>통상시급 :</b> ${slipWon(rate)}원${Number(p.ordinary) ? '' : ' (자동)'}</span><span><b>지급일자 :</b></span></div>
     <div class="slipWrap"><table class="slipTbl">
       <colgroup><col style="width:12%"><col><col><col><col><col><col></colgroup>
       <tr>${H('지급내역')}${H('기본급')}${H('학자금')}${H('근속수당')}${H('직책수당')}${H('기술수당')}${H('연장근로수당')}</tr>
@@ -3674,7 +3707,12 @@ function bindPayroll(el){
     x.oninput = ()=>{
       const id = x.dataset.emp, k = x.dataset.pay;
       payDraft[id] = payDraft[id] || {};
-      if(PAY_TEXT_KEYS.includes(k)){ payDraft[id][k] = x.value.trim(); }
+      if(PAY_DATE_KEYS.includes(k)){
+        const f = payDateFmt(x.value); if(f!==x.value) x.value = f;
+        payDraft[id][k] = f;
+        if(k==='hire'){ const c = el.querySelector(`.tenureCell[data-emp="${CSS.escape(id)}"]`); if(c) c.innerHTML = tenureCellHtml(payOf(id)); }
+      }
+      else if(PAY_TEXT_KEYS.includes(k)){ payDraft[id][k] = x.value.trim(); }
       else {
         // 숫자만 남기고 1,000 단위 콤마로 다시 표시(커서는 뒤에서부터 같은 자리 유지)
         const fromEnd = x.value.length - (x.selectionStart ?? x.value.length);
@@ -3684,7 +3722,7 @@ function bindPayroll(el){
         payDraft[id][k] = digits ? Number(digits) : '';
       }
       // 시급·근속수당을 바꾸면 같은 줄 통상시급 칸의 '자동' 값도 바로 바뀜(사람마다 근속수당이 달라서)
-      if(k==='hourly' || k==='tenure'){
+      if(k==='hourly' || k==='tenure' || k==='hire'){
         const o = el.querySelector(`input[data-pay="ordinary"][data-emp="${CSS.escape(id)}"]`);
         if(o){ const v = autoOrdinary(payOf(id)); o.placeholder = v ? '자동 '+v.toLocaleString('ko-KR') : '0'; }
       }
