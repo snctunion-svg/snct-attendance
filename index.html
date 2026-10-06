@@ -121,14 +121,16 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 급여관리·급여명세서 */
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
-.payTbl input.tx{text-align:left;min-width:90px;}
+.payTbl input.tx{text-align:left;min-width:80px;}
 .rateTbl input.rateIn{width:110px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;}
 .rateTbl td{padding:3px 4px;}
 .payTbl select.tx{width:100%;min-width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;}
 .payTbl input[type=date]{min-width:140px;}
 .payTbl input.dt{min-width:96px;text-align:center;letter-spacing:.5px;}
 .wonBox{position:relative;}
-.wonBox input{padding-right:26px !important;min-width:120px;}
+.wonBox input{padding-right:26px !important;min-width:108px;}
+.tenureBox input{background:var(--bg-soft, rgba(0,0,0,.04)) !important;cursor:default;padding-left:34px !important;}
+.tenureBox .yrs{left:9px;right:auto !important;font-size:11px;}
 .wonBox span{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text-muted,#6b7280);pointer-events:none;}
 .payScrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:flex;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   padding:calc(14px + env(safe-area-inset-top,0px)) 8px calc(14px + env(safe-area-inset-bottom,0px));}
@@ -3512,10 +3514,10 @@ function birthMatches(input, birth){
   const b8 = full.replace(/-/g,''), b6 = b8.slice(2);
   return a===b6 || a===b8;
 }
+// 근속수당 칸: 다른 금액 칸과 같은 모양(읽기 전용). 왼쪽에 근속연수 표시
 function tenureCellHtml(p){
-  const y = tenureYears(p.hire), t = tenureAllowance(p.hire);
-  if(!payDateFull(p.hire)) return '<span class="hint">입사일 입력</span>';
-  return `${t ? t.toLocaleString('ko-KR')+' 원' : '0 원'}<br><span class="hint" style="font-weight:400;">근속 ${y}년</span>`;
+  const ok = !!payDateFull(p.hire), y = tenureYears(p.hire), t = tenureAllowance(p.hire);
+  return `<div class="wonBox tenureBox"><span class="yrs">${ok ? y+'년' : ''}</span><input type="text" readonly tabindex="-1" value="${ok ? t.toLocaleString('ko-KR') : ''}" placeholder="${ok ? '0' : '입사일 입력'}" title="입사일 기준 자동 계산(만 5년 10,000원, 이후 1년마다 5,000원)"><span>원</span></div>`;
 }
 function payOf(id){ return Object.assign({}, payMgr[id]||{}, payDraft[id]||{}); }
 function slipWon(n){ return n ? Math.round(n).toLocaleString('ko-KR') : ''; }
@@ -3550,9 +3552,9 @@ function pagePayroll(){
       <td><select class="tx" data-pay="grade" data-emp="${esc(e.id)}"><option value=""></option>${PAY_GRADES.map(g=>`<option${p.grade===g?' selected':''}>${g}</option>`).join('')}</select></td>
       <td><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}" placeholder="oo-oo-oo"></td>
       <td>${money('hourly')}</td>
-      <td>${money('etcAllow')}</td>
       <td>${money('ordinary')}</td>
-      <td class="tenureCell" data-emp="${esc(e.id)}" style="text-align:right;white-space:nowrap;padding:0 10px;font-weight:700;">${tenureCellHtml(p)}</td>
+      <td class="tenureCell" data-emp="${esc(e.id)}">${tenureCellHtml(p)}</td>
+      <td>${money('etcAllow')}</td>
     </tr>`;
   }).join('');
   return `
@@ -3572,7 +3574,7 @@ function pagePayroll(){
     ${payMgrTab==='ded' ? `<p class="hint" style="margin:0 0 10px;">항목마다 한 번만 정하면 <b>모든 사람의 급여명세서</b>에 일괄 적용돼요. % 는 지급총액 기준(10원 미만 버림), 원 은 모든 사람 같은 금액이에요.</p>
       <div class="scrollx"><table class="payTbl rateTbl"><thead><tr><th>공제 항목</th><th>값</th><th>단위</th><th></th></tr></thead><tbody>${rateRows}</tbody></table></div>`
     : list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>기타수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th>
+      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th><th>기타수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th>
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
   </div>`;
 }
