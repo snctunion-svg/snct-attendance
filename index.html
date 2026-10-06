@@ -236,6 +236,9 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
   body.printing-ps main#content > *:not(.psWrap){display:none !important;} body.printing-ps .psSheet{border:0;}
   body.printing-ps .psTools{display:none;} body.printing-ps .psIn{background:none;} body.printing-ps .psT td.psA{background:none;} }
 .gtbl td.stNo{position:sticky;left:0;z-index:2;background:var(--surface);min-width:34px;width:34px;}
+/* 가운데 반복 성명 칸은 고정하지 않음(왼쪽 No·성명만 고정) */
+.gtbl td.namecell.noStick{position:static !important;}
+.gtbl th.namehead.noStick{position:sticky;left:auto !important;top:0;}
 .gtbl td.namecell.stName{position:sticky;left:34px !important;z-index:3;background:var(--surface);}
 .cmbLeft .scrollx{max-width:100%;}
 @media (max-width:860px){ .cmbLeft{flex:1 1 100%;min-width:0;} .cmbLeft .scrollx{display:block !important;overflow-x:auto;} }
@@ -3457,8 +3460,8 @@ function pageOT(){
       return `<td class="${cls}" data-act="ot-cell-detail" data-date="${esc(ds)}" data-emp="${esc(r.emp.id)}" style="text-align:center;cursor:pointer;">${v?fmtH(v):''}</td>`;
     }).join('');
     return `<tr>
-      <td style="text-align:center;">${esc(noCell)}</td>
-      <td class="namecell payName" data-act="pay-open" data-emp="${esc(r.emp.id)}" title="급여명세서 보기">${esc(r.emp.name)}</td>
+      <td class="stNo" style="text-align:center;">${esc(noCell)}</td>
+      <td class="namecell stName payName" data-act="pay-open" data-emp="${esc(r.emp.id)}" title="급여명세서 보기">${esc(r.emp.name)}</td>
       <td style="text-align:center;">${z(r.mealTotal)}</td>
       <td class="gc g-wk" style="text-align:center;font-weight:700;">${z(r.wkTotal)}</td>
       <td class="gc g-sup" style="text-align:center;">${z(r.spTotal)}</td>
@@ -3467,7 +3470,7 @@ function pageOT(){
       <td class="gc g-hol" style="text-align:center;font-weight:800;">${z(r.hoGuar)}</td>
       <td class="otc gc g-ot" style="text-align:center;font-weight:800;">${fmtH(r.grand)}</td>
       <td class="otc gc g-ot" style="text-align:center;font-weight:800;">${fmtH(r.otGuar)}</td>
-      <td class="namecell">${esc(r.emp.name)}</td>
+      <td class="namecell noStick">${esc(r.emp.name)}</td>
       ${dayCells}
     </tr>`;
   }).join('');
@@ -3511,7 +3514,7 @@ function pageOT(){
       <th colspan="2" class="gh g-sup">지원</th>
       <th colspan="2" class="gh g-hol">휴일</th>
       <th colspan="2" class="gc g-ot" style="font-weight:800;">OT</th>
-      <th rowspan="2" class="namehead">성명</th>
+      <th rowspan="2" class="namehead noStick">성명</th>
       <th colspan="${days.length}">일자별</th>
     </tr>
     <tr>
