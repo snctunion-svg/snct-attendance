@@ -189,14 +189,9 @@ td.gc,th.gc{background:var(--g-soft) !important;color:var(--g);}
 td.gc b,td.gc strong{color:var(--g);}
 th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .gtbl .sepL{border-left:3px solid var(--text) !important;}
-/* 근태관리(집계·월별 근태)·월별 OT현황: No·성명 칸은 회색으로 구분, 안쪽 굵은 구분선도 회색(바깥 테두리는 그대로) */
-.ctbl .sepL,.otSum .sepL{border-left-color:#9ca3af !important;}
-.ctbl th.namehead,.otSum th.namehead,
-.ctbl td.namecell,.otSum td.namecell,
-.ctbl tbody tr > td:first-child,.otSum tbody tr > td:first-child{background:#e5e7eb !important;}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .ctbl th.namehead, :root:not([data-theme="light"]) .otSum th.namehead,
-  :root:not([data-theme="light"]) .ctbl td.namecell, :root:not([data-theme="light"]) .otSum td.namecell,
-  :root:not([data-theme="light"]) .ctbl tbody tr > td:first-child, :root:not([data-theme="light"]) .otSum tbody tr > td:first-child{background:#2a3242 !important;} }
+/* 근태관리(집계·월별 근태)·월별 OT현황: 바탕은 흰색 그대로, 칸 선을 회색 보통선으로(바깥 검은 테두리는 그대로) */
+.ctbl th,.ctbl td,.otSum th,.otSum td{border:1px solid #c4cad3 !important;}
+.ctbl .sepL,.otSum .sepL{border-left:1px solid #9ca3af !important;}
 /* 급여 지급명세서 */
 .psWrap{overflow-x:auto;padding-bottom:10px;}
 .psSheet{background:#fff;color:#111;max-width:780px;min-width:680px;margin:0;padding:22px 24px 18px;border-radius:8px;border:1px solid var(--border);font-size:12.5px;position:relative;}
