@@ -3514,7 +3514,35 @@ function fitOtTable(){
     rows.forEach(tr=>{ const h = tr.getBoundingClientRect().height / z; tr.style.height = Math.min(h + extra, 60) + 'px'; });
   }
 }
-window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(fitOtTable, 120); });
+// 출퇴근 입력: PC에서 표 '세로'가 화면 안에 들어오도록만 축소(가로는 그대로)
+function fitInputTable(){
+  const t = document.querySelector('table.inTbl'); if(!t) return;
+  t.style.zoom = '';
+  if(VIEW!=='input' || window.innerWidth <= 700) return;
+  const top = t.getBoundingClientRect().top;
+  const below = 90; // 표 아래 저장·초기화 버튼 자리
+  const availH = window.innerHeight - Math.max(0, top) - below;
+  const h = t.getBoundingClientRect().height;
+  if(availH > 200 && h > availH){ const z = Math.max(0.5, Math.floor(availH / h * 100)/100); t.style.zoom = z; }
+}
+// 근태관리: PC에서 왼쪽 집계표·오른쪽 월별 근태가 가로·세로 모두 한 화면에 다 보이도록 자동 축소
+function fitCombined(){
+  const wrap = document.querySelector('.cmbWrap'); if(!wrap) return;
+  const tables = Array.from(wrap.querySelectorAll('table.ctbl'));
+  wrap.style.zoom = ''; tables.forEach(t=> t.style.zoom = '');
+  if(VIEW!=='combined' || window.innerWidth <= 700) return;
+  // 1) 표마다 자기 칸 폭에 맞게(가로 스크롤 없이)
+  tables.forEach(t=>{
+    const w = t.parentElement.clientWidth - 6, sw = t.scrollWidth;
+    if(sw > w + 4){ t.style.zoom = Math.max(0.45, Math.floor(w / sw * 100)/100 - 0.01); }
+  });
+  // 2) 전체 높이가 화면보다 크면 한 번 더 줄여서 세로도 한 화면에
+  const top = wrap.getBoundingClientRect().top;
+  const availH = window.innerHeight - Math.max(0, top) - 12;
+  const h = wrap.getBoundingClientRect().height;
+  if(availH > 200 && h > availH) wrap.style.zoom = Math.max(0.5, Math.floor(availH / h * 100)/100);
+}
+window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
@@ -4622,6 +4650,8 @@ function afterRender(){
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; autoDispatchShift(); render(); });
   bindPayroll(el);
   fitOtTable();
+  fitInputTable();
+  fitCombined();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
