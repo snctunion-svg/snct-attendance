@@ -2106,10 +2106,10 @@ const FIREBASE_CONFIG = {
 const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
-const VIEWER_VIEWS = ['combined','ot','dispatch','splan','vessel','berth'];
+const VIEWER_VIEWS = ['combined','ot','dispatch','splan','codes','vessel','berth']; // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail'];
 const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll'];
-const LEADER_READONLY_VIEWS = ['codes']; // 조장관리는 보기만(근태코드 수정은 UNION만)
+const LEADER_READONLY_VIEWS = ['codes']; // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
   const e = String(email||'').toLowerCase();
