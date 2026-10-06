@@ -3675,13 +3675,11 @@ function renderPaySlip(){
   const label = `${otPayYear}년 ${String(otPayMonth).padStart(2,'0')}월`;
   return `<div class="payScrim" id="slipScrim"><div class="slipBox">
     <div class="slipTop"><button id="slipPrint">인쇄</button><button id="slipClose">닫기 ✕</button></div>
-    <div class="slipTitle">정규직 급여 지급명세서 &nbsp;( ${label} )</div>
+    <div class="slipTitle">급여명세서 &nbsp;( ${label} )</div>
     <table class="slipInfo"><tr>
-      <td><b>부서 :</b> ${PAY_DEPT}</td><td><b>사번 :</b> ${esc(p.empNo||'')}</td><td><b>성명 :</b> ${esc(e.name)} &nbsp;귀하</td>
-    </tr><tr>
-      <td><b>직무 :</b> ${esc(p.job||'')}</td><td><b>직급 :</b> ${esc(p.grade||'')}</td><td><b>생년월일 :</b> ${esc(payDateFull(p.birth) || p.birth || '')}</td>
+      <td><b>부서 :</b> ${PAY_DEPT}</td><td><b>직급 :</b> ${esc(p.grade||'')}</td><td><b>성명 :</b> ${esc(e.name)} &nbsp;귀하</td>
     </tr></table>
-    <div class="slipDates"><span><b>입사일자 :</b> ${esc(payDateFull(p.hire)||'')} &nbsp; <b>근무기간 :</b> ${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)} &nbsp; <b>시급 :</b> ${slipWon(hourly)}원 &nbsp; <b>통상시급 :</b> ${slipWon(rate)}원${Number(p.ordinary) ? '' : ' (자동)'}</span><span><b>지급일자 :</b></span></div>
+    <div class="slipDates"><span><b>시급 :</b> ${slipWon(hourly)}원 &nbsp; <b>통상시급 :</b> ${slipWon(rate)}원</span></div>
     <div class="slipWrap"><table class="slipTbl">
       <colgroup><col style="width:12%"><col><col><col><col><col><col></colgroup>
       <tr>${H('지급내역')}${H('기본급')}${H('학자금')}${H('근속수당')}${H('직책수당')}${H('기술수당')}${H('연장근로수당')}</tr>
