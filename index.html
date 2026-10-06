@@ -173,9 +173,63 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
   .slipTbl td.h{font-size:8.5px;letter-spacing:-.5px;}
   .slipTbl colgroup col:first-child{width:9% !important;}
 }
-@media print{ body *{visibility:hidden;} .slipBox,.slipBox *{visibility:visible;} .slipBox{position:absolute;left:0;top:0;box-shadow:none;max-width:none;} .slipTop{display:none;} }
+@media print{ body:not(.printing-acc) *{visibility:hidden;} body:not(.printing-acc) .slipBox, body:not(.printing-acc) .slipBox *{visibility:visible;} .slipBox{position:absolute;left:0;top:0;box-shadow:none;max-width:none;} .slipTop{display:none;} }
 
 .g-meal{--g:#0e7490;--g-soft:#cffafe;--g-strong:#22d3ee;--g-on:#083344;} /* 식사(청록) */
+/* 사고경위서 */
+.accWrap{overflow-x:auto;padding-bottom:8px;}
+.accSheet{background:#fff;color:#111;width:100%;max-width:780px;min-width:560px;margin:0 auto;padding:18px 22px 26px;box-shadow:0 2px 12px rgba(0,0,0,.12);border-radius:4px;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;}
+.accTop{text-align:right;font-size:11px;margin-bottom:3px;}
+.accTbl{width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #111;}
+.accTbl th,.accTbl td{border:1px solid #9a9a9a;padding:0 6px;font-size:13px;height:34px;vertical-align:middle;}
+.accTbl th{font-weight:800;text-align:center;white-space:nowrap;}
+.accTitleRow td{height:96px;position:relative;text-align:center;border-bottom:2px solid #111;}
+.accLogo{position:absolute;left:12px;top:50%;transform:translateY(-50%);height:42px;}
+.accTitle{font-size:30px;font-weight:800;letter-spacing:8px;}
+.accSub{font-size:15px;font-weight:800;margin-top:2px;}
+.accInfo td{text-align:center;}
+.accHead th{background:#d9d9d9;border-bottom:3px double #111;height:30px;letter-spacing:2px;}
+.accGap td{height:12px;border-left:0;border-right:0;}
+.accLine th{text-align:left;padding-left:8px;}
+.accLine td{border-left:0;}
+.accLine th[colspan="2"]{border-right:0;}
+.accIn{width:100%;border:0;background:transparent;font:inherit;font-size:14px;color:#111;padding:4px 2px;outline:none;}
+.accInfo .accIn{text-align:center;font-weight:700;}
+.accIn:focus,.accTa:focus{background:#fff7d6;}
+.accBox td{padding:0;}
+.accTa,.accTaPrint{display:block;width:100%;box-sizing:border-box;border:0;resize:vertical;font:inherit;font-size:14px;color:#111;padding:0 10px;
+  line-height:34px;height:calc(34px * var(--lines));min-height:calc(34px * var(--lines));background:transparent;outline:none;white-space:pre-wrap;word-break:break-all;
+  background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 33px, #9a9a9a 33px, #9a9a9a 34px);background-attachment:local;}
+.accTaPrint{display:none;overflow:hidden;resize:none;}
+.accOath{font-size:13px;font-weight:800;margin:18px 2px 10px;}
+.accSign{display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-top:14px;}
+.accSign > div{display:flex;align-items:center;width:62%;font-size:15px;font-weight:800;}
+.accSign .k{width:110px;text-align:right;padding-right:8px;white-space:nowrap;}
+.accSign .accIn{flex:1;font-weight:700;border-bottom:1px solid #ccc;}
+.accSign .s{width:42px;text-align:right;}
+@media (max-width:700px){ .accSheet{padding:12px 10px 18px;} .accTitle{font-size:24px;letter-spacing:5px;} .accLogo{height:30px;left:6px;} .accSign > div{width:100%;} }
+@media print{
+  @page{size:A4 portrait;margin:10mm 10mm 12mm;}
+  body.printing-acc *{visibility:hidden !important;}
+  body.printing-acc #accSheet, body.printing-acc #accSheet *{visibility:visible !important;}
+  body.printing-acc #accSheet{position:absolute;left:0;top:0;width:100%;max-width:none;min-width:0;margin:0;padding:0;box-shadow:none;border-radius:0;}
+  body.printing-acc .accTa{display:none !important;}
+  body.printing-acc .accTaPrint{display:block !important;}
+  body.printing-acc .accIn{border-bottom-color:transparent !important;background:transparent !important;}
+  body.printing-acc .accIn::placeholder{color:transparent;}
+  body.printing-acc .accHead th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  html,body.printing-acc,body.printing-acc .layout,body.printing-acc main{background:#fff !important;}
+  body.printing-acc .accTaPrint{resize:none !important;}
+  /* A4 한 장에 다 들어가도록 줄 높이를 조금 줄임 */
+  body.printing-acc .accTbl th,body.printing-acc .accTbl td{height:30px;}
+  body.printing-acc .accTitleRow td{height:82px;}
+  body.printing-acc .accTaPrint{line-height:30px;height:calc(30px * var(--lines));min-height:0;
+    background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 29px, #9a9a9a 29px, #9a9a9a 30px);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body.printing-acc .accOath{margin:12px 2px 6px;}
+  body.printing-acc .accSign{margin-top:8px;gap:4px;}
+}
+
 .g-ext{--g:#0f766e;--g-soft:#ccfbf1;--g-strong:#2dd4bf;--g-on:#042f2e;}
 .g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
 .g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
@@ -517,7 +571,10 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
+    <a data-view="accident" data-nav-editor><span class="ic">📝</span>사고경위서</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
+    <div class="navttl" data-role-section="work" style="margin-top:10px;">업무</div>
+    <a data-view="accident" data-nav-viewer><span class="ic">📝</span>사고경위서</a>
     <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
@@ -2181,10 +2238,10 @@ const FIREBASE_CONFIG = {
 const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
-const VIEWER_VIEWS = ['combined','ot','dispatch','splan','codes','vessel','berth']; // codes: 누구나 보기(수정은 UNION만)
+const VIEWER_VIEWS = ['combined','ot','dispatch','splan','codes','accident','vessel','berth']; // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail'];
-const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll'];
-const LEADER_READONLY_VIEWS = ['codes']; // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
+const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','accident'];
+const LEADER_READONLY_VIEWS = ['codes','accident']; // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
   const e = String(email||'').toLowerCase();
@@ -2376,6 +2433,10 @@ function isEditorOnlyView(v){ return EDITOR_ONLY_VIEWS.includes(v); }
 function updateNavForRole(){
   document.querySelectorAll('nav#nav a[data-view]').forEach(a=>{ a.style.display = roleCanSee(a.dataset.view) ? '' : 'none'; });
   document.querySelectorAll('nav#nav [data-role-section="union"]').forEach(x=> x.style.display = (userRole==='union' || userRole==='all') ? '' : 'none');
+  // 사고경위서: 조장관리·UNION은 '조장관리' 아래, 배포(보기전용) 모드는 '업무' 아래에 보여 줌
+  const editorRole = (userRole==='leader' || userRole==='union' || userRole==='all');
+  document.querySelectorAll('nav#nav [data-nav-editor]').forEach(x=> x.style.display = editorRole ? '' : 'none');
+  document.querySelectorAll('nav#nav [data-nav-viewer], nav#nav [data-role-section="work"]').forEach(x=> x.style.display = editorRole ? 'none' : '');
 }
 // 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
 function applyReadonly(el){
@@ -2984,9 +3045,10 @@ function render(){
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
   else if(VIEW==='payroll') el.innerHTML = pagePayroll();
+  else if(VIEW==='accident') el.innerHTML = pageAccident();
 
   afterRender();
-  if(!canEdit) applyReadonly(el);
+  if(!canEdit && VIEW!=='accident') applyReadonly(el); // 사고경위서는 누구나 작성·출력(저장 안 함)
 }
 
 function workBadge(code){
@@ -3948,6 +4010,77 @@ function bindPayroll(el){
   }
 }
 
+/* ========================= 사고경위서(작성·출력) =========================
+   엑셀 '사고 경위서(주양식)'과 같은 모양. 입력한 내용은 이 기기 화면에만 있고(클라우드 저장 안 함) 출력·PDF 저장으로 남김 */
+const ACC_LOGO = 'data:image/png;base64,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';
+const ACC_FIELDS = ['name','dept','birth','role','phone','hire','when','where','equip','story','opinion','wdate','writer','boss'];
+let accForm = null;
+function accDefault(){
+  const t = todayStr().split('-');
+  return {name:'', dept:'운영팀', birth:'', role:'', phone:'', hire:'', when:'', where:'', equip:'', story:'', opinion:'',
+          wdate:`${t[0]} 년  ${Number(t[1])} 월  ${Number(t[2])} 일`, writer:'', boss:''};
+}
+function pageAccident(){
+  if(!accForm) accForm = accDefault();
+  const f = accForm, v = k => esc(f[k]||'');
+  const inp = (k, ph='', extra='') => `<input class="accIn" data-acc="${k}" value="${v(k)}" placeholder="${esc(ph)}" autocomplete="off" ${extra}>`;
+  const names = employees.slice().sort((a,b)=> String(a.name).localeCompare(String(b.name),'ko')).map(e=>`<option value="${esc(e.name)}">`).join('');
+  return `
+  <h2 class="pgttl accNoPrint">사고경위서</h2>
+  <div class="row accNoPrint" style="margin-bottom:12px;">
+    <button class="btn" id="accPrint">🖨️ 출력 (인쇄 · PDF 저장)</button>
+    <button class="btn warn ghost" id="accReset">새로 작성</button>
+    <span class="hint" style="margin:0;">칸을 눌러 바로 입력하세요. 입력한 내용은 이 기기에만 있고 저장되지 않아요.</span>
+  </div>
+  <datalist id="accNames">${names}</datalist>
+  <div class="accWrap"><div class="accSheet" id="accSheet">
+    <div class="accTop">(내,외부 겸용)</div>
+    <table class="accTbl">
+      <colgroup><col style="width:7.9%"><col style="width:8.9%"><col style="width:21.2%"><col style="width:10.9%"><col style="width:7.9%"><col style="width:8.8%"><col style="width:21.4%"><col style="width:13%"></colgroup>
+      <tr class="accTitleRow"><td colspan="8"><img class="accLogo" src="${ACC_LOGO}" alt="SNCT"><div class="accTitle">경 위 서</div><div class="accSub">Accident Report</div></td></tr>
+      <tr class="accInfo"><th colspan="2">성 &nbsp; 명</th><td colspan="2">${inp('name','이름','list="accNames"')}</td><th colspan="2">소 &nbsp; 속</th><td colspan="2">${inp('dept')}</td></tr>
+      <tr class="accInfo"><th colspan="2">생년월일</th><td colspan="2">${inp('birth')}</td><th colspan="2">직 &nbsp; 책</th><td colspan="2">${inp('role')}</td></tr>
+      <tr class="accInfo"><th colspan="2">연락처</th><td colspan="2">${inp('phone','','inputmode="tel"')}</td><th colspan="2">입사일자</th><td colspan="2">${inp('hire')}</td></tr>
+      <tr class="accHead"><th colspan="8">내 &nbsp; &nbsp; 용</th></tr>
+      <tr class="accGap"><td colspan="8"></td></tr>
+      <tr class="accLine"><th colspan="2">□ 사고일시 :</th><td colspan="6">${inp('when')}</td></tr>
+      <tr class="accLine"><th colspan="2">□ 사고장소 :</th><td colspan="6">${inp('where')}</td></tr>
+      <tr class="accLine"><th colspan="2">□ 사고장비 :</th><td colspan="6">${inp('equip')}</td></tr>
+      <tr class="accLine"><th colspan="8">□ 사고 발생경위 (자세하게 기재바랍니다.)</th></tr>
+      <tr class="accBox"><td colspan="8"><textarea class="accTa" data-acc="story" rows="12" style="--lines:12">${v('story')}</textarea><div class="accTaPrint" style="--lines:12">${v('story')}</div></td></tr>
+      <tr class="accLine"><th colspan="8">□ 관리감독자 의견</th></tr>
+      <tr class="accBox accLast"><td colspan="8"><textarea class="accTa" data-acc="opinion" rows="3" style="--lines:3">${v('opinion')}</textarea><div class="accTaPrint" style="--lines:3">${v('opinion')}</div></td></tr>
+    </table>
+    <div class="accOath">위 기재한 사실이 틀림없음을 확인하며, 만일 위 내용이 허위일 경우 모든 책임을 감수하겠습니다.</div>
+    <div class="accSign">
+      <div><span class="k">작 성 일 :</span>${inp('wdate')}<span class="s"></span></div>
+      <div><span class="k">작 성 자 :</span>${inp('writer','(이름)')}<span class="s">(인)</span></div>
+      <div><span class="k">관리 감독자 :</span>${inp('boss')}<span class="s">(인)</span></div>
+    </div>
+  </div></div>`;
+}
+function bindAccident(el){
+  const sheet = el.querySelector('#accSheet'); if(!sheet) return;
+  sheet.querySelectorAll('[data-acc]').forEach(x=>{
+    x.oninput = ()=>{
+      accForm[x.dataset.acc] = x.value;
+      if(x.tagName==='TEXTAREA'){ const m = x.parentElement.querySelector('.accTaPrint'); if(m) m.textContent = x.value; }
+      if(x.dataset.acc==='name'){ const w = sheet.querySelector('[data-acc="writer"]'); if(w && (!accForm.writer || accForm._autoWriter)){ w.value = x.value; accForm.writer = x.value; accForm._autoWriter = true; } }
+      if(x.dataset.acc==='writer') accForm._autoWriter = false;
+    };
+  });
+  const p = el.querySelector('#accPrint');
+  if(p) p.onclick = ()=>{
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    document.body.classList.add('printing-acc');
+    const done = ()=>{ document.body.classList.remove('printing-acc'); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    setTimeout(()=>{ window.print(); setTimeout(done, 1500); }, 50);
+  };
+  const r = el.querySelector('#accReset');
+  if(r) r.onclick = ()=> appConfirm('입력한 내용을 모두 지우고 새로 작성할까요?', ()=>{ accForm = accDefault(); render(); });
+}
+
 /* ========================= 조별 월간집계 ========================= */
 function pageTeamOT(){
   const sortedEmployees = employees.slice().filter(e=> !teamOtFilter || (e.team||'')===teamOtFilter).sort((a,b)=>{
@@ -4735,6 +4868,7 @@ function afterRender(){
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; autoDispatchShift(); render(); });
   bindPayroll(el);
+  bindAccident(el);
   fitOtTable();
   fitInputTable();
   fitCombined();
