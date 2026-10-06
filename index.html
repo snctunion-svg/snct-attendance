@@ -3514,33 +3514,52 @@ function fitOtTable(){
     rows.forEach(tr=>{ const h = tr.getBoundingClientRect().height / z; tr.style.height = Math.min(h + extra, 60) + 'px'; });
   }
 }
-// 출퇴근 입력: PC에서 표 '세로'가 화면 안에 들어오도록만 축소(가로는 그대로)
-function fitInputTable(){
-  const t = document.querySelector('table.inTbl'); if(!t) return;
-  t.style.zoom = '';
-  if(VIEW!=='input' || window.innerWidth <= 700) return;
-  const top = t.getBoundingClientRect().top;
-  const below = 90; // 표 아래 저장·초기화 버튼 자리
-  const availH = window.innerHeight - Math.max(0, top) - below;
-  const h = t.getBoundingClientRect().height;
-  if(availH > 200 && h > availH){ const z = Math.max(0.5, Math.floor(availH / h * 100)/100); t.style.zoom = z; }
+// 표를 PC 화면에 '맞춤': 남으면 늘리고(줄 높이·표 폭), 넘치면 줄임(zoom)
+//  fitW: 표 폭을 자기 칸 폭에 꽉 맞춤 / fitH: 표 아래가 화면 아래(reserve 만큼 위)에 닿도록 줄 높이 조절
+function fitTableToScreen(t, {fitW=false, fitH=true, reserve=16, minRow=24, maxRow=90}={}){
+  if(!t) return;
+  const rows = Array.from(t.querySelectorAll('tbody tr'));
+  t.style.zoom = ''; t.style.width = ''; rows.forEach(tr=> tr.style.height = '');
+  if(window.innerWidth <= 700) return; // 휴대폰은 원래 크기(두 손가락 확대·축소)
+  let z = 1;
+  if(fitW){
+    const wrap = t.parentElement, w = wrap.clientWidth - 4;
+    t.style.width = '100%';
+    const sw = t.scrollWidth;
+    if(sw > w + 2){ z = Math.max(0.4, Math.floor(w / sw * 1000)/1000 - 0.005); t.style.zoom = z; }
+  }
+  if(fitH && rows.length){
+    const top = t.getBoundingClientRect().top;
+    const availH = window.innerHeight - Math.max(0, top) - reserve;
+    if(availH < 120) return;
+    const curH = t.getBoundingClientRect().height;               // 화면에 보이는 높이(zoom 반영)
+    const bodyH = rows.reduce((a,tr)=> a + tr.getBoundingClientRect().height, 0);
+    const headH = curH - bodyH;
+    let rowH = ((availH - headH) / rows.length) / z;              // zoom 전 기준 줄 높이
+    if(rowH >= minRow){
+      rowH = Math.min(rowH, maxRow);
+      rows.forEach(tr=> tr.style.height = rowH + 'px');
+      // 칸 안 내용 때문에 원하는 만큼 안 줄어들면 남는 만큼 전체를 줄임
+      const nowH = t.getBoundingClientRect().height;
+      if(nowH > availH + 2){ z = Math.max(0.4, z * availH / nowH); t.style.zoom = z; }
+    } else {
+      rows.forEach(tr=> tr.style.height = minRow + 'px');
+      const nowH = t.getBoundingClientRect().height;
+      if(nowH > availH){ z = Math.max(0.4, z * availH / nowH); t.style.zoom = z; }
+    }
+  }
 }
-// 근태관리: PC에서 왼쪽 집계표·오른쪽 월별 근태가 가로·세로 모두 한 화면에 다 보이도록 자동 축소
+// 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
+function fitInputTable(){
+  if(VIEW!=='input') return;
+  fitTableToScreen(document.querySelector('table.inTbl'), {fitW:false, fitH:true, reserve:92, minRow:30, maxRow:80});
+}
+// 근태관리: 왼쪽 집계표·오른쪽 월별 근태를 각각 칸 폭과 화면 아래까지 꽉 맞춤
 function fitCombined(){
+  if(VIEW!=='combined') return;
   const wrap = document.querySelector('.cmbWrap'); if(!wrap) return;
-  const tables = Array.from(wrap.querySelectorAll('table.ctbl'));
-  wrap.style.zoom = ''; tables.forEach(t=> t.style.zoom = '');
-  if(VIEW!=='combined' || window.innerWidth <= 700) return;
-  // 1) 표마다 자기 칸 폭에 맞게(가로 스크롤 없이)
-  tables.forEach(t=>{
-    const w = t.parentElement.clientWidth - 6, sw = t.scrollWidth;
-    if(sw > w + 4){ t.style.zoom = Math.max(0.45, Math.floor(w / sw * 100)/100 - 0.01); }
-  });
-  // 2) 전체 높이가 화면보다 크면 한 번 더 줄여서 세로도 한 화면에
-  const top = wrap.getBoundingClientRect().top;
-  const availH = window.innerHeight - Math.max(0, top) - 12;
-  const h = wrap.getBoundingClientRect().height;
-  if(availH > 200 && h > availH) wrap.style.zoom = Math.max(0.5, Math.floor(availH / h * 100)/100);
+  wrap.style.zoom = '';
+  wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70}));
 }
 window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
