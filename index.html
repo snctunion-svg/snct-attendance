@@ -191,16 +191,34 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .gtbl .sepL{border-left:3px solid var(--text) !important;}
 /* 근태관리(집계·월별 근태)·월별 OT현황: 바탕은 흰색 그대로, 칸 선을 회색 보통선으로(바깥 검은 테두리는 그대로) */
 .ctbl th,.ctbl td,.otSum th,.otSum td{border:1px solid #c4cad3 !important;}
-/* 구역 구분선(회색, 바깥 테두리보다 얇게): 머리글 아래 · 성명 오른쪽 · 그룹 사이 */
-.ctbl .sepL,.otSum .sepL{border-left:2px solid #a3aab5 !important;}
-.ctbl tbody tr:first-child > td,.otSum tbody tr:first-child > td{border-top:2px solid #a3aab5 !important;}
-.cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{border-right:2px solid #a3aab5 !important;}
+/* 구역 구분선(얇은 검은 선): 머리글 아래 · 성명 오른쪽 · 그룹 사이
+   (표 칸 선이 겹치는 방식 때문에 선 양쪽 칸에 같이 그려야 검은색이 확실히 보임) */
+.otSum tbody td:not(.gc),.ctbl tbody tr > td:first-child{background:var(--surface);} /* No·식사·일자 칸 흰 바탕 */
+.ctbl .sepL,.otSum .sepL{border-left:var(--sepW,1px) solid #111 !important;}
+.ctbl td:has(+ .sepL),.ctbl th:has(+ .sepL){border-right:var(--sepW,1px) solid #111 !important;}
+.ctbl tbody tr:first-child > td,.otSum tbody tr:first-child > td{border-top:var(--sepW,1px) solid #111 !important;}
+.ctbl thead tr:last-child > th,.ctbl thead th[rowspan],.otSum thead tr:last-child > th,.otSum thead th[rowspan]{border-bottom:var(--sepW,1px) solid #111 !important;}
+.cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{border-right:var(--sepW,1px) solid #111 !important;}
+.cmbRight .ctbl th.namehead + th,.cmbRight .ctbl td.namecell + td{border-left:var(--sepW,1px) solid #111 !important;}
 /* 월별 OT현황 구역: 성명|식사|평일|지원|휴일|OT|성명|일자별 */
 .otSum tbody td:nth-child(3),.otSum tbody td:nth-child(4),.otSum tbody td:nth-child(5),.otSum tbody td:nth-child(7),
 .otSum tbody td:nth-child(9),.otSum tbody td:nth-child(11),.otSum tbody td:nth-child(12),
 .otSum thead tr:first-child th:nth-child(n+3),
 .otSum thead tr:nth-child(2) th:nth-child(1),.otSum thead tr:nth-child(2) th:nth-child(2),.otSum thead tr:nth-child(2) th:nth-child(3),
-.otSum thead tr:nth-child(2) th:nth-child(5),.otSum thead tr:nth-child(2) th:nth-child(7),.otSum thead tr:nth-child(2) th:nth-child(9){border-left:2px solid #a3aab5 !important;}
+.otSum thead tr:nth-child(2) th:nth-child(5),.otSum thead tr:nth-child(2) th:nth-child(7),.otSum thead tr:nth-child(2) th:nth-child(9){border-left:var(--sepW,1px) solid #111 !important;}
+.otSum tbody td:nth-child(2),.otSum tbody td:nth-child(3),.otSum tbody td:nth-child(4),.otSum tbody td:nth-child(6),
+.otSum tbody td:nth-child(8),.otSum tbody td:nth-child(10),.otSum tbody td:nth-child(11),
+.otSum thead tr:first-child th:nth-child(n+2):not(:last-child),
+.otSum thead tr:nth-child(2) th:nth-child(1),.otSum thead tr:nth-child(2) th:nth-child(2),.otSum thead tr:nth-child(2) th:nth-child(4),
+.otSum thead tr:nth-child(2) th:nth-child(6),.otSum thead tr:nth-child(2) th:nth-child(8){border-right:var(--sepW,1px) solid #111 !important;}
+.ctbl tbody tr:first-child > td,.otSum tbody tr:first-child > td{border-top:var(--sepW,1px) solid #111 !important;}
+.cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{border-right:var(--sepW,1px) solid #111 !important;}
+/* 월별 OT현황 구역: 성명|식사|평일|지원|휴일|OT|성명|일자별 */
+.otSum tbody td:nth-child(3),.otSum tbody td:nth-child(4),.otSum tbody td:nth-child(5),.otSum tbody td:nth-child(7),
+.otSum tbody td:nth-child(9),.otSum tbody td:nth-child(11),.otSum tbody td:nth-child(12),
+.otSum thead tr:first-child th:nth-child(n+3),
+.otSum thead tr:nth-child(2) th:nth-child(1),.otSum thead tr:nth-child(2) th:nth-child(2),.otSum thead tr:nth-child(2) th:nth-child(3),
+.otSum thead tr:nth-child(2) th:nth-child(5),.otSum thead tr:nth-child(2) th:nth-child(7),.otSum thead tr:nth-child(2) th:nth-child(9){border-left:var(--sepW,1px) solid #111 !important;}
 /* 급여 지급명세서 */
 .psWrap{overflow-x:auto;padding-bottom:10px;}
 .psSheet{background:#fff;color:#111;max-width:780px;min-width:680px;margin:0;padding:22px 24px 18px;border-radius:8px;border:1px solid var(--border);font-size:12.5px;position:relative;}
@@ -3523,6 +3541,7 @@ function fitOtTable(){
   let z = Math.min(1, availW / t.scrollWidth);
   z = Math.max(0.45, Math.floor(z*100)/100);
   if(z < 1) t.style.zoom = z;
+  t.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); // 줄여도 구분선이 화면에서 1px로 보이게
   // 세로: 남는 아래 공간만큼 줄 높이를 늘려서 화면 아래까지 크게(글씨는 그대로, 칸만 높아짐)
   const top = wrap.getBoundingClientRect().top;
   const availH = window.innerHeight - Math.max(0, top) - 20;
@@ -3538,6 +3557,7 @@ function fitTableToScreen(t, {fitW=false, fitH=true, reserve=16, minRow=24, maxR
   if(!t) return;
   const rows = Array.from(t.querySelectorAll('tbody tr'));
   t.style.zoom = ''; t.style.width = ''; rows.forEach(tr=> tr.style.height = '');
+  t.style.removeProperty('--sepW');
   if(window.innerWidth <= 700) return; // 휴대폰은 원래 크기(두 손가락 확대·축소)
   let z = 1;
   if(fitW){
@@ -3566,6 +3586,7 @@ function fitTableToScreen(t, {fitW=false, fitH=true, reserve=16, minRow=24, maxR
       if(nowH > availH){ z = Math.max(0.4, z * availH / nowH); t.style.zoom = z; }
     }
   }
+  if(z < 1) t.style.setProperty('--sepW', (1/z).toFixed(2)+'px');
 }
 // 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
 function fitInputTable(){
