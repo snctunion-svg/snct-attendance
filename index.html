@@ -3497,15 +3497,22 @@ function pageOT(){
 function fitOtTable(){
   const t = document.querySelector('table.otSum'); if(!t) return;
   const wrap = t.parentElement;
-  t.style.zoom = '';
+  const rows = Array.from(t.querySelectorAll('tbody tr'));
+  t.style.zoom = ''; rows.forEach(tr=> tr.style.height = '');
   if(VIEW!=='ot' || window.innerWidth <= 700) return;
+  // 가로: 표 전체 폭이 화면에 들어오게 축소
   const availW = wrap.clientWidth - 2;
-  const top = wrap.getBoundingClientRect().top + window.scrollY;
-  const availH = window.innerHeight - Math.max(0, top - window.scrollY) - 16;
-  const w = t.scrollWidth, h = t.scrollHeight;
-  let z = Math.min(1, availW / w, availH > 200 ? availH / h : 1);
+  let z = Math.min(1, availW / t.scrollWidth);
   z = Math.max(0.45, Math.floor(z*100)/100);
   if(z < 1) t.style.zoom = z;
+  // 세로: 남는 아래 공간만큼 줄 높이를 늘려서 화면 아래까지 크게(글씨는 그대로, 칸만 높아짐)
+  const top = wrap.getBoundingClientRect().top;
+  const availH = window.innerHeight - Math.max(0, top) - 20;
+  const curH = t.getBoundingClientRect().height;
+  if(rows.length && availH > curH + 4){
+    const extra = (availH - curH) / z / rows.length;
+    rows.forEach(tr=>{ const h = tr.getBoundingClientRect().height / z; tr.style.height = Math.min(h + extra, 60) + 'px'; });
+  }
 }
 window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(fitOtTable, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
