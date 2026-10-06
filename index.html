@@ -3472,7 +3472,7 @@ function dedRatesNow(){ return payRateDraft || payDedRates; }
 // 통상시급 자동값: (기본급 + 근속수당) ÷ 209, 원 단위 반올림 — 9월 명세서: (4,332,770+90,000)/209 = 21,162
 function autoOrdinary(p, asOf){
   const base = Math.floor((Number(p.hourly)||0) * PAY_BASE_HOURS / 10) * 10;
-  return base ? Math.round((base + tenureAllowance(p.hire, asOf)) / PAY_BASE_HOURS) : 0;
+  return base ? Math.round((base + tenureAllowance(p.hire, asOf) + (Number(p.etcAllow)||0)) / PAY_BASE_HOURS) : 0; // (기본급+근속수당+기타수당)÷209
 }
 // 'oo-oo-oo'(또는 8자리) → 'YYYY-MM-DD'. 두 자리 연도는 올해 이하면 20xx, 아니면 19xx
 function payDateFull(str){
@@ -3550,6 +3550,7 @@ function pagePayroll(){
       <td><select class="tx" data-pay="grade" data-emp="${esc(e.id)}"><option value=""></option>${PAY_GRADES.map(g=>`<option${p.grade===g?' selected':''}>${g}</option>`).join('')}</select></td>
       <td><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}" placeholder="oo-oo-oo"></td>
       <td>${money('hourly')}</td>
+      <td>${money('etcAllow')}</td>
       <td>${money('ordinary')}</td>
       <td class="tenureCell" data-emp="${esc(e.id)}" style="text-align:right;white-space:nowrap;padding:0 10px;font-weight:700;">${tenureCellHtml(p)}</td>
     </tr>`;
@@ -3571,7 +3572,7 @@ function pagePayroll(){
     ${payMgrTab==='ded' ? `<p class="hint" style="margin:0 0 10px;">항목마다 한 번만 정하면 <b>모든 사람의 급여명세서</b>에 일괄 적용돼요. % 는 지급총액 기준(10원 미만 버림), 원 은 모든 사람 같은 금액이에요.</p>
       <div class="scrollx"><table class="payTbl rateTbl"><thead><tr><th>공제 항목</th><th>값</th><th>단위</th><th></th></tr></thead><tbody>${rateRows}</tbody></table></div>`
     : list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th>
+      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>기타수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th>
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
   </div>`;
 }
@@ -3636,6 +3637,7 @@ function renderPaySlip(){
   };
   // 기타수당 = 보전 OT 총액 − 다른 OT 수당 합계(10원 단위 차이를 기타수당에서 맞춤 — 9월 명세서와 같은 방식)
   if(pc.diff > 0) a.etc = Math.max(r10(pc.guar*rate) - (a.ext + a.night + a.hol + a.holOT + a.holN + a.sup), 0);
+  a.etc += Number(p.etcAllow)||0; // 급여관리의 기타수당(매달 정액)도 명세서 '기타수당'에 더함
   const total = a.base + a.tenure + a.ext + a.night + a.hol + a.holOT + a.holN + a.etc + a.sup + a.tk;
   const ded = {}; PAY_DED.forEach(([k])=>{ ded[k] = dedAmount(payDedRates[k], total); });
   const dedTotal = PAY_DED.reduce((x,[k])=> x + ded[k], 0);
@@ -3675,7 +3677,7 @@ function renderPaySlip(){
       <tr class="bt">${H('합계')}<td class="h"></td><td class="h" colspan="2">지급총액</td><td class="h" colspan="2">공제총액</td><td class="h">실지급액</td></tr>
       <tr><td class="h"></td><td></td><td colspan="2">${slipWon(total)}</td><td colspan="2">${slipWon(dedTotal)}</td><td>${slipWon(total - dedTotal)}</td></tr>
     </table></div>
-    <div class="slipNote">※ 출퇴근 기록으로 계산한 예상 금액입니다. 기본급 = 시급 × ${PAY_BASE_HOURS}시간(10원 미만 버림), 수당은 통상시급 기준(10원 단위 반올림), 기타수당 = (보전 OT − 실 OT) × 통상시급, 타조지원 = D·N 지원일 OT × 통상시급, 특근수당 = SC 지원일 × 8시간 × 시급. 시간은 '시간.분'(28.3 = 28시간 30분). 공제내역은 급여관리의 공제율(지급총액 기준 %, 10원 미만 버림)로 계산한 금액입니다.</div>
+    <div class="slipNote">※ 출퇴근 기록으로 계산한 예상 금액입니다. 기본급 = 시급 × ${PAY_BASE_HOURS}시간(10원 미만 버림), 수당은 통상시급 기준(10원 단위 반올림), 기타수당 = (보전 OT − 실 OT) × 통상시급 + 급여관리의 기타수당, 통상시급 = (기본급+근속수당+기타수당)÷209, 타조지원 = D·N 지원일 OT × 통상시급, 특근수당 = SC 지원일 × 8시간 × 시급. 시간은 '시간.분'(28.3 = 28시간 30분). 공제내역은 급여관리의 공제율(지급총액 기준 %, 10원 미만 버림)로 계산한 금액입니다.</div>
   </div></div>`;
 }
 function bindPayroll(el){
@@ -3722,7 +3724,7 @@ function bindPayroll(el){
         payDraft[id][k] = digits ? Number(digits) : '';
       }
       // 시급·근속수당을 바꾸면 같은 줄 통상시급 칸의 '자동' 값도 바로 바뀜(사람마다 근속수당이 달라서)
-      if(k==='hourly' || k==='tenure' || k==='hire'){
+      if(k==='hourly' || k==='tenure' || k==='hire' || k==='etcAllow'){
         const o = el.querySelector(`input[data-pay="ordinary"][data-emp="${CSS.escape(id)}"]`);
         if(o){ const v = autoOrdinary(payOf(id)); o.placeholder = v ? '자동 '+v.toLocaleString('ko-KR') : '0'; }
       }
@@ -5073,7 +5075,7 @@ function renderPayslip(){
       <tr><td class="psSec">합계</td><td class="psL" colspan="2">지급총액</td><td class="psL" colspan="2">공제총액</td><td class="psL" colspan="2">실지급액</td></tr>
       <tr><td class="psSec"></td><td class="psV psTot" colspan="2">${won(a.gross)}</td><td class="psV psTot" colspan="2"></td><td class="psV psTot" colspan="2">${won(a.gross)}</td></tr>
     </table>
-    <p class="hint">노란 칸(기본급·근속·기술수당 등)은 직접 입력하는 금액이고, 연한 파란 칸은 근태 기록으로 자동 계산됩니다(기타수당 = (보전 OT − 실 OT) × 통상시급, 10원 단위 반올림). 공제내역은 공제율을 정한 뒤 추가할 예정이라 지금은 비어 있어요. 시간은 명세서처럼 '시간.분'(28.3 = 28시간 30분)으로 표시합니다.</p>
+    <p class="hint">노란 칸(기본급·근속·기술수당 등)은 직접 입력하는 금액이고, 연한 파란 칸은 근태 기록으로 자동 계산됩니다(기타수당 = (보전 OT − 실 OT) × 통상시급 + 급여관리의 기타수당, 통상시급 = (기본급+근속수당+기타수당)÷209, 10원 단위 반올림). 공제내역은 공제율을 정한 뒤 추가할 예정이라 지금은 비어 있어요. 시간은 명세서처럼 '시간.분'(28.3 = 28시간 30분)으로 표시합니다.</p>
   </div></div>`;
 }
 function payCalc(e, start, end){
