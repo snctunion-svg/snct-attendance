@@ -3493,6 +3493,21 @@ function pageOT(){
   ${paySlip ? renderPaySlip() : ''}
   `;
 }
+/* 월별 OT현황: PC에서는 표 전체(가로·세로)가 한 화면에 들어오도록 자동으로 축소(휴대폰은 그대로, 손가락으로 확대·축소) */
+function fitOtTable(){
+  const t = document.querySelector('table.otSum'); if(!t) return;
+  const wrap = t.parentElement;
+  t.style.zoom = '';
+  if(VIEW!=='ot' || window.innerWidth <= 700) return;
+  const availW = wrap.clientWidth - 2;
+  const top = wrap.getBoundingClientRect().top + window.scrollY;
+  const availH = window.innerHeight - Math.max(0, top - window.scrollY) - 16;
+  const w = t.scrollWidth, h = t.scrollHeight;
+  let z = Math.min(1, availW / w, availH > 200 ? availH / h : 1);
+  z = Math.max(0.45, Math.floor(z*100)/100);
+  if(z < 1) t.style.zoom = z;
+}
+window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(fitOtTable, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
@@ -4599,6 +4614,7 @@ function afterRender(){
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; autoDispatchShift(); render(); });
   bindPayroll(el);
+  fitOtTable();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
