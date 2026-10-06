@@ -370,6 +370,24 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable .dpI4{left:176px;min-width:50px;width:50px;}
 #dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:2px solid var(--text-muted);}
 #dpTable td.dpI1[colspan]{min-width:272px;border-right:2px solid var(--text-muted);}
+@media (min-width:701px){
+  /* PC: 배차표를 작게 — 행·열이 한 화면에 들어오도록 칸 크기·글씨를 줄임 */
+  #dpTable{font-size:11px;}
+  #dpTable th,#dpTable td{height:24px;padding:0 2px;}
+  #dpTable td.dpCell,#dpTable th.dpSlotH,#dpTable td.dpMeal{min-width:26px;width:26px;}
+  #dpTable th.dpSlotH{font-size:11px;}
+  #dpTable .dpTxt{font-size:9px;}
+  #dpTable .dpInline{height:22px;font-size:12px;}
+  #dpTable .dpNote{min-height:22px;font-size:11px;}
+  #dpTable .dpI1{min-width:30px;width:30px;}
+  #dpTable .dpI2{left:30px;min-width:70px;width:70px;}
+  #dpTable .dpI2 input{width:62px !important;font-size:11px;padding:2px 4px !important;}
+  #dpTable .dpI3{left:100px;min-width:40px;width:40px;}
+  #dpTable .dpI4{left:140px;min-width:42px;width:42px;}
+  #dpTable .dpI5{left:182px;min-width:38px;width:38px;}
+  #dpTable td.dpI1[colspan]{min-width:220px;}
+  #dpTable .badge,#dpTable .rk{transform:scale(.85);}
+}
 @media (max-width:700px){
   /* 폰: 번호·성명만 고정하고 좁게 → 시간 칸이 더 많이 보이게 */
   #dpTable .dpI3,#dpTable .dpI4,#dpTable .dpI5{position:static;}
@@ -423,11 +441,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <div class="navttl" style="margin-top:10px;">조장관리</div>
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
+    <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
     <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
-    <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="payroll"><span class="ic">💰</span>급여관리</a>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
@@ -1239,14 +1257,15 @@ const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 //  · 나머지(D·N·DN·ND·DS·UJ·E·EC·CK 등): 검은 글씨만
 const RED_CODES = new Set(['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL']);
 const SKY_CODES = new Set([]);
-const CODE_STYLE = {FC:{bg:'#2563eb',fg:'#ffffff',txt:'#1d4ed8'}, MC:{bg:'#fde047',fg:'#111111',txt:'#a16207'},
-  SP:{bg:'#7c3aed',fg:'#ffffff',txt:'#7c3aed'}, VP:{bg:'#fbcfe8',fg:'#be185d',txt:'#db2777'}, SC:{bg:'#e5e7eb',fg:'#4b5563',txt:'#4b5563'}};
-const GROUP_STYLE = {red:{bg:'#dc2626',fg:'#ffffff',txt:'#dc2626'}, yellow:CODE_STYLE.MC, blue:CODE_STYLE.FC, pink:CODE_STYLE.VP, purple:CODE_STYLE.SP, gray:CODE_STYLE.SC, sky:{bg:'#e0f2fe',fg:'#0369a1',txt:'#0369a1'}, black:{bg:'',fg:'var(--text)',txt:'var(--text)'}};
+// 근태코드 배경: 빨강·파랑·노랑·보라는 연한 색 배경 + 진한 글씨(눈이 덜 피로하게)
+const CODE_STYLE = {FC:{bg:'#dbeafe',fg:'#1d4ed8',txt:'#1d4ed8'}, MC:{bg:'#fef9c3',fg:'#a16207',txt:'#a16207'},
+  SP:{bg:'#ede9fe',fg:'#6d28d9',txt:'#7c3aed'}, VP:{bg:'#fbcfe8',fg:'#be185d',txt:'#db2777'}, SC:{bg:'#e5e7eb',fg:'#4b5563',txt:'#4b5563'}};
+const GROUP_STYLE = {red:{bg:'#fee2e2',fg:'#b91c1c',txt:'#dc2626'}, yellow:CODE_STYLE.MC, blue:CODE_STYLE.FC, pink:CODE_STYLE.VP, purple:CODE_STYLE.SP, gray:CODE_STYLE.SC, sky:{bg:'#e0f2fe',fg:'#0369a1',txt:'#0369a1'}, black:{bg:'',fg:'var(--text)',txt:'var(--text)'}};
 function codeStyle(code){
   const cd = (typeof codeDefs!=='undefined') && codeDefs[code];
   if(cd && cd.color && GROUP_STYLE[cd.color]) return GROUP_STYLE[cd.color];
   if(CODE_STYLE[code]) return CODE_STYLE[code];
-  if(RED_CODES.has(code)) return {bg:'#dc2626', fg:'#ffffff', txt:'#dc2626'};
+  if(RED_CODES.has(code)) return GROUP_STYLE.red;
   return {bg:'', fg:'var(--text)', txt:'var(--text)'};
 }
 // 색깔별 나열 순서: 검정 → 빨강 → 노랑 → 파랑 → 분홍 → 회색 → 하늘 → 그 외
@@ -2090,6 +2109,7 @@ const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['combined','ot','dispatch','splan','vessel','berth'];
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail'];
 const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll'];
+const LEADER_READONLY_VIEWS = ['codes']; // 조장관리는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
   const e = String(email||'').toLowerCase();
@@ -2100,7 +2120,7 @@ function roleOfEmail(email){
 // UNION은 모든 화면을 보고 수정할 수 있음(전체 관리자)
 function roleCanSee(v){
   if(userRole==='all' || userRole==='union' || VIEWER_VIEWS.includes(v)) return true;
-  if(userRole==='leader') return LEADER_VIEWS.includes(v);
+  if(userRole==='leader') return LEADER_VIEWS.includes(v) || LEADER_READONLY_VIEWS.includes(v);
   if(userRole==='union') return UNION_VIEWS.includes(v);
   return false;
 }
@@ -4068,7 +4088,7 @@ function pageCodes(){
   </div>` : '';
   return `
   <h2 class="pgttl">근태코드</h2>
-  <div class="note">근무코드(D/N 등)와 근태코드를 <b>색깔별로</b> 모아 보여줍니다. 설명을 고치고 저장하거나, 삭제 버튼으로 정리할 수 있어요.</div>
+  <div class="note">근무코드(D/N 등)와 근태코드를 <b>색깔별로</b> 모아 보여줍니다. ${roleCanEdit('codes') ? '설명을 고치고 저장하거나, 삭제 버튼으로 정리할 수 있어요.' : '수정은 UNION에서만 할 수 있어요(보기 전용).'}</div>
   <div class="panel">
     <h3>전체 코드</h3>
     <div class="scrollx"><table class="tbl"><thead><tr><th>코드</th><th>의미/설명</th><th></th><th></th></tr></thead><tbody>${wcRows}${scRows}</tbody></table></div>
