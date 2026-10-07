@@ -464,7 +464,22 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .gtbl th.namehead.noStick{position:sticky;left:auto !important;top:0;}
 .gtbl td.namecell.stName{position:sticky;left:33px !important;z-index:3;background:var(--surface);}
 /* 휴대폰에서 옆으로 밀 때 고정 칸 경계로 뒤 칸이 비치지 않도록, 고정 칸 둘레를 선 색으로 한 번 더 덮음 */
-.gtbl td.stNo,.gtbl td.namecell.stName,.gtbl th.namehead:not(.noStick){outline:1px solid #c4cad3;outline-offset:0;}
+.gtbl td.stNo,.gtbl td.namecell.stName,.gtbl th.namehead:not(.noStick){outline:0;}
+/* 고정 칸(No·성명): 옆으로 밀어도 칸 선이 일정하게 보이도록 선을 칸 안쪽에 그림 */
+.gtbl td.stNo{box-shadow:none;}
+.gtbl td.namecell.stName{box-shadow:none;}
+/* 월별 OT현황 고정 칸(No·성명): 옆으로 밀어도 선이 한 줄로 일정하게 — 칸의 원래 선은 숨기고 같은 선을 안쪽에 한 번만 그림 */
+.otSum td.stNo,.otSum td.namecell.stName,.otSum thead th.namehead:not(.noStick){border-right-style:hidden !important;border-bottom-style:hidden !important;}
+.otSum td.namecell.stName,.otSum thead th.namehead:not(.noStick)+th.namehead:not(.noStick){border-left-style:hidden !important;}
+.otSum td.stNo{box-shadow:inset -1px 0 0 #c4cad3, inset 0 -1px 0 #c4cad3 !important;}
+.otSum td.namecell.stName{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #c4cad3, 1px 0 0 #111 !important;}
+.otSum thead th.namehead:not(.noStick){box-shadow:inset -1px 0 0 #c4cad3, inset 0 -1px 0 #111, 0 0 0 0 transparent !important;}
+.otSum thead th.namehead:not(.noStick)+th.namehead:not(.noStick){box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111, 1px 0 0 #111, 4px 0 0 var(--bg) !important;}
+.otSum tbody tr:first-child td.stNo,.otSum tbody tr:first-child td.namecell.stName{border-top:1px solid #111 !important;}
+/* 성명: 가운데 정렬, 글자 수(3·4자)와 상관없이 같은 폭·같은 높이 */
+.otSum td.namecell{text-align:center !important;white-space:nowrap;padding:4px 6px !important;min-width:64px;vertical-align:middle;}
+.otSum td.payName{text-decoration:none;}
+.otSum td.payName span.pn{text-decoration:underline dotted;text-underline-offset:3px;}
 .cmbLeft .scrollx{max-width:100%;}
 @media (max-width:860px){ .cmbLeft{flex:1 1 100%;min-width:0;} .cmbLeft .scrollx{display:block !important;overflow-x:auto;} }
 .dayHead{cursor:pointer;} @media (hover:hover){ .dayHead:hover{outline:2px solid var(--accent);outline-offset:-2px;} }
@@ -656,7 +671,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable .dpI{position:sticky;background:var(--surface);z-index:2;}
 #dpTable thead .dpI{z-index:4;background:var(--bg);}
 #dpTable .dpI1{left:0;min-width:40px;width:40px;}
-#dpTable .dpI2{left:40px;min-width:88px;width:88px;font-weight:700;}
+#dpTable .dpI2{left:40px;min-width:88px;width:88px;font-weight:700;text-align:center !important;white-space:nowrap;}
+#dpTable .dpI2 input{text-align:center;}
 #dpTable .dpI3{left:128px;min-width:48px;width:48px;font-weight:700;}
 #dpTable .dpI4{left:176px;min-width:50px;width:50px;}
 #dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:2px solid var(--text-muted);}
@@ -3730,7 +3746,7 @@ function pageOT(){
     }).join('');
     return `<tr>
       <td class="stNo" style="text-align:center;">${esc(noCell)}</td>
-      <td class="namecell stName payName" data-act="pay-open" data-emp="${esc(r.emp.id)}" title="급여명세서 보기">${esc(r.emp.name)}</td>
+      <td class="namecell stName payName" data-act="pay-open" data-emp="${esc(r.emp.id)}" title="급여명세서 보기"><span class="pn">${esc(r.emp.name)}</span></td>
       <td class="gc g-meal" style="text-align:center;font-weight:700;">${z(r.mealTotal)}</td>
       <td class="gc g-wk" style="text-align:center;font-weight:700;">${z(r.wkTotal)}</td>
       <td class="gc g-sup" style="text-align:center;">${z(r.spTotal)}</td>
@@ -5047,7 +5063,7 @@ function pageDispatch(){
     const offDay = !!dcode && !DP_WORK_CODES.has(dcode); // D·N 계열이 아니면(휴무·휴가 등) 행을 흐린 회색으로
     return `<tr class="${offDay ? 'dpOff' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
-      <td class="dpI dpI2" style="text-align:left;">${esc(e.name)}</td>
+      <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
       <td class="dpI dpI3">${mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
       <td class="dpI dpI4">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(Boolean).length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
