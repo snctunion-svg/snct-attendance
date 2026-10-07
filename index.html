@@ -305,6 +305,17 @@ label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:
 .hakTbl .hakGap td{height:28px;}
 .hakTbl .hakBig td{height:520px;}
 @media print{ body.printing-acc .hakTbl .hakBig td{height:560px !important;} body.printing-acc .hakTbl tr:not(.hakBig):not(.hakGap):not(.hakKindRow):not(.hakNoteRow) > *{height:34px !important;} }
+/* 경위서·학자금 공통 틀: A4 비율 한 장, 맨 위(내,외부 겸용)·제목 높이·아래 끝선·꼬리말 위치를 두 장이 똑같이 */
+.docFramed{display:flex;flex-direction:column;aspect-ratio:1 / 1.4142;box-sizing:border-box;padding:18px 22px 14px !important;}
+.docFramed .accTop{flex:0 0 auto;height:16px;margin:0 0 3px;}
+.docGrow{flex:1 1 auto;min-height:0;}
+.docFoot{flex:0 0 auto;text-align:right;font-weight:800;font-size:13px;margin-top:8px;}
+.accTblTop{border-bottom:0;}
+.accStory{display:flex;border-left:2px solid #111;border-right:2px solid #111;}
+.accTa.accTaGrow,.accTaPrint.accTaGrow{flex:1;height:auto;min-height:0;resize:none;overflow:auto;}
+.accTblBot{border-top:1px solid #9a9a9a;}
+.hakSheet .hakTitle{height:96px;margin:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.hakBigBox{border:2px solid #111;border-top:1px solid #777;}
 /* 사고경위서 */
 .accWrap{overflow-x:auto;padding-bottom:8px;}
 .accSheet{background:#fff;color:#111;width:100%;max-width:780px;min-width:560px;margin:0 auto;padding:18px 22px 26px;box-shadow:0 2px 12px rgba(0,0,0,.12);border-radius:4px;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;}
@@ -715,9 +726,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <div class="navttl" style="margin-top:10px;">업무</div>
     <a data-view="berth"><span class="ic">⚓</span>선석 조회</a>
     <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
-    <a data-view="accident"><span class="ic">📝</span>사고&amp;학자금</a>
+    <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
     <div class="navttl" data-role-section="leader" style="margin-top:10px;">조장관리</div>
-    <a data-view="safety"><span class="ic">🦺</span>관리감독자 일지</a>
+    <a data-view="safety"><span class="ic">🦺</span>관리감독자</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
     <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
@@ -4223,7 +4234,7 @@ function pageAccident(){
   const inp = (k, ph='', extra='') => `<input class="accIn" data-acc="${k}" value="${v(k)}" placeholder="${esc(ph)}" autocomplete="off" ${extra}>`;
   const names = employees.slice().sort((a,b)=> String(a.name).localeCompare(String(b.name),'ko')).map(e=>`<option value="${esc(e.name)}">`).join('');
   return `
-  <h2 class="pgttl accNoPrint">사고&amp;학자금</h2>
+  <h2 class="pgttl accNoPrint">경위서&amp;학자금</h2>
   <div class="row accNoPrint" style="margin-bottom:12px;align-items:center;">
     <span style="font-weight:800;">출력할 서류</span>
     <label class="chk"><input type="checkbox" id="prAcc" ${docPrintSel.acc?'checked':''}> 사고경위서</label>
@@ -4234,9 +4245,9 @@ function pageAccident(){
   <p class="hint accNoPrint" style="margin:-4px 0 12px;">칸을 눌러 바로 입력하세요. 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요. 고른 서류만 한 장씩 출력돼요.</p>
   <datalist id="accNames">${names}</datalist>
   <div class="docGrid">
-  <div class="accWrap"><div class="docLabel accNoPrint">📝 사고경위서</div><div class="accSheet" id="accSheet">
+  <div class="accWrap"><div class="docLabel accNoPrint">📝 사고경위서</div><div class="accSheet docFramed" id="accSheet">
     <div class="accTop">(내,외부 겸용)</div>
-    <table class="accTbl">
+    <table class="accTbl accTblTop">
       <colgroup><col style="width:7.9%"><col style="width:8.9%"><col style="width:21.2%"><col style="width:10.9%"><col style="width:7.9%"><col style="width:8.8%"><col style="width:21.4%"><col style="width:13%"></colgroup>
       <tr class="accTitleRow"><td colspan="8"><img class="accLogo" src="${ACC_LOGO}" alt="SNCT"><div class="accTitle">경 위 서</div><div class="accSub">Accident Report</div></td></tr>
       <tr class="accInfo"><th colspan="2">성 &nbsp; 명</th><td colspan="2">${inp('name','이름','list="accNames"')}</td><th colspan="2">소 &nbsp; 속</th><td colspan="2">${inp('dept')}</td></tr>
@@ -4248,9 +4259,12 @@ function pageAccident(){
       <tr class="accLine"><th colspan="2">□ 사고장소 :</th><td colspan="6">${inp('where')}</td></tr>
       <tr class="accLine"><th colspan="2">□ 사고장비 :</th><td colspan="6">${inp('equip')}</td></tr>
       <tr class="accLine"><th colspan="8">□ 사고 발생경위 (자세하게 기재바랍니다.)</th></tr>
-      <tr class="accBox"><td colspan="8"><textarea class="accTa" data-acc="story" rows="12" style="--lines:12">${v('story')}</textarea><div class="accTaPrint" style="--lines:12">${v('story')}</div></td></tr>
-      <tr class="accLine"><th colspan="8">□ 관리감독자 의견</th></tr>
-      <tr class="accBox accLast"><td colspan="8"><textarea class="accTa" data-acc="opinion" rows="3" style="--lines:3">${v('opinion')}</textarea><div class="accTaPrint" style="--lines:3">${v('opinion')}</div></td></tr>
+    </table>
+    <div class="accStory docGrow"><textarea class="accTa accTaGrow" data-acc="story">${v('story')}</textarea><div class="accTaPrint accTaGrow">${v('story')}</div></div>
+    <table class="accTbl accTblBot">
+      <colgroup><col style="width:100%"></colgroup>
+      <tr class="accLine"><th>□ 관리감독자 의견</th></tr>
+      <tr class="accBox accLast"><td><textarea class="accTa" data-acc="opinion" rows="3" style="--lines:3">${v('opinion')}</textarea><div class="accTaPrint" style="--lines:3">${v('opinion')}</div></td></tr>
     </table>
     <div class="accOath">위 기재한 사실이 틀림없음을 확인하며, 만일 위 내용이 허위일 경우 모든 책임을 감수하겠습니다.</div>
     <div class="accSign">
@@ -4258,6 +4272,7 @@ function pageAccident(){
       <div><span class="k">작 성 자 :</span>${inp('writer','(이름)')}<span class="s">(인)</span></div>
       <div><span class="k">관리 감독자 :</span>${inp('boss')}<span class="s">(인)</span></div>
     </div>
+    <div class="docFoot">선광신컨테이너터미널㈜</div>
   </div></div>
   ${hakSheetHtml(names)}
   </div>`;
@@ -4417,7 +4432,7 @@ function pageSafety(){
   if(!svForm) svForm = svDefault();
   const S = svPrintSel, ck = (k,label)=> `<label class="chk"><input type="checkbox" data-sv-pr="${k}" ${S[k]?'checked':''}> ${label}</label>`;
   return `
-  <h2 class="pgttl accNoPrint">관리감독자 일지</h2>
+  <h2 class="pgttl accNoPrint">관리감독자</h2>
   <div class="row accNoPrint" style="margin-bottom:8px;align-items:center;">
     <span style="font-weight:800;">점검 시작일</span>
     <input type="date" id="svStart" value="${esc(svForm.start)}" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;">
@@ -4439,8 +4454,8 @@ function pageSafety(){
 // 출력 전용 문서를 따로 만들어(숨은 iframe) 그 안에서 인쇄 — 앱 화면이 다시 그려지거나 다른 인쇄 설정과 섞여도 안전
 function svBuildPrintDoc(ids){
   // 입력한 값을 HTML에 옮겨 적음(복사본에도 글자가 남도록)
-  document.querySelectorAll('.svPages input').forEach(x=> x.setAttribute('value', x.value));
-  document.querySelectorAll('.svPages textarea').forEach(x=>{ x.textContent = x.value; const pr = x.parentElement.querySelector('.svIssuePrint'); if(pr) pr.textContent = x.value; });
+  document.querySelectorAll('.svPages input, .docGrid input').forEach(x=>{ if(x.type==='checkbox'){ if(x.checked) x.setAttribute('checked',''); else x.removeAttribute('checked'); } else x.setAttribute('value', x.value); });
+  document.querySelectorAll('.svPages textarea, .docGrid textarea').forEach(x=>{ x.textContent = x.value; const pr = x.parentElement.querySelector('.svIssuePrint, .accTaPrint'); if(pr) pr.textContent = x.value; });
   // 장마다 A4 한 장 크기의 빈 상자(.pp)로 감싸고, 그 안에 틀을 꽉 채움(여러 장 인쇄 때 크롬이 틀 높이를 줄이는 문제 방지)
   const html = ids.map(id=>{ const n = document.getElementById(id); return n ? `<div class="pp">${n.outerHTML}</div>` : ''; }).join('');
   const css = Array.from(document.querySelectorAll('style')).map(st=> st.textContent).join('\n') + `
@@ -4462,8 +4477,13 @@ function svBuildPrintDoc(ids){
     .pp:last-child{break-after:auto;page-break-after:auto;}
     .pp > .svPage{position:absolute !important;inset:0;break-after:auto !important;page-break-after:auto !important;}
     .svFramed,#svLog.svFramed{display:flex !important;height:auto !important;min-height:0 !important;padding:0 !important;overflow:hidden !important;}
-    .svFramed .svIssuePrint{display:block !important;}`;
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>관리감독자 일지</title><style>${css}</style></head><body>${html}</body></html>`;
+    .svFramed .svIssuePrint{display:block !important;}
+    .pp > .docFramed{position:absolute !important;inset:0;aspect-ratio:auto !important;width:auto !important;height:auto !important;max-width:none !important;min-width:0 !important;margin:0 !important;padding:0 !important;box-shadow:none !important;border-radius:0 !important;}
+    .docFramed .accTa{display:none !important;} .docFramed .accTaPrint{display:block !important;}
+    .accIn::placeholder{color:transparent;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .hakAmtH,.hakAmt{-webkit-print-color-adjust:exact;print-color-adjust:exact;}`;
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>출력</title><style>${css}</style></head><body>${html}</body></html>`;
 }
 function svPrintDocs(ids){
   if(navigator.standalone){ showToast('아이폰 홈 화면 앱에서는 인쇄가 막혀 있어요. Safari에서 주소를 열어 출력해 주세요.'); }
@@ -4520,7 +4540,8 @@ function hakSheetHtml(){
   const inp = (k, ph='', extra='') => `<input class="accIn" data-hak="${k}" value="${v(k)}" placeholder="${esc(ph)}" autocomplete="off" ${extra}>`;
   const kinds = ['유치원','고등','대학','대학교'];
   const box = k => `<label class="hakKind"><span>${k}</span><input type="checkbox" data-hak-kind="${k}" ${f.kind===k?'checked':''}><i>${f.kind===k?'■':'□'}</i></label>`;
-  return `<div class="accWrap"><div class="docLabel accNoPrint">🎓 학자금 지급신청서</div><div class="accSheet hakSheet" id="hakSheet">
+  return `<div class="accWrap"><div class="docLabel accNoPrint">🎓 학자금 지급신청서</div><div class="accSheet hakSheet docFramed" id="hakSheet">
+    <div class="accTop">&nbsp;</div>
     <div class="hakTitle">학 자 금 지 급 신 청 서</div>
     <table class="accTbl hakTbl">
       <colgroup><col style="width:13%"><col style="width:16%"><col style="width:27%"><col style="width:16%"><col style="width:28%"></colgroup>
@@ -4530,8 +4551,9 @@ function hakSheetHtml(){
       <tr><th>학 년</th><td>${inp('grade')}</td><th>분기/학기</th><td>${inp('term')}</td></tr>
       <tr class="hakNoteRow"><th>비 &nbsp; 고</th><td colspan="2">${inp('note')}</td><th class="hakAmtH">승인금액</th><td class="hakAmt">${inp('amount','','inputmode="numeric"')}</td></tr>
       <tr class="hakGap"><td colspan="5"></td></tr>
-      <tr class="hakBig"><td colspan="5"></td></tr>
     </table>
+    <div class="hakBigBox docGrow"></div>
+    <div class="docFoot">선광신컨테이너터미널㈜</div>
   </div></div>`;
 }
 function bindHak(el){
@@ -4564,12 +4586,9 @@ function bindAccident(el){
   if(p) p.onclick = ()=>{
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     if(!docPrintSel.acc && !docPrintSel.hak){ showToast('출력할 서류를 하나 이상 고르세요.'); return; }
-    document.body.classList.add('printing-acc');
-    document.body.classList.toggle('pr-acc', !!docPrintSel.acc);
-    document.body.classList.toggle('pr-hak', !!docPrintSel.hak);
-    const done = ()=>{ document.body.classList.remove('printing-acc','pr-acc','pr-hak'); window.removeEventListener('afterprint', done); };
-    window.addEventListener('afterprint', done);
-    setTimeout(()=>{ window.print(); setTimeout(done, 1500); }, 50);
+    // 관리감독자와 같은 방식: 고른 서류만 담은 출력 전용 문서를 A4 한 장씩 같은 틀로 인쇄
+    const ids = []; if(docPrintSel.acc) ids.push('accSheet'); if(docPrintSel.hak) ids.push('hakSheet');
+    svPrintDocs(ids);
   };
   const r = el.querySelector('#accReset');
   if(r) r.onclick = ()=> appConfirm('사고경위서와 학자금 신청서에 입력한 내용을 모두 지우고 새로 작성할까요?', ()=>{ accForm = accDefault(); hakForm = hakDefault(); render(); });
