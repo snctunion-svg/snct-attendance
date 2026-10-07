@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
 <title>장비관리</title>
 <link rel="manifest" href="manifest.webmanifest?v=7">
 <meta name="theme-color" content="#db2777">
@@ -3901,7 +3901,22 @@ function fitCombined(){
   setTimeout(()=>{ try{ render(); }catch(e){} scheduleMidnight(); }, next - n);
 })();
 // 아이폰: 입력칸을 누를 때 화면이 저절로 확대되는 것 방지(두 손가락 확대·축소는 그대로 됨)
-(function(){ try{ if(/iPhone|iPad|iPod/.test(navigator.userAgent)){ const m = document.querySelector('meta[name=viewport]'); if(m && !/maximum-scale/.test(m.content)) m.content += ', maximum-scale=1'; } }catch(e){} })();
+// 휴대폰(아이폰·안드로이드): 두 손가락 확대·축소는 항상 허용(최대 5배).
+// 아이폰은 입력칸을 누를 때 화면이 저절로 확대되므로, 확대 안 된 상태에서 입력칸을 누르는 순간에만 잠깐 막았다가 바로 풀어 줌.
+(function(){ try{
+  if(!/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
+  const m = document.querySelector('meta[name=viewport]'); if(!m) return;
+  const FREE = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover';
+  const LOCK = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover';
+  let t = null;
+  document.addEventListener('touchstart', (ev)=>{
+    if(ev.touches.length !== 1) return;
+    const el = ev.target && ev.target.closest && ev.target.closest('input,textarea,select');
+    const sc = window.visualViewport ? window.visualViewport.scale : 1;
+    if(el && sc <= 1.01){ m.content = LOCK; clearTimeout(t); t = setTimeout(()=>{ m.content = FREE; }, 700); }
+  }, {passive:true, capture:true});
+  document.addEventListener('focusout', ()=>{ clearTimeout(t); t = setTimeout(()=>{ m.content = FREE; }, 300); }, true);
+}catch(e){} })();
 window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); fitSafety(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
