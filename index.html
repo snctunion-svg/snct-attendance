@@ -13,6 +13,10 @@
 <meta name="apple-mobile-web-app-title" content="장비관리">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
+/* 아이폰 Safari·안드로이드 크롬의 '글자 자동 확대' 끄기 — 서류를 화면에 맞춰 줄였을 때 일부 글씨만 커지는 문제 방지 */
+html{-webkit-text-size-adjust:100% !important;text-size-adjust:100% !important;}
+.docGrid,.docGrid *,.svPages,.svPages *{-webkit-text-size-adjust:none !important;text-size-adjust:none !important;}
+
 :root{
   --accent:#1d4ed8; --accent-soft:#eff6ff; --accent-line:#bfdbfe;
   --warn:#b91c1c; --warn-soft:#fef2f2; --warn-line:#fecaca;
