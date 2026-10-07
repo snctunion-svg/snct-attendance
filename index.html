@@ -179,6 +179,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 사고&학자금: 두 서류를 한 화면에(넓으면 나란히, 좁으면 위아래) */
 .docGrid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;}
 .docGrid > .accWrap{flex:1 1 560px;min-width:0;}
+@media (min-width:701px){ .docGrid{flex-wrap:nowrap;} .docGrid > .accWrap{flex:0 0 auto;width:780px;overflow:visible;} .docGrid .accSheet{width:780px;max-width:none;} }
 .docLabel{font-weight:800;margin:0 0 6px 2px;}
 label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:pointer;}
 .hakSheet{padding-top:28px;}
@@ -233,7 +234,9 @@ label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:
   body.printing-acc *{visibility:hidden !important;}
   body.printing-acc.pr-acc #accSheet, body.printing-acc.pr-acc #accSheet *,
   body.printing-acc.pr-hak #hakSheet, body.printing-acc.pr-hak #hakSheet *{visibility:visible !important;}
-  body.printing-acc .docGrid{display:block !important;}
+  body.printing-acc .docGrid{display:block !important;zoom:1 !important;}
+  body.printing-acc .docGrid > .accWrap{width:auto !important;}
+  body.printing-acc .docGrid .accSheet{width:100% !important;}
   body.printing-acc .docLabel{display:none !important;}
   body.printing-acc .accWrap{overflow:visible !important;padding:0 !important;}
   body.printing-acc:not(.pr-acc) #accSheet, body.printing-acc:not(.pr-hak) #hakSheet{display:none !important;}
@@ -3697,6 +3700,17 @@ function fitTableToScreen(t, {fitW=false, fitH=true, reserve=16, minRow=24, maxR
   }
   if(z < 1) t.style.setProperty('--sepW', (1/z).toFixed(2)+'px');
 }
+// 사고&학자금: PC에서는 두 서류를 나란히, 가로·세로 모두 한 화면에 들어오게 맞춤(출력은 원래 크기)
+function fitDocs(){
+  const g = document.querySelector('.docGrid'); if(!g) return;
+  g.style.zoom = '';
+  if(VIEW!=='accident' || window.innerWidth <= 700) return;
+  const top = g.getBoundingClientRect().top;
+  const availH = window.innerHeight - Math.max(0, top) - 12;
+  const availW = g.parentElement.clientWidth;
+  const z = Math.min(1, availW / g.scrollWidth, availH / g.getBoundingClientRect().height);
+  if(z < 1) g.style.zoom = Math.max(0.35, Math.floor(z*1000)/1000);
+}
 // 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
 function fitInputTable(){
   if(VIEW!=='input') return;
@@ -3714,7 +3728,7 @@ function fitCombined(){
   const n = new Date(), next = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1, 0, 0, 5);
   setTimeout(()=>{ try{ render(); }catch(e){} scheduleMidnight(); }, next - n);
 })();
-window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); }, 120); });
+window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
@@ -4944,6 +4958,7 @@ function afterRender(){
   fitOtTable();
   fitInputTable();
   fitCombined();
+  fitDocs();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
