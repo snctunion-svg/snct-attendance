@@ -315,6 +315,9 @@ label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:
 .accTa.accTaGrow,.accTaPrint.accTaGrow{flex:1;height:auto;min-height:0;resize:none;overflow:auto;}
 .accTblBot{border-top:1px solid #9a9a9a;}
 .hakSheet .hakTitle{height:96px;margin:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+/* 경위서 제목도 학자금처럼 테두리 없이, 같은 높이(96px) */
+.accTitleBox{position:relative;height:96px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+@media (min-width:701px){ .docFramed{aspect-ratio:auto;height:var(--docH,1103px);} }
 .hakBigBox{border:2px solid #111;border-top:1px solid #777;}
 /* 사고경위서 */
 .accWrap{overflow-x:auto;padding-bottom:8px;}
@@ -3851,16 +3854,13 @@ function fitDocs(){
   const availH = window.innerHeight - Math.max(0, top) - 12;
   const pcs = getComputedStyle(g.parentElement);
   const availW = g.parentElement.clientWidth - parseFloat(pcs.paddingLeft||0) - parseFloat(pcs.paddingRight||0) - 6;
-  // 화면 비율에 맞춰 서류 폭을 넓힘: 줄였을 때 가로·세로가 동시에 화면에 꽉 차는 폭(780~1200px)
-  g.style.setProperty('--docW', '780px');
-  const h0 = g.getBoundingClientRect().height;
-  if(availH > 200){
-    const ideal = Math.round(((availW * h0 / availH) - 18) / 2);
-    g.style.setProperty('--docW', Math.max(780, Math.min(1200, ideal)) + 'px');
-    if(acc && hak && big){ big.style.height = ''; const d = acc.getBoundingClientRect().height - hak.getBoundingClientRect().height; if(d > 0) big.style.height = (big.getBoundingClientRect().height + d) + 'px'; }
-  }
-  const z = Math.min(1, availW / g.scrollWidth, availH / g.getBoundingClientRect().height);
-  if(z < 1) g.style.zoom = Math.max(0.35, Math.floor(z*1000)/1000);
+  // 화면 가로·세로에 꽉 맞춤: 서류 높이(A4 1103px)는 화면 높이에 맞춰 줄이고, 남는 가로는 두 장이 나눠 넓게 씀
+  const H = 1103, label = 36, gap = 18;
+  g.style.setProperty('--docH', H + 'px');
+  const z = Math.min(1, availH > 200 ? availH / (H + label) : 1);
+  const W = Math.floor(((availW / z) - gap) / 2);
+  g.style.setProperty('--docW', Math.max(560, Math.min(1400, W)) + 'px');
+  g.style.zoom = Math.max(0.35, Math.floor(Math.min(z, availW / g.scrollWidth) * 1000)/1000);
 }
 // 관리감독자 일지: 좌우 두 장을 가로·세로 모두 한 화면에 맞춤
 function fitSafety(){
@@ -4247,9 +4247,9 @@ function pageAccident(){
   <div class="docGrid">
   <div class="accWrap"><div class="docLabel accNoPrint">📝 사고경위서</div><div class="accSheet docFramed" id="accSheet">
     <div class="accTop">(내,외부 겸용)</div>
+    <div class="accTitleBox"><img class="accLogo" src="${ACC_LOGO}" alt="SNCT"><div class="accTitle">경 위 서</div><div class="accSub">Accident Report</div></div>
     <table class="accTbl accTblTop">
       <colgroup><col style="width:7.9%"><col style="width:8.9%"><col style="width:21.2%"><col style="width:10.9%"><col style="width:7.9%"><col style="width:8.8%"><col style="width:21.4%"><col style="width:13%"></colgroup>
-      <tr class="accTitleRow"><td colspan="8"><img class="accLogo" src="${ACC_LOGO}" alt="SNCT"><div class="accTitle">경 위 서</div><div class="accSub">Accident Report</div></td></tr>
       <tr class="accInfo"><th colspan="2">성 &nbsp; 명</th><td colspan="2">${inp('name','이름','list="accNames"')}</td><th colspan="2">소 &nbsp; 속</th><td colspan="2">${inp('dept')}</td></tr>
       <tr class="accInfo"><th colspan="2">생년월일</th><td colspan="2">${inp('birth')}</td><th colspan="2">직 &nbsp; 책</th><td colspan="2">${inp('role')}</td></tr>
       <tr class="accInfo"><th colspan="2">연락처</th><td colspan="2">${inp('phone','','inputmode="tel"')}</td><th colspan="2">입사일자</th><td colspan="2">${inp('hire')}</td></tr>
