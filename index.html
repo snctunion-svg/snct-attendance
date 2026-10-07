@@ -179,7 +179,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 사고&학자금: 두 서류를 한 화면에(넓으면 나란히, 좁으면 위아래) */
 .docGrid{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;}
 .docGrid > .accWrap{flex:1 1 560px;min-width:0;}
-@media (min-width:701px){ .docGrid{flex-wrap:nowrap;} .docGrid > .accWrap{flex:0 0 auto;width:780px;overflow:visible;} .docGrid .accSheet{width:780px;max-width:none;} }
+@media (min-width:701px){ .docGrid{flex-wrap:nowrap;} .docGrid > .accWrap{flex:0 0 auto;width:var(--docW,780px);overflow:visible;} .docGrid .accSheet{width:var(--docW,780px);max-width:none;} }
 .docLabel{font-weight:800;margin:0 0 6px 2px;}
 label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:pointer;}
 .hakSheet{padding-top:28px;}
@@ -3718,7 +3718,16 @@ function fitDocs(){
   if(VIEW!=='accident' || window.innerWidth <= 700) return;
   const top = g.getBoundingClientRect().top;
   const availH = window.innerHeight - Math.max(0, top) - 12;
-  const availW = g.parentElement.clientWidth;
+  const pcs = getComputedStyle(g.parentElement);
+  const availW = g.parentElement.clientWidth - parseFloat(pcs.paddingLeft||0) - parseFloat(pcs.paddingRight||0) - 6;
+  // 화면 비율에 맞춰 서류 폭을 넓힘: 줄였을 때 가로·세로가 동시에 화면에 꽉 차는 폭(780~1200px)
+  g.style.setProperty('--docW', '780px');
+  const h0 = g.getBoundingClientRect().height;
+  if(availH > 200){
+    const ideal = Math.round(((availW * h0 / availH) - 18) / 2);
+    g.style.setProperty('--docW', Math.max(780, Math.min(1200, ideal)) + 'px');
+    if(acc && hak && big){ big.style.height = ''; const d = acc.getBoundingClientRect().height - hak.getBoundingClientRect().height; if(d > 0) big.style.height = (big.getBoundingClientRect().height + d) + 'px'; }
+  }
   const z = Math.min(1, availW / g.scrollWidth, availH / g.getBoundingClientRect().height);
   if(z < 1) g.style.zoom = Math.max(0.35, Math.floor(z*1000)/1000);
 }
