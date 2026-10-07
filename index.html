@@ -220,7 +220,12 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .svIssue,.svIssuePrint{display:block;width:100%;box-sizing:border-box;border:2px solid #111;min-height:120px;font:inherit;font-size:13px;padding:8px;resize:vertical;outline:none;white-space:pre-wrap;}
 .svIssuePrint{display:none;}
 .svFoot{text-align:right;font-weight:800;margin-top:10px;font-size:13px;}
-@media (max-width:700px){ #svLog{padding:10px 8px;} .svTitle{font-size:17px;} .svTbl{font-size:10px;} .svDay{font-size:9px;} .svPages{align-items:stretch;} #svLog{overflow-x:auto;} .svTbl{min-width:640px;} }
+@media (max-width:700px){
+  /* 휴대폰: PC와 똑같은 A4 모양을 그대로 두고 화면 폭에 맞춰 축소(fitSafety) */
+  .svPages{align-items:flex-start;}
+  .svCol{width:820px;max-width:none;}
+  .svCol .svPage{width:820px;max-width:none;}
+}
 @media print{
   body.printing-sv *{visibility:hidden !important;}
   html,body.printing-sv,body.printing-sv .layout,body.printing-sv main{background:#fff !important;}
@@ -291,7 +296,12 @@ label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:
 .accSign .k{width:110px;text-align:right;padding-right:8px;white-space:nowrap;}
 .accSign .accIn{flex:1;font-weight:700;border-bottom:1px solid #ccc;}
 .accSign .s{width:42px;text-align:right;}
-@media (max-width:700px){ .accSheet{padding:12px 10px 18px;} .accTitle{font-size:24px;letter-spacing:5px;} .accLogo{height:30px;left:6px;} .accSign > div{width:100%;} }
+@media (max-width:700px){
+  /* 휴대폰: 서류 모양 그대로(780px) 두고 화면 폭에 맞춰 축소(fitDocs) */
+  .docGrid{flex-direction:column;flex-wrap:nowrap;}
+  .docGrid > .accWrap{flex:0 0 auto;width:780px;overflow:visible;padding-bottom:0;}
+  .docGrid .accSheet{width:780px;max-width:none;min-width:0;}
+}
 @media print{
   @page{size:A4 portrait;margin:10mm 10mm 12mm;}
   body.printing-acc *{visibility:hidden !important;}
@@ -3780,7 +3790,12 @@ function fitDocs(){
     const diff = acc.getBoundingClientRect().height - hak.getBoundingClientRect().height;
     if(diff > 0) big.style.height = (big.getBoundingClientRect().height + diff) + 'px';
   }
-  if(VIEW!=='accident' || window.innerWidth <= 700) return;
+  if(VIEW!=='accident') return;
+  if(window.innerWidth <= 700){ // 휴대폰: 한 장씩 화면 폭에 꽉 맞춤
+    const w = g.parentElement.clientWidth - 4;
+    g.style.zoom = Math.min(1, Math.floor(w / 780 * 1000)/1000);
+    return;
+  }
   const top = g.getBoundingClientRect().top;
   const availH = window.innerHeight - Math.max(0, top) - 12;
   const pcs = getComputedStyle(g.parentElement);
@@ -3800,7 +3815,12 @@ function fitDocs(){
 function fitSafety(){
   const g = document.querySelector('.svPages'); if(!g) return;
   g.style.zoom = '';
-  if(VIEW!=='safety' || window.innerWidth <= 700) return;
+  if(VIEW!=='safety') return;
+  if(window.innerWidth <= 700){ // 휴대폰: 한 장씩 위아래로, 화면 폭에 꽉 맞춤
+    const w = g.parentElement.clientWidth - 4;
+    g.style.zoom = Math.min(1, Math.floor(w / 820 * 1000)/1000);
+    return;
+  }
   const pcs = getComputedStyle(g.parentElement);
   const availW = g.parentElement.clientWidth - parseFloat(pcs.paddingLeft||0) - parseFloat(pcs.paddingRight||0) - 6;
   const availH = window.innerHeight - Math.max(0, g.getBoundingClientRect().top) - 12;
@@ -3825,6 +3845,8 @@ function fitCombined(){
   const n = new Date(), next = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1, 0, 0, 5);
   setTimeout(()=>{ try{ render(); }catch(e){} scheduleMidnight(); }, next - n);
 })();
+// 아이폰: 입력칸을 누를 때 화면이 저절로 확대되는 것 방지(두 손가락 확대·축소는 그대로 됨)
+(function(){ try{ if(/iPhone|iPad|iPod/.test(navigator.userAgent)){ const m = document.querySelector('meta[name=viewport]'); if(m && !/maximum-scale/.test(m.content)) m.content += ', maximum-scale=1'; } }catch(e){} })();
 window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); fitSafety(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
