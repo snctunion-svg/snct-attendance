@@ -597,13 +597,13 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="input"><span class="ic">✏️</span>출퇴근 입력</a>
     <a data-view="combined"><span class="ic">📋</span>근태관리</a>
     <a data-view="ot"><span class="ic">🧮</span>월별 OT현황</a>
-    <a data-view="berth"><span class="ic">⚓</span>선석 조회</a>
-    <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
-    <div class="navttl" style="margin-top:10px;">업무</div>
-    <a data-view="accident"><span class="ic">📝</span>사고&amp;학자금</a>
-    <div class="navttl" style="margin-top:10px;">조장관리</div>
     <a data-view="dispatch"><span class="ic">🚧</span>배차표</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
+    <div class="navttl" style="margin-top:10px;">업무</div>
+    <a data-view="berth"><span class="ic">⚓</span>선석 조회</a>
+    <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
+    <a data-view="accident"><span class="ic">📝</span>사고&amp;학자금</a>
+    <div class="navttl" data-role-section="leader" style="margin-top:10px;">조장관리</div>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
     <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
@@ -2287,7 +2287,10 @@ function roleCanSee(v){
   if(userRole==='union') return UNION_VIEWS.includes(v);
   return false;
 }
+// 배차표·지원계획표는 배포 모드(로그인 없이)에서도 누구나 입력·수정
+const PUBLIC_EDIT_VIEWS = ['dispatch','splan'];
 function roleCanEdit(v){
+  if(PUBLIC_EDIT_VIEWS.includes(v)) return true;
   if(userRole==='all' || userRole==='union') return true;
   if(userRole==='leader') return LEADER_VIEWS.includes(v);
   if(userRole==='union') return UNION_VIEWS.includes(v);
