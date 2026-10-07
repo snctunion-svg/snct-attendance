@@ -125,12 +125,17 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 급여관리·급여명세서 */
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
+.leaveBox{display:flex;align-items:center;gap:4px;justify-content:center;white-space:nowrap;}
+.leaveBox .yrs{font-size:11px;color:var(--text-muted);min-width:26px;text-align:right;}
+.payTbl .leaveBox input{width:46px !important;min-width:46px !important;max-width:46px;padding:5px 2px !important;}
+.leaveBox input{width:44px;text-align:center;font-weight:800;border:1px solid var(--border);border-radius:6px;padding:5px 2px;background:var(--bg);color:var(--text);font:inherit;font-weight:800;}
+.leaveBox input::placeholder{color:var(--text);opacity:.85;font-weight:800;}
 .payTbl input.tx{text-align:left;min-width:64px;}
 .rateTbl input.rateIn{width:110px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;}
 .rateTbl td{padding:3px 4px;}
 .payTbl select.tx{width:100%;min-width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;}
 .payTbl input[type=date]{min-width:140px;}
-.payTbl input.dt{min-width:84px;text-align:center;letter-spacing:.5px;}
+.payTbl input.dt{min-width:90px;text-align:center;letter-spacing:.5px;}
 .wonBox{position:relative;}
 .wonBox input{padding-right:24px !important;min-width:94px;}
 .tenureBox input{background:var(--bg-soft, rgba(0,0,0,.04)) !important;cursor:default;padding-left:30px !important;min-width:104px !important;}
@@ -4022,9 +4027,42 @@ function tenureCellHtml(p){
   const ok = !!payDateFull(p.hire), y = tenureYears(p.hire), t = tenureAllowance(p.hire);
   return `<div class="wonBox tenureBox"><span class="yrs">${ok ? y+'년' : ''}</span><input type="text" readonly tabindex="-1" value="${ok ? t.toLocaleString('ko-KR') : ''}" placeholder="${ok ? '0' : '입사일 입력'}" title="입사일 기준 자동 계산(만 5년 10,000원, 이후 1년마다 5,000원)"><span>원</span></div>`;
 }
+// ===== 연차 개수 (엑셀 'STS 연차 개수표'와 같은 계산) =====
+// 근속년수 = 입사일 ~ (사용연도+1)년 1월 1일 사이의 만 년수 (엑셀 DATEDIF(입사일, 기준일, "y"))
+// 연차 = 4년 미만 15, 6년 미만 16, 8년 미만 17 … 2년마다 1개씩, 22년 이상 25개
+const STS_HIRE = {"선종화": "2005-06-01", "김성일": "2005-06-07", "고훈희": "2005-08-08", "유재선": "2005-08-08", "김기영": "2005-08-08", "김세중": "2006-09-06", "김의섭": "2005-08-08", "김재천": "2005-08-08", "김치수": "2005-08-08", "홍윤택": "2005-09-05", "강대정": "2007-04-01", "윤성하": "2006-09-06", "박무근": "2008-04-01", "전재필": "2005-09-05", "오원일": "2005-09-05", "최윤수": "2005-09-05", "남궁영호": "2005-09-05", "이동화": "2008-02-01", "노인규": "2007-04-01", "박종국": "2008-01-01", "임성현": "2008-07-14", "서인기": "2008-01-28", "김성용": "2008-01-01", "김태화": "2005-09-05", "최두영": "2005-09-05", "유재현": "2008-02-22", "김태석": "2005-09-05", "우동진": "2005-08-08", "우창기": "2007-04-01", "황대영": "2007-04-02", "최현철": "2025-09-15", "강위상": "2023-10-10"}; // 엑셀의 입사일자(성명 기준)
+function annualLeaveYear(){ return Number(todayStr().slice(0,4)); }
+function leaveTenure(hire, year){
+  const h = payDateFull(hire); if(!h) return null;
+  const [hy,hm,hd] = h.split('-').map(Number), Y = (year||annualLeaveYear()) + 1;
+  let y = Y - hy; if(1 < hm || (1===hm && 1 < hd)) y--;
+  return Math.max(0, y);
+}
+function leaveCountAuto(hire, year){
+  const g = leaveTenure(hire, year); if(g===null) return null;
+  return g<4?15 : g<6?16 : g<8?17 : g<10?18 : g<12?19 : g<14?20 : g<16?21 : g<18?22 : g<20?23 : g<22?24 : 25;
+}
+function leaveCount(p){ const m = Number(p && p.leave); return (p && p.leave!=='' && p.leave!=null && Number.isFinite(m) && m>0) ? m : leaveCountAuto(p && p.hire); }
+function leaveCellHtml(p, id){
+  const auto = leaveCountAuto(p.hire), g = leaveTenure(p.hire);
+  const man = p.leave!=='' && p.leave!=null && Number(p.leave)>0;
+  return `<div class="leaveBox"><span class="yrs">${g===null ? '' : g+'년'}</span><input type="text" inputmode="numeric" data-pay="leave" data-emp="${esc(id)}" value="${man ? esc(String(p.leave)) : ''}" placeholder="${auto===null ? '입사일 입력' : auto}" title="비워 두면 입사일로 자동 계산(엑셀 연차 개수표와 같은 방식). 숫자를 넣으면 그 개수로 고정"><span>개</span></div>`;
+}
+// 처음 한 번: 엑셀의 입사일을 급여관리에 채워 넣음(저장 버튼을 눌러야 클라우드에 반영). 최현철은 연차 15개로 시작
+let leaveImportDone = false;
+function applyHireImport(){
+  if(leaveImportDone) return; leaveImportDone = true;
+  employees.forEach(e=>{
+    const d = STS_HIRE[String(e.name||'').trim()]; if(!d) return;
+    const cur = payOf(e.id), want = d.slice(2); // yy-mm-dd
+    if(payDateFull(cur.hire) !== d){ payDraft[e.id] = payDraft[e.id] || {}; payDraft[e.id].hire = want; }
+    if(String(e.name).trim()==='최현철' && !(Number(cur.leave)>0)){ payDraft[e.id] = payDraft[e.id] || {}; payDraft[e.id].leave = 15; }
+  });
+}
 function payOf(id){ return Object.assign({}, payMgr[id]||{}, payDraft[id]||{}); }
 function slipWon(n){ return n ? Math.round(n).toLocaleString('ko-KR') : ''; }
 function pagePayroll(){
+  if(employees.length && (dbReady || !db)) applyHireImport();
   const list = employees.slice().filter(e=> !payMgrTeam || (e.team||'')===payMgrTeam).sort((a,b)=>{
     const ta = a.team||'9', tb = b.team||'9';
     if(ta!==tb) return ta<tb?-1:1;
@@ -4051,6 +4089,7 @@ function pagePayroll(){
       <td class="namecell">${esc(e.name)}</td>
       <td style="text-align:center;white-space:nowrap;">${PAY_DEPT}</td>
       <td><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="hire" data-emp="${esc(e.id)}" value="${v('hire')}" placeholder="oo-oo-oo"></td>
+      <td class="leaveCell" data-emp="${esc(e.id)}">${leaveCellHtml(p, e.id)}</td>
       <td><input type="text" class="tx" autocomplete="off" data-pay="job" data-emp="${esc(e.id)}" value="${v('job')}" placeholder="직무"></td>
       <td><select class="tx" data-pay="grade" data-emp="${esc(e.id)}"><option value=""></option>${PAY_GRADES.map(g=>`<option${p.grade===g?' selected':''}>${g}</option>`).join('')}</select></td>
       <td><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}" placeholder="oo-oo-oo"></td>
@@ -4078,7 +4117,7 @@ function pagePayroll(){
     ${payMgrTab==='ded' ? `<p class="hint" style="margin:0 0 10px;">항목마다 한 번만 정하면 <b>모든 사람의 급여명세서</b>에 일괄 적용돼요. % 는 지급총액 기준(10원 미만 버림), 원 은 모든 사람 같은 금액이에요.</p>
       <div class="scrollx"><table class="payTbl rateTbl"><thead><tr><th>공제 항목</th><th>값</th><th>단위</th><th></th></tr></thead><tbody>${rateRows}</tbody></table></div>`
     : list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th><th>직책수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th><th>기술수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th>
+      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>연차 개수<br><span style="font-weight:400;font-size:11px;">(${annualLeaveYear()}년 · 입사일로 자동)</span></th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th><th>직책수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th><th>기술수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th>
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
   </div>`;
 }
@@ -4215,7 +4254,8 @@ function bindPayroll(el){
       if(PAY_DATE_KEYS.includes(k)){
         const f = payDateFmt(x.value); if(f!==x.value) x.value = f;
         payDraft[id][k] = f;
-        if(k==='hire'){ const c = el.querySelector(`.tenureCell[data-emp="${CSS.escape(id)}"]`); if(c) c.innerHTML = tenureCellHtml(payOf(id)); }
+        if(k==='hire'){ const c = el.querySelector(`.tenureCell[data-emp="${CSS.escape(id)}"]`); if(c) c.innerHTML = tenureCellHtml(payOf(id));
+          const lc = el.querySelector(`.leaveCell[data-emp="${CSS.escape(id)}"]`); if(lc){ const ip = lc.querySelector('input'); const ph = leaveCountAuto(payOf(id).hire); if(ip) ip.placeholder = ph===null ? '입사일 입력' : ph; const ys = lc.querySelector('.yrs'); const g = leaveTenure(payOf(id).hire); if(ys) ys.textContent = g===null ? '' : g+'년'; } }
       }
       else if(PAY_TEXT_KEYS.includes(k)){ payDraft[id][k] = x.value.trim(); }
       else {
