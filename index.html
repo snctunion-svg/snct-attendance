@@ -4259,6 +4259,43 @@ function pageSafety(){
     ${SV_IMG.map((src,i)=>`<div class="svPage svImgPage" id="svP${i+1}"><img src="${src}" alt="안전작업 계획서 ${i+1}"></div>`).join('')}
   </div>`;
 }
+// 출력 전용 문서를 따로 만들어(숨은 iframe) 그 안에서 인쇄 — 앱 화면이 다시 그려지거나 다른 인쇄 설정과 섞여도 안전
+function svBuildPrintDoc(ids){
+  // 입력한 값을 HTML에 옮겨 적음(복사본에도 글자가 남도록)
+  document.querySelectorAll('.svPages input').forEach(x=> x.setAttribute('value', x.value));
+  document.querySelectorAll('.svPages textarea').forEach(x=>{ x.textContent = x.value; const pr = x.parentElement.querySelector('.svIssuePrint'); if(pr) pr.textContent = x.value; });
+  const html = ids.map(id=>{ const n = document.getElementById(id); return n ? n.outerHTML : ''; }).join('');
+  const css = Array.from(document.querySelectorAll('style')).map(st=> st.textContent).join('\n') + `
+    @page{size:A4 portrait;margin:8mm;}
+    html,body{background:#fff !important;margin:0 !important;padding:0 !important;color:#111;}
+    body *{visibility:visible !important;}
+    .svPage{display:block !important;box-shadow:none !important;max-width:none !important;width:100% !important;border-radius:0 !important;margin:0 !important;break-after:page;page-break-after:always;}
+    .svPage:last-child{break-after:auto;page-break-after:auto;}
+    #svLog{padding:0 !important;overflow:visible !important;}
+    .svTbl{min-width:0 !important;}
+    .svImgPage img{width:100%;height:auto;max-height:280mm;object-fit:contain;}
+    .svIssue{display:none !important;} .svIssuePrint{display:block !important;min-height:150px;}
+    .svM:hover{background:transparent !important;}`;
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>관리감독자 일지</title><style>${css}</style></head><body>${html}</body></html>`;
+}
+function svPrintDocs(ids){
+  if(navigator.standalone){ showToast('아이폰 홈 화면 앱에서는 인쇄가 막혀 있어요. Safari에서 주소를 열어 출력해 주세요.'); }
+  const old = document.getElementById('svPrintFrame'); if(old) old.remove();
+  const fr = document.createElement('iframe');
+  fr.id = 'svPrintFrame';
+  fr.setAttribute('aria-hidden','true');
+  fr.style.cssText = 'position:fixed;left:-10000px;top:0;width:900px;height:1200px;border:0;visibility:hidden;';
+  document.body.appendChild(fr);
+  const d = fr.contentWindow.document;
+  d.open(); d.write(svBuildPrintDoc(ids)); d.close();
+  const go = ()=>{
+    try{ fr.contentWindow.focus(); fr.contentWindow.print(); }
+    catch(err){ showToast('출력 창을 열지 못했어요. 브라우저 메뉴의 인쇄를 이용해 주세요.'); }
+    setTimeout(()=>{ try{ fr.remove(); }catch(e){} }, 60000);
+  };
+  const imgs = Array.from(d.images);
+  Promise.all(imgs.map(im=> im.complete ? 1 : new Promise(r=>{ im.onload = im.onerror = r; }))).then(()=> setTimeout(go, 150));
+}
 function bindSafety(el){
   const root = el.querySelector('.svPages'); if(!root) return;
   root.querySelectorAll('[data-sv-mark]').forEach(td=> td.onclick = ()=>{
@@ -4283,12 +4320,7 @@ function bindSafety(el){
     if(!sel.length){ showToast('출력할 서류를 하나 이상 고르세요.'); return; }
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     const map = {log:'svLog', p1:'svP1', p2:'svP2', p3:'svP3'};
-    document.querySelectorAll('.svPage').forEach(pg=> pg.classList.remove('svOn'));
-    sel.forEach(k=>{ const pg = document.getElementById(map[k]); if(pg) pg.classList.add('svOn'); });
-    document.body.classList.add('printing-sv');
-    const done = ()=>{ document.body.classList.remove('printing-sv'); window.removeEventListener('afterprint', done); };
-    window.addEventListener('afterprint', done);
-    setTimeout(()=>{ window.print(); setTimeout(done, 1500); }, 50);
+    svPrintDocs(sel.map(k=> map[k]));
   };
 }
 
