@@ -3707,6 +3707,14 @@ function fitTableToScreen(t, {fitW=false, fitH=true, reserve=16, minRow=24, maxR
 function fitDocs(){
   const g = document.querySelector('.docGrid'); if(!g) return;
   g.style.zoom = '';
+  // 학자금 신청서를 경위서와 같은 크기(높이)로: 아래 큰 빈칸 높이로 맞춤
+  const acc = document.getElementById('accSheet'), hak = document.getElementById('hakSheet');
+  const big = hak && hak.querySelector('.hakBig td');
+  if(acc && hak && big){
+    big.style.height = '';
+    const diff = acc.getBoundingClientRect().height - hak.getBoundingClientRect().height;
+    if(diff > 0) big.style.height = (big.getBoundingClientRect().height + diff) + 'px';
+  }
   if(VIEW!=='accident' || window.innerWidth <= 700) return;
   const top = g.getBoundingClientRect().top;
   const availH = window.innerHeight - Math.max(0, top) - 12;
