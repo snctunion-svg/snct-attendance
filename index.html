@@ -3411,6 +3411,21 @@ function pageGrid(){
 }
 
 // 월별표 셀 클릭 시 뜨는 근무코드/근태코드 인라인 편집 모달
+// 월별 근태: 근무·근태코드만 지움(출퇴근 시각·연근·식사 체크·메모는 그대로)
+let gridHoverCell = null;
+function gridDeleteCode(date, employeeId){
+  if(!canEdit){ requireEdit(); return; }
+  saveAttendance({date, employeeId, workCode:'OFF', statusCode:'', attCode:'', attManual:true, updatedAt:Date.now()});
+}
+// PC: 월별 근태 칸 위에 마우스를 올리고 Delete 키 → 그 칸 코드 지우기
+document.addEventListener('keydown', (ev)=>{
+  if(ev.key!=='Delete' || VIEW!=='combined' || gridEdit || !gridHoverCell) return;
+  const t = ev.target; if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.isContentEditable)) return;
+  ev.preventDefault();
+  const {date, employeeId} = gridHoverCell;
+  gridDeleteCode(date, employeeId);
+  if(canEdit) showToast('코드를 지웠어요.');
+});
 function renderGridEditModal(){
   const {date, employeeId} = gridEdit;
   const rec = attendance[date+'_'+employeeId] || codeStatsAttendance[date+'_'+employeeId] || {};
@@ -3428,7 +3443,12 @@ function renderGridEditModal(){
     return {code:c, label:lbl};
   });
   const allItems = [...wcItems, ...scItems].sort((a,b)=> codeSortKey(a.code)-codeSortKey(b.code));
-  const optRows = allItems.map(it=>`<div class="gridCodeOpt" data-code="${esc(it.code)}" data-search="${esc((it.code+' '+it.label).toLowerCase())}"
+  const delRow = `<div class="gridCodeOpt gridDelOpt" data-code="DEL" data-search="del 지우기 삭제"
+      style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-radius:6px;border-bottom:1px solid var(--border);">
+      <span class="badge" style="flex:0 0 auto;background:#fee2e2;color:#b91c1c;font-weight:800;">DEL</span>
+      <span style="color:var(--text);font-size:13px;">코드 지우기 (빈칸)</span>
+    </div>`;
+  const optRows = delRow + allItems.map(it=>`<div class="gridCodeOpt" data-code="${esc(it.code)}" data-search="${esc((it.code+' '+it.label).toLowerCase())}"
       style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-radius:6px;">
       <span style="flex:0 0 auto;">${codeBadge(it.code)}</span>
       <span style="color:var(--text);font-size:13px;">${esc(it.label)}</span>
@@ -3442,8 +3462,11 @@ function renderGridEditModal(){
   return `
   <div id="gridEditScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:360px;width:92%;margin-bottom:0;background:var(--surface);">
-      <h3 style="margin-bottom:2px;">${esc(emp?emp.name:'')}</h3>
-      <p class="hint" style="margin-top:0;margin-bottom:12px;">${esc(date)}${isSaturday?' (토요일)':''}</p>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+        <div><h3 style="margin-bottom:2px;">${esc(emp?emp.name:'')}</h3>
+        <p class="hint" style="margin-top:0;margin-bottom:12px;">${esc(date)}${isSaturday?' (토요일)':''}</p></div>
+        <button class="btn sm" id="gridEditDelTop" title="이 칸의 근무·근태코드 지우기 (키보드 Delete 키도 됨)" style="background:#dc2626;border-color:#dc2626;color:#fff;font-weight:800;flex:0 0 auto;">DEL 지우기</button>
+      </div>
       <div class="field" style="margin-bottom:14px;position:relative;">
         <label>근무코드 (목록에서 고르거나 직접 입력)</label>
         <input type="text" id="gridCode" autocomplete="off" value="${curVal==='OFF'?'':esc(curVal)}" placeholder="예: D, OFF, FC..." style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--text);width:100%;">
@@ -3454,8 +3477,9 @@ function renderGridEditModal(){
         <input type="text" id="gridMemo" maxlength="20" value="${esc(rec.note||'')}" placeholder="예: 병원, 교육 등" style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--text);width:100%;"></div>
       <div class="row">
         <button class="btn" id="gridEditSave">저장</button>
+        <button class="btn warn" id="gridEditDel" title="이 칸의 근무·근태코드만 지움(출퇴근 시각·메모는 그대로)">DEL</button>
         <button class="btn ghost" id="gridEditCancel">취소</button>
-        <button class="btn warn ghost" id="gridEditReset">초기화</button>
+        <button class="btn warn ghost" id="gridEditReset" title="이 날의 기록 전체(출퇴근 시각 포함)를 지움">초기화</button>
       </div>
     </div>
   </div>`;
@@ -5554,6 +5578,10 @@ function afterRender(){
   if(lpy) lpy.onclick = ()=>{ leaveYear--; render(); };
   if(lny) lny.onclick = ()=>{ leaveYear++; render(); };
   if(leaveScrim) leaveScrim.onclick = (e)=>{ if(e.target===leaveScrim){ leaveEmpId = null; render(); } };
+  el.querySelectorAll('[data-act="grid-cell"]').forEach(x=>{
+    x.addEventListener('mouseenter', ()=>{ gridHoverCell = {date:x.dataset.date, employeeId:x.dataset.emp}; });
+    x.addEventListener('mouseleave', ()=>{ gridHoverCell = null; });
+  });
   el.querySelectorAll('[data-act="grid-cell"]').forEach(x=>x.onclick=()=>{
     if(!canEdit){ requireEdit(); return; }
     gridEdit = {date:x.dataset.date, employeeId:x.dataset.emp};
@@ -5593,7 +5621,8 @@ function afterRender(){
     const existing = attendance[date+'_'+employeeId] || {};
     const memoEl = document.getElementById('gridMemo');
     const memo = memoEl ? memoEl.value.trim() : '';
-    const val = gCode.value.trim().toUpperCase() || 'OFF';
+    let val = gCode.value.trim().toUpperCase() || 'OFF';
+    if(val==='DEL') val = 'OFF'; // DEL = 코드 지우기
     const isWorkCode = val==='OFF' || refWorkCodes().has(val);
     const isStatusCode = refStatusCodes().has(val);
     if(!isWorkCode && !isStatusCode){
@@ -5614,6 +5643,18 @@ function afterRender(){
     saveAttendance(rec);
   };
   if(gCancel) gCancel.onclick = ()=>{ gridEdit = null; render(); };
+  // DEL: 근무·근태코드만 지움(출퇴근 시각·연근·식사 체크·메모는 그대로 남김)
+  const gDel = document.getElementById('gridEditDel');
+  const doGridDel = ()=>{ if(!gridEdit) return; const {date, employeeId} = gridEdit; gridEdit = null; gridDeleteCode(date, employeeId); };
+  if(gDel) gDel.onclick = doGridDel;
+  const gDelTop = document.getElementById('gridEditDelTop');
+  if(gDelTop) gDelTop.onclick = doGridDel;
+  if(gCode) gCode.addEventListener('keydown', (ev)=>{
+    // 코드 칸이 비었거나 전체 선택된 상태에서 Delete(또는 빈칸에서 Backspace) → 바로 지우기
+    const all = gCode.value==='' || (gCode.selectionStart===0 && gCode.selectionEnd===gCode.value.length);
+    if((ev.key==='Delete' && all) || (ev.key==='Backspace' && gCode.value==='')){ ev.preventDefault(); doGridDel(); }
+  });
+  if(gDropdown){ const dOpt = gDropdown.querySelector('.gridDelOpt'); if(dOpt) dOpt.onclick = (ev)=>{ ev.stopPropagation(); doGridDel(); }; }
   const gReset = document.getElementById('gridEditReset');
   if(gReset) gReset.onclick = ()=>{
     const {date, employeeId} = gridEdit;
