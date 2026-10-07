@@ -399,7 +399,11 @@ label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:
 }
 
 .g-ext{--g:#0f766e;--g-soft:#ccfbf1;--g-strong:#2dd4bf;--g-on:#042f2e;}
-.g-blk{--g:var(--text);--g-soft:var(--bg);} .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
+.g-blk{--g:var(--text);--g-soft:var(--bg);}
+/* 근태 집계 순번 칸: 칸 전체를 그룹 색으로, 숫자는 검은색 */
+.ctbl td.rkCol{background:var(--g-soft) !important;}
+.ctbl td.rkCol .rkPlain{color:#111;font-weight:800;font-size:12px;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .ctbl td.rkCol .rkPlain{color:#f1f5f9;} } .g-blue{--g:#1d4ed8;--g-soft:#dbeafe;} .g-red{--g:#dc2626;--g-soft:#fee2e2;}
 .g-pur{--g:#7c3aed;--g-soft:#f1ecff;--g-strong:#c9b8fb;--g-on:#3b0764;}
 .g-yel{--g:#a16207;--g-soft:#fef9c3;--g-strong:#facc15;--g-on:#3f2a00;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .g-blue{--g:#60a5fa;--g-soft:#0f1f3d;} :root:not([data-theme="light"]) .g-red{--g:#f87171;--g-soft:#3b1113;} :root:not([data-theme="light"]) .g-yel{--g:#fde047;--g-soft:#332a05;} :root:not([data-theme="light"]) .g-pur{--g:#c4b5fd;--g-soft:#2a1a4a;} }
@@ -3593,7 +3597,9 @@ function pageCombined(){
   const c0 = v => v||'';
   const nEmp = perEmp.length;
   // 순번 배지: 1~3위 진하게, 상위 절반 연하게, 나머지는 글자색만
-  const rk = (n, g, tot) => n==null ? '' : `<span class="rk ${n<=3?'t1':(n<=Math.ceil((tot||nEmp)/2)?'t2':'t3')} g-${g}">${n}</span>`;
+  // 순번: 동그라미·강조색 없이 검은 숫자만(순번 칸 전체에 그룹 색을 칠함)
+  const rk = (n, g, tot) => n==null ? '' : `<span class="rkPlain">${n}</span>`;
+  const RC = g => `class="rkCol g-${g}" style="text-align:center;"`;
   // 순번 제외 대상은 숫자도 숨김: 전체 제외 → 모든 숫자, OT순번 제외 → OT 숫자만
   const statRows = perEmp.map((r,idx)=>{
     const ex = rankExcl(r.emp), hA = ex==='all', hO = ex!=='';
@@ -3605,14 +3611,14 @@ function pageCombined(){
     return `<tr>
       <td class="stNo" style="text-align:center;">${idx+1}</td>
       <td class="namecell nameLink stName" data-act="leave" data-emp="${esc(r.emp.id)}" title="연간 누계 보기">${esc(r.emp.name)}</td>
-      ${A('supAdj','지원근무 합계', r.supDays, v(r.supDays), ' sepL')}<td style="text-align:center;">${rk(rankSup[idx],'blk',nAll)}</td>
+      ${A('supAdj','지원근무 합계', r.supDays, v(r.supDays), ' sepL')}<td ${RC('blk')}>${rk(rankSup[idx],'blk',nAll)}</td>
       ${A('fchAdj','FCH', r.codeCnt.FCH, v(r.codeCnt.FCH), ' sepL')}${A('mchAdj','MCH', r.codeCnt.MCH, v(r.codeCnt.MCH))}
-      ${A('holCntAdj','휴일 합계', r.gyeHol, v(r.gyeHol))}<td style="text-align:center;">${rk(rankGyeHol[idx],'blue',nAll)}</td>
-      ${A('mcsAdj','MCS', r.codeCnt.MCS, v(r.codeCnt.MCS))}<td style="text-align:center;">${rk(rankMCS[idx],'red',nAll)}</td>
-      ${A('holAdj','휴일 OT', r.otHoliday, ot(r.otHoliday))}<td style="text-align:center;">${rk(rankOtHol[idx],'yel',nOt)}</td>
+      ${A('holCntAdj','휴일 합계', r.gyeHol, v(r.gyeHol))}<td ${RC('blue')}>${rk(rankGyeHol[idx],'blue',nAll)}</td>
+      ${A('mcsAdj','MCS', r.codeCnt.MCS, v(r.codeCnt.MCS))}<td ${RC('red')}>${rk(rankMCS[idx],'red',nAll)}</td>
+      ${A('holAdj','휴일 OT', r.otHoliday, ot(r.otHoliday))}<td ${RC('yel')}>${rk(rankOtHol[idx],'yel',nOt)}</td>
       ${A('fcAdj','FC', r.codeCnt.FC, v(r.codeCnt.FC), ' sepL')}${A('mcAdj','MC', r.codeCnt.MC, v(r.codeCnt.MC))}
-      ${A('wkCntAdj','평일 합계', r.gyeWk, v(r.gyeWk))}<td style="text-align:center;">${rk(rankGyeWk[idx],'wk',nAll)}</td>
-      ${A('wkAdj','평일 OT', r.otWeekdayFinal, ot(r.otWeekdayFinal))}<td style="text-align:center;">${rk(rankOtWk[idx],'pur',nOt)}</td>
+      ${A('wkCntAdj','평일 합계', r.gyeWk, v(r.gyeWk))}<td ${RC('wk')}>${rk(rankGyeWk[idx],'wk',nAll)}</td>
+      ${A('wkAdj','평일 OT', r.otWeekdayFinal, ot(r.otWeekdayFinal))}<td ${RC('pur')}>${rk(rankOtWk[idx],'pur',nOt)}</td>
     </tr>`;
   }).join('');
 
