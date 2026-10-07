@@ -178,6 +178,17 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .g-meal{--g:#0e7490;--g-soft:#cffafe;--g-strong:#22d3ee;--g-on:#083344;} /* 식사(청록) */
 /* 관리감독자 일지 */
 .svPages{display:flex;flex-direction:column;gap:18px;align-items:center;}
+.svLeft,.svRight{width:100%;max-width:820px;}
+.svTabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.svHide{display:none !important;}
+@media (min-width:701px){
+  /* PC: 왼쪽 직무수행 일지, 오른쪽 안전작업 계획서 — 같은 크기(A4 비율)로 나란히 */
+  .svPages{flex-direction:row;flex-wrap:nowrap;align-items:flex-start;justify-content:flex-start;}
+  .svLeft,.svRight{flex:0 0 auto;width:820px;max-width:none;}
+  .svLeft .svPage,.svRight .svPage{width:820px;max-width:none;}
+  #svLog{min-height:1159px;box-sizing:border-box;}
+  .svTabs,.svLeft .docLabel{height:30px;}
+}
 .svPage{background:#fff;color:#111;width:100%;max-width:820px;box-shadow:0 2px 12px rgba(0,0,0,.12);border-radius:4px;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;}
 #svLog{padding:22px 24px 18px;}
 .svImgPage img{display:block;width:100%;height:auto;}
@@ -3787,6 +3798,17 @@ function fitDocs(){
   const z = Math.min(1, availW / g.scrollWidth, availH / g.getBoundingClientRect().height);
   if(z < 1) g.style.zoom = Math.max(0.35, Math.floor(z*1000)/1000);
 }
+// 관리감독자 일지: 좌우 두 장을 가로·세로 모두 한 화면에 맞춤
+function fitSafety(){
+  const g = document.querySelector('.svPages'); if(!g) return;
+  g.style.zoom = '';
+  if(VIEW!=='safety' || window.innerWidth <= 700) return;
+  const pcs = getComputedStyle(g.parentElement);
+  const availW = g.parentElement.clientWidth - parseFloat(pcs.paddingLeft||0) - parseFloat(pcs.paddingRight||0) - 6;
+  const availH = window.innerHeight - Math.max(0, g.getBoundingClientRect().top) - 12;
+  const z = Math.min(1, availW / g.scrollWidth, availH > 200 ? availH / g.getBoundingClientRect().height : 1);
+  if(z < 1) g.style.zoom = Math.max(0.3, Math.floor(z*1000)/1000);
+}
 // 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
 function fitInputTable(){
   if(VIEW!=='input') return;
@@ -3804,7 +3826,7 @@ function fitCombined(){
   const n = new Date(), next = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1, 0, 0, 5);
   setTimeout(()=>{ try{ render(); }catch(e){} scheduleMidnight(); }, next - n);
 })();
-window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); }, 120); });
+window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); fitSafety(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
@@ -4200,7 +4222,7 @@ const SV_ITEMS = [
   {g:'기 타', c:'계단·통로', p:'난간대,미끄럼 방지조치 상태'}
 ];
 const SV_MARKS = ['', '○', '△', 'X'];
-let svForm = null, svPrintSel = {log:true, p1:false, p2:false, p3:false};
+let svForm = null, svPrintSel = {log:true, p1:false, p2:false, p3:false}, svImgTab = 0;
 function svDefault(){ return {start: mondayOf(todayStr()), marks:{}, checkers:['','','','','','',''], victim:'', cause:'', issue:''}; }
 function svLogHtml(){
   const f = svForm, days = Array.from({length:7}, (_,i)=> addDays(f.start, i));
@@ -4255,8 +4277,13 @@ function pageSafety(){
   </div>
   <p class="hint accNoPrint" style="margin:0 0 12px;">점검 칸을 누를 때마다 ○ → △ → X → 빈칸으로 바뀌어요. 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요. 고른 서류만 A4 한 장씩 출력돼요.</p>
   <div class="svPages">
-    ${svLogHtml()}
-    ${SV_IMG.map((src,i)=>`<div class="svPage svImgPage" id="svP${i+1}"><img src="${src}" alt="안전작업 계획서 ${i+1}"></div>`).join('')}
+    <div class="svLeft"><div class="docLabel accNoPrint">🦺 관리감독자 직무수행 일지</div>${svLogHtml()}</div>
+    <div class="svRight">
+      <div class="docLabel accNoPrint svTabs">📋 안전작업 계획서
+        ${['1쪽','2쪽','참석자 명단'].map((t,i)=>`<button class="btn ${svImgTab===i?'':'ghost'} sm" data-sv-tab="${i}">${t}</button>`).join('')}
+      </div>
+      ${SV_IMG.map((src,i)=>`<div class="svPage svImgPage${svImgTab===i?'':' svHide'}" id="svP${i+1}"><img src="${src}" alt="안전작업 계획서 ${i+1}"></div>`).join('')}
+    </div>
   </div>`;
 }
 // 출력 전용 문서를 따로 만들어(숨은 iframe) 그 안에서 인쇄 — 앱 화면이 다시 그려지거나 다른 인쇄 설정과 섞여도 안전
@@ -4275,7 +4302,8 @@ function svBuildPrintDoc(ids){
     .svTbl{min-width:0 !important;}
     .svImgPage img{width:100%;height:auto;max-height:280mm;object-fit:contain;}
     .svIssue{display:none !important;} .svIssuePrint{display:block !important;min-height:150px;}
-    .svM:hover{background:transparent !important;}`;
+    .svM:hover{background:transparent !important;}
+    .svHide{display:block !important;} #svLog{min-height:0 !important;}`;
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>관리감독자 일지</title><style>${css}</style></head><body>${html}</body></html>`;
 }
 function svPrintDocs(ids){
@@ -4298,6 +4326,7 @@ function svPrintDocs(ids){
 }
 function bindSafety(el){
   const root = el.querySelector('.svPages'); if(!root) return;
+  root.querySelectorAll('[data-sv-tab]').forEach(b=> b.onclick = ()=>{ svImgTab = +b.dataset.svTab; render(); });
   root.querySelectorAll('[data-sv-mark]').forEach(td=> td.onclick = ()=>{
     const k = td.dataset.svMark, cur = svForm.marks[k] || '';
     const nx = SV_MARKS[(SV_MARKS.indexOf(cur)+1) % SV_MARKS.length];
@@ -5181,6 +5210,7 @@ function afterRender(){
   fitInputTable();
   fitCombined();
   fitDocs();
+  fitSafety();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
