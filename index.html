@@ -125,6 +125,11 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 급여관리·급여명세서 */
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
+.pwCell{display:flex;align-items:center;gap:4px;}
+.pwRst{white-space:nowrap;padding:4px 8px !important;font-size:11px !important;}
+.pwIn{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;background:var(--bg);color:var(--text);font:inherit;font-size:15px;box-sizing:border-box;}
+.pwMsg{min-height:20px;margin:0 0 10px;color:#dc2626;font-weight:700;font-size:13px;}
+.pwMsg.ok{color:#047857;}
 .leaveBox{display:flex;align-items:center;gap:4px;justify-content:center;white-space:nowrap;}
 .leaveBox .yrs{font-size:11px;color:var(--text-muted);min-width:26px;text-align:right;}
 .payTbl .leaveBox input{width:46px !important;min-width:46px !important;max-width:46px;padding:5px 2px !important;}
@@ -668,6 +673,19 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;}
 #dpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:16px;text-align:center;padding:0;box-sizing:border-box;} /* 16px 미만이면 아이폰이 입력할 때 화면을 자동 확대함 */
 #dpTable tr.dpOff td:not(.dpPainted){background:#e5e7eb !important;color:#6b7280;}
+/* 출퇴근 입력: 근무자가 아닌 사람(휴무·휴가 등) 줄은 배차표처럼 흐린 회색 */
+.inTbl tr.inOff td{background:#e5e7eb !important;color:#6b7280;}
+.inTbl tr.inOff input.inCell{color:#6b7280;}
+/* 월별 OT현황: 담당 체크한 날은 아주 연한 분홍 */
+.otSum td.otDam{background:#fff1f6 !important;}
+/* 근태관리(집계·월별 근태)·월별 OT현황: 3명마다 검은 구분선 */
+.ctbl tbody tr:nth-child(3n):not(:last-child) > td,.otSum tbody tr:nth-child(3n):not(:last-child) > td{border-bottom:var(--sepW,1px) solid #111 !important;}
+.ctbl tbody tr:nth-child(3n+1):not(:first-child) > td,.otSum tbody tr:nth-child(3n+1):not(:first-child) > td{border-top:var(--sepW,1px) solid #111 !important;}
+.otSum tbody tr:nth-child(3n):not(:last-child) td.stNo{box-shadow:inset -1px 0 0 #c4cad3, inset 0 -1px 0 #111 !important;}
+.otSum tbody tr:nth-child(3n):not(:last-child) td.namecell.stName{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111, 1px 0 0 #111 !important;}
+/* 지원계획표: 모든 칸을 검은 선으로 */
+#splanTable{border-collapse:collapse;margin:1px;}
+#splanTable th,#splanTable td{border:1px solid #111 !important;}
 #dpTable tr.dpOff .dpNote{color:#9ca3af;}
 #dpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
 #dpTable th.dpMealH{border-top:2px solid #E03131 !important;}
@@ -760,6 +778,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
     <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
     <div class="navttl" data-role-section="leader" style="margin-top:10px;">조장관리</div>
+    <a data-view="pwchange"><span class="ic">🔑</span>비번 변경</a>
     <a data-view="safety"><span class="ic">🦺</span>관리감독자</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
@@ -815,7 +834,7 @@ function renderOtEdit(){
   const e = employees.find(x=>x.id===employeeId); if(!e) return '';
   const rec = attStore[date+'_'+employeeId] || {};
   const [y,m,d] = date.split('-').map(Number);
-  const c = computeDaily(rec.checkIn ? rec : null, date), sp = computeSupportDaily(rec, date), meal = computeMealAllowance(rec);
+  const c = computeDaily(rec.checkIn ? rec : null, date), sp = computeSupportDaily(rec, date), meal = computeMealAllowance(rec) + computeDamdang(rec);
   const chk = (n,l) => `<label style="display:flex;align-items:center;gap:5px;"><input type="checkbox" name="${n}" ${rec[n]?'checked':''}>${l}</label>`;
   const dc = gridCode(rec, date, String(e.name||'').trim());
   return `<div id="otEditScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;overflow:auto;padding:16px;">
@@ -834,13 +853,13 @@ function renderOtEdit(){
       <div class="row" style="margin-top:8px;align-items:center;">
         <div class="field" style="min-width:90px;"><label>본조보상</label><input type="number" step="0.5" min="0" name="honjoComp" value="${esc(rec.honjoComp||'')}" placeholder="0" style="width:90px;"></div>
         <div class="field" style="min-width:90px;"><label>타조보상</label><input type="number" step="0.5" min="0" name="tajoComp" value="${esc(rec.tajoComp||'')}" placeholder="0" style="width:90px;"></div>
-        ${chk('jochul','조출')}${chk('jungsik','중식')}${chk('seokchul','석출')}${chk('yasik','야식')}
+        ${chk('jochul','조출')}${chk('jungsik','중식')}${chk('seokchul','석출')}${chk('yasik','야식')}${chk('damdang','담당')}
       </div>
       <div class="cards" style="margin:12px 0 8px;grid-template-columns:repeat(4,1fr);">
         <div class="card"><div class="n" style="font-size:18px;">${fmtH(c.totalWork)}</div><div class="l">실근무</div></div>
         <div class="card"><div class="n" style="font-size:18px;">${fmtH(c.valid?c.premium:0)}</div><div class="l">본근무 가산</div></div>
         <div class="card"><div class="n" style="font-size:18px;">${fmtH(sp.valid?sp.premium:0)}</div><div class="l">지원 가산</div></div>
-        <div class="card"><div class="n" style="font-size:18px;">${fmtH(meal)}</div><div class="l">식사</div></div>
+        <div class="card"><div class="n" style="font-size:18px;">${fmtH(meal)}</div><div class="l">식사·담당</div></div>
       </div>
       ${canEdit ? `<div class="row" style="justify-content:flex-end;">
         <button type="button" class="btn warn ghost sm" id="otEditDel" ${attStore[date+'_'+employeeId]?'':'disabled'}>초기화</button>
@@ -862,7 +881,7 @@ function bindOtEdit(el){
       checkIn: readTimeSelect(fd,'checkIn'), checkOut: readTimeSelect(fd,'checkOut'),
       supportIn: readTimeSelect(fd,'supportIn'), supportOut: readTimeSelect(fd,'supportOut'),
       honjoComp: fd.get('honjoComp')||'', tajoComp: fd.get('tajoComp')||'',
-      jochul: !!fd.get('jochul'), seokchul: !!fd.get('seokchul'), jungsik: !!fd.get('jungsik'), yasik: !!fd.get('yasik'),
+      jochul: !!fd.get('jochul'), seokchul: !!fd.get('seokchul'), jungsik: !!fd.get('jungsik'), yasik: !!fd.get('yasik'), damdang: !!fd.get('damdang'),
       updatedAt: Date.now()
     };
     otEdit = null;
@@ -872,7 +891,7 @@ function bindOtEdit(el){
   // 초기화: 출퇴근 시각·보상·식사만 지움(근무코드·근태코드·메모는 그대로)
   if(del) del.onclick = ()=> appConfirm('이 날의 출퇴근 시각·보상·식사 입력을 지울까요? (근태코드는 그대로)', ()=>{
     const {date, employeeId} = otEdit; otEdit = null;
-    saveAttendance({date, employeeId, checkIn:'', checkOut:'', supportIn:'', supportOut:'', honjoComp:'', tajoComp:'', jochul:false, seokchul:false, jungsik:false, yasik:false, updatedAt: Date.now()});
+    saveAttendance({date, employeeId, checkIn:'', checkOut:'', supportIn:'', supportOut:'', honjoComp:'', tajoComp:'', jochul:false, seokchul:false, jungsik:false, yasik:false, damdang:false, updatedAt: Date.now()});
   });
 } // 기사별 OT현황: 달력 상세보기 중인 직원
 let codeStatsIncludeMeal = true; // 근태코드 집계: 평일OT에 식사연장(식사계) 포함 여부
@@ -1575,7 +1594,7 @@ const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 //  · 노란 배경 + 검은 글씨: MC   · 파란 배경 + 흰 글씨: FC
 //  · 분홍 배경 + 빨간 글씨: SP   · 흐린 회색 배경 + 진한 회색 글씨: SC
 //  · 나머지(D·N·DN·ND·DS·UJ·E·EC·CK 등): 검은 글씨만
-const RED_CODES = new Set(['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL']);
+const RED_CODES = new Set(['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL','DS']); // DS(주간지원)도 빨간 배경
 const SKY_CODES = new Set([]);
 // 근태코드 배경: 빨강·파랑·노랑·보라는 연한 색 배경 + 진한 글씨(눈이 덜 피로하게)
 const CODE_STYLE = {FC:{bg:'#dbeafe',fg:'#1d4ed8',txt:'#1d4ed8'}, MC:{bg:'#fef9c3',fg:'#a16207',txt:'#a16207'},
@@ -1594,6 +1613,7 @@ const CODE_GROUPS = [
   {key:'blue', name:'파란 배경'}, {key:'pink', name:'분홍 배경'}, {key:'purple', name:'보라 배경'}, {key:'gray', name:'회색 배경'}, {key:'sky', name:'하늘색 배경'}
 ];
 function codeGroup(code){
+  if(code==='DS') return 'red'; // 요청: DS는 항상 빨간 배경
   const cd = (typeof codeDefs!=='undefined') && codeDefs[code];
   if(cd && cd.color) return cd.color;
   if(RED_CODES.has(code)) return 'red';
@@ -2131,6 +2151,8 @@ function computeDaily(rec, dateStr){
 function fmtH(n){ return (Math.round(n*10)/10).toFixed(1); }
 
 // 조출/석출/중식/야식 - 각 1건당 1.5시간 가산 (원본 식사계 = SUM(조출,석출,중식,야식)*1.5)
+// 담당: 출퇴근 입력에서 체크하면 식사연장과 같은 1.5시간 OT — 월별 OT현황·급여명세서에만 반영(근태관리 집계에는 넣지 않음)
+function computeDamdang(rec){ return rec && rec.damdang ? 1.5 : 0; }
 function computeMealAllowance(rec){
   if(!rec) return 0;
   const cnt = [rec.jochul, rec.seokchul, rec.jungsik, rec.yasik].filter(Boolean).length;
@@ -2426,7 +2448,7 @@ const FIREBASE_CONFIG = {
 const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
-const VIEWER_VIEWS = ['combined','ot','dispatch','splan','codes','accident','vessel','berth']; // codes: 누구나 보기(수정은 UNION만)
+const VIEWER_VIEWS = ['combined','ot','dispatch','splan','codes','accident','vessel','berth','pwchange']; // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety'];
 const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','accident'];
 const LEADER_READONLY_VIEWS = ['codes','accident']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
@@ -2864,7 +2886,7 @@ function subscribeAll(){
     scheduleRender();
   }, dbErr);
   unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
-  unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{});
+  unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{}); subscribeSlipPw();
   unsub.mailConfig = db.doc('meta/mailConfig').onSnapshot(doc=>{ mailConfig = doc.exists ? doc.data() : {}; scheduleRender(); }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
@@ -3234,9 +3256,10 @@ function render(){
   else if(VIEW==='payroll') el.innerHTML = pagePayroll();
   else if(VIEW==='accident') el.innerHTML = pageAccident();
   else if(VIEW==='safety') el.innerHTML = pageSafety();
+  else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
 
   afterRender();
-  if(!canEdit && VIEW!=='accident' && VIEW!=='safety') applyReadonly(el); // 사고경위서는 누구나 작성·출력(저장 안 함)
+  if(!canEdit && VIEW!=='accident' && VIEW!=='safety' && VIEW!=='pwchange') applyReadonly(el); // 사고경위서는 누구나 작성·출력(저장 안 함)
 }
 
 function workBadge(code){
@@ -3250,7 +3273,7 @@ let inputTeam = (()=>{ try{ return localStorage.getItem('snct_input_team')||'1';
 let inputDraft = {}; // `${date}|${empId}` -> {field: 값} (저장 전 입력 내용)
 const IN_TIME = ['checkIn','checkOut','supportIn','supportOut'];
 const IN_NUM = ['honjoComp','tajoComp'];
-const IN_CHK = ['jochul','seokchul','jungsik','yasik','extCode']; // extCode = 연근(휴일 2배·평일 전체 1.5배)
+const IN_CHK = ['jochul','seokchul','jungsik','yasik','extCode','damdang']; // extCode = 연근(휴일 2배·평일 전체 1.5배)
 // 엑셀식 시각 표기 ↔ 저장 형식: 8 → 8:00, 15.3 → 15:30, 7.3 → 7:30 (15:30 도 가능)
 function hmToExcel(hm){ if(!hm) return ''; const [h,m] = hm.split(':'); return Number(m) ? `${Number(h)}.${String(m).replace(/0$/,'')}` : String(Number(h)); }
 function excelToHm(v){
@@ -3271,7 +3294,7 @@ function inputRowRec(date, e){
 }
 function inputRowTotal(date, e){
   const r = inputRowRec(date, e);
-  const c = computeDaily(r, date), sp = computeSupportDaily(r, date), m = computeMealAllowance(r);
+  const c = computeDaily(r, date), sp = computeSupportDaily(r, date), m = computeMealAllowance(r) + computeDamdang(r);
   return (c.valid?c.premium:0) + (sp.valid?sp.premium:0) + m;
 }
 function pageInput(){
@@ -3290,7 +3313,8 @@ function pageInput(){
     const suwu = ['day','night','full'].reduce((a,sh)=>{ const dd = dispatch[`${date}_${sh}_${e.id}`]; return a + (dd && dd.slots ? Object.values(dd.slots).filter(Boolean).length*0.5 : 0); }, 0);
     const dc = gridCode(base, date, String(e.name||'').trim()) || scheduledShift(date, e.team||'');
     const tot = inputRowTotal(date, e);
-    return `<tr class="${dr && Object.keys(dr).length ? 'inDirty' : ''}">
+    const off = !!dc && !DP_WORK_CODES.has(dc); // 배차표와 같은 기준: D·N 계열이 아니면 근무자 아님
+    return `<tr class="${dr && Object.keys(dr).length ? 'inDirty' : ''}${off ? ' inOff' : ''}">
       <td class="namecell inName">${esc(e.name)} ${dc ? `<span style="margin-left:4px;">${codeBadge(dc)}</span>` : ''}</td>
       ${t('checkIn')}${t('checkOut')}${t('supportIn')}${t('supportOut')}
       <td class="inRO">${suwu ? fmtH(suwu) : ''}</td>
@@ -3311,8 +3335,8 @@ function pageInput(){
       <button class="btn ${inputTeam==='2'?'':'ghost'} sm" data-act="in-team" data-team="2">2조</button>
     </div>
     <div class="scrollx gridwrap"><table class="gtbl inTbl"><thead><tr>
-      <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>연근</th><th>총OT</th>
-    </tr></thead><tbody>${rows || `<tr><td colspan="14" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
+      <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>연근</th><th>담당</th><th>총OT</th>
+    </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row" style="margin-top:12px;align-items:center;">
       <button class="btn" id="inSave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
       <button class="btn warn ghost" id="inReset">초기화</button>
@@ -3719,12 +3743,13 @@ function pageOT(){
 
   const perEmp = sortedEmployees.map(e=>{
     let wkTotal=0, hoTotal=0, spTotal=0, mealTotal=0;
-    const daily = {};
+    const daily = {}, damDays = {};
     days.forEach(ds=>{
       const rec = otMatrixAttendance[ds+'_'+e.id];
       const c = computeDaily(rec, ds);
       const s = computeSupportDaily(rec, ds);
-      const meal = computeMealAllowance(rec);
+      const meal = computeMealAllowance(rec) + computeDamdang(rec); // 담당은 식사연장과 같은 OT(월별 OT현황에만)
+      if(rec && rec.damdang) damDays[ds] = true;
       if(c.valid){ if(c.category==='평일'||c.category==='토요일') wkTotal+=c.premium; else hoTotal+=c.premium; }
       if(s.valid){
         const cat = dayCategory(ds, recManguen(rec, ds), rec && rec.employeeId);
@@ -3737,7 +3762,7 @@ function pageOT(){
     const hoGuar = Math.max(hoTotal, 60); // 휴일 보전: 월 60시간 최소 보장
     const spGuar = Math.max(spTotal, 30); // 지원 보전: 월 30시간 최소 보장
     const otGuar = wkTotal + hoGuar + spGuar + mealTotal;
-    return {emp:e, wkTotal, hoTotal, hoGuar, spTotal, spGuar, mealTotal, grand, otGuar, otDiff: otGuar-grand, daily};
+    return {emp:e, wkTotal, hoTotal, hoGuar, spTotal, spGuar, mealTotal, grand, otGuar, otDiff: otGuar-grand, daily, damDays};
   });
 
   const dayHead = days.map(ds=>{
@@ -3753,7 +3778,7 @@ function pageOT(){
       const [y,m,d] = ds.split('-').map(Number);
       const cls = dayCellClass(ds, y, m, d);
       const v = r.daily[ds];
-      return `<td class="${cls}" data-act="ot-cell-detail" data-date="${esc(ds)}" data-emp="${esc(r.emp.id)}" style="text-align:center;cursor:pointer;">${v?fmtH(v):''}</td>`;
+      return `<td class="${cls}${r.damDays[ds]?' otDam':''}" data-act="ot-cell-detail" data-date="${esc(ds)}" data-emp="${esc(r.emp.id)}" style="text-align:center;cursor:pointer;"${r.damDays[ds]?' title="담당"':''}>${v?fmtH(v):''}</td>`;
     }).join('');
     return `<tr>
       <td class="stNo" style="text-align:center;">${esc(noCell)}</td>
@@ -4098,7 +4123,7 @@ function pagePayroll(){
       <td class="leaveCell" data-emp="${esc(e.id)}">${leaveCellHtml(p, e.id)}</td>
       <td><input type="text" class="tx" autocomplete="off" data-pay="job" data-emp="${esc(e.id)}" value="${v('job')}" placeholder="직무"></td>
       <td><select class="tx" data-pay="grade" data-emp="${esc(e.id)}"><option value=""></option>${PAY_GRADES.map(g=>`<option${p.grade===g?' selected':''}>${g}</option>`).join('')}</select></td>
-      <td><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}" placeholder="oo-oo-oo"></td>
+      <td><div class="pwCell"><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}" placeholder="oo-oo-oo">${slipPwCustom(e.id) ? `<button class="btn warn ghost sm pwRst" data-act="pw-reset" data-emp="${esc(e.id)}" title="개인이 바꾼 비번을 지우고 왼쪽 처음 비번으로 되돌림">비번 초기화</button>` : ''}</div></td>
       <td>${money('hourly')}</td>
       <td>${money('ordinary')}</td>
       <td class="tenureCell" data-emp="${esc(e.id)}">${tenureCellHtml(p)}</td>
@@ -4123,16 +4148,99 @@ function pagePayroll(){
     ${payMgrTab==='ded' ? `<p class="hint" style="margin:0 0 10px;">항목마다 한 번만 정하면 <b>모든 사람의 급여명세서</b>에 일괄 적용돼요. % 는 지급총액 기준(10원 미만 버림), 원 은 모든 사람 같은 금액이에요.</p>
       <div class="scrollx"><table class="payTbl rateTbl"><thead><tr><th>공제 항목</th><th>값</th><th>단위</th><th></th></tr></thead><tbody>${rateRows}</tbody></table></div>`
     : list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>연차 개수<br><span style="font-weight:400;font-size:11px;">(${annualLeaveYear()}년 · 입사일로 자동)</span></th><th>직무</th><th>직급</th><th>생년월일<br><span style="font-weight:400;font-size:11px;">(명세서 비번)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th><th>직책수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th><th>기술수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th>
+      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>연차 개수<br><span style="font-weight:400;font-size:11px;">(${annualLeaveYear()}년 · 입사일로 자동)</span></th><th>직무</th><th>직급</th><th>명세서 비번<br><span style="font-weight:400;font-size:11px;">(처음 비번 · 생년월일)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th><th>직책수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th><th>기술수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th>
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
   </div>`;
 }
+/* ========================= 명세서 비번(개인 변경) =========================
+   처음 비번 = 급여관리의 '명세서 비번'(생년월일). 개인이 '비번 변경' 화면에서 바꾸면 slipPw/{직원ID}에 암호화(해시)해서 저장.
+   UNION은 급여관리에서 '비번 초기화'를 누르면 처음 비번으로 돌아감 */
+let slipPwMap = {}; // empId -> {h, updatedAt}
+function sha256hex(str){
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const bytes = Array.from(new TextEncoder().encode(str)), l = bytes.length*8;
+  bytes.push(0x80); while(bytes.length%64!==56) bytes.push(0);
+  for(let i=7;i>=0;i--) bytes.push(Math.floor(l/Math.pow(2,i*8))&255);
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const r=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let o=0;o<bytes.length;o+=64){
+    const w=new Array(64);
+    for(let i=0;i<16;i++) w[i]=(bytes[o+i*4]<<24)|(bytes[o+i*4+1]<<16)|(bytes[o+i*4+2]<<8)|bytes[o+i*4+3];
+    for(let i=16;i<64;i++){ const s0=r(w[i-15],7)^r(w[i-15],18)^(w[i-15]>>>3), s1=r(w[i-2],17)^r(w[i-2],19)^(w[i-2]>>>10); w[i]=(w[i-16]+s0+w[i-7]+s1)|0; }
+    let [a,b,c,d,e,f,g,h]=H;
+    for(let i=0;i<64;i++){ const S1=r(e,6)^r(e,11)^r(e,25), ch=(e&f)^(~e&g), t1=(h+S1+ch+K[i]+w[i])|0, S0=r(a,2)^r(a,13)^r(a,22), mj=(a&b)^(a&c)^(b&c), t2=(S0+mj)|0; h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0; }
+    H=[H[0]+a,H[1]+b,H[2]+c,H[3]+d,H[4]+e,H[5]+f,H[6]+g,H[7]+h].map(x=>x|0);
+  }
+  return H.map(x=>(x>>>0).toString(16).padStart(8,'0')).join('');
+}
+function slipPwHash(empId, pw){ return sha256hex('snct-slip:'+empId+':'+String(pw||'').trim()); }
+function slipPwCustom(empId){ return !!(slipPwMap[empId] && slipPwMap[empId].h); }
+// 비번 확인: 개인이 바꾼 비번이 있으면 그것, 없으면 급여관리의 '명세서 비번'(생년월일 6·8자리, 그대로 입력도 허용)
+function slipPwOk(empId, input){
+  const v = String(input||'').trim(); if(!v) return false;
+  if(slipPwCustom(empId)) return slipPwHash(empId, v) === slipPwMap[empId].h;
+  const p = payMgr[empId] || {};
+  if(birthMatches(v, p.birth)) return true;
+  const a = v.replace(/[\s-]/g,''), b = String(p.birth||'').replace(/[\s-]/g,'');
+  return !!b && a===b;
+}
+function slipPwHasAny(empId){ const p = payMgr[empId] || {}; return slipPwCustom(empId) || !!String(p.birth||'').trim(); }
+function subscribeSlipPw(){
+  if(!db || demoMode || unsub.slipPw) return;
+  try{ unsub.slipPw = db.collection('slipPw').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); slipPwMap = m; scheduleRender(); }, ()=>{}); }catch(e){}
+}
+let pwChange = {empId:'', msg:'', ok:false};
+function pagePwChange(){
+  const list = employees.slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
+  const opts = list.map(e=>`<option value="${esc(e.id)}"${pwChange.empId===e.id?' selected':''}>${esc((e.team?e.team+'조 ':'')+e.name)}</option>`).join('');
+  return `
+  <h2 class="pgttl">비번 변경</h2>
+  <div class="panel" style="max-width:460px;">
+    <p class="hint" style="margin:0 0 14px;">급여명세서를 열 때 쓰는 <b>명세서 비번</b>을 바꿔요. 처음 비번은 <b>생년월일 6자리</b>예요. 비번을 잊으면 UNION에 초기화를 부탁하세요.</p>
+    <div class="field" style="margin-bottom:12px;"><label>성명</label><select id="pwEmp" class="pwIn"><option value="">이름을 고르세요</option>${opts}</select></div>
+    <div class="field" style="margin-bottom:12px;"><label>현재 비번</label><input type="password" id="pwCur" class="pwIn" autocomplete="off"></div>
+    <div class="field" style="margin-bottom:12px;"><label>새 비번 (4자 이상)</label><input type="password" id="pwNew" class="pwIn" autocomplete="new-password"></div>
+    <div class="field" style="margin-bottom:14px;"><label>새 비번 확인</label><input type="password" id="pwNew2" class="pwIn" autocomplete="new-password"></div>
+    <div class="pwMsg${pwChange.ok?' ok':''}" id="pwMsg">${esc(pwChange.msg||'')}</div>
+    <button class="btn" id="pwSave" style="width:100%;">비번 바꾸기</button>
+  </div>`;
+}
+function bindPwChange(el){
+  const b = el.querySelector('#pwSave'); if(!b) return;
+  const msg = (t, ok)=>{ pwChange.msg = t; pwChange.ok = !!ok; const m = el.querySelector('#pwMsg'); if(m){ m.textContent = t; m.classList.toggle('ok', !!ok); } };
+  el.querySelector('#pwEmp').onchange = ev=>{ pwChange.empId = ev.target.value; msg(''); };
+  b.onclick = async ()=>{
+    const id = el.querySelector('#pwEmp').value, cur = el.querySelector('#pwCur').value, n1 = el.querySelector('#pwNew').value.trim(), n2 = el.querySelector('#pwNew2').value.trim();
+    if(!id) return msg('이름을 고르세요.');
+    if(!slipPwHasAny(id)) return msg('아직 처음 비번이 등록되지 않았어요. UNION에 등록을 부탁하세요.');
+    if(!slipPwOk(id, cur)) return msg('현재 비번이 맞지 않습니다.');
+    if(n1.length < 4) return msg('새 비번은 4자 이상으로 정하세요.');
+    if(n1 !== n2) return msg('새 비번이 서로 다릅니다. 다시 확인하세요.');
+    if(!db || demoMode){ slipPwMap[id] = {h: slipPwHash(id, n1), updatedAt: Date.now()}; el.querySelectorAll('input').forEach(x=>x.value=''); return msg('비번을 바꿨어요. (미리보기 모드라 저장은 안 됨)', true); }
+    try{
+      await db.collection('slipPw').doc(id).set({h: slipPwHash(id, n1), updatedAt: Date.now()});
+      el.querySelectorAll('input').forEach(x=>x.value='');
+      msg('비번을 바꿨어요. 다음부터 새 비번으로 명세서를 열면 돼요.', true);
+    }catch(err){ msg('저장하지 못했어요. 인터넷 연결을 확인하거나 UNION에 알려주세요. ('+((err&&err.code)||'오류')+')'); }
+  };
+}
+async function resetSlipPw(empId){
+  if(!requireEdit()) return;
+  const e = employees.find(x=>x.id===empId);
+  appConfirm(`${e?e.name:''}님의 명세서 비번을 처음 비번(급여관리의 명세서 비번)으로 되돌릴까요?`, async ()=>{
+    delete slipPwMap[empId]; render();
+    if(!db || demoMode){ showToast('초기화했어요. (미리보기)'); return; }
+    try{ await db.collection('slipPw').doc(empId).delete(); showToast('비번을 초기화했어요.'); }
+    catch(err){ showToast(saveErrMsg('초기화에 실패했습니다.', err)); }
+  });
+}
+
 function renderPayPw(){
   const e = employees.find(x=>x.id===payPw.empId);
   return `<div class="payScrim" id="payPwScrim"><div class="pwBox" role="dialog" aria-label="암호 입력">
     <h3>암호 입력</h3>
-    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 암호(생년월일 6자리)를 입력하세요.</p>
-    <input type="password" id="payPwInput" autocomplete="off" inputmode="numeric">
+    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 <b>명세서 비번</b>을 입력하세요. (처음 비번은 생년월일 6자리, 바꾸려면 '비번 변경' 메뉴)</p>
+    <input type="password" id="payPwInput" autocomplete="off">
     <div class="pwErr" id="payPwErr">${esc(payPw.err||'')}</div>
     <div class="pwBtns"><button class="pwOk" id="payPwOk" disabled>파일 열기</button><button class="pwNo" id="payPwNo">취소</button></div>
   </div></div>`;
@@ -4142,7 +4250,7 @@ function slipCalc(e, start, end){
   let wk=0, ho=0, sp=0, meal=0, holWork=0, holOT=0, holNight=0, holExtra=0, wkNight=0, wkGroupPrem=0, supPrem=0, tkDays=0;
   for(let ds=start; ds<=end; ds=addDays(ds,1)){
     const rec = otMatrixAttendance[ds+'_'+e.id]; if(!rec) continue;
-    const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds), m = computeMealAllowance(rec);
+    const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds), m = computeMealAllowance(rec) + computeDamdang(rec);
     if(c.valid){
       if(c.category==='일요일' || c.category==='공휴일'){
         ho += c.premium; holWork += c.totalWork - c.overtime; holOT += c.overtime; holNight += c.night;
@@ -4298,7 +4406,7 @@ function bindPayroll(el){
   // 월별 OT현황: 성명 → 암호 → 명세서
   el.querySelectorAll('[data-act="pay-open"]').forEach(x=>x.onclick=()=>{
     const p = payMgr[x.dataset.emp];
-    if(!p || !String(p.birth||'')){ showToast('급여 정보(생년월일)가 아직 등록되지 않았어요. (UNION의 급여관리에서 등록)'); return; }
+    if(!slipPwHasAny(x.dataset.emp)){ showToast('명세서 비번이 아직 등록되지 않았어요. (UNION의 급여관리에서 등록)'); return; }
     payPw = {empId: x.dataset.emp, err:''}; render();
     setTimeout(()=>{ const i = document.getElementById('payPwInput'); if(i) i.focus(); }, 30);
   });
@@ -4307,7 +4415,7 @@ function bindPayroll(el){
     const ok = document.getElementById('payPwOk');
     const tryOpen = ()=>{
       const p = payMgr[payPw.empId] || {};
-      if(birthMatches(pi.value, p.birth)){ paySlip = {empId: payPw.empId}; payPw = null; render(); }
+      if(slipPwOk(payPw.empId, pi.value)){ paySlip = {empId: payPw.empId}; payPw = null; render(); }
       else { document.getElementById('payPwErr').textContent = '암호가 맞지 않습니다.'; pi.select(); }
     };
     pi.oninput = ()=>{ ok.disabled = !pi.value; document.getElementById('payPwErr').textContent = ''; };
@@ -5488,6 +5596,8 @@ function afterRender(){
   bindPayroll(el);
   bindAccident(el);
   bindSafety(el);
+  bindPwChange(el);
+  el.querySelectorAll('[data-act="pw-reset"]').forEach(x=> x.onclick = ()=> resetSlipPw(x.dataset.emp));
   fitOtTable();
   fitInputTable();
   fitCombined();
@@ -6030,7 +6140,7 @@ function payCalc(e, start, end){
   let holWork=0, holOT=0, holNight=0, holExtra=0, wkNight=0, wkGroupPrem=0;
   for(let ds=start; ds<=end; ds=addDays(ds,1)){
     const rec = attStore[ds+'_'+e.id]; if(!rec) continue;
-    const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds), m = computeMealAllowance(rec);
+    const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds), m = computeMealAllowance(rec) + computeDamdang(rec);
     if(c.valid){
       if(c.category==='일요일' || c.category==='공휴일'){
         ho += c.premium;
