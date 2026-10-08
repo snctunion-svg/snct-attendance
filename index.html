@@ -812,6 +812,29 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .zoomCtl button:hover{background:#fce7f3;}
 .zoomCtl #zoomPct{font-size:12px;min-width:46px;color:#374151;}
 @media (max-width:700px){ .zoomCtl{display:none;} }
+/* 경위서·학자금 메일 보내기 */
+@media (min-width:1100px){ /* PC에서 서류를 하나만 고르면 메일 칸을 서류 오른쪽에 */
+  .docArea.one{display:flex;gap:18px;align-items:flex-start;}
+  .docArea.one .docMailRow{flex:1 1 360px;margin-top:30px;min-width:340px;}
+  .docArea.one .docMailRow .docMail{flex:1 1 100%;max-width:560px;}
+}
+.docMailRow{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;align-items:flex-start;}
+.docMailRow .docMail{flex:1 1 380px;max-width:640px;margin:0;}
+.docMail h3{margin:0 0 10px;}
+.docMail .dmField{margin-bottom:10px;min-width:0;}
+.docMail .dmField label{font-size:12.5px;font-weight:700;}
+.docMail .dmIn{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--text);font:inherit;font-size:14px;}
+.docMail textarea.dmIn{resize:vertical;min-height:80px;}
+.dmSub{font-weight:400;font-size:12px;color:var(--text-muted);}
+.dmFileRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.dmFileBtn{cursor:pointer;}
+.dmFiles{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.dmFiles li{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:13px;}
+.dmFiles li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;} .dmFiles i{color:var(--text-muted);font-style:normal;}
+.dmDel{border:0;background:transparent;color:#b91c1c;font-weight:800;cursor:pointer;font-size:14px;}
+.dmFoot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:4px;}
+@media (max-width:700px){ .docMailRow .docMail{flex:1 1 100%;max-width:none;} .docMail .dmIn{font-size:16px;} }
+@media print{ .docMailRow{display:none !important;} }
 .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);align-items:center;}
 .legend .sw{display:inline-flex;align-items:center;gap:4px;}
 
@@ -4751,15 +4774,17 @@ function pageAccident(){
   return `
   <h2 class="pgttl accNoPrint">경위서&amp;학자금</h2>
   <div class="row accNoPrint" style="margin-bottom:12px;align-items:center;">
-    <span style="font-weight:800;">출력할 서류</span>
+    <span style="font-weight:800;">서류 선택</span>
     <label class="chk"><input type="checkbox" id="prAcc" ${docPrintSel.acc?'checked':''}> 사고경위서</label>
     <label class="chk"><input type="checkbox" id="prHak" ${docPrintSel.hak?'checked':''}> 학자금 지급신청서</label>
     <button class="btn" id="accPrint">🖨️ 출력 (인쇄 · PDF 저장)</button>
     <button class="btn warn ghost" id="accReset">새로 작성</button>
   </div>
-  <p class="hint accNoPrint" style="margin:-4px 0 12px;">칸을 눌러 바로 입력하세요. 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요. 고른 서류만 한 장씩 출력돼요.</p>
+  <p class="hint accNoPrint" style="margin:-4px 0 12px;">체크한 서류만 아래에 나와요. 칸을 눌러 바로 입력하세요. 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요. 출력·메일 발송은 서류마다 한 장씩 돼요.</p>
+  ${(!docPrintSel.acc && !docPrintSel.hak) ? '<div class="empty accNoPrint">위에서 사고경위서나 학자금 지급신청서를 체크하세요.</div>' : ''}
+  <div class="docArea${(docPrintSel.acc ? 1 : 0) + (docPrintSel.hak ? 1 : 0) === 1 ? ' one' : ''}">
   <div class="docGrid">
-  <div class="accWrap"><div class="docLabel accNoPrint">📝 사고경위서</div><div class="accSheet docFramed" id="accSheet">
+  ${docPrintSel.acc ? `<div class="accWrap"><div class="docLabel accNoPrint">📝 사고경위서</div><div class="accSheet docFramed" id="accSheet">
     <div class="accTop">(내,외부 겸용)</div>
     <div class="accTitleBox"><img class="accLogo" src="${ACC_LOGO}" alt="SNCT"><div class="accTitle">경 위 서</div><div class="accSub">Accident Report</div></div>
     <table class="accTbl accTblTop">
@@ -4787,8 +4812,10 @@ function pageAccident(){
       <div><span class="k">관리 감독자 :</span>${inp('boss')}<span class="s">(인)</span></div>
     </div>
     <div class="docFoot">선광신컨테이너터미널㈜</div>
-  </div></div>
-  ${hakSheetHtml(names)}
+  </div></div>` : ''}
+  ${docPrintSel.hak ? hakSheetHtml(names) : ''}
+  </div>
+  ${(docPrintSel.acc || docPrintSel.hak) ? `<div class="docMailRow accNoPrint">${docPrintSel.acc ? docMailBox('acc') : ''}${docPrintSel.hak ? docMailBox('hak') : ''}</div>` : ''}
   </div>`;
 }
 /* ========================= 관리감독자 일지(장비파트) · 안전작업계획서 =========================
@@ -5234,18 +5261,10 @@ function bindHak(el){
 }
 function bindAccident(el){
   bindHak(el);
+  bindDocMail(el);
   const pa = el.querySelector('#prAcc'), ph = el.querySelector('#prHak');
-  if(pa) pa.onchange = ()=>{ docPrintSel.acc = pa.checked; };
-  if(ph) ph.onchange = ()=>{ docPrintSel.hak = ph.checked; };
-  const sheet = el.querySelector('#accSheet'); if(!sheet) return;
-  sheet.querySelectorAll('[data-acc]').forEach(x=>{
-    x.oninput = ()=>{
-      accForm[x.dataset.acc] = x.value;
-      if(x.tagName==='TEXTAREA'){ const m = x.parentElement.querySelector('.accTaPrint'); if(m) m.textContent = x.value; }
-      if(x.dataset.acc==='name'){ const w = sheet.querySelector('[data-acc="writer"]'); if(w && (!accForm.writer || accForm._autoWriter)){ w.value = x.value; accForm.writer = x.value; accForm._autoWriter = true; } }
-      if(x.dataset.acc==='writer') accForm._autoWriter = false;
-    };
-  });
+  if(pa) pa.onchange = ()=>{ docPrintSel.acc = pa.checked; render(); };   // 체크한 서류만 화면에 보이게
+  if(ph) ph.onchange = ()=>{ docPrintSel.hak = ph.checked; render(); };
   const p = el.querySelector('#accPrint');
   if(p) p.onclick = ()=>{
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -5255,7 +5274,144 @@ function bindAccident(el){
     svPrintDocs(ids);
   };
   const r = el.querySelector('#accReset');
-  if(r) r.onclick = ()=> appConfirm('사고경위서와 학자금 신청서에 입력한 내용을 모두 지우고 새로 작성할까요?', ()=>{ accForm = accDefault(); hakForm = hakDefault(); render(); });
+  if(r) r.onclick = ()=> appConfirm('사고경위서와 학자금 신청서에 입력한 내용을 모두 지우고 새로 작성할까요? (첨부한 파일도 지워져요)', ()=>{ accForm = accDefault(); hakForm = hakDefault(); docMail.hak.files = []; render(); });
+  const sheet = el.querySelector('#accSheet'); if(!sheet) return;
+  sheet.querySelectorAll('[data-acc]').forEach(x=>{
+    x.oninput = ()=>{
+      accForm[x.dataset.acc] = x.value;
+      if(x.tagName==='TEXTAREA'){ const m = x.parentElement.querySelector('.accTaPrint'); if(m) m.textContent = x.value; }
+      if(x.dataset.acc==='name'){ const w = sheet.querySelector('[data-acc="writer"]'); if(w && (!accForm.writer || accForm._autoWriter)){ w.value = x.value; accForm.writer = x.value; accForm._autoWriter = true; } }
+      if(x.dataset.acc==='writer') accForm._autoWriter = false;
+    };
+  });
+}
+
+/* ===== 경위서·학자금: 서류별 메일 발송 (서류는 PDF로 첨부, 학자금은 파일 추가 첨부) ===== */
+const DOC_MAIL_KEY = 'snct_docmail_to', DOC_MAIL_MAX_BYTES = 15 * 1024 * 1024;
+let docMail = {acc:{to:'', subj:'', body:'', sending:false}, hak:{to:'', subj:'', body:'', sending:false, files:[]}};
+try{ const t = JSON.parse(localStorage.getItem(DOC_MAIL_KEY) || 'null'); if(t){ if(t.acc) docMail.acc.to = t.acc; if(t.hak) docMail.hak.to = t.hak; } }catch(e){}
+function docMailDefSubj(k){
+  if(k==='acc') return '사고경위서' + ((accForm && accForm.name) ? ' - ' + accForm.name : '');
+  return '학자금 지급신청서' + ((hakForm && hakForm.applicant) ? ' - ' + hakForm.applicant : '');
+}
+function fmtBytes(n){ return n >= 1048576 ? (Math.round(n/104857.6)/10) + 'MB' : Math.max(1, Math.round(n/1024)) + 'KB'; }
+function docMailBox(k){
+  const m = docMail[k], label = k==='acc' ? '📝 사고경위서' : '🎓 학자금 지급신청서';
+  const files = k==='hak' ? `
+    <div class="field dmField"><label>파일 첨부 <span class="dmSub">(재학증명서·영수증 등, 합계 15MB까지)</span></label>
+      <div class="dmFileRow"><label class="btn ghost sm dmFileBtn">📎 파일 선택<input type="file" multiple data-dm-file="hak" hidden></label>
+      <span class="dmSub">${m.files.length ? `${m.files.length}개 · ${fmtBytes(m.files.reduce((a,f)=>a+f.size,0))}` : '첨부한 파일 없음'}</span></div>
+      ${m.files.length ? `<ul class="dmFiles">${m.files.map((f,i)=>`<li><span>📄 ${esc(f.name)} <i>(${fmtBytes(f.size)})</i></span><button type="button" class="dmDel" data-dm-del="${i}" title="첨부 빼기">✕</button></li>`).join('')}</ul>` : ''}
+    </div>` : '';
+  return `<div class="panel docMail" data-dm="${k}">
+    <h3>📧 ${label} 메일 보내기</h3>
+    <div class="field dmField"><label>받는 사람 <span class="dmSub">(여러 명은 , 로 구분)</span></label><input type="text" inputmode="email" class="dmIn" data-dm-f="to" value="${esc(m.to)}" placeholder="예) safety@snct.co.kr" autocomplete="email"></div>
+    <div class="field dmField"><label>제목</label><input class="dmIn" data-dm-f="subj" value="${esc(m.subj)}" placeholder="${esc(docMailDefSubj(k))}"></div>
+    <div class="field dmField"><label>내용</label><textarea class="dmIn" data-dm-f="body" rows="4" placeholder="메일에 쓸 내용 (비워 두면 기본 문구로 보내요)">${esc(m.body)}</textarea></div>
+    ${files}
+    <div class="dmFoot"><span class="dmSub">${k==='acc' ? '사고경위서' : '학자금 지급신청서'}는 PDF 파일로 첨부돼요.</span><button type="button" class="btn" data-dm-send="${k}" ${m.sending?'disabled':''}>${m.sending ? '보내는 중…' : '📨 메일 발송'}</button></div>
+  </div>`;
+}
+function bindDocMail(el){
+  el.querySelectorAll('.docMail [data-dm-f]').forEach(x=>{ const k = x.closest('.docMail').dataset.dm; x.oninput = ()=>{ docMail[k][x.dataset.dmF] = x.value; }; });
+  el.querySelectorAll('[data-dm-file]').forEach(x=> x.onchange = async ()=>{
+    const k = x.dataset.dmFile, list = Array.from(x.files || []); x.value = '';
+    let total = docMail[k].files.reduce((a,f)=>a+f.size,0);
+    for(const f of list){
+      if(total + f.size > DOC_MAIL_MAX_BYTES){ showToast(`첨부 파일은 모두 합쳐 15MB까지예요. (${f.name} 빠짐)`); continue; }
+      try{
+        const data = await new Promise((res, rej)=>{ const fr = new FileReader(); fr.onload = ()=> res(String(fr.result).split(',')[1] || ''); fr.onerror = rej; fr.readAsDataURL(f); });
+        docMail[k].files.push({name:f.name, type:f.type || 'application/octet-stream', size:f.size, data}); total += f.size;
+      }catch(e){ showToast(`${f.name} 파일을 읽지 못했어요.`); }
+    }
+    render();
+  });
+  el.querySelectorAll('[data-dm-del]').forEach(b=> b.onclick = ()=>{ const k = b.closest('.docMail').dataset.dm; docMail[k].files.splice(Number(b.dataset.dmDel), 1); render(); });
+  el.querySelectorAll('[data-dm-send]').forEach(b=> b.onclick = ()=> sendDocMail(b.dataset.dmSend));
+}
+async function sendDocMail(k){
+  const m = docMail[k]; if(m.sending) return;
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const to = String(m.to||'').split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean);
+  if(!to.length) return showToast('받는 사람 메일 주소를 입력하세요.');
+  const bad = to.filter(x=> !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+  if(bad.length) return showToast('메일 주소를 확인해 주세요: ' + bad.join(', '));
+  if(to.length > 5) return showToast('받는 사람은 한 번에 5명까지예요.');
+  if(!vslApi) return showToast('메일 보내는 주소(Apps Script)가 아직 설정되지 않았어요. UNION에 알려 주세요.');
+  const docName = k==='acc' ? '사고경위서' : '학자금 지급신청서';
+  const subject = (m.subj || '').trim() || docMailDefSubj(k);
+  const extra = k==='hak' && m.files.length ? ` + 첨부 ${m.files.length}개` : '';
+  appConfirm(`${docName}(PDF${extra})를 ${to.join(', ')} 에게 보낼까요?`, async ()=>{
+    m.sending = true; render();
+    try{
+      const who = k==='acc' ? (accForm && accForm.name) : (hakForm && hakForm.applicant);
+      const base = (docName.replace(/\s/g,'') + (who ? '_' + who : '')).replace(/[\\/:*?"<>|]/g,'');
+      const doc = await docSheetFile(k==='acc' ? 'accSheet' : 'hakSheet', base);
+      const files = [doc].concat(k==='hak' ? m.files.map(f=>({name:f.name, type:f.type, data:f.data})) : []);
+      const body = (m.body || '').trim() || `${docName}를 보내드립니다.${who ? '\n작성자: ' + who : ''}`;
+      const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
+      const r = await fetch(api, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({type:'docmail', to, subject, body, files})});
+      const j = await r.json().catch(()=>null);
+      if(j && j.ok){
+        showToast(`보냈어요. (${to.length}명${doc.type!=='application/pdf' ? ' · 서류는 HTML 파일로 첨부' : ''})`);
+        try{ const t = JSON.parse(localStorage.getItem(DOC_MAIL_KEY) || '{}'); t[k] = m.to; localStorage.setItem(DOC_MAIL_KEY, JSON.stringify(t)); }catch(e){}
+      }
+      else if(j && (j.berths !== undefined || j.error === 'unknown')) showToast('Apps Script에 서류 메일 기능이 아직 없어요. 새 코드로 바꾸고 새 버전으로 배포해 주세요.');
+      else showToast('보내지 못했어요. ' + ((j && j.error) || 'Apps Script를 새 코드로 바꾸고 새 버전으로 배포했는지 확인해 주세요.'));
+    }catch(err){ showToast('보내지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.'); }
+    m.sending = false; render();
+  });
+}
+// 서류 한 장을 A4 PDF로 만듦(화면 크기와 상관없이 출력과 같은 모양). 실패하면 출력용 HTML 파일로 대신 첨부
+async function docSheetFile(id, base){
+  const html = svBuildPrintDoc([id]);
+  try{
+    const jpg = await docSheetJpeg(html);
+    return {name: base + '.pdf', type:'application/pdf', data: btoa(jpegToPdf(jpg.bin, jpg.w, jpg.h))};
+  }catch(e){
+    return {name: base + '.html', type:'text/html', data: btoa(unescape(encodeURIComponent(html)))};
+  }
+}
+async function docSheetJpeg(html){
+  const W = 733, H = 1043, SCALE = 2; // A4(여백 8mm) 안쪽 크기 194×276mm를 96dpi로
+  const fr = document.createElement('iframe');
+  fr.style.cssText = `position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;border:0;visibility:hidden;`;
+  document.body.appendChild(fr);
+  try{
+    const d = fr.contentWindow.document; d.open(); d.write(html); d.close();
+    await Promise.all(Array.from(d.images).map(im=> im.complete ? 1 : new Promise(r=>{ im.onload = im.onerror = r; })));
+    const css = Array.from(d.querySelectorAll('style')).map(x=> x.textContent).join('\n').replace(/\]\]>/g, '');
+    const pp = d.querySelector('.pp'); if(!pp) throw new Error('no page');
+    const xhtml = new XMLSerializer().serializeToString(pp);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><foreignObject x="0" y="0" width="${W}" height="${H}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${W}px;height:${H}px;background:#fff;overflow:hidden;"><style><![CDATA[${css}
+      .pp{height:${H}px !important;width:${W}px !important;}]]></style>${xhtml}</div></foreignObject></svg>`;
+    const img = new Image();
+    await new Promise((res, rej)=>{ img.onload = res; img.onerror = rej; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+    const cv = document.createElement('canvas'); cv.width = W * SCALE; cv.height = H * SCALE;
+    const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+    g.drawImage(img, 0, 0, cv.width, cv.height);
+    await new Promise(r=> setTimeout(r, 30)); g.drawImage(img, 0, 0, cv.width, cv.height); // 사파리: 두 번 그려야 글자가 다 나옴
+    const url = cv.toDataURL('image/jpeg', 0.9);
+    return {bin: atob(url.split(',')[1]), w: cv.width, h: cv.height};
+  } finally { try{ fr.remove(); }catch(e){} }
+}
+// JPEG 한 장을 A4 한 쪽(여백 8mm)에 넣은 PDF(바이너리 문자열)
+function jpegToPdf(bin, pxW, pxH){
+  const pw = 595.28, ph = 841.89, mg = 22.68, w = pw - mg*2, h = Math.min(ph - mg*2, w * pxH / pxW), x = mg, y = ph - mg - h;
+  const content = `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im0 Do Q`;
+  const objs = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`,
+    `<< /Type /XObject /Subtype /Image /Width ${pxW} /Height ${pxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bin.length} >>\nstream\n${bin}\nendstream`,
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`
+  ];
+  let out = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n'; const offs = [];
+  objs.forEach((o, i)=>{ offs.push(out.length); out += `${i+1} 0 obj\n${o}\nendobj\n`; });
+  const xref = out.length;
+  out += `xref\n0 ${objs.length+1}\n0000000000 65535 f \n` + offs.map(n=> String(n).padStart(10,'0') + ' 00000 n \n').join('');
+  out += `trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return out;
 }
 
 /* ========================= 조별 월간집계 ========================= */
