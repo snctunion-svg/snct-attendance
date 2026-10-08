@@ -5016,6 +5016,9 @@ async function saveBerthLog(){
   }
 }
 // 그날 1·2·3번 선석 배: 직접 고친 값 → 회사 사이트(지금 보이는 기간) → 쌓아 둔 기록 순서
+// 하루 근무 = ds 08:00 ~ 다음날 08:00. 배가 그 사이에 부두에 있으면(겹치면) 그날 배
+function svInWorkday(arr, dep, ds){ return arr < `${addDays(ds,1)} 08:00` && dep > `${ds} 08:00`; }
+function svVesselOnDay(v, ds){ const sp = svVesselSpan(v); return !sp || svInWorkday(sp[0], sp[1], ds); }
 function svVessels(ds){
   const auto = svVesselsAuto(ds), log = berthLog[ds] || {}, out = {};
   ['1','2','3'].forEach(bn=>{
@@ -5024,7 +5027,7 @@ function svVessels(ds){
     // 오늘 전 날짜는 그날 저장해 둔 기록을 그대로(나중에 일정이 바뀌어도 그대로 보존), 오늘·앞으로는 최신 자료
     const logged = log.vessels && log.vessels[bn];
     const v = (man && man.name) ? man : (ds < todayStr() ? (logged || (!log.vessels ? auto[bn] : null) || null) : (auto[bn] || logged || null));
-    if(v && v.name) out[bn] = v;
+    if(v && v.name && (v === man || svVesselOnDay(v, ds))) out[bn] = v; // 직접 넣은 배는 그대로, 저장 기록은 근무일 기준으로 다시 확인
   });
   return out;
 }
@@ -5041,7 +5044,9 @@ function svVesselsAutoAll(ds){
     const atb = svParseDT(svInfoGet(b, /^Actual\s*Time\s*of\s*Berth/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Berth/i));
     const atd = svParseDT(svInfoGet(b, /^Actual\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i));
     if(!atb) return;
-    if(!(atb.d <= ds && (!atd || ds <= atd.d))) return;
+    // 그날 근무(ds 08:00 ~ 다음날 08:00)에 부두에 있는 배만: 전날 밤 작업하고 아침 08시 전에 떠나는 배는 전날로
+    { const pad = n=> String(n).padStart(2,'0'), a0 = `${atb.d} ${atb.h!=null ? pad(atb.h)+':'+pad(atb.mi||0) : '00:00'}`, d0 = atd ? `${atd.d} ${atd.h!=null ? pad(atd.h)+':'+pad(atd.mi||0) : '23:59'}` : '9999-12-31 23:59';
+      if(!svInWorkday(a0, d0, ds)) return; }
     const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
     const q = svInfoGet(b, /DIS\s*\/\s*LDG/i).split('/').map(x=> x.trim());
     const hm2 = t => t && t.h!=null ? `${t.d} ${String(t.h).padStart(2,'0')}:${String(t.mi||0).padStart(2,'0')}` : '';
@@ -5057,7 +5062,7 @@ function svVesselsPool(ds){
   const log = berthLog[ds] || {}, auto = svVesselsAutoAll(ds).list;
   const saved = Array.isArray(log.allv) ? log.allv : (log.vessels ? Object.values(log.vessels) : []);
   const base = ds < todayStr() ? (log.allv || log.vessels ? saved : auto) : (auto.length ? auto : saved);
-  return base.filter(Boolean).concat(Object.values(svVessels(ds)));
+  return base.filter(v=> v && svVesselOnDay(v, ds)).concat(Object.values(svVessels(ds)));
 }
 // 배가 부두에 있는 시간 [접안, 출항] ('YYYY-MM-DD HH:MM' 문자열 — 크기 비교 가능)
 function svVesselSpan(v){
