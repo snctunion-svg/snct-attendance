@@ -4381,34 +4381,75 @@ function openPwDialog(){
   document.body.appendChild(ov);
   const $ = id => ov.querySelector('#'+id);
   const msg = (t, ok)=>{ const m = $('pwDMsg'); m.textContent = t; m.classList.toggle('ok', !!ok); };
-  const close = ()=> ov.remove();
+  let checking = false, checkFail = false;
   const sync = ()=>{
     const id = $('pwDEmp').value, has = !!id && slipPwCustom(id);
+    const unknown = !!id && !has && (checking || checkFail || (db && !demoMode && slipPwState!=='ok'));
     $('pwDCurWrap').style.display = has ? '' : 'none';
     $('pwDSave').textContent = has ? '수정' : '입력';
-    $('pwDlgTtl').textContent = id ? (has ? '명세서 비번 수정' : '명세서 비번 입력') : '명세서 비번';
-    msg(id && !has ? '아직 비번이 없어요. 새 비번을 입력하세요.' : '', true);
+    $('pwDSave').disabled = unknown;
+    ['pwDNew','pwDNew2'].forEach(k=> $(k).disabled = unknown);
+    $('pwDlgTtl').textContent = (id && !unknown) ? (has ? '명세서 비번 수정' : '명세서 비번 입력') : '명세서 비번';
+    if(!id) return msg('', true);
+    if(has) return msg('이미 비번이 등록돼 있어요. 바꾸려면 현재 비번을 넣으세요. 잊었으면 UNION에 초기화를 부탁하세요.', true);
+    if(checking) return msg('비번 등록 여부를 확인하는 중이에요…', true);
+    if(unknown) return msg('지금은 비번 정보를 확인할 수 없어요. 인터넷 연결을 확인하고 잠시 후 다시 해 주세요.');
+    msg('아직 비번이 없어요. 새 비번을 입력하세요.', true);
   };
-  $('pwDEmp').onchange = sync;
+  window._pwDlgSync = ()=>{ if(document.body.contains(ov)) sync(); };
+  $('pwDEmp').onchange = async ()=>{
+    const id = $('pwDEmp').value; checkFail = false;
+    if(!id){ sync(); return; }
+    checking = true; sync();
+    const r = await slipPwServerCheck(id);
+    if($('pwDEmp').value !== id) return;
+    checking = false; checkFail = (r === null); sync();
+  };
+  const close = ()=>{ window._pwDlgSync = null; ov.remove(); };
   $('pwDCancel').onclick = close;
   ov.onclick = ev=>{ if(ev.target===ov) close(); };
   $('pwDSave').onclick = async ()=>{
-    const id = $('pwDEmp').value, has = !!id && slipPwCustom(id);
-    const n1 = $('pwDNew').value.trim(), n2 = $('pwDNew2').value.trim();
+    const id = $('pwDEmp').value;
     if(!id) return msg('이름을 고르세요.');
+    // 저장 직전에 서버에서 다시 확인: 이미 등록돼 있으면 '새 비번'으로 덮어쓰지 못함
+    const cur = await slipPwServerCheck(id);
+    if(cur === null) return msg('지금은 비번 정보를 확인할 수 없어요. 인터넷 연결을 확인하고 잠시 후 다시 해 주세요.');
+    const has = !!cur;
+    if(has && $('pwDCurWrap').style.display==='none'){ sync(); return msg('이미 비번이 등록돼 있어요. 바꾸려면 현재 비번을 넣으세요. 잊었으면 UNION에 초기화를 부탁하세요.'); }
+    const n1 = $('pwDNew').value.trim(), n2 = $('pwDNew2').value.trim();
     if(has && !slipPwOk(id, $('pwDCur').value)) return msg('현재 비번이 맞지 않습니다.');
     if(n1.length < 4) return msg('새 비번은 4자 이상으로 정하세요.');
     if(n1 !== n2) return msg('새 비번이 서로 다릅니다. 다시 확인하세요.');
     const rec = {h: slipPwHash(id, n1), updatedAt: Date.now()};
+    if(has) rec.prev = cur.h; // 수정할 때는 이전 비번 값을 함께 보내야 서버가 허락(규칙)
     if(!db || demoMode){ slipPwMap[id] = rec; close(); showToast(has ? '비번을 수정했어요. (미리보기)' : '비번을 입력했어요. (미리보기)'); render(); return; }
     try{ await db.collection('slipPw').doc(id).set(rec); slipPwMap[id] = rec; close(); showToast(has ? '비번을 수정했어요.' : '비번을 입력했어요. 이제 이 비번으로 명세서를 열 수 있어요.'); render(); }
     catch(err){ msg('저장하지 못했어요. 인터넷 연결을 확인하거나 UNION에 알려주세요. ('+((err&&err.code)||'오류')+')'); }
   };
   setTimeout(()=>{ try{ $('pwDEmp').focus(); }catch(e){} }, 30);
 }
+// 명세서 비번: 서버에서 실제로 받아 온 뒤에만 '비번 있음/없음'을 판단(기기에 남은 사본·불러오기 실패로 '없음'이라고 잘못 보이지 않게)
+let slipPwState = 'loading'; // loading | ok | error
 function subscribeSlipPw(){
   if(!db || demoMode || unsub.slipPw) return;
-  try{ unsub.slipPw = db.collection('slipPw').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); slipPwMap = m; scheduleRender(); }, ()=>{}); }catch(e){}
+  try{
+    const {fsM, fs} = fb;
+    unsub.slipPw = fsM.onSnapshot(fsM.collection(fs, 'slipPw'), {includeMetadataChanges:true}, snap=>{
+      const m = {}; snap.docs.forEach(d=>{ m[d.id] = d.data(); }); slipPwMap = m;
+      if(!snap.metadata.fromCache) slipPwState = 'ok';
+      if(typeof window._pwDlgSync==='function') window._pwDlgSync();
+      scheduleRender();
+    }, ()=>{ slipPwState = 'error'; if(typeof window._pwDlgSync==='function') window._pwDlgSync(); });
+  }catch(e){ slipPwState = 'error'; }
+}
+// 한 사람의 비번 등록 여부를 서버에서 바로 확인(실패하면 null)
+async function slipPwServerCheck(id){
+  if(!db || demoMode) return slipPwMap[id] || false;
+  try{
+    const {fsM, fs} = fb; const snap = await fsM.getDocFromServer(fsM.doc(fs, 'slipPw', id));
+    if(snap.exists()){ slipPwMap[id] = snap.data(); return snap.data(); }
+    delete slipPwMap[id]; return false;
+  }catch(e){ return null; }
 }
 let pwChange = {empId:'', msg:'', ok:false};
 function pagePwChange(){
