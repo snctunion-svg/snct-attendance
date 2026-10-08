@@ -670,6 +670,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .cmbWrap .panel{margin-bottom:0;padding:14px;}
 .cmbLeft{flex:0 0 auto;max-width:100%;}
 .cmbRight{flex:1 1 360px;min-width:0;}
+@media (min-width:861px){ /* PC: 근태 집계는 좁게(44%), 월별 근태는 넓게 */
+  .cmbLeft{flex:0 0 min(calc(44% - 7px), 600px);max-width:min(calc(44% - 7px), 600px);min-width:0;}
+  .cmbRight{flex:1 1 0;}
+  .cmbLeft .ctbl td.namecell a,.cmbLeft .ctbl td.namecell{white-space:nowrap;}
+}
 .cmbCtrl{height:104px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:10px;}
 .cmbCtrl h3{margin:0;}
 .ctbl.gtbl thead th{height:34px !important;}
