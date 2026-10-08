@@ -4982,7 +4982,7 @@ function subscribeBerthLog(){
   if(!db || demoMode || unsub.berthLog) return;
   try{ unsub.berthLog = db.collection('berthLog').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); berthLog = m; if(VIEW==='safety') scheduleRender(); }, ()=>{}); }catch(e){}
 }
-function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', start: v.start && v.start.h!=null ? {h:v.start.h, mi:v.start.mi||0} : null, open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null, qc: Array.isArray(v.qc) ? v.qc.slice(0, 12) : [], arr: v.arr||'', dep: v.dep||''} : null; }
+function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', start: v.start && v.start.h!=null ? {h:v.start.h, mi:v.start.mi||0} : null, open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null, qc: Array.isArray(v.qc) ? v.qc.slice(0, 12) : [], arr: v.arr||'', dep: v.dep||'', rmk: v.rmk||''} : null; }
 async function saveBerthLog(){
   if(!db || demoMode || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
   const sets = Object.values(berthSets).filter(Boolean); if(berthData && !sets.includes(berthData)) sets.push(berthData);
@@ -4991,9 +4991,11 @@ async function saveBerthLog(){
   sets.forEach(d=> berthSetDates(d).forEach(x=> days.add(x)));
   // 받아 둔 자료가 실제로 보여 주는 날짜만 저장(자료 밖의 날을 '배 없음'으로 굳히지 않게)
   for(const ds of Array.from(days).sort()){
-    const auto = svVesselsAuto(ds), keys = Object.keys(auto);
+    const all = svVesselsAutoAll(ds), auto = all.pick, keys = Object.keys(auto);
+    const allv = all.list.map(svSlim);
     const old = berthLog[ds] && berthLog[ds].vessels;
     if(ds < t && old){                       // 지난 날: 이미 저장된 기록은 그대로 둠(일정이 바뀌어도 그날 모습 보존)
+      if(!berthLog[ds].allv && allv.length){ berthLog[ds].allv = allv; try{ await db.collection('berthLog').doc(ds).set({allv}, {merge:true}); }catch(e){ return; } }
       // 예전에 저장돼 QC 시작 시간이 없는 기록만, 같은 배의 QC 시간을 한 번 덧붙임(배 이름·시간 등은 그대로)
       const lacks = o => o && (!Array.isArray(o.qc) || o.dep === undefined);
       if(!Object.values(old).some(lacks)) continue;
@@ -5007,9 +5009,10 @@ async function saveBerthLog(){
     }
     if(!keys.length && ds >= t) continue;
     const vessels = {}; keys.forEach(bn=> vessels[bn] = svSlim(auto[bn]));
-    if(old && JSON.stringify(old)===JSON.stringify(vessels)) continue;
-    berthLog[ds] = Object.assign({}, berthLog[ds]||{}, {vessels});
-    try{ await db.collection('berthLog').doc(ds).set({vessels, at: Date.now()}, {merge:true}); }catch(e){ return; }
+    const oldAll = berthLog[ds] && berthLog[ds].allv;
+    if(old && JSON.stringify(old)===JSON.stringify(vessels) && JSON.stringify(oldAll||null)===JSON.stringify(allv)) continue;
+    berthLog[ds] = Object.assign({}, berthLog[ds]||{}, {vessels, allv});
+    try{ await db.collection('berthLog').doc(ds).set({vessels, allv, at: Date.now()}, {merge:true}); }catch(e){ return; }
   }
 }
 // 그날 1·2·3번 선석 배: 직접 고친 값 → 회사 사이트(지금 보이는 기간) → 쌓아 둔 기록 순서
@@ -5025,8 +5028,10 @@ function svVessels(ds){
   });
   return out;
 }
-function svVesselsAuto(ds){
-  const out = {};
+function svVesselsAuto(ds){ return svVesselsAutoAll(ds).pick; }
+// 그날 부두에 있는 배 전부(list)와, 선석별 대표 1척(pick: 계획서 칸에 쓰는 배)
+function svVesselsAutoAll(ds){
+  const out = {}, list = [];
   // 오늘 자료 + 조회일자로 받아 둔 자료 모두에서 찾음(같은 배는 나중에 받은 자료가 우선)
   const sets = Object.values(berthSets).filter(Boolean).sort((a,b)=> String(a.at||'').localeCompare(String(b.at||'')));
   if(berthData && !sets.includes(berthData)) sets.unshift(berthData);
@@ -5041,10 +5046,18 @@ function svVesselsAuto(ds){
     const q = svInfoGet(b, /DIS\s*\/\s*LDG/i).split('/').map(x=> x.trim());
     const hm2 = t => t && t.h!=null ? `${t.d} ${String(t.h).padStart(2,'0')}:${String(t.mi||0).padStart(2,'0')}` : '';
     const qcs = (b.qc||[]).map(x=> (String(x.start||'').match(/\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}/)||[])[0]).filter(Boolean).sort().slice(0, 12);
-    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', qc: qcs, arr: hm2(atb), dep: hm2(atd), start: atb.h!=null ? {h:atb.h, mi:atb.mi||0} : null, open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
+    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', qc: qcs, arr: hm2(atb), dep: hm2(atd), rmk: String(b.remark || (b.info && b.info['비고']) || '').slice(0, 120), start: atb.h!=null ? {h:atb.h, mi:atb.mi||0} : null, open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
+    const li = list.findIndex(x=> x.name===v.name && x.arr===v.arr); if(li >= 0) list[li] = v; else list.push(v);
     if(!out[bn] || v._t >= out[bn]._t) out[bn] = v; // 같은 선석에 두 척이면 나중에 들어온 배(같은 배면 나중에 받은 자료)
   });
-  return out;
+  return {pick: out, list};
+}
+// 교육 시간 계산용: 그날 부두에 있는 배 전부(지난 날은 저장해 둔 목록, 직접 입력한 배 포함)
+function svVesselsPool(ds){
+  const log = berthLog[ds] || {}, auto = svVesselsAutoAll(ds).list;
+  const saved = Array.isArray(log.allv) ? log.allv : (log.vessels ? Object.values(log.vessels) : []);
+  const base = ds < todayStr() ? (log.allv || log.vessels ? saved : auto) : (auto.length ? auto : saved);
+  return base.filter(Boolean).concat(Object.values(svVessels(ds)));
 }
 // 배가 부두에 있는 시간 [접안, 출항] ('YYYY-MM-DD HH:MM' 문자열 — 크기 비교 가능)
 function svVesselSpan(v){
@@ -5072,9 +5085,12 @@ function svPlanP1(ds, id){
   //  주간: 08시에 배가 있으면 07:40~07:50, 없고 13시에 있으면 12:40~12:50
   //  야간: 19시에 배가 있으면 18:40~18:50, 없고 (다음날) 01시에 있으면 00:40~00:50
   const nextDs = addDays(ds, 1);
-  const pool = B.filter(Boolean).concat(Object.values(svVessels(nextDs)));
+  const pool = svVesselsPool(ds).concat(svVesselsPool(nextDs));
   const at = (d, h)=> `${d} ${String(h).padStart(2,'0')}:00`;
-  const here = t => pool.some(v=>{ const sp = svVesselSpan(v); return sp && sp[0] <= t && t < sp[1]; });
+  // 비고에 'HH시 작업중단 … HH시 작업재개'가 있으면 그 사이(매일)는 작업이 없는 것으로 봄
+  const paused = (v, t)=>{ const r = String(v.rmk||''); const a = r.match(/(\d{1,2})\s*시\s*작업\s*중단/), b = r.match(/(\d{1,2})\s*시\s*작업\s*재개/);
+    if(!a || !b) return false; const s0 = +a[1], e0 = +b[1], h = +t.slice(11,13); return s0 < e0 ? (h >= s0 && h < e0) : (h >= s0 || h < e0); };
+  const here = t => pool.some(v=>{ const sp = svVesselSpan(v); return sp && sp[0] <= t && t < sp[1] && !paused(v, t); });
   if(here(at(ds, 8))) day = 8*60; else if(here(at(ds, 13))) day = 13*60;
   if(here(at(ds, 19))) night = 19*60; else if(here(at(nextDs, 1))) night = 1*60;
   const tr = st => { const bg = (st - 20 + 1440) % 1440, en = (st - 10 + 1440) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(bg)} &nbsp;~&nbsp; ${f(en)}`; };
