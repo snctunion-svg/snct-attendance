@@ -857,6 +857,13 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .otMonRow{flex-wrap:nowrap;}
   .otTeamRow{margin-bottom:8px !important;}
 }
+/* 선석 조회: 조회일자 줄(회사 사이트와 같은 모양) */
+.bcSearch{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#eaf2ff;border:1px solid #bfdbfe;border-radius:12px;padding:10px 16px;margin:4px 0 12px;}
+.bcSearch b{color:#1e3a8a;font-size:15px;white-space:nowrap;} .bcSearch b i{color:#dc2626;font-style:normal;font-size:12px;}
+.bcSearch input[type=date]{border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;font:inherit;font-size:15px;background:#fff;color:#111;}
+.bcArrow{border:0;background:transparent;color:#1e40af;font-size:18px;cursor:pointer;padding:2px 6px;}
+.bcSearch #bcGo{background:#1d4ed8;border-color:#1d4ed8;color:#fff;padding:7px 22px;}
+@media (max-width:700px){ .bcSearch{gap:6px;padding:8px 10px;} .bcSearch input[type=date]{font-size:16px;padding:5px 6px;} .bcSearch #bcGo{padding:6px 14px;} }
 /* 경위서·학자금 메일 보내기 */
 .docSel{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;}
 .dmToRow{display:flex;gap:6px;align-items:center;} .dmToRow .dmIn{flex:1;min-width:0;}
@@ -1385,19 +1392,51 @@ function bindVesselPage(){
 }
 // ===== 선석 조회(선석배정현황 그래픽) — 같은 Apps Script 주소에 ?type=berth =====
 let berthData = null, berthErr = '', berthLoading = false, berthLoadedAt = 0, berthInfo = null, berthTimer = null;
+// 조회일자별로 받은 선석 자료: {'' : 오늘(기본), '2026-10-01': 그 날부터 7일 …}
+let berthSets = {}, berthQDate = '', berthSetErr = {}, berthSetLoading = {};
+function berthSetDates(d){ return ((d && d.dates) || []).map(x=> (String(x).match(/\d{4}-\d{2}-\d{2}/)||[])[0]).filter(Boolean); }
+async function fetchBerthSet(qd){
+  qd = qd || '';
+  if(!vslApi || berthSetLoading[qd]) return null;
+  berthSetLoading[qd] = true;
+  let j = null;
+  try{
+    const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
+    const r = await fetch(api + (api.includes('?') ? '&' : '?') + 'type=berth' + (qd ? '&date=' + qd : '') + '&t=' + Date.now());
+    j = await r.json();
+    if(j && j.ok){ j._q = qd; berthSets[qd] = j; delete berthSetErr[qd]; if(!qd){ berthData = j; berthErr = ''; } try{ saveBerthLog(); }catch(e){} }
+    else { const m = (j && j.dates === undefined) ? 'Apps Script에 선석 조회 기능이 아직 없어요. 새 코드로 바꾸고 새 버전으로 배포해 주세요.' : '회사 사이트에서 선석 정보를 받지 못했어요.'; berthSetErr[qd] = m; if(!qd) berthErr = m; j = null; }
+  }catch(err){ const m = '선석 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'; berthSetErr[qd] = m; if(!qd) berthErr = m; }
+  berthSetLoading[qd] = false;
+  return j;
+}
 async function reloadBerth(){
   if(!vslApi || berthLoading) return;
   berthLoading = true; berthLoadedAt = Date.now();
-  try{
-    const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
-    const r = await fetch(api + (api.includes('?') ? '&' : '?') + 'type=berth&t=' + Date.now());
-    const j = await r.json();
-    if(j && j.ok){ berthData = j; berthErr = ''; try{ saveBerthLog(); }catch(e){} }
-    else if(j && j.dates === undefined) berthErr = 'Apps Script에 선석 조회 기능이 아직 없어요. 새 코드로 바꾸고 새 버전으로 배포해 주세요.';
-    else berthErr = '회사 사이트에서 선석 정보를 받지 못했어요.';
-  }catch(err){ berthErr = '선석 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'; }
+  await fetchBerthSet('');
+  if(berthQDate) await fetchBerthSet(berthQDate);
   berthLoading = false;
   if(VIEW==='berth' || VIEW==='safety') render();
+}
+// 관리감독자: 오늘 전 날짜 중 저장된 기록도 없고 받아 둔 자료에도 없는 날은 그 날짜로 회사 사이트를 조회해서 채움(조장·UNION)
+let svBerthFillBusy = false;
+async function svFillPastBerth(days){
+  if(svBerthFillBusy || !vslApi || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
+  const today = todayStr();
+  const covered = new Set(); Object.values(berthSets).forEach(d=> berthSetDates(d).forEach(x=> covered.add(x)));
+  const need = days.filter(ds=> ds < today && !(berthLog[ds] && (berthLog[ds].vessels || berthLog[ds].manual)) && !covered.has(ds) && !berthSetErr[ds]);
+  if(!need.length) return;
+  svBerthFillBusy = true;
+  try{
+    for(const ds of need){
+      const cov = new Set(); Object.values(berthSets).forEach(d=> berthSetDates(d).forEach(x=> cov.add(x)));
+      if(cov.has(ds)) continue;
+      const j = await fetchBerthSet(ds);
+      if(j && berthSetDates(j)[0] !== ds){ berthSetErr[ds] = '그 날짜로 조회하지 못했어요.'; delete berthSets[ds]; break; } // 날짜 조회가 안 되면(예전 Apps Script 등) 그만
+      if(!j) break;
+    }
+  } finally { svBerthFillBusy = false; }
+  if(VIEW==='safety') render();
 }
 function textOn(bg){
   const h = String(bg||'').replace('#',''); if(h.length<6) return '#111';
@@ -1405,10 +1444,11 @@ function textOn(bg){
   return (0.299*r + 0.587*g + 0.114*b) > 150 ? '#111' : '#fff';
 }
 function pageBerth(){
-  const d = berthData;
+  const d = berthQDate ? (berthSets[berthQDate] || null) : berthData;
   const t = d && d.at ? (()=>{ const x = new Date(d.at); return `${String(x.getHours()).padStart(2,'0')}:${String(x.getMinutes()).padStart(2,'0')} 기준`; })() : '';
   const msg = !vslApi ? `<div class="note">본선작업 데이터 주소가 아직 설정되지 않았어요.</div>`
-            : berthErr ? `<div class="note">${esc(berthErr)}</div>`
+            : (berthQDate ? berthSetErr[berthQDate] : berthErr) ? `<div class="note">${esc(berthQDate ? berthSetErr[berthQDate] : berthErr)}</div>`
+            : (d && berthQDate && berthSetDates(d)[0] !== berthQDate) ? `<div class="note">회사 사이트에서 ${esc(berthQDate)} 날짜로 조회하지 못해 오늘부터 보여 드려요. Apps Script를 새 코드로 바꾸고 새 버전으로 배포했는지 확인해 주세요.</div>`
             : !d ? `<div class="hint">불러오는 중…</div>` : '';
   let chart = '';
   if(d && d.dates && d.dates.length){
@@ -1451,19 +1491,41 @@ function pageBerth(){
             ${info.qc.map(q=>`<tr style="color:${esc(q.color||'#d92626')};"><td><span class="bcQcIc">🏗</span>${esc(q.no)}</td><td>${esc(q.start)}</td><td>${esc(q.end)}</td></tr>`).join('')}
           </tbody></table></div>` : ''}
       </div></div>` : '';
+  const qv = berthQDate || todayStr();
   return `
   <h2 class="pgttl">선석 조회</h2>
+  <div class="bcSearch">
+    <b>조회일자 <i>*</i></b>
+    <button type="button" class="bcArrow" id="bcPrevDay" aria-label="하루 전">◀</button>
+    <input type="date" id="bcDate" value="${esc(qv)}">
+    <button type="button" class="bcArrow" id="bcNextDay" aria-label="하루 뒤">▶</button>
+    <button type="button" class="btn" id="bcGo">조회</button>
+    ${berthQDate ? '<button type="button" class="btn ghost sm" id="bcToday">오늘</button>' : ''}
+  </div>
   ${msg}
   <div class="vslCard">
     <div class="vslCardHead"><b>선석배정현황</b><span class="hint" style="margin:0 0 0 8px;">${esc(t)}</span><span style="flex:1"></span>
       <button type="button" class="btn ghost sm" id="bcReload">↻ 새로고침</button></div>
-    ${chart || (d ? '<div class="empty">표시할 선석 일정이 없습니다.</div>' : '')}
+    ${chart || (d ? '<div class="empty">표시할 선석 일정이 없습니다.</div>' : (berthQDate && berthSetLoading[berthQDate] ? '<div class="hint">불러오는 중…</div>' : ''))}
     ${chart ? '<p class="hint" style="margin:8px 0 0;">배 블록을 누르면 선명·항차·접안/출항 시간·물량을 볼 수 있어요.</p>' : ''}
   </div>
   ${pop}`;
 }
+function setBerthQDate(v){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v||'')) return;
+  berthQDate = v === todayStr() ? '' : v; berthInfo = null;
+  if(berthQDate && !berthSets[berthQDate]){ render(); fetchBerthSet(berthQDate).then(()=>{ if(VIEW==='berth' || VIEW==='safety') render(); }); }
+  else render();
+}
 function bindBerthPage(){
-  const r = document.getElementById('bcReload'); if(r) r.onclick = ()=>{ berthLoadedAt = 0; reloadBerth(); };
+  const r = document.getElementById('bcReload'); if(r) r.onclick = ()=>{ berthLoadedAt = 0; if(berthQDate) delete berthSets[berthQDate]; reloadBerth(); };
+  const di = document.getElementById('bcDate');
+  const cur = ()=> (di && di.value) || berthQDate || todayStr();
+  const pv = document.getElementById('bcPrevDay'); if(pv) pv.onclick = ()=> setBerthQDate(addDays(cur(), -1));
+  const nx = document.getElementById('bcNextDay'); if(nx) nx.onclick = ()=> setBerthQDate(addDays(cur(), 1));
+  const go = document.getElementById('bcGo'); if(go) go.onclick = ()=> setBerthQDate(cur());
+  if(di) di.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); setBerthQDate(cur()); } };
+  const td = document.getElementById('bcToday'); if(td) td.onclick = ()=> setBerthQDate(todayStr());
   document.querySelectorAll('.bcBlock').forEach(b=> b.onclick = ()=>{ berthInfo = Number(b.dataset.bi); render(); });
   const c = document.getElementById('bcClose'); if(c) c.onclick = ()=>{ berthInfo = null; render(); };
   const sc = document.getElementById('bcScrim'); if(sc) sc.onclick = (e)=>{ if(e.target.id==='bcScrim'){ berthInfo = null; render(); } };
@@ -4922,14 +4984,20 @@ function subscribeBerthLog(){
 }
 function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', start: v.start && v.start.h!=null ? {h:v.start.h, mi:v.start.mi||0} : null, open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null} : null; }
 async function saveBerthLog(){
-  if(!berthData || !berthData.blocks || !db || demoMode || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
-  const t = todayStr();
-  for(let k=-3; k<=10; k++){
-    const ds = addDays(t, k), auto = svVesselsAuto(ds), keys = Object.keys(auto);
-    if(!keys.length) continue;
-    const vessels = {}; keys.forEach(bn=> vessels[bn] = svSlim(auto[bn]));
+  if(!db || demoMode || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
+  const sets = Object.values(berthSets).filter(Boolean); if(berthData && !sets.includes(berthData)) sets.push(berthData);
+  if(!sets.length) return;
+  const t = todayStr(), days = new Set();
+  sets.forEach(d=> berthSetDates(d).forEach(x=> days.add(x)));
+  // 받아 둔 자료가 실제로 보여 주는 날짜만 저장(자료 밖의 날을 '배 없음'으로 굳히지 않게)
+  for(const ds of Array.from(days).sort()){
+    const auto = svVesselsAuto(ds), keys = Object.keys(auto);
     const old = berthLog[ds] && berthLog[ds].vessels;
+    if(ds < t && old) continue;              // 지난 날: 이미 저장된 기록은 그대로 둠(일정이 바뀌어도 그날 모습 보존)
+    if(!keys.length && ds >= t) continue;
+    const vessels = {}; keys.forEach(bn=> vessels[bn] = svSlim(auto[bn]));
     if(old && JSON.stringify(old)===JSON.stringify(vessels)) continue;
+    berthLog[ds] = Object.assign({}, berthLog[ds]||{}, {vessels});
     try{ await db.collection('berthLog').doc(ds).set({vessels, at: Date.now()}, {merge:true}); }catch(e){ return; }
   }
 }
@@ -4939,14 +5007,19 @@ function svVessels(ds){
   ['1','2','3'].forEach(bn=>{
     const man = log.manual && log.manual[bn];
     if(man && man.cleared) return;
-    const v = (man && man.name) ? man : (auto[bn] || (log.vessels && log.vessels[bn]) || null);
+    // 오늘 전 날짜는 그날 저장해 둔 기록을 그대로(나중에 일정이 바뀌어도 그대로 보존), 오늘·앞으로는 최신 자료
+    const logged = log.vessels && log.vessels[bn];
+    const v = (man && man.name) ? man : (ds < todayStr() ? (logged || (!log.vessels ? auto[bn] : null) || null) : (auto[bn] || logged || null));
     if(v && v.name) out[bn] = v;
   });
   return out;
 }
 function svVesselsAuto(ds){
   const out = {};
-  const blocks = (berthData && berthData.blocks) || [];
+  // 오늘 자료 + 조회일자로 받아 둔 자료 모두에서 찾음(같은 배는 나중에 받은 자료가 우선)
+  const sets = Object.values(berthSets).filter(Boolean).sort((a,b)=> String(a.at||'').localeCompare(String(b.at||'')));
+  if(berthData && !sets.includes(berthData)) sets.unshift(berthData);
+  const blocks = [].concat(...sets.map(d=> d.blocks || []));
   blocks.forEach(b=>{
     const bn = (svInfoGet(b, /^Berth\s*No/i).match(/B\s*0?(\d)/i) || [])[1]; if(!bn || !/^[123]$/.test(bn)) return;
     const atb = svParseDT(svInfoGet(b, /^Actual\s*Time\s*of\s*Berth/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Berth/i));
@@ -4956,7 +5029,7 @@ function svVesselsAuto(ds){
     const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
     const q = svInfoGet(b, /DIS\s*\/\s*LDG/i).split('/').map(x=> x.trim());
     const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', start: atb.h!=null ? {h:atb.h, mi:atb.mi||0} : null, open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
-    if(!out[bn] || v._t > out[bn]._t) out[bn] = v; // 같은 선석에 두 척이면 나중에 들어온 배
+    if(!out[bn] || v._t >= out[bn]._t) out[bn] = v; // 같은 선석에 두 척이면 나중에 들어온 배(같은 배면 나중에 받은 자료)
   });
   return out;
 }
@@ -5099,6 +5172,7 @@ function svPlanDays(){ const days = svMonthDays(svForm.month); return svForm.ves
 function pageSafety(){
   if(!svForm) svForm = svDefault();
   if(vslApi && !berthData && !berthLoading) reloadBerth();
+  if(vslApi && berthData) setTimeout(()=> svFillPastBerth(svMonthDays(svForm.month)), 0);
   const S = svPrintSel, ck = (k,label)=> `<label class="chk"><input type="checkbox" data-sv-pr="${k}" ${S[k]?'checked':''}> ${label}</label>`;
   const weeks = svMonthWeeks(svForm.month);
   if(!weeks.includes(svForm.week)) svForm.week = weeks.find(w=> w <= todayStr() && todayStr() <= addDays(w,6)) || weeks[0];
