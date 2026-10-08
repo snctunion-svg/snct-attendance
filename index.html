@@ -965,14 +965,13 @@ function bindOtEdit(el){
     saveAttendance({date, employeeId, checkIn:'', checkOut:'', supportIn:'', supportOut:'', honjoComp:'', tajoComp:'', jochul:false, seokchul:false, jungsik:false, yasik:false, damdang:false, updatedAt: Date.now()});
   });
 } // 기사별 OT현황: 달력 상세보기 중인 직원
-let codeStatsIncludeMeal = true; // 근태코드 집계: 평일OT에 식사연장(식사계) 포함 여부
+const codeStatsIncludeMeal = true; // 근태 집계: 평일OT에 식사연장(식사계) 항상 포함 (체크 버튼 없음)
 let codeStatsStart = null, codeStatsEnd = null; // 근태코드 집계: 집계 기간(시작~종료)
 // 근태관리 집계 기간·식사연장 설정을 이 기기에 기억(다른 화면에 다녀오거나 앱을 다시 열어도 유지)
 const CMB_PREF_KEY = 'snct_combined_range';
 try{
   const p = JSON.parse(localStorage.getItem(CMB_PREF_KEY) || 'null');
   if(p && /^\d{4}-\d{2}-\d{2}$/.test(p.start||'') && /^\d{4}-\d{2}-\d{2}$/.test(p.end||'')){ codeStatsStart = p.start; codeStatsEnd = p.end; }
-  if(p && typeof p.meal==='boolean') codeStatsIncludeMeal = p.meal;
 }catch(e){}
 function saveCombinedPref(){
   try{ localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal})); }catch(e){}
@@ -1002,7 +1001,6 @@ function saveViewPrefsCloud(partial){
 function applyViewPrefs(p){
   if(!p) return;
   if(isYmd(p.combinedStart) && isYmd(p.combinedEnd)){ codeStatsStart = p.combinedStart; codeStatsEnd = p.combinedEnd; }
-  if(typeof p.combinedMeal==='boolean') codeStatsIncludeMeal = p.combinedMeal;
   // 월별 OT현황 기간은 공용 설정을 따르지 않고 각 기기에서 오늘 기준 임금월로 시작
   try{
     localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal}));
@@ -3808,9 +3806,6 @@ function pageCombined(){
         <div class="row" style="align-items:flex-end;flex-wrap:nowrap;">
           <div class="field" style="min-width:auto;"><label>시작일</label><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"></div>
           <div class="field" style="min-width:auto;"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;height:38px;white-space:nowrap;">
-            <input type="checkbox" id="codeStatsMealChk" ${codeStatsIncludeMeal?'checked':''}>식사연장 포함
-          </label>
         </div>
       </div>
       ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead>${statHead}</thead><tbody>${statRows}</tbody></table></div>`
@@ -5387,9 +5382,6 @@ function pageCodeStats(){
   <div class="row" style="margin-bottom:6px;align-items:center;">
     <div class="field"><label>시작일</label><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"></div>
     <div class="field"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;margin-left:12px;">
-      <input type="checkbox" id="codeStatsMealChk" ${codeStatsIncludeMeal?'checked':''}>평일OT 식사연장(식사계) 포함
-    </label>
   </div>
   <p class="hint" style="margin-bottom:14px;">${esc(rangeStart)}(${weekdayKr(...rangeStart.split('-').map(Number))}) ~ ${esc(rangeEnd)}(${weekdayKr(...rangeEnd.split('-').map(Number))})</p>
   ${sortedEmployees.length? `<div class="scrollx"><table class="gtbl"><thead>
@@ -6026,7 +6018,6 @@ function afterRender(){
   if(cmbPrev) cmbPrev.onclick = ()=>{ let {y,m} = combinedYm; m--; if(m<1){ m=12; y--; } combinedYm = {y,m}; render(); };
   if(cmbNext) cmbNext.onclick = ()=>{ let {y,m} = combinedYm; m++; if(m>12){ m=1; y++; } combinedYm = {y,m}; render(); };
   const codeStatsMealChk = document.getElementById('codeStatsMealChk');
-  if(codeStatsMealChk) codeStatsMealChk.onchange = ()=>{ codeStatsIncludeMeal = codeStatsMealChk.checked; saveCombinedPref(); render(); };
   const codeStatsStartInput = document.getElementById('codeStatsStartInput'), codeStatsEndInput = document.getElementById('codeStatsEndInput');
   if(codeStatsStartInput) codeStatsStartInput.onchange = ()=>{
     if(!codeStatsStartInput.value) return; // 날짜를 지우는 중이면 무시
