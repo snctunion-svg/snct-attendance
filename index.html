@@ -787,6 +787,20 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .scrollx.mFreeze thead th.namehead{z-index:7;}
   .scrollx.mFreeze thead th.namehead.noStick{z-index:5;}
 }
+@media (max-width:700px){
+  /* 휴대폰 출퇴근 입력: 위 날짜·조 버튼을 한 줄로 촘촘하게, 표는 fitInputMobile이 화면 높이에 맞춤 */
+  .inCtl{gap:5px !important;margin-bottom:8px !important;flex-wrap:wrap;align-items:center !important;}
+  .inCtl .field label{display:none;}
+  .inCtl .field{min-width:0 !important;margin:0;}
+  .inCtl #inDate{width:128px;padding:5px 6px;font-size:13px;}
+  .inCtl .btn.sm{padding:5px 8px;font-size:12px;}
+  .inCtl > b{font-size:13px !important;margin-left:2px !important;}
+  .inTbl.inFit tbody td{height:var(--inRowH) !important;font-size:var(--inFs);line-height:1;}
+  .inTbl.inFit tbody td.inName{padding:0 5px !important;}
+  .inTbl.inFit .inCell{height:calc(var(--inRowH) - 2px);font-size:var(--inFs);}
+  .inTbl.inFit .badge{font-size:calc(var(--inFs) - 1px) !important;padding:0 4px !important;line-height:1.15;}
+  .inTbl.inFit input[type=checkbox]{width:calc(var(--inRowH) * .5);height:calc(var(--inRowH) * .5);min-width:11px;min-height:11px;margin:0;}
+}
 .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);align-items:center;}
 .legend .sw{display:inline-flex;align-items:center;gap:4px;}
 
@@ -3414,7 +3428,7 @@ function pageInput(){
   return `
   <h2 class="pgttl">${VIEW==='input2' ? '조장 근태관리 <span style="font-size:13px;font-weight:600;color:var(--text-muted);">(출퇴근 입력 · 마감)</span>' : '출퇴근 입력'}</h2>
   <div class="panel">
-    <div class="row" style="align-items:flex-end;margin-bottom:12px;">
+    <div class="row inCtl" style="align-items:flex-end;margin-bottom:12px;">
       <div class="field"><label>날짜</label><input type="date" id="inDate" value="${esc(date)}"></div>
       <button class="btn ghost sm" id="inPrev">◀ 전날</button><button class="btn ghost sm" id="inNext">다음날 ▶</button>
       <button class="btn ${inputTeam==='1'?'':'ghost'} sm" data-act="in-team" data-team="1">1조</button>
@@ -4093,15 +4107,39 @@ function fitDispatch(){
   if(lb > avail){ const z = (avail - tTop) / (lb - tTop); t.style.zoom = Math.max(0.5, Math.min(1, Math.floor(z*1000)/1000)); }
 }
 // 휴대폰: 화면 높이가 바뀌면(주소창 접힘·펴짐) 배차표 다시 맞춤
-if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ clearTimeout(window._dpFitT); window._dpFitT = setTimeout(fitDispatch, 150); });
+if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ clearTimeout(window._dpFitT); window._dpFitT = setTimeout(()=>{ fitDispatch(); fitInputMobile(); }, 150); });
 // 지원계획표: 세로를 화면 높이의 85%로(줄 높이를 늘림)
 function fitSplan(){
   if(VIEW!=='splan') return;
   fitTableToScreen(document.getElementById('splanTable'), {fitW:false, fitH:true, reserve:92, minRow:30, maxRow:80, ratio:0.85}); // 출퇴근 입력과 같은 기준
 }
+// 휴대폰 출퇴근 입력: 줄 높이·글씨를 줄여서 마지막 조원과 [저장] 버튼까지 한 화면에 보이게
+function fitInputMobile(){
+  const t = document.querySelector('table.inTbl'); if(!t) return;
+  t.classList.remove('inFit'); t.style.removeProperty('--inRowH'); t.style.removeProperty('--inFs'); t.style.zoom = '';
+  if((VIEW!=='input' && VIEW!=='input2') || window.innerWidth > 700) return;
+  const rows = Array.from(t.querySelectorAll('tbody tr')); if(rows.length < 2) return;
+  const vv = window.visualViewport;
+  const vh = Math.min(window.innerHeight, vv ? vv.height : window.innerHeight);
+  const sc = document.getElementById('content'), y0 = ()=> sc ? sc.scrollTop : 0;
+  const tTop = t.getBoundingClientRect().top + y0();
+  const btn = document.getElementById('inSave');
+  const btnH = btn ? (btn.getBoundingClientRect().height + 16) : 50;   // 표 아래 [저장] 줄
+  const lastBottom = ()=> rows[rows.length-1].getBoundingClientRect().bottom + y0();
+  const avail = vh - 8 - btnH;
+  if(lastBottom() <= avail) return;
+  const headH = t.tHead ? t.tHead.getBoundingClientRect().height : 0;
+  const h = Math.max(16, Math.min(34, Math.floor((avail - tTop - headH) / rows.length)));
+  t.style.setProperty('--inRowH', h + 'px');
+  t.style.setProperty('--inFs', Math.max(10, Math.min(13, Math.round(h * 0.48 * 10) / 10)) + 'px');
+  t.classList.add('inFit');
+  const lb = lastBottom();
+  if(lb > avail){ const z = (avail - tTop) / (lb - tTop); t.style.zoom = Math.max(0.6, Math.min(1, Math.floor(z*1000)/1000)); }
+}
 // 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
 function fitInputTable(){
   if(VIEW!=='input' && VIEW!=='input2') return;
+  if(window.innerWidth <= 700){ fitInputMobile(); return; }
   fitTableToScreen(document.querySelector('table.inTbl'), {fitW:false, fitH:true, reserve:92, minRow:30, maxRow:80, ratio:0.85}); // 세로 85%
 }
 // 근태관리: 왼쪽 집계표·오른쪽 월별 근태를 각각 칸 폭과 화면 아래까지 꽉 맞춤
@@ -5938,6 +5976,7 @@ function afterRender(){
   fitDocs();
   fitSafety();
   fitDispatch(); if(VIEW==='dispatch' && window.innerWidth<=700){ setTimeout(fitDispatch, 300); }
+  if((VIEW==='input' || VIEW==='input2') && window.innerWidth<=700){ setTimeout(fitInputMobile, 300); }
   fitSplan();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
