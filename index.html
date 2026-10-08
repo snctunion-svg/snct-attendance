@@ -4982,7 +4982,7 @@ function subscribeBerthLog(){
   if(!db || demoMode || unsub.berthLog) return;
   try{ unsub.berthLog = db.collection('berthLog').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); berthLog = m; if(VIEW==='safety') scheduleRender(); }, ()=>{}); }catch(e){}
 }
-function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', start: v.start && v.start.h!=null ? {h:v.start.h, mi:v.start.mi||0} : null, open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null} : null; }
+function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', start: v.start && v.start.h!=null ? {h:v.start.h, mi:v.start.mi||0} : null, open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null, qc: Array.isArray(v.qc) ? v.qc.slice(0, 12) : []} : null; }
 async function saveBerthLog(){
   if(!db || demoMode || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
   const sets = Object.values(berthSets).filter(Boolean); if(berthData && !sets.includes(berthData)) sets.push(berthData);
@@ -4993,7 +4993,16 @@ async function saveBerthLog(){
   for(const ds of Array.from(days).sort()){
     const auto = svVesselsAuto(ds), keys = Object.keys(auto);
     const old = berthLog[ds] && berthLog[ds].vessels;
-    if(ds < t && old) continue;              // 지난 날: 이미 저장된 기록은 그대로 둠(일정이 바뀌어도 그날 모습 보존)
+    if(ds < t && old){                       // 지난 날: 이미 저장된 기록은 그대로 둠(일정이 바뀌어도 그날 모습 보존)
+      // 예전에 저장돼 QC 시작 시간이 없는 기록만, 같은 배의 QC 시간을 한 번 덧붙임(배 이름·시간 등은 그대로)
+      if(!Object.values(old).some(v=> v && !Array.isArray(v.qc))) continue;
+      const up = {}; let ch = false;
+      Object.keys(old).forEach(bn=>{ const o = old[bn]; up[bn] = o; if(o && !Array.isArray(o.qc)){ const a = auto[bn]; up[bn] = Object.assign({}, o, {qc: (a && a.name===o.name && Array.isArray(a.qc)) ? a.qc.slice(0,12) : []}); ch = true; } });
+      if(!ch) continue;
+      berthLog[ds] = Object.assign({}, berthLog[ds]||{}, {vessels: up});
+      try{ await db.collection('berthLog').doc(ds).set({vessels: up, at: Date.now()}, {merge:true}); }catch(e){ return; }
+      continue;
+    }
     if(!keys.length && ds >= t) continue;
     const vessels = {}; keys.forEach(bn=> vessels[bn] = svSlim(auto[bn]));
     if(old && JSON.stringify(old)===JSON.stringify(vessels)) continue;
@@ -5028,7 +5037,8 @@ function svVesselsAuto(ds){
     if(!(atb.d <= ds && (!atd || ds <= atd.d))) return;
     const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
     const q = svInfoGet(b, /DIS\s*\/\s*LDG/i).split('/').map(x=> x.trim());
-    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', start: atb.h!=null ? {h:atb.h, mi:atb.mi||0} : null, open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
+    const qcs = (b.qc||[]).map(x=> (String(x.start||'').match(/\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}/)||[])[0]).filter(Boolean).sort().slice(0, 12);
+    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', qc: qcs, start: atb.h!=null ? {h:atb.h, mi:atb.mi||0} : null, open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
     if(!out[bn] || v._t >= out[bn]._t) out[bn] = v; // 같은 선석에 두 척이면 나중에 들어온 배(같은 배면 나중에 받은 자료)
   });
   return out;
@@ -5041,8 +5051,11 @@ function svPlanP1(ds, id){
   const kdate = s => { const [a,b,c] = s.split('-').map(Number); return `${a} 년 &nbsp;${b}월 &nbsp;${c} 일`; };
   const cells = f => B.map(v=> `<td${f.l?' class="l"':''}>${v ? f.on(v) : f.off}</td>`).join('');
   let day = null, night = null;
-  // 작업전 안전교육: 선석조회의 Estimated Time of Departure(출항 예정 시간) 20분 전부터 10분간
-  //  예) ETD 08:00 → 07:40 ~ 07:50 (ETD가 08~19시면 주간, 그 밖은 야간)
+  // 작업전 안전교육 (20분 전부터 10분간)
+  //  주간: 그날 QC 작업 시작(가장 이른 시각, 07~19시) 기준 — 예) QC 08:00 시작 → 07:40 ~ 07:50
+  //  야간: Estimated Time of Departure(출항 예정 시간)가 08~19시 밖이면 그 시각 기준 — 예) ETD 21:00 → 20:40 ~ 20:50
+  //  (QC 시간이 없는 배는 ETD가 08~19시일 때 주간에 씀)
+  B.forEach(v=>{ (v && v.qc || []).forEach(x=>{ const m = x.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})/); if(!m || m[1]!==ds) return; const h = +m[2], st = h*60 + (+m[3]); if(h>=7 && h<19 && (day==null || st < day)) day = st; }); });
   B.forEach(v=>{ const t = v && v.open; if(!t || t.h==null) return; const st = t.h*60 + (t.mi||0); const isDay = t.h>=8 && t.h<19; if(isDay && day==null) day = st; if(!isDay && night==null) night = st; });
   const tr = st => { const bg = (st - 20 + 1440) % 1440, en = (st - 10 + 1440) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(bg)} &nbsp;~&nbsp; ${f(en)}`; };
   const blank = '&nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분 &nbsp;&nbsp;~&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분';
