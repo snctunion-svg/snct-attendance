@@ -125,6 +125,9 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 급여관리·급여명세서 */
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
+.inCloseBtn.on{background:#111 !important;border-color:#111 !important;color:#fff !important;}
+.inLockMsg{font-size:13px;font-weight:700;color:#b91c1c;margin-left:6px;}
+.inTbl.inLocked td{background:#f8fafc;}
 .pwCell{display:flex;align-items:center;gap:6px;justify-content:center;white-space:nowrap;}
 .pwSt{font-size:12px;font-weight:700;color:var(--text-muted);}
 .pwSt.on{color:#047857;}
@@ -275,6 +278,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .svM{text-align:center;font-size:15px;font-weight:800;cursor:pointer;user-select:none;}
 .svM:hover{background:#fff7d6;}
 .svM.mid{color:#b45309;}
+.svActIn{text-align:left !important;font-size:12px;padding:2px 4px !important;}
 .svVsl{cursor:pointer;} .svVsl:hover{background:#fff7d6;}
 .svDate{padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;}
 .svCtl{flex-wrap:wrap;gap:6px;} .svM.bad{color:#dc2626;}
@@ -806,6 +810,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
     <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
     <div class="navttl" data-role-section="leader" style="margin-top:10px;">조장관리</div>
+    <a data-view="input2"><span class="ic">🗂️</span>조장 근태관리</a>
     <a data-view="safety"><span class="ic">🦺</span>관리감독자</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
@@ -2487,8 +2492,8 @@ const FIREBASE_CONFIG = {
 const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
-const VIEWER_VIEWS = ['combined','ot','dispatch','splan','codes','accident','vessel','berth','pwchange']; // codes: 누구나 보기(수정은 UNION만)
-const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety'];
+const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','codes','accident','vessel','berth','pwchange']; // codes: 누구나 보기(수정은 UNION만)
+const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2'];
 const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','accident'];
 const LEADER_READONLY_VIEWS = ['codes','accident']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
@@ -2506,7 +2511,7 @@ function roleCanSee(v){
   return false;
 }
 // 배차표·지원계획표는 배포 모드(로그인 없이)에서도 누구나 입력·수정
-const PUBLIC_EDIT_VIEWS = ['dispatch','splan'];
+const PUBLIC_EDIT_VIEWS = ['dispatch','input']; // 배차표·출퇴근 입력(마감 전)은 누구나 입력 / 지원계획표는 보기만(수정은 조장)
 function roleCanEdit(v){
   if(PUBLIC_EDIT_VIEWS.includes(v)) return true;
   if(userRole==='all' || userRole==='union') return true;
@@ -2681,7 +2686,7 @@ function openLoginDialog(role){
   };
 }
 // 보기 전용 사용자는 근태관리·월별 OT현황·배차표·지원계획표만 볼 수 있음. 편집자는 전체 메뉴.
-const EDITOR_ONLY_VIEWS = ['input','team','holidays','codes','backup','grid','employees','codestats','pay'];
+const EDITOR_ONLY_VIEWS = ['input2','team','holidays','codes','backup','grid','employees','codestats','pay'];
 function isEditorOnlyView(v){ return EDITOR_ONLY_VIEWS.includes(v); }
 function updateNavForRole(){
   document.querySelectorAll('nav#nav a[data-view]').forEach(a=>{ a.style.display = roleCanSee(a.dataset.view) ? '' : 'none'; });
@@ -2926,7 +2931,7 @@ function subscribeAll(){
     scheduleRender();
   }, dbErr);
   unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
-  unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{}); subscribeSlipPw(); subscribeBerthLog();
+  unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{}); subscribeSlipPw(); subscribeBerthLog(); subscribeInputClose();
   unsub.mailConfig = db.doc('meta/mailConfig').onSnapshot(doc=>{ mailConfig = doc.exists ? doc.data() : {}; scheduleRender(); }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
@@ -2989,7 +2994,7 @@ function ensureMonth(ym){
 }
 function ensureForView(){
   if(!dbReady) return;
-  if(VIEW==='input'){ const d = (prefill && prefill.date) || inputViewDate || todayStr(); ensureAttendanceRange(d, d); }
+  if(VIEW==='input' || VIEW==='input2'){ const d = (prefill && prefill.date) || inputViewDate || todayStr(); ensureAttendanceRange(d, d); }
   else if(VIEW==='grid'){ const d = dstr(curYear,curMonth,1); ensureAttendanceRange(d, d); }
   else if(VIEW==='combined' || VIEW==='codestats'){
     if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd);
@@ -3226,7 +3231,7 @@ function setView(v){
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
   if(v==='dispatch'){ if(!dispatchDate) dispatchDate = todayStr(); autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); }
-  if(v==='input'){ if(dbReady) subscribeDispatchDay(inputViewDate || todayStr()); }
+  if(v==='input' || v==='input2'){ if(dbReady) subscribeDispatchDay(inputViewDate || todayStr()); }
   if(v==='splan'){ if(!weekStart) weekStart = mondayOf(todayStr()); if(dbReady) loadSupportPlanAll(); }
   if(v==='codestats' || v==='combined'){
     if(!codeStatsStart || !codeStatsEnd){
@@ -3278,7 +3283,7 @@ function render(){
   ensureForView();
   const el = document.getElementById('content');
   if(authResolved) canEdit = roleCanEdit(VIEW);
-  if(VIEW==='input') el.innerHTML = pageInput();
+  if(VIEW==='input' || VIEW==='input2') el.innerHTML = pageInput();
   else if(VIEW==='grid') el.innerHTML = pageGrid();
   else if(VIEW==='ot') el.innerHTML = pageOT();
   else if(VIEW==='codestats') el.innerHTML = pageCodeStats();
@@ -3337,12 +3342,34 @@ function inputRowTotal(date, e){
   const c = computeDaily(r, date), sp = computeSupportDaily(r, date), m = computeMealAllowance(r) + computeDamdang(r);
   return (c.valid?c.premium:0) + (sp.valid?sp.premium:0) + m;
 }
+// ===== 출퇴근 입력 마감 =====
+// 조장 근태관리에서 날짜·조별로 [마감] → 배포용(로그인 안 한) 출퇴근 입력에서는 그날 그 조를 수정할 수 없음. 조장·UNION은 계속 수정 가능
+let inputClose = {}; // `${date}_${team}` -> {closed:true, at}
+function subscribeInputClose(){
+  if(!db || demoMode || unsub.inputClose) return;
+  try{ unsub.inputClose = db.collection('inputClose').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); inputClose = m; if(VIEW==='input' || VIEW==='input2') scheduleRender(); }, ()=>{}); }catch(e){}
+}
+function isInputClosed(date, team){ const c = inputClose[date+'_'+team]; return !!(c && c.closed); }
+function isLeaderUser(){ return userRole==='leader' || userRole==='union' || userRole==='all'; }
+function inputLocked(){ return !isLeaderUser() && isInputClosed(inputViewDate || todayStr(), inputTeam); }
+async function toggleInputClose(){
+  if(!isLeaderUser()){ showToast('마감은 조장관리·UNION에서 할 수 있어요.'); return; }
+  const date = inputViewDate || todayStr(), team = inputTeam, id = date+'_'+team, now = isInputClosed(date, team);
+  appConfirm(now ? `${date} ${team}조 마감을 풀까요? 풀면 배포용 출퇴근 입력에서 다시 수정할 수 있어요.` : `${date} ${team}조를 마감할까요? 마감하면 배포용 출퇴근 입력에서는 수정할 수 없어요.`, async ()=>{
+    if(now) delete inputClose[id]; else inputClose[id] = {closed:true, at: Date.now()};
+    render();
+    if(!db || demoMode) return;
+    try{ if(now) await db.collection('inputClose').doc(id).delete(); else await db.collection('inputClose').doc(id).set({closed:true, at: Date.now(), team, date}); showToast(now ? '마감을 풀었어요.' : '마감했어요.'); }
+    catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
+  });
+}
 function pageInput(){
   const date = (prefill && prefill.date) || inputViewDate || todayStr();
   prefill = null; inputViewDate = date;
   const [y,m,d] = date.split('-').map(Number);
   const list = employees.filter(e=> (e.team||'')===inputTeam).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
   const dirtyN = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|')).length;
+  const closedNow = isInputClosed(date, inputTeam), locked = !isLeaderUser() && closedNow;
   const rows = list.map(e=>{
     const base = attStore[date+'_'+e.id] || {};
     const dr = inputDraft[date+'|'+e.id] || {};
@@ -3364,7 +3391,7 @@ function pageInput(){
     </tr>`;
   }).join('');
   return `
-  <h2 class="pgttl">출퇴근 입력</h2>
+  <h2 class="pgttl">${VIEW==='input2' ? '조장 근태관리 <span style="font-size:13px;font-weight:600;color:var(--text-muted);">(출퇴근 입력 · 마감)</span>' : '출퇴근 입력'}</h2>
   <div class="panel">
     <div class="row" style="align-items:flex-end;margin-bottom:12px;">
       <div class="field"><label>날짜</label><input type="date" id="inDate" value="${esc(date)}"></div>
@@ -3373,12 +3400,14 @@ function pageInput(){
       <button class="btn ${inputTeam==='2'?'':'ghost'} sm" data-act="in-team" data-team="2">2조</button>
       <b style="font-size:15px;margin-left:6px;">${y}년 ${m}월 ${d}일 (${weekdayKr(y,m,d)})${holidays[date] ? ' <span style="color:var(--warn);">'+esc(holidays[date])+'</span>' : ''}</b>
     </div>
-    <div class="scrollx gridwrap fitW"><table class="gtbl inTbl"><thead><tr>
+    <div class="scrollx gridwrap fitW"><table class="gtbl inTbl${locked ? ' inLocked' : ''}"><thead><tr>
       <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row" style="margin-top:12px;align-items:center;">
       <button class="btn" id="inSave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
       <button class="btn warn ghost" id="inReset">초기화</button>
+      ${VIEW==='input2' ? `<span style="flex:0 0 14px;"></span><button class="btn ${closedNow?'':'ghost'} inCloseBtn${closedNow?' on':''}" id="inCloseBtn">${closedNow ? '🔒 마감됨 (누르면 해제)' : '🔓 마감'}</button>` : ''}
+      ${closedNow ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>마감</b>됐어요.${locked ? ' 수정은 조장관리에서만 할 수 있어요.' : ' 배포용 출퇴근 입력에서는 수정할 수 없어요.'}</span>` : ''}
     </div>
   </div>`;
 }
@@ -3402,7 +3431,10 @@ function bindInputTable(el){
   });
   el.querySelectorAll('.inChk').forEach(x=> x.onchange = ()=>{ setDraft(x.dataset.emp, x.dataset.f, x.checked); refreshRow(x.dataset.emp, x); });
   document.getElementById('inReset').onclick = ()=>{ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(inputViewDate+'|')) delete inputDraft[k]; }); render(); };
+  if(inputLocked()) el.querySelectorAll('.inTbl input').forEach(x=> x.disabled = true);
+  const cb = document.getElementById('inCloseBtn'); if(cb) cb.onclick = toggleInputClose;
   document.getElementById('inSave').onclick = async ()=>{
+    if(inputLocked()){ showToast('마감된 날이라 수정할 수 없어요. 조장에게 말씀하세요.'); return; }
     if(!requireEdit()) return;
     const date = inputViewDate;
     const keys = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|'));
@@ -3410,7 +3442,7 @@ function bindInputTable(el){
     const badCells = keys.some(k=> IN_TIME.some(f=> inputDraft[k][f]!==undefined && excelToHm(inputDraft[k][f])===null));
     if(badCells){ showToast('빨간 칸의 시각 형식을 확인해 주세요 (예: 8, 15.3, 7.3).'); return; }
     const partials = keys.map(k=>{
-      const empId = k.split('|')[1], dr = inputDraft[k], p = {date, employeeId: empId, updatedAt: Date.now()};
+      const empId = k.split('|')[1], dr = inputDraft[k], emp0 = employees.find(x=>x.id===empId), p = {date, employeeId: empId, team: (emp0 && emp0.team) || inputTeam, updatedAt: Date.now()};
       IN_TIME.forEach(f=>{ if(dr[f]!==undefined) p[f] = excelToHm(dr[f]) || ''; });
       IN_NUM.forEach(f=>{ if(dr[f]!==undefined) p[f] = String(dr[f]).trim(); });
       IN_CHK.forEach(f=>{ if(dr[f]!==undefined) p[f] = !!dr[f]; });
@@ -4021,7 +4053,7 @@ function fitSplan(){
 }
 // 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
 function fitInputTable(){
-  if(VIEW!=='input') return;
+  if(VIEW!=='input' && VIEW!=='input2') return;
   fitTableToScreen(document.querySelector('table.inTbl'), {fitW:false, fitH:true, reserve:92, minRow:30, maxRow:80, ratio:0.85}); // 세로 85%
 }
 // 근태관리: 왼쪽 집계표·오른쪽 월별 근태를 각각 칸 폭과 화면 아래까지 꽉 맞춤
@@ -4643,7 +4675,7 @@ function subscribeBerthLog(){
   if(!db || demoMode || unsub.berthLog) return;
   try{ unsub.berthLog = db.collection('berthLog').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); berthLog = m; if(VIEW==='safety') scheduleRender(); }, ()=>{}); }catch(e){}
 }
-function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null} : null; }
+function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', start: v.start && v.start.h!=null ? {h:v.start.h, mi:v.start.mi||0} : null, open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null} : null; }
 async function saveBerthLog(){
   if(!berthData || !berthData.blocks || !db || demoMode || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
   const t = todayStr();
@@ -4678,7 +4710,7 @@ function svVesselsAuto(ds){
     if(!(atb.d <= ds && (!atd || ds <= atd.d))) return;
     const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
     const q = svInfoGet(b, /DIS\s*\/\s*LDG/i).split('/').map(x=> x.trim());
-    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
+    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', start: atb.h!=null ? {h:atb.h, mi:atb.mi||0} : null, open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
     if(!out[bn] || v._t > out[bn]._t) out[bn] = v; // 같은 선석에 두 척이면 나중에 들어온 배
   });
   return out;
@@ -4690,14 +4722,14 @@ function svPlanP1(ds, id){
   const p = svPlan(ds), live = id==='svP1';
   const kdate = s => { const [a,b,c] = s.split('-').map(Number); return `${a} 년 &nbsp;${b}월 &nbsp;${c} 일`; };
   const cells = f => B.map(v=> `<td${f.l?' class="l"':''}>${v ? f.on(v) : f.off}</td>`).join('');
-  // 작업전 안전교육: Estimated Time of Departure 20분 전 ~ ETD (08~19시는 주간, 그 밖은 야간)
   let day = null, night = null;
-  B.forEach(v=>{ if(!v || !v.open || v.open.h==null) return; const end = v.open.h*60 + v.open.mi; const isDay = v.open.h>=8 && v.open.h<19; if(isDay && !day) day = end; if(!isDay && !night) night = end; });
-  const tr = end => { const st = (end - 20 + 1440) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(st)} &nbsp;~&nbsp; ${f(end)}`; };
+  // 작업전 안전교육: Actual Time of Berth(접안 시간) ~ 10분 뒤 (08~19시는 주간, 그 밖은 야간)
+  B.forEach(v=>{ const t = v && v.start; if(!t || t.h==null) return; const st = t.h*60 + (t.mi||0); const isDay = t.h>=8 && t.h<19; if(isDay && day==null) day = st; if(!isDay && night==null) night = st; });
+  const tr = st => { const en = (st + 10) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(st)} &nbsp;~&nbsp; ${f(en)}`; };
   const blank = '&nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분 &nbsp;&nbsp;~&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분';
   const items = [['화물의 상태','선적, 양하 컨테이너의 이상 유무 (EXCEPTION LIST 참조)',1],['통행설비','WHARF LADDER 등 선박-육상간 설치된 통행설비의 이상 유무',3],[null,'DECK의 유분, 수분, 결빙 또는 파손상태'],[null,'선내 위험물질의 유출 여부'],['보호구','작업원의 안전모, 안전화 착용 여부',1],['선내조명','선내조명의 밝기',1],['작업도구','작업원의 음주, 과로 등 신체상태',3],[null,'화물의 중량에 적합한 WIRE ROPE 사용 여부'],[null,'하역도구의 부식 및 마모 상태']];
   const chkRows = items.map((it,i)=>{ const v = svPlanMark(p, i);
-    return `<tr>${it[0] ? `<th${it[2]>1?` rowspan="${it[2]}"`:''}>${it[0]}</th>` : ''}<td class="l">${it[1]}</td><td class="svM svPM${v==='X'?' bad':v==='△'?' mid':''}"${live?` data-sv-pmark="${ds}|${i}"`:''}>${v}</td><td></td></tr>`; }).join('');
+    return `<tr>${it[0] ? `<th${it[2]>1?` rowspan="${it[2]}"`:''}>${it[0]}</th>` : ''}<td class="l">${it[1]}</td><td class="svM svPM${v==='X'?' bad':v==='△'?' mid':''}"${live?` data-sv-pmark="${ds}|${i}"`:''}>${v}</td><td class="svAct">${live ? `<input class="svIn svActIn" data-sv-act="${ds}|${i}" value="${esc((p.act||{})[i]||'')}" placeholder="입력">` : esc((p.act||{})[i]||'')}</td></tr>`; }).join('');
   return svFrame(id || 'svP1', '안전작업 계획서(하역작업용)', `
     <div class="svLegend">날씨 :</div>
     <table class="svPT svPT1">
@@ -4922,14 +4954,14 @@ function openVslEdit(ds, bn){
   const v = svVessels(ds)[bn] || {};
   const old = document.getElementById('vslEditOv'); if(old) old.remove();
   const ov = document.createElement('div'); ov.id = 'vslEditOv'; ov.className = 'payScrim';
-  const hm = v.open && v.open.h!=null ? `${String(v.open.h).padStart(2,'0')}:${String(v.open.mi||0).padStart(2,'0')}` : '';
+  const hm = v.start && v.start.h!=null ? `${String(v.start.h).padStart(2,'0')}:${String(v.start.mi||0).padStart(2,'0')}` : '';
   ov.innerHTML = `<div class="pwBox pwDlg" role="dialog"><h3>${ds} · ${bn}번 선석</h3>
     <p style="margin:0 0 6px;">회사 자료가 없는 날은 여기서 직접 넣어요. 저장하면 다른 사람 화면·출력에도 똑같이 나와요.</p>
     <label class="pwLbl">선박명</label><input id="veName" class="pwIn" value="${esc(v.name||'')}" placeholder="예: STARSHIP TAURUS">
     <label class="pwLbl">접안일자</label><input id="veBerth" type="date" class="pwIn" value="${esc(v.berth||ds)}">
     <div style="display:flex;gap:8px;"><div style="flex:1"><label class="pwLbl">양하</label><input id="veDis" class="pwIn" inputmode="numeric" value="${esc(v.dis||'')}"></div>
       <div style="flex:1"><label class="pwLbl">적하</label><input id="veLdg" class="pwIn" inputmode="numeric" value="${esc(v.ldg||'')}"></div></div>
-    <label class="pwLbl">출항 예정 시간 (교육시간 기준)</label><input id="veEtd" type="time" class="pwIn" value="${hm}">
+    <label class="pwLbl">접안 시간 (교육시간: 접안 ~ 10분)</label><input id="veEtd" type="time" class="pwIn" value="${hm}">
     <div class="pwMsg" id="veMsg"></div>
     <div class="pwBtns"><button class="pwOk" id="veSave">저장</button><button class="pwNo" id="veClear">비우기</button><button class="pwNo" id="veCancel">취소</button></div></div>`;
   document.body.appendChild(ov);
@@ -4946,7 +4978,7 @@ function openVslEdit(ds, bn){
   $('veSave').onclick = ()=>{
     const name = $('veName').value.trim(); if(!name){ $('veMsg').textContent = '선박명을 넣으세요. (배가 없으면 [비우기])'; return; }
     const t = $('veEtd').value; const [h, mi] = t ? t.split(':').map(Number) : [null, null];
-    put({name, berth: $('veBerth').value || ds, dis: $('veDis').value.trim(), ldg: $('veLdg').value.trim(), open: h!=null ? {h, mi} : null});
+    put({name, berth: $('veBerth').value || ds, dis: $('veDis').value.trim(), ldg: $('veLdg').value.trim(), start: h!=null ? {h, mi} : null});
   };
   setTimeout(()=>{ try{ $('veName').focus(); }catch(e){} }, 30);
 }
@@ -4961,6 +4993,7 @@ function bindSafety(el){
     w.marks[r+'_'+i] = nx; td.textContent = nx;
     td.classList.toggle('bad', nx==='X'); td.classList.toggle('mid', nx==='△');
   });
+  root.querySelectorAll('[data-sv-act]').forEach(x=> x.oninput = ()=>{ const [ds, i] = x.dataset.svAct.split('|'); const p = svPlan(ds); p.act = p.act || {}; p.act[+i] = x.value; });
   root.querySelectorAll('[data-sv-pmark]').forEach(td=> td.onclick = ()=>{
     const [ds, i] = td.dataset.svPmark.split('|'); const p = svPlan(ds), cur = svPlanMark(p, +i);
     const nx = SV_PLAN_CYCLE[(SV_PLAN_CYCLE.indexOf(cur)+1) % SV_PLAN_CYCLE.length];
