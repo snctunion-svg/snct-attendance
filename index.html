@@ -274,7 +274,9 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .svIn:focus,.svIssue:focus{background:#fff7d6;}
 .svM{text-align:center;font-size:15px;font-weight:800;cursor:pointer;user-select:none;}
 .svM:hover{background:#fff7d6;}
-.svM.mid{color:#b45309;} .svM.bad{color:#dc2626;}
+.svM.mid{color:#b45309;}
+.svDate{padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;}
+.svCtl{flex-wrap:wrap;gap:6px;} .svM.bad{color:#dc2626;}
 .svGrpTop > *{border-top:1.5px solid #111 !important;}
 .svIssueH{border:2px solid #111;border-bottom:0;margin-top:14px;text-align:center;font-weight:800;padding:6px;font-size:14px;}
 .svIssue,.svIssuePrint{display:block;width:100%;box-sizing:border-box;border:2px solid #111;min-height:120px;font:inherit;font-size:13px;padding:8px;resize:vertical;outline:none;white-space:pre-wrap;}
@@ -1255,7 +1257,7 @@ async function reloadBerth(){
     else berthErr = '회사 사이트에서 선석 정보를 받지 못했어요.';
   }catch(err){ berthErr = '선석 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'; }
   berthLoading = false;
-  if(VIEW==='berth') render();
+  if(VIEW==='berth' || VIEW==='safety') render();
 }
 function textOn(bg){
   const h = String(bg||'').replace('#',''); if(h.length<6) return '#111';
@@ -3933,7 +3935,7 @@ function fitDocs(){
   }
   if(VIEW!=='accident') return;
   if(window.innerWidth <= 700){ // 휴대폰: 한 장씩 화면 폭에 꽉 맞춤
-    const w = g.parentElement.clientWidth - 4;
+    const pcs0 = getComputedStyle(g.parentElement), w = g.parentElement.clientWidth - parseFloat(pcs0.paddingLeft||0) - parseFloat(pcs0.paddingRight||0) - 2;
     g.style.zoom = Math.min(1, Math.floor(w / 780 * 1000)/1000);
     return;
   }
@@ -3955,7 +3957,7 @@ function fitSafety(){
   g.style.zoom = '';
   if(VIEW!=='safety') return;
   if(window.innerWidth <= 700){ // 휴대폰: 한 장씩 위아래로, 화면 폭에 꽉 맞춤
-    const w = g.parentElement.clientWidth - 4;
+    const pcs0 = getComputedStyle(g.parentElement), w = g.parentElement.clientWidth - parseFloat(pcs0.paddingLeft||0) - parseFloat(pcs0.paddingRight||0) - 2;
     g.style.zoom = Math.min(1, Math.floor(w / 820 * 1000)/1000);
     return;
   }
@@ -4575,31 +4577,71 @@ const SV_ITEMS = [
   {g:'기 타', c:'작업 환경', p:'소음,분진,결빙,조명등의 상태'},
   {g:'기 타', c:'계단·통로', p:'난간대,미끄럼 방지조치 상태'}
 ];
-const SV_MARKS = ['', '○', '△', 'X'];
-let svForm = null, svPrintSel = {log:true, p1:false, p2:false, p3:false}, svImgTab = 0;
-function svDefault(){ return {start: mondayOf(todayStr()), marks:{}, checkers:['','','','','','',''], victim:'', cause:'', issue:''}; }
-// ---- 네 장 공통 틀: 같은 머리(제목 + 결재칸), 같은 본문 시작선, 본문 맨 아래 선, 같은 꼬리말 ----
-function svSignBox(){ return `<table class="svSignBox"><tr><th rowspan="2">결<br>재</th><th>담당</th><th>팀장</th></tr><tr><td></td><td></td></tr></table>`; }
-function svFrame(id, title, body, opts={}){
-  return `<div class="svPage svFramed" id="${id}">
-    <div class="svHdr"><div class="svHTitle${opts.underline?' u':''}">${title}</div>${opts.sign===false ? '' : svSignBox()}</div>
-    <div class="svBody">${body}</div>
-    <div class="svFoot">선광신컨테이너터미널㈜</div>
-  </div>`;
+const SV_LOG_CYCLE = ['○','△','X'];          // 직무수행 일지: 기본 ○, 누르면 △ → X → ○
+const SV_INJ_CYCLE = ['','○','△','X'];       // 산업재해 분석 줄: 기본 빈칸
+const SV_PLAN_CYCLE = ['O','△','X'];          // 안전작업 계획서 점검결과: 기본 O
+let svForm = null, svPrintSel = {log:true, plan:false, p3:false}, svImgTab = 0;
+function svDefault(){
+  const t = todayStr();
+  return {month: t.slice(0,7), week: mondayOf(t), planDay: t, weeks:{}, plans:{}, vesselOnly:true};
 }
-function svPlanP1(){
-  const [y, m] = svForm.start.split('-').map(Number);
-  const v3 = t => `<td>${t}</td><td>${t}</td><td>${t}</td>`;
-  const date = `${y} 년 &nbsp;${m}월 &nbsp;&nbsp;&nbsp;&nbsp; 일`;
-  return svFrame('svP1', '안전작업 계획서(하역작업용)', `
+function svMonthDays(month){ const [y,m] = month.split('-').map(Number); return Array.from({length:daysInMonth(y,m)}, (_,i)=> dstr(y,m,i+1)); }
+// 그 달과 겹치는 주(월요일 시작) — 한 달 출력 = 이 주들을 한 장씩
+function svMonthWeeks(month){
+  const days = svMonthDays(month), out = [];
+  for(let w = mondayOf(days[0]); w <= days[days.length-1]; w = addDays(w, 7)) out.push(w);
+  return out;
+}
+function svWeek(mon){ if(!svForm.weeks[mon]) svForm.weeks[mon] = {marks:{}, checkers:['','','','','','',''], victim:'', cause:'', issue:''}; return svForm.weeks[mon]; }
+function svPlan(ds){ if(!svForm.plans[ds]) svForm.plans[ds] = {chk:{}}; return svForm.plans[ds]; }
+function svLogMark(w, r, i){ const v = w.marks[r+'_'+i]; return v!==undefined ? v : (SV_ITEMS[r].injury ? '' : '○'); }
+function svPlanMark(p, i){ const v = p.chk[i]; return v!==undefined ? v : 'O'; }
+// ----- 선석배정조회(선석 조회) 자료에서 그날 1·2·3번 선석 배 찾기 -----
+function svInfoGet(b, re){
+  const list = b && b.infoList && b.infoList.length ? b.infoList : Object.entries((b && b.info)||{}).map(([k,v])=>({k,v}));
+  const hit = list.find(x=> re.test(String(x.k||''))); return hit ? String(hit.v||'').trim() : '';
+}
+function svParseDT(s){ const m = String(s||'').match(/(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{1,2}):(\d{2}))?/); return m ? {d:`${m[1]}-${m[2]}-${m[3]}`, h:m[4]!=null?+m[4]:null, mi:m[5]!=null?+m[5]:null} : null; }
+function svVessels(ds){
+  const out = {};
+  const blocks = (berthData && berthData.blocks) || [];
+  blocks.forEach(b=>{
+    const bn = (svInfoGet(b, /^Berth\s*No/i).match(/B\s*0?(\d)/i) || [])[1]; if(!bn || !/^[123]$/.test(bn)) return;
+    const atb = svParseDT(svInfoGet(b, /^Actual\s*Time\s*of\s*Berth/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Berth/i));
+    const atd = svParseDT(svInfoGet(b, /^Actual\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i));
+    if(!atb) return;
+    if(!(atb.d <= ds && (!atd || ds <= atd.d))) return;
+    const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
+    const q = svInfoGet(b, /DIS\s*\/\s*LDG/i).split('/').map(x=> x.trim());
+    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', open: svParseDT(svInfoGet(b, /Cargo\s*Open/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
+    if(!out[bn] || v._t > out[bn]._t) out[bn] = v; // 같은 선석에 두 척이면 나중에 들어온 배
+  });
+  return out;
+}
+function svPlanP1(ds, id){
+  ds = ds || svForm.planDay;
+  const [y, m, d] = ds.split('-').map(Number);
+  const V = svVessels(ds), B = [1,2,3].map(n=> V[n] || null);
+  const p = svPlan(ds), live = id==='svP1';
+  const kdate = s => { const [a,b,c] = s.split('-').map(Number); return `${a} 년 &nbsp;${b}월 &nbsp;${c} 일`; };
+  const cells = f => B.map(v=> `<td${f.l?' class="l"':''}>${v ? f.on(v) : f.off}</td>`).join('');
+  // 작업전 안전교육: Cargo Open time 20분 전 ~ Cargo Open time (08~19시는 주간, 그 밖은 야간)
+  let day = null, night = null;
+  B.forEach(v=>{ if(!v || !v.open || v.open.h==null) return; const end = v.open.h*60 + v.open.mi; const isDay = v.open.h>=8 && v.open.h<19; if(isDay && !day) day = end; if(!isDay && !night) night = end; });
+  const tr = end => { const st = (end - 20 + 1440) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(st)} &nbsp;~&nbsp; ${f(end)}`; };
+  const blank = '&nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분 &nbsp;&nbsp;~&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분';
+  const items = [['화물의 상태','선적, 양하 컨테이너의 이상 유무 (EXCEPTION LIST 참조)',1],['통행설비','WHARF LADDER 등 선박-육상간 설치된 통행설비의 이상 유무',3],[null,'DECK의 유분, 수분, 결빙 또는 파손상태'],[null,'선내 위험물질의 유출 여부'],['보호구','작업원의 안전모, 안전화 착용 여부',1],['선내조명','선내조명의 밝기',1],['작업도구','작업원의 음주, 과로 등 신체상태',3],[null,'화물의 중량에 적합한 WIRE ROPE 사용 여부'],[null,'하역도구의 부식 및 마모 상태']];
+  const chkRows = items.map((it,i)=>{ const v = svPlanMark(p, i);
+    return `<tr>${it[0] ? `<th${it[2]>1?` rowspan="${it[2]}"`:''}>${it[0]}</th>` : ''}<td class="l">${it[1]}</td><td class="svM svPM${v==='X'?' bad':v==='△'?' mid':''}"${live?` data-sv-pmark="${ds}|${i}"`:''}>${v}</td><td></td></tr>`; }).join('');
+  return svFrame(id || 'svP1', '안전작업 계획서(하역작업용)', `
     <div class="svLegend">날씨 :</div>
     <table class="svPT svPT1">
       <colgroup><col style="width:19%"><col style="width:27%"><col style="width:27%"><col style="width:27%"></colgroup>
-      <tr><th>선 박 명</th><td class="l">M/V.</td><td class="l">M/V.</td><td class="l">M/V.</td></tr>
-      <tr><th>접안일자</th>${v3(date)}</tr>
-      <tr><th>작업장소</th>${v3('MSB &nbsp;01, 02, 03.')}</tr>
-      <tr><th>작업공정</th>${v3('컨테이너 양.적하')}</tr>
-      <tr><th>양하/적하 수량</th>${v3('/')}</tr>
+      <tr><th>선 박 명</th>${cells({l:1, off:'M/V.', on:v=>`M/V. <b>${esc(v.name)}</b>`})}</tr>
+      <tr><th>접안일자</th>${cells({off:'', on:v=> kdate(v.berth)})}</tr>
+      <tr><th>작업장소</th>${'<td>MSB &nbsp;01, 02, 03.</td>'.repeat(3)}</tr>
+      <tr><th>작업공정</th>${'<td>컨테이너 양.적하</td>'.repeat(3)}</tr>
+      <tr><th>양하/적하 수량</th>${cells({off:'/', on:v=> `${esc(v.dis)} / ${esc(v.ldg)}`})}</tr>
       <tr><th>착용보호구</th><td colspan="3" class="l">■ 안전모 &nbsp;&nbsp; ■ 안전화 &nbsp;&nbsp; ■ 안전대</td></tr>
       <tr><th>운행 경로(거리)</th><td colspan="3" class="l">부두(에이프런) ↔ MARSHALLING YARD <span style="margin-left:36px;">※ 세부경로는 작업계획도 참조</span></td></tr>
       <tr><th>작업장소</th><td colspan="3" class="l">SNCT 선석 MSB 01, 02, 03 (800M), &nbsp;APRON (800 x 71.2m)</td></tr>
@@ -4607,8 +4649,8 @@ function svPlanP1(){
     </table>
     <div class="svSec">[ 안전교육 일지 ]</div>
     <div class="svEdu">
-      <div>■ 작업전 안전교육 일시 :</div><div>주간 : &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분 &nbsp;&nbsp;~&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분</div>
-      <div style="padding-left:150px;">${y}년 &nbsp;&nbsp;${m}월 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 일</div><div>야간 : &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분 &nbsp;&nbsp;~&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분</div>
+      <div>■ 작업전 안전교육 일시 :</div><div>주간 : &nbsp;${day!=null ? tr(day) : blank}</div>
+      <div style="padding-left:150px;">${y}년 &nbsp;${m}월 &nbsp;${d}일</div><div>야간 : &nbsp;${night!=null ? tr(night) : blank}</div>
     </div>
     <div class="svSec">1. 일반 안전교육 내용</div>
     <div class="svBox svCols"><div>1. 안전보호구 착용<br>2. 이동하는 장비(STS, ARMG) 및 화물 하부/주변 절대 접근금지<br>3. 음주 및 과로금지 및 복장단정<br>4. 컨테이너의 종류 및 주의사항<br>5. 위험물 유출여부 확인 및 가연성 물질의 격리 보관</div>
@@ -4620,24 +4662,26 @@ function svPlanP1(){
     <table class="svPT">
       <colgroup><col style="width:14%"><col style="width:54%"><col style="width:14%"><col style="width:18%"></colgroup>
       <tr><th>구 분</th><th>주요 점검항목</th><th>점검결과</th><th>조치사항</th></tr>
-      <tr><th>화물의 상태</th><td class="l">선적, 양하 컨테이너의 이상 유무 (EXCEPTION LIST 참조)</td><td></td><td></td></tr>
-      <tr><th rowspan="3">통행설비</th><td class="l">WHARF LADDER 등 선박-육상간 설치된 통행설비의 이상 유무</td><td></td><td></td></tr>
-      <tr><td class="l">DECK의 유분, 수분, 결빙 또는 파손상태</td><td></td><td></td></tr>
-      <tr><td class="l">선내 위험물질의 유출 여부</td><td></td><td></td></tr>
-      <tr><th>보호구</th><td class="l">작업원의 안전모, 안전화 착용 여부</td><td></td><td></td></tr>
-      <tr><th>선내조명</th><td class="l">선내조명의 밝기</td><td></td><td></td></tr>
-      <tr><th rowspan="3">작업도구</th><td class="l">작업원의 음주, 과로 등 신체상태</td><td></td><td></td></tr>
-      <tr><td class="l">화물의 중량에 적합한 WIRE ROPE 사용 여부</td><td></td><td></td></tr>
-      <tr><td class="l">하역도구의 부식 및 마모 상태</td><td></td><td></td></tr>
+      ${chkRows}
     </table>
     <div class="svBox svGrow svNote">☞ &nbsp;1. 점검결과 : &nbsp;O (이상없음), &nbsp;△ (보완 필요), &nbsp;X (수리 요망)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. 점검결과의 조치 : 점검결과 수리 또는 보완이 필요한 부분 발견시, 장비시설팀에 수리 의뢰한다.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. 작업사황에 따라 추가보완(위험요인 제거, 예방대책 보완 등) 필요시 별첨자료를 첨부한다.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4. 안전교육시 교육참석자는 전원이 서명한다.</div>
   `, {underline:true});
 }
-function svPlanP2(){
+
+// ---- 네 장 공통 틀: 같은 머리(제목 + 결재칸), 같은 본문 시작선, 본문 맨 아래 선, 같은 꼬리말 ----
+function svSignBox(){ return `<table class="svSignBox"><tr><th rowspan="2">결<br>재</th><th>담당</th><th>팀장</th></tr><tr><td></td><td></td></tr></table>`; }
+function svFrame(id, title, body, opts={}){
+  return `<div class="svPage svFramed" id="${id}">
+    <div class="svHdr"><div class="svHTitle${opts.underline?' u':''}">${title}</div>${opts.sign===false ? '' : svSignBox()}</div>
+    <div class="svBody">${body}</div>
+    <div class="svFoot">선광신컨테이너터미널㈜</div>
+  </div>`;
+}
+function svPlanP2(id){
   const sts = (a)=> a.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
   const head = '<tr><th>장비번호</th><th>제작사</th><th>Out<br>reach</th><th>SWL</th><th>등록일자</th></tr>';
   const col = '<colgroup><col style="width:26%"><col style="width:18%"><col style="width:15%"><col style="width:15%"><col style="width:26%"></colgroup>';
-  return svFrame('svP2', '안전작업 계획서(하역작업용) <span class="svSub">— 계속</span>', `
+  return svFrame(id || 'svP2', '안전작업 계획서(하역작업용) <span class="svSub">— 계속</span>', `
     <div class="svSec" style="margin-top:0;">4. 하역운반기계(컨테이너 크레인) 제원</div>
     <div class="svTwin">
       <table class="svPT">${col}${head}${sts([['STS 101','ZPMC','65m','65톤','15.05.22'],['STS 102','ZPMC','65m','65톤','15.05.22'],['STS 103','ZPMC','65m','65톤','15.05.22'],['STS 104','ZPMC','65m','65톤','15.05.22']])}</table>
@@ -4660,73 +4704,95 @@ function svPlanP2(){
   `, {sign:false});
 }
 
-function svLogHtml(){
-  const f = svForm, days = Array.from({length:7}, (_,i)=> addDays(f.start, i));
+function svLogHtml(mon, id){
+  mon = mon || svForm.week;
+  const w = svWeek(mon), live = !id || id==='svLog', days = Array.from({length:7}, (_,i)=> addDays(mon, i));
   const wd = ['일','월','화','수','목','금','토'];
   const dl = ds => { const [y,m,d] = ds.split('-').map(Number); return `${m}/${String(d).padStart(2,'0')}(${wd[new Date(y,m-1,d).getDay()]})`; };
   const grpSpan = {}; SV_ITEMS.forEach(it=> grpSpan[it.g] = (grpSpan[it.g]||0)+1);
   const cSpan = {}; SV_ITEMS.forEach(it=> cSpan[it.g+it.c] = (cSpan[it.g+it.c]||0)+1);
   const seenG = {}, seenC = {};
+  const A = (k)=> live ? ` data-svw="${k}"` : '';
   const rows = SV_ITEMS.map((it, r)=>{
     let h = '<tr' + (r===6||r===12 ? ' class="svGrpTop"' : '') + '>';
     if(!seenG[it.g]){ seenG[it.g] = 1; h += `<th class="svG" rowspan="${grpSpan[it.g]}">${it.g.split(' ').join('<br>')}</th>`; }
     if(!seenC[it.g+it.c]){ seenC[it.g+it.c] = 1; h += `<td class="svC" rowspan="${cSpan[it.g+it.c]}">${esc(it.c)}</td>`; }
     const pt = it.injury
-      ? `산업재해 발생상태<div class="svInj">(재해자: <input class="svIn" data-sv="victim" value="${esc(f.victim)}">)</div><div class="svInj">(재해원인: <input class="svIn" data-sv="cause" value="${esc(f.cause)}">)</div>`
+      ? `산업재해 발생상태<div class="svInj">(재해자: <input class="svIn"${A('victim')} value="${esc(w.victim)}">)</div><div class="svInj">(재해원인: <input class="svIn"${A('cause')} value="${esc(w.cause)}">)</div>`
       : esc(it.p).replace(/\n/g,'<br>');
     h += `<td class="svP" colspan="2">${pt}</td>`;
-    days.forEach((ds, i)=>{ const v = f.marks[r+'_'+i] || ''; h += `<td class="svM${v==='X'?' bad':v==='△'?' mid':''}" data-sv-mark="${r}_${i}">${v}</td>`; });
+    days.forEach((ds, i)=>{ const v = svLogMark(w, r, i); h += `<td class="svM${v==='X'?' bad':v==='△'?' mid':''}"${live?` data-sv-mark="${r}_${i}"`:''}>${v}</td>`; });
     return h + '</tr>';
   }).join('');
-  return svFrame('svLog', `관리감독자 직무수행 일지<br>(장비파트) ${f.start.slice(0,4)}년도`, `
+  return svFrame(id || 'svLog', `관리감독자 직무수행 일지<br>(장비파트) ${mon.slice(0,4)}년도`, `
     <div class="svLegend">*범례 : 양호(○),보완(△),부적합(X)</div>
     <table class="svTbl">
       <colgroup><col style="width:5%"><col style="width:15%"><col style="width:24%"><col style="width:8%">${'<col style="width:6.86%">'.repeat(7)}</colgroup>
       <tr><th rowspan="2">구<br>분</th><th rowspan="2">점검내용</th><th rowspan="2">주요 점검 Point</th><th>점검일</th>${days.map(ds=>`<th class="svDay">${dl(ds)}</th>`).join('')}</tr>
-      <tr><th>점검자</th>${f.checkers.map((c,i)=>`<td class="svChk"><input class="svIn" data-sv-chk="${i}" value="${esc(c)}"></td>`).join('')}</tr>
+      <tr><th>점검자</th>${w.checkers.map((c,i)=>`<td class="svChk"><input class="svIn"${live?` data-sv-chk="${i}"`:''} value="${esc(c)}"></td>`).join('')}</tr>
       <tr class="svGap"><td colspan="11"></td></tr>
       ${rows}
     </table>
     <div class="svIssueWrap svGrow"><div class="svIssueH">◈ 문제점 및 개선방안 ◈</div>
-    <textarea class="svIssue" data-sv="issue">${esc(f.issue)}</textarea><div class="svIssuePrint">${esc(f.issue)}</div></div>
+    <textarea class="svIssue"${A('issue')}>${esc(w.issue)}</textarea><div class="svIssuePrint">${esc(w.issue)}</div></div>
   `);
 }
-// 안전교육 참석자 명단: 1조·2조 성명은 조편성에서 자동, 서명은 빈칸
-function svRosterHtml(){
-  const [y, m] = svForm.start.split('-').map(Number);
+// 안전교육 참석자 명단: 한 달에 한 장. 1조·2조 성명은 조편성에서 자동, 서명은 빈칸
+function svRosterHtml(id){
+  const [y, m] = svForm.month.split('-').map(Number);
   const team = t => employees.filter(e=> (e.team||'')===t).sort((a,b)=> (a.teamOrder||999)-(b.teamOrder||999)).map(e=> e.name||'');
   const tbl = (label, names) => `<table class="svRoster"><colgroup><col style="width:16%"><col style="width:40%"><col style="width:44%"></colgroup>
     <tr><th colspan="3" class="svRosterH">${label}</th></tr>
     <tr><th>번호</th><th>성명</th><th>서명</th></tr>
     ${Array.from({length:16}, (_,i)=> `<tr><td>${i+1}</td><td class="svRName">${esc(names[i]||'')}</td><td></td></tr>`).join('')}
   </table>`;
-  return svFrame('svP3', '안전교육 참석자 명단', `
+  return svFrame(id || 'svP3', '안전교육 참석자 명단', `
     <div class="svLegend" style="font-size:14px;">■ 날 짜 : &nbsp;${y} 년 &nbsp;${m} 월 &nbsp;&nbsp;&nbsp;&nbsp; 일 ( &nbsp;&nbsp;&nbsp; 요일)</div>
     <div class="svLegend" style="font-size:14px;">■ 소 속 : 선광신컨테이너터미널 운영팀</div>
     <div class="svRWrap svGrow">${tbl('1조', team('1'))}${tbl('2조', team('2'))}</div>
   `, {underline:true});
 }
+function svPlanDays(){ const days = svMonthDays(svForm.month); return svForm.vesselOnly ? days.filter(ds=> Object.keys(svVessels(ds)).length) : days; }
 function pageSafety(){
   if(!svForm) svForm = svDefault();
+  if(vslApi && !berthData && !berthLoading) reloadBerth();
   const S = svPrintSel, ck = (k,label)=> `<label class="chk"><input type="checkbox" data-sv-pr="${k}" ${S[k]?'checked':''}> ${label}</label>`;
+  const weeks = svMonthWeeks(svForm.month);
+  if(!weeks.includes(svForm.week)) svForm.week = weeks.find(w=> w <= todayStr() && todayStr() <= addDays(w,6)) || weeks[0];
+  if(svForm.planDay.slice(0,7)!==svForm.month) svForm.planDay = svForm.month + '-01';
+  const wkLbl = w => { const e = addDays(w,6); return `${Number(w.slice(5,7))}/${Number(w.slice(8))}~${Number(e.slice(5,7))}/${Number(e.slice(8))}`; };
+  const planDays = svPlanDays();
+  const berthNote = !vslApi ? '선석 자료 주소가 없어 선박명은 비어 있어요.' : !berthData ? (berthErr || '선석 자료를 불러오는 중…') : `선석 자료(선석 조회)에 있는 날만 선박명이 자동으로 들어가요. 이 달 배 있는 날: ${svMonthDays(svForm.month).filter(ds=> Object.keys(svVessels(ds)).length).length}일`;
   return `
   <h2 class="pgttl accNoPrint">관리감독자</h2>
-  <div class="row accNoPrint" style="margin-bottom:8px;align-items:center;">
-    <span style="font-weight:800;">점검 시작일</span>
-    <input type="date" id="svStart" value="${esc(svForm.start)}" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;">
+  <div class="row accNoPrint svCtl" style="margin-bottom:8px;align-items:center;">
+    <span style="font-weight:800;">월</span>
+    <input type="month" id="svMonth" value="${esc(svForm.month)}" class="svDate">
+    <span style="font-weight:800;margin-left:6px;">직무수행 일지 주</span>
+    ${weeks.map((w,i)=>`<button class="btn ${svForm.week===w?'':'ghost'} sm" data-sv-week="${w}">${i+1}주 (${wkLbl(w)})</button>`).join('')}
+  </div>
+  <div class="row accNoPrint svCtl" style="margin-bottom:8px;align-items:center;">
+    <span style="font-weight:800;">안전작업 계획서 날짜</span>
+    <button class="btn ghost sm" id="svDPrev">◀</button>
+    <input type="date" id="svPlanDay" value="${esc(svForm.planDay)}" min="${svForm.month}-01" max="${svMonthDays(svForm.month).slice(-1)[0]}" class="svDate">
+    <button class="btn ghost sm" id="svDNext">▶</button>
+    <span class="hint" style="margin:0;">${esc(berthNote)}</span>
+  </div>
+  <div class="row accNoPrint svCtl" style="margin-bottom:8px;align-items:center;">
+    <span style="font-weight:800;">출력할 서류</span>
+    ${ck('log', `직무수행 일지 (한 달 ${weeks.length}주 · ${weeks.length}장)`)}
+    ${ck('plan', `안전작업 계획서 1·2쪽 (한 달 · ${planDays.length}일 × 2장)`)}
+    <label class="chk"><input type="checkbox" id="svVesselOnly" ${svForm.vesselOnly?'checked':''}> 배 있는 날만</label>
+    ${ck('p3','안전교육 참석자 명단 (1장)')}
+    <button class="btn" id="svPrint">🖨️ 출력 (인쇄 · PDF 저장)</button>
     <button class="btn warn ghost sm" id="svReset">새로 작성</button>
   </div>
-  <div class="row accNoPrint" style="margin-bottom:8px;align-items:center;">
-    <span style="font-weight:800;">출력할 서류</span>
-    ${ck('log','직무수행 일지')}${ck('p1','안전작업 계획서 1쪽')}${ck('p2','안전작업 계획서 2쪽')}${ck('p3','안전교육 참석자 명단')}
-    <button class="btn" id="svPrint">🖨️ 출력 (인쇄 · PDF 저장)</button>
-  </div>
-  <p class="hint accNoPrint" style="margin:0 0 12px;">점검 칸을 누를 때마다 ○ → △ → X → 빈칸으로 바뀌어요. 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요. 고른 서류만 A4 한 장씩 출력돼요.</p>
+  <p class="hint accNoPrint" style="margin:0 0 12px;">점검 칸은 처음에 <b>○(O)</b>로 채워져 있고, 누를 때마다 △ → X → ○로 바뀌어요(산업재해 분석 줄은 빈칸에서 시작). 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요.</p>
   <div class="svPages">
-    <div class="svCol"><div class="docLabel accNoPrint">🦺 직무수행 일지</div>${svLogHtml()}</div>
-    <div class="svCol"><div class="docLabel accNoPrint">📋 안전작업 계획서 1쪽</div>${svPlanP1()}</div>
-    <div class="svCol"><div class="docLabel accNoPrint">📋 안전작업 계획서 2쪽</div>${svPlanP2()}</div>
-    <div class="svCol"><div class="docLabel accNoPrint">📋 안전교육 참석자 명단</div>${svRosterHtml()}</div>
+    <div class="svCol"><div class="docLabel accNoPrint">🦺 직무수행 일지 (${wkLbl(svForm.week)})</div>${svLogHtml(svForm.week, 'svLog')}</div>
+    <div class="svCol"><div class="docLabel accNoPrint">📋 안전작업 계획서 1쪽 (${svForm.planDay})</div>${svPlanP1(svForm.planDay, 'svP1')}</div>
+    <div class="svCol"><div class="docLabel accNoPrint">📋 안전작업 계획서 2쪽</div>${svPlanP2('svP2')}</div>
+    <div class="svCol"><div class="docLabel accNoPrint">📋 안전교육 참석자 명단 (${svForm.month})</div>${svRosterHtml('svP3')}</div>
   </div>`;
 }
 // 출력 전용 문서를 따로 만들어(숨은 iframe) 그 안에서 인쇄 — 앱 화면이 다시 그려지거나 다른 인쇄 설정과 섞여도 안전
@@ -4735,7 +4801,11 @@ function svBuildPrintDoc(ids){
   document.querySelectorAll('.svPages input, .docGrid input').forEach(x=>{ if(x.type==='checkbox'){ if(x.checked) x.setAttribute('checked',''); else x.removeAttribute('checked'); } else x.setAttribute('value', x.value); });
   document.querySelectorAll('.svPages textarea, .docGrid textarea').forEach(x=>{ x.textContent = x.value; const pr = x.parentElement.querySelector('.svIssuePrint, .accTaPrint'); if(pr) pr.textContent = x.value; });
   // 장마다 A4 한 장 크기의 빈 상자(.pp)로 감싸고, 그 안에 틀을 꽉 채움(여러 장 인쇄 때 크롬이 틀 높이를 줄이는 문제 방지)
-  const html = ids.map(id=>{ const n = document.getElementById(id); return n ? `<div class="pp">${n.outerHTML}</div>` : ''; }).join('');
+  return svBuildPrintHtml(ids.map(id=>{ const n = document.getElementById(id); return n ? n.outerHTML : ''; }));
+}
+// 여러 장(HTML 문자열 목록)을 A4 한 장씩 담은 출력용 문서로
+function svBuildPrintHtml(pages){
+  const html = pages.filter(Boolean).map(h=> `<div class="pp">${h}</div>`).join('');
   const css = Array.from(document.querySelectorAll('style')).map(st=> st.textContent).join('\n') + `
     @page{size:A4 portrait;margin:8mm;}
     html,body{background:#fff !important;margin:0 !important;padding:0 !important;color:#111;}
@@ -4763,7 +4833,8 @@ function svBuildPrintDoc(ids){
     .hakAmtH,.hakAmt{-webkit-print-color-adjust:exact;print-color-adjust:exact;}`;
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>출력</title><style>${css}</style></head><body>${html}</body></html>`;
 }
-function svPrintDocs(ids){
+function svPrintDocs(ids){ return svPrintHtml(null, ids); }
+function svPrintHtml(pages, ids){
   if(navigator.standalone){ showToast('아이폰 홈 화면 앱에서는 인쇄가 막혀 있어요. Safari에서 주소를 열어 출력해 주세요.'); }
   const old = document.getElementById('svPrintFrame'); if(old) old.remove();
   const fr = document.createElement('iframe');
@@ -4772,7 +4843,7 @@ function svPrintDocs(ids){
   fr.style.cssText = 'position:fixed;left:-10000px;top:0;width:900px;height:1200px;border:0;visibility:hidden;';
   document.body.appendChild(fr);
   const d = fr.contentWindow.document;
-  d.open(); d.write(svBuildPrintDoc(ids)); d.close();
+  d.open(); d.write(pages ? svBuildPrintHtml(pages) : svBuildPrintDoc(ids)); d.close();
   const go = ()=>{
     try{ fr.contentWindow.focus(); fr.contentWindow.print(); }
     catch(err){ showToast('출력 창을 열지 못했어요. 브라우저 메뉴의 인쇄를 이용해 주세요.'); }
@@ -4783,29 +4854,45 @@ function svPrintDocs(ids){
 }
 function bindSafety(el){
   const root = el.querySelector('.svPages'); if(!root) return;
+  const w = svWeek(svForm.week);
   root.querySelectorAll('[data-sv-mark]').forEach(td=> td.onclick = ()=>{
-    const k = td.dataset.svMark, cur = svForm.marks[k] || '';
-    const nx = SV_MARKS[(SV_MARKS.indexOf(cur)+1) % SV_MARKS.length];
-    svForm.marks[k] = nx; td.textContent = nx;
+    const [r, i] = td.dataset.svMark.split('_').map(Number);
+    const cyc = SV_ITEMS[r].injury ? SV_INJ_CYCLE : SV_LOG_CYCLE, cur = svLogMark(w, r, i);
+    const nx = cyc[(cyc.indexOf(cur)+1) % cyc.length];
+    w.marks[r+'_'+i] = nx; td.textContent = nx;
     td.classList.toggle('bad', nx==='X'); td.classList.toggle('mid', nx==='△');
   });
-  root.querySelectorAll('[data-sv]').forEach(x=> x.oninput = ()=>{
-    svForm[x.dataset.sv] = x.value;
-    if(x.dataset.sv==='issue'){ const p = root.querySelector('.svIssuePrint'); if(p) p.textContent = x.value; }
+  root.querySelectorAll('[data-sv-pmark]').forEach(td=> td.onclick = ()=>{
+    const [ds, i] = td.dataset.svPmark.split('|'); const p = svPlan(ds), cur = svPlanMark(p, +i);
+    const nx = SV_PLAN_CYCLE[(SV_PLAN_CYCLE.indexOf(cur)+1) % SV_PLAN_CYCLE.length];
+    p.chk[+i] = nx; td.textContent = nx; td.classList.toggle('bad', nx==='X'); td.classList.toggle('mid', nx==='△');
   });
-  root.querySelectorAll('[data-sv-chk]').forEach(x=> x.oninput = ()=>{ svForm.checkers[+x.dataset.svChk] = x.value; });
-  const st = el.querySelector('#svStart');
-  if(st) st.onchange = ()=>{ if(st.value){ svForm.start = st.value; render(); } };
+  root.querySelectorAll('[data-svw]').forEach(x=> x.oninput = ()=>{
+    w[x.dataset.svw] = x.value;
+    if(x.dataset.svw==='issue'){ const p = root.querySelector('#svLog .svIssuePrint'); if(p) p.textContent = x.value; }
+  });
+  root.querySelectorAll('[data-sv-chk]').forEach(x=> x.oninput = ()=>{ w.checkers[+x.dataset.svChk] = x.value; });
+  const mo = el.querySelector('#svMonth');
+  if(mo) mo.onchange = ()=>{ if(/^\d{4}-\d{2}$/.test(mo.value)){ svForm.month = mo.value; svForm.week = ''; svForm.planDay = mo.value + '-01'; render(); } };
+  el.querySelectorAll('[data-sv-week]').forEach(b=> b.onclick = ()=>{ svForm.week = b.dataset.svWeek; render(); });
+  const pd = el.querySelector('#svPlanDay');
+  if(pd) pd.onchange = ()=>{ if(pd.value){ svForm.planDay = pd.value; if(pd.value.slice(0,7)!==svForm.month) svForm.month = pd.value.slice(0,7); render(); } };
+  const step = n => { svForm.planDay = addDays(svForm.planDay, n); svForm.month = svForm.planDay.slice(0,7); render(); };
+  const dp = el.querySelector('#svDPrev'), dn = el.querySelector('#svDNext');
+  if(dp) dp.onclick = ()=> step(-1); if(dn) dn.onclick = ()=> step(1);
+  const vo = el.querySelector('#svVesselOnly'); if(vo) vo.onchange = ()=>{ svForm.vesselOnly = vo.checked; render(); };
   el.querySelectorAll('[data-sv-pr]').forEach(x=> x.onchange = ()=>{ svPrintSel[x.dataset.svPr] = x.checked; });
   const r = el.querySelector('#svReset');
-  if(r) r.onclick = ()=> appConfirm('입력한 점검 내용을 모두 지우고 새로 작성할까요?', ()=>{ svForm = svDefault(); render(); });
+  if(r) r.onclick = ()=> appConfirm('입력한 점검 내용을 모두 지우고 새로 작성할까요?', ()=>{ const mth = svForm.month; svForm = svDefault(); svForm.month = mth; render(); });
   const p = el.querySelector('#svPrint');
   if(p) p.onclick = ()=>{
-    const sel = Object.keys(svPrintSel).filter(k=> svPrintSel[k]);
-    if(!sel.length){ showToast('출력할 서류를 하나 이상 고르세요.'); return; }
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    const map = {log:'svLog', p1:'svP1', p2:'svP2', p3:'svP3'};
-    svPrintDocs(sel.map(k=> map[k]));
+    const pages = [];
+    if(svPrintSel.log) svMonthWeeks(svForm.month).forEach(mon=> pages.push(svLogHtml(mon, 'svLog_'+mon)));
+    if(svPrintSel.plan) svPlanDays().forEach(ds=>{ pages.push(svPlanP1(ds, 'svP1_'+ds)); pages.push(svPlanP2('svP2_'+ds)); });
+    if(svPrintSel.p3) pages.push(svRosterHtml('svP3_print'));
+    if(!pages.length){ showToast(svPrintSel.plan ? '이 달에 출력할 계획서가 없어요. (배 있는 날만 체크를 풀어 보세요)' : '출력할 서류를 하나 이상 고르세요.'); return; }
+    svPrintHtml(pages);
   };
 }
 
