@@ -679,8 +679,15 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   /* 월별 근태: 성명 칸을 이름 폭만큼만 */
   .cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{width:58px;min-width:58px;max-width:58px;padding-left:2px !important;padding-right:2px !important;white-space:nowrap;}
 }
-.cmbCtrl{height:104px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:10px;}
-.cmbCtrl h3{margin:0;}
+.cmbCtrl{min-height:34px;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:8px;}
+.cmbCtrl h3{margin:0;white-space:nowrap;}
+/* 근태관리 두 표의 제목 줄을 한 줄로: 근태 집계 제목(+UNION 날짜) / 월별 근태 제목 + 이전달·연월·다음달 */
+.cmbCtrl .row{height:auto !important;margin:0 !important;gap:6px;flex-wrap:nowrap;align-items:center !important;}
+.cmbCtrl .field{margin:0;min-width:0 !important;}
+.cmbCtrl .field label{display:none;}
+.cmbCtrl input[type=date]{padding:4px 6px;font-size:12.5px;height:30px;box-sizing:border-box;}
+.cmbCtrl .btn.sm{padding:4px 9px;}
+.cmbCtrl:has(input[type=date]) h3 span{display:none;} /* UNION: 날짜 칸이 있으면 제목 옆 기간 글자는 숨겨 한 줄로 */
 .ctbl.gtbl thead th{height:34px !important;}
 /* 배차표: 가로로 밀어서 보기 + 왼쪽 정보칸·머리글 고정 + 줄 높이 통일 */
 .dpScrollBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px;}
