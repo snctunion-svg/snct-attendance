@@ -125,7 +125,13 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 급여관리·급여명세서 */
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
-.pwCell{display:flex;align-items:center;gap:4px;}
+.pwCell{display:flex;align-items:center;gap:6px;justify-content:center;white-space:nowrap;}
+.pwSt{font-size:12px;font-weight:700;color:var(--text-muted);}
+.pwSt.on{color:#047857;}
+.pwHdrBtn{background:#fff !important;color:#be185d !important;border:1px solid #f9a8d4 !important;}
+.pwDlg{max-width:360px;width:92%;}
+.pwDlg .pwLbl{display:block;font-size:12px;font-weight:700;color:#475569;margin:10px 0 4px;text-align:left;}
+.pwDlg .pwIn{font-size:16px;}
 .pwRst{white-space:nowrap;padding:4px 8px !important;font-size:11px !important;}
 .pwIn{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;background:var(--bg);color:var(--text);font:inherit;font-size:15px;box-sizing:border-box;}
 .pwMsg{min-height:20px;margin:0 0 10px;color:#dc2626;font-weight:700;font-size:13px;}
@@ -779,7 +785,6 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
     <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
     <div class="navttl" data-role-section="leader" style="margin-top:10px;">조장관리</div>
-    <a data-view="pwchange"><span class="ic">🔑</span>비번 변경</a>
     <a data-view="safety"><span class="ic">🦺</span>관리감독자</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
@@ -2589,14 +2594,15 @@ function updateStatusBar(){
   let authHtml = '';
   if(db && authResolved){
     authHtml = userRole
-      ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : '✏️ 조장모드'}</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+      ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : '✏️ 조장모드'}</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
       : (currentUser
           ? `<span style="color:var(--warn);">권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
-          : `<span>👁 보기 전용</span><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">UNION</button>`);
+          : `<span>👁 보기 전용</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">UNION</button>`);
   }
   statusEl.innerHTML = conn + authHtml;
   const lb = document.getElementById('loginLeaderBtn'), lu = document.getElementById('loginUnionBtn'), lo = document.getElementById('logoutBtn');
   if(lb) lb.onclick = ()=> openLoginDialog('leader');
+  const pb = document.getElementById('pwHdrBtn'); if(pb) pb.onclick = ()=> openPwDialog();
   if(lu) lu.onclick = ()=> openLoginDialog('union');
   if(lo) lo.onclick = ()=> appConfirm('로그아웃할까요? 로그아웃하면 보기 전용이 됩니다.', ()=> fb.authM.signOut(fb.auth));
 }
@@ -4140,7 +4146,7 @@ function pagePayroll(){
       <td class="leaveCell" data-emp="${esc(e.id)}">${leaveCellHtml(p, e.id)}</td>
       <td><input type="text" class="tx" autocomplete="off" data-pay="job" data-emp="${esc(e.id)}" value="${v('job')}" placeholder="직무"></td>
       <td><select class="tx" data-pay="grade" data-emp="${esc(e.id)}"><option value=""></option>${PAY_GRADES.map(g=>`<option${p.grade===g?' selected':''}>${g}</option>`).join('')}</select></td>
-      <td><div class="pwCell"><input type="text" class="tx dt" autocomplete="off" inputmode="numeric" maxlength="8" data-pay="birth" data-emp="${esc(e.id)}" value="${v('birth')}" placeholder="oo-oo-oo">${slipPwCustom(e.id) ? `<button class="btn warn ghost sm pwRst" data-act="pw-reset" data-emp="${esc(e.id)}" title="개인이 바꾼 비번을 지우고 왼쪽 처음 비번으로 되돌림">비번 초기화</button>` : ''}</div></td>
+      <td><div class="pwCell">${slipPwCustom(e.id) ? `<span class="pwSt on">설정됨</span><button class="btn warn ghost sm pwRst" data-act="pw-reset" data-emp="${esc(e.id)}" title="본인이 정한 비번을 지움 — 본인이 [비번] 버튼에서 새로 입력">초기화</button>` : `<span class="pwSt">미설정</span>`}</div></td>
       <td>${money('hourly')}</td>
       <td>${money('ordinary')}</td>
       <td class="tenureCell" data-emp="${esc(e.id)}">${tenureCellHtml(p)}</td>
@@ -4165,7 +4171,7 @@ function pagePayroll(){
     ${payMgrTab==='ded' ? `<p class="hint" style="margin:0 0 10px;">항목마다 한 번만 정하면 <b>모든 사람의 급여명세서</b>에 일괄 적용돼요. % 는 지급총액 기준(10원 미만 버림), 원 은 모든 사람 같은 금액이에요.</p>
       <div class="scrollx"><table class="payTbl rateTbl"><thead><tr><th>공제 항목</th><th>값</th><th>단위</th><th></th></tr></thead><tbody>${rateRows}</tbody></table></div>`
     : list.length ? `<div class="scrollx"><table class="payTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>연차 개수<br><span style="font-weight:400;font-size:11px;">(${annualLeaveYear()}년 · 입사일로 자동)</span></th><th>직무</th><th>직급</th><th>명세서 비번<br><span style="font-weight:400;font-size:11px;">(처음 비번 · 생년월일)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th><th>직책수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th><th>기술수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th>
+      <th>No</th><th>조</th><th>성명</th><th>부서</th><th>입사일</th><th>연차 개수<br><span style="font-weight:400;font-size:11px;">(${annualLeaveYear()}년 · 입사일로 자동)</span></th><th>직무</th><th>직급</th><th>명세서 비번<br><span style="font-weight:400;font-size:11px;">(잊었을 때 초기화)</span></th><th>시급</th><th>통상시급</th><th>근속수당<br><span style="font-weight:400;font-size:11px;">(입사일로 자동)</span></th><th>직책수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th><th>기술수당<br><span style="font-weight:400;font-size:11px;">(통상시급에 합산)</span></th>
     </tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
   </div>`;
 }
@@ -4193,15 +4199,57 @@ function sha256hex(str){
 function slipPwHash(empId, pw){ return sha256hex('snct-slip:'+empId+':'+String(pw||'').trim()); }
 function slipPwCustom(empId){ return !!(slipPwMap[empId] && slipPwMap[empId].h); }
 // 비번 확인: 개인이 바꾼 비번이 있으면 그것, 없으면 급여관리의 '명세서 비번'(생년월일 6·8자리, 그대로 입력도 허용)
+// 명세서 비번: 개인이 '비번' 버튼에서 직접 입력·수정한 비번만 사용(UNION은 초기화만)
 function slipPwOk(empId, input){
   const v = String(input||'').trim(); if(!v) return false;
-  if(slipPwCustom(empId)) return slipPwHash(empId, v) === slipPwMap[empId].h;
-  const p = payMgr[empId] || {};
-  if(birthMatches(v, p.birth)) return true;
-  const a = v.replace(/[\s-]/g,''), b = String(p.birth||'').replace(/[\s-]/g,'');
-  return !!b && a===b;
+  return slipPwCustom(empId) && slipPwHash(empId, v) === slipPwMap[empId].h;
 }
-function slipPwHasAny(empId){ const p = payMgr[empId] || {}; return slipPwCustom(empId) || !!String(p.birth||'').trim(); }
+function slipPwHasAny(empId){ return slipPwCustom(empId); }
+// 화면 위쪽 [비번] 버튼 → 팝업: 처음이면 '입력', 이미 있으면 현재 비번 확인 후 '수정'
+function openPwDialog(){
+  const old = document.getElementById('pwOverlay'); if(old) old.remove();
+  const list = employees.slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
+  const ov = document.createElement('div');
+  ov.id = 'pwOverlay'; ov.className = 'payScrim';
+  ov.innerHTML = `<div class="pwBox pwDlg" role="dialog" aria-label="명세서 비번">
+    <h3 id="pwDlgTtl">명세서 비번</h3>
+    <p style="margin:0 0 12px;">급여명세서를 열 때 쓰는 비번이에요. 처음이면 <b>입력</b>, 이미 있으면 <b>수정</b>할 수 있어요. 잊어버리면 UNION에 초기화를 부탁하세요.</p>
+    <label class="pwLbl">성명</label>
+    <select id="pwDEmp" class="pwIn"><option value="">이름을 고르세요</option>${list.map(e=>`<option value="${esc(e.id)}">${esc((e.team?e.team+'조 ':'')+e.name)}</option>`).join('')}</select>
+    <div id="pwDCurWrap" style="display:none;"><label class="pwLbl">현재 비번</label><input type="password" id="pwDCur" class="pwIn" autocomplete="off"></div>
+    <label class="pwLbl" id="pwDNewLbl">새 비번 (4자 이상)</label><input type="password" id="pwDNew" class="pwIn" autocomplete="new-password">
+    <label class="pwLbl">새 비번 확인</label><input type="password" id="pwDNew2" class="pwIn" autocomplete="new-password">
+    <div class="pwMsg" id="pwDMsg"></div>
+    <div class="pwBtns"><button class="pwOk" id="pwDSave">입력</button><button class="pwNo" id="pwDCancel">취소</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const $ = id => ov.querySelector('#'+id);
+  const msg = (t, ok)=>{ const m = $('pwDMsg'); m.textContent = t; m.classList.toggle('ok', !!ok); };
+  const close = ()=> ov.remove();
+  const sync = ()=>{
+    const id = $('pwDEmp').value, has = !!id && slipPwCustom(id);
+    $('pwDCurWrap').style.display = has ? '' : 'none';
+    $('pwDSave').textContent = has ? '수정' : '입력';
+    $('pwDlgTtl').textContent = id ? (has ? '명세서 비번 수정' : '명세서 비번 입력') : '명세서 비번';
+    msg(id && !has ? '아직 비번이 없어요. 새 비번을 입력하세요.' : '', true);
+  };
+  $('pwDEmp').onchange = sync;
+  $('pwDCancel').onclick = close;
+  ov.onclick = ev=>{ if(ev.target===ov) close(); };
+  $('pwDSave').onclick = async ()=>{
+    const id = $('pwDEmp').value, has = !!id && slipPwCustom(id);
+    const n1 = $('pwDNew').value.trim(), n2 = $('pwDNew2').value.trim();
+    if(!id) return msg('이름을 고르세요.');
+    if(has && !slipPwOk(id, $('pwDCur').value)) return msg('현재 비번이 맞지 않습니다.');
+    if(n1.length < 4) return msg('새 비번은 4자 이상으로 정하세요.');
+    if(n1 !== n2) return msg('새 비번이 서로 다릅니다. 다시 확인하세요.');
+    const rec = {h: slipPwHash(id, n1), updatedAt: Date.now()};
+    if(!db || demoMode){ slipPwMap[id] = rec; close(); showToast(has ? '비번을 수정했어요. (미리보기)' : '비번을 입력했어요. (미리보기)'); render(); return; }
+    try{ await db.collection('slipPw').doc(id).set(rec); slipPwMap[id] = rec; close(); showToast(has ? '비번을 수정했어요.' : '비번을 입력했어요. 이제 이 비번으로 명세서를 열 수 있어요.'); render(); }
+    catch(err){ msg('저장하지 못했어요. 인터넷 연결을 확인하거나 UNION에 알려주세요. ('+((err&&err.code)||'오류')+')'); }
+  };
+  setTimeout(()=>{ try{ $('pwDEmp').focus(); }catch(e){} }, 30);
+}
 function subscribeSlipPw(){
   if(!db || demoMode || unsub.slipPw) return;
   try{ unsub.slipPw = db.collection('slipPw').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); slipPwMap = m; scheduleRender(); }, ()=>{}); }catch(e){}
@@ -4244,7 +4292,7 @@ function bindPwChange(el){
 async function resetSlipPw(empId){
   if(!requireEdit()) return;
   const e = employees.find(x=>x.id===empId);
-  appConfirm(`${e?e.name:''}님의 명세서 비번을 처음 비번(급여관리의 명세서 비번)으로 되돌릴까요?`, async ()=>{
+  appConfirm(`${e?e.name:''}님의 명세서 비번을 초기화할까요? 초기화하면 본인이 [비번] 버튼에서 새로 입력해야 명세서를 열 수 있어요.`, async ()=>{
     delete slipPwMap[empId]; render();
     if(!db || demoMode){ showToast('초기화했어요. (미리보기)'); return; }
     try{ await db.collection('slipPw').doc(empId).delete(); showToast('비번을 초기화했어요.'); }
@@ -4256,7 +4304,7 @@ function renderPayPw(){
   const e = employees.find(x=>x.id===payPw.empId);
   return `<div class="payScrim" id="payPwScrim"><div class="pwBox" role="dialog" aria-label="암호 입력">
     <h3>암호 입력</h3>
-    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 <b>명세서 비번</b>을 입력하세요. (처음 비번은 생년월일 6자리, 바꾸려면 '비번 변경' 메뉴)</p>
+    <p>${esc(e ? e.name : '')}님의 급여명세서는 암호로 보호되어 있습니다. 파일을 열려면 <b>명세서 비번</b>을 입력하세요. (비번 입력·수정은 화면 위쪽 [비번] 버튼)</p>
     <input type="password" id="payPwInput" autocomplete="off">
     <div class="pwErr" id="payPwErr">${esc(payPw.err||'')}</div>
     <div class="pwBtns"><button class="pwOk" id="payPwOk" disabled>파일 열기</button><button class="pwNo" id="payPwNo">취소</button></div>
@@ -4423,7 +4471,7 @@ function bindPayroll(el){
   // 월별 OT현황: 성명 → 암호 → 명세서
   el.querySelectorAll('[data-act="pay-open"]').forEach(x=>x.onclick=()=>{
     const p = payMgr[x.dataset.emp];
-    if(!slipPwHasAny(x.dataset.emp)){ showToast('명세서 비번이 아직 등록되지 않았어요. (UNION의 급여관리에서 등록)'); return; }
+    if(!slipPwHasAny(x.dataset.emp)){ showToast('명세서 비번이 아직 없어요. 화면 위쪽 [비번] 버튼에서 먼저 비번을 입력하세요.'); return; }
     payPw = {empId: x.dataset.emp, err:''}; render();
     setTimeout(()=>{ const i = document.getElementById('payPwInput'); if(i) i.focus(); }, 30);
   });
