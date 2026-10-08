@@ -812,6 +812,17 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .zoomCtl button:hover{background:#fce7f3;}
 .zoomCtl #zoomPct{font-size:12px;min-width:46px;color:#374151;}
 @media (max-width:700px){ .zoomCtl{display:none;} }
+@media (max-width:700px){
+  /* 휴대폰 근태관리: 제목·버튼·표 사이 간격을 좁게, 월별 근태 제목 옆에 이전달·연월·다음달 */
+  .cmbWrap{gap:10px;}
+  .cmbWrap .panel{padding:10px 10px 12px;}
+  .cmbCtrl{height:auto !important;margin-bottom:6px;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 8px;}
+  .cmbCtrl h3{font-size:15px;}
+  .cmbCtrl .row{height:auto !important;margin:0 !important;gap:6px;}
+  .cmbRight .cmbCtrl .row .btn.sm{padding:4px 8px;font-size:12px;}
+  .cmbRight .cmbCtrl .row b{font-size:14px !important;}
+  .cmbTeamRow{margin-bottom:8px !important;}
+}
 /* 경위서·학자금 메일 보내기 */
 @media (min-width:1100px){ /* PC에서 서류를 하나만 고르면 메일 칸을 서류 오른쪽에 */
   .docArea.one{display:flex;gap:18px;align-items:flex-start;}
@@ -3819,7 +3830,7 @@ function pageCombined(){
   }).join('');
 
   const modal = gridEdit ? renderGridEditModal() : '';
-  const teamBtns = `<div class="row" style="margin-bottom:14px;">
+  const teamBtns = `<div class="row cmbTeamRow" style="margin-bottom:14px;">
     <button class="btn ${combinedTeamFilter===''?'':'ghost'} sm" data-act="team-filter" data-team="">전체</button>
     <button class="btn ${combinedTeamFilter==='1'?'':'ghost'} sm" data-act="team-filter" data-team="1">1조</button>
     <button class="btn ${combinedTeamFilter==='2'?'':'ghost'} sm" data-act="team-filter" data-team="2">2조</button>
