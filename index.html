@@ -693,7 +693,17 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .otSum tbody tr:nth-child(3n):not(:last-child) td.stNo{box-shadow:inset -1px 0 0 #c4cad3, inset 0 -1px 0 #111 !important;}
 .otSum tbody tr:nth-child(3n):not(:last-child) td.namecell.stName{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111, 1px 0 0 #111 !important;}
 /* 지원계획표: 모든 칸을 검은 선으로 */
-#splanTable{border-collapse:collapse;margin:1px;}
+#splanTable{border-collapse:collapse;margin:1px;width:auto;}
+#splanTable th,#splanTable td{color:#111 !important;text-align:center !important;vertical-align:middle;padding:2px 4px;}
+#splanTable thead th{font-weight:800;font-size:12px;background:#f1f5f9;}
+#splanTable td.spLbl{font-weight:700;white-space:nowrap;padding:2px 10px;}
+#splanTable .spIn{width:38px;border:1px solid #cbd5e1;border-radius:5px;padding:3px 2px;background:#fff;color:#111;text-align:center;font-size:12px;font:inherit;font-size:12px;}
+#splanTable td.sp-avail{color:#1d4ed8 !important;font-weight:800;}
+#splanTable td.sp-attend{color:#111 !important;font-weight:900;}
+#splanTable td.sp-ratio{color:#dc2626 !important;font-weight:800;}
+/* 표 폭만큼만 테두리(오른쪽 빈 공간 없앰) */
+.scrollx.fitW{width:fit-content;max-width:100%;}
+.dpBox{width:fit-content;max-width:100%;}
 #splanTable th,#splanTable td{border:1px solid #111 !important;}
 #dpTable tr.dpOff .dpNote{color:#9ca3af;}
 #dpTable tr.dpGrp > td{border-bottom:1px solid #111 !important;}
@@ -3339,12 +3349,11 @@ function pageInput(){
     <div class="row" style="align-items:flex-end;margin-bottom:12px;">
       <div class="field"><label>날짜</label><input type="date" id="inDate" value="${esc(date)}"></div>
       <button class="btn ghost sm" id="inPrev">◀ 전날</button><button class="btn ghost sm" id="inNext">다음날 ▶</button>
-      <b style="font-size:15px;margin-left:6px;">${y}년 ${m}월 ${d}일 (${weekdayKr(y,m,d)})${holidays[date] ? ' <span style="color:var(--warn);">'+esc(holidays[date])+'</span>' : ''}</b>
-      <span style="flex:1"></span>
       <button class="btn ${inputTeam==='1'?'':'ghost'} sm" data-act="in-team" data-team="1">1조</button>
       <button class="btn ${inputTeam==='2'?'':'ghost'} sm" data-act="in-team" data-team="2">2조</button>
+      <b style="font-size:15px;margin-left:6px;">${y}년 ${m}월 ${d}일 (${weekdayKr(y,m,d)})${holidays[date] ? ' <span style="color:var(--warn);">'+esc(holidays[date])+'</span>' : ''}</b>
     </div>
-    <div class="scrollx gridwrap"><table class="gtbl inTbl"><thead><tr>
+    <div class="scrollx gridwrap fitW"><table class="gtbl inTbl"><thead><tr>
       <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row" style="margin-top:12px;align-items:center;">
@@ -3985,6 +3994,11 @@ function fitDispatch(){
   const z = (avail - top) / body;
   t.style.zoom = Math.max(0.55, Math.min(1, Math.floor(z*1000)/1000));
 }
+// 지원계획표: 세로를 화면 높이의 85%로(줄 높이를 늘림)
+function fitSplan(){
+  if(VIEW!=='splan') return;
+  fitTableToScreen(document.getElementById('splanTable'), {fitW:false, fitH:true, reserve:80, minRow:30, maxRow:70, ratio:0.85});
+}
 // 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
 function fitInputTable(){
   if(VIEW!=='input') return;
@@ -4019,7 +4033,7 @@ function fitCombined(){
   }, {passive:true, capture:true});
   document.addEventListener('focusout', ()=>{ clearTimeout(t); t = setTimeout(()=>{ m.content = FREE; }, 300); }, true);
 }catch(e){} })();
-window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); fitSafety(); fitDispatch(); }, 120); });
+window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); fitSafety(); fitDispatch(); fitSplan(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
@@ -5483,9 +5497,9 @@ function pageDispatch(){
     <button class="btn ${dispatchSunPart==='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="night">야간</button>` : ''}
   </div>
   ${canEdit ? `<div class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>` : ''}
-  <div style="background:#fce7f3;color:#9d174d;font-weight:800;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;border:1px solid #fbcfe8;border-bottom:0;">${esc(dateBanner)}</div>
+  <div class="dpBox"><div style="background:#fce7f3;color:#9d174d;font-weight:800;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;border:1px solid #fbcfe8;border-bottom:0;">${esc(dateBanner)}</div>
   ${sortedEmployees.length? `<div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
-    : `<div class="empty">등록된 직원이 없습니다. 먼저 직원 관리에서 직원을 추가하세요.</div>`}
+    : `<div class="empty">등록된 직원이 없습니다. 먼저 직원 관리에서 직원을 추가하세요.</div>`}</div>
   ${dpPop ? renderDpPop() : ''}
   `;
 }
@@ -5513,7 +5527,7 @@ function splanCalc(rec){
 function pageSupportPlan(){
   if(!weekStart) weekStart = mondayOf(todayStr());
   const days = Array.from({length:7}, (_,i)=>addDays(weekStart,i));
-  const head = `<th style="text-align:left;">항목</th>` + days.map(ds=>{
+  const head = `<th>항목</th>` + days.map(ds=>{
     const [y,m,d]=ds.split('-').map(Number);
     return `<th colspan="2">${m}/${d}(${weekdayKr(y,m,d)})</th>`;
   }).join('');
@@ -5523,14 +5537,14 @@ function pageSupportPlan(){
       const id = `${ds}_${shift}`;
       const rec = supportPlan[id] || {};
       if(rowDef.editable){
-        return `<td style="padding:2px;"><input type="text" inputmode="numeric" pattern="[0-9]*" data-splan-date="${esc(ds)}" data-splan-shift="${esc(shift)}" data-splan-field="${rowDef.key}" value="${rec[rowDef.key]!=null?esc(rec[rowDef.key]):''}" style="width:46px;border:1px solid var(--border);border-radius:5px;padding:3px;background:var(--bg);color:var(--text);text-align:center;font-size:11.5px;"></td>`;
+        return `<td style="padding:2px;"><input type="text" inputmode="numeric" pattern="[0-9]*" data-splan-date="${esc(ds)}" data-splan-shift="${esc(shift)}" data-splan-field="${rowDef.key}" value="${rec[rowDef.key]!=null?esc(rec[rowDef.key]):''}" class="spIn"></td>`;
       } else {
         const c = splanCalc(rec);
         const val = rowDef.key==='ratio' ? (c.ratio? c.ratio.toFixed(2) : '-') : (c[rowDef.key]||0);
-        return `<td style="text-align:center;font-weight:700;">${val}</td>`;
+        return `<td class="sp-${rowDef.key}">${val}</td>`;
       }
     }).join('')).join('');
-    return `<tr><td>${esc(rowDef.label)}</td>${cells}</tr>`;
+    return `<tr class="spRow-${rowDef.key}"><td class="spLbl">${esc(rowDef.label)}</td>${cells}</tr>`;
   }).join('');
   return `
   <h2 class="pgttl">지원계획표</h2>
@@ -5539,7 +5553,7 @@ function pageSupportPlan(){
     <div class="field" style="min-width:auto;"><b style="font-size:14px;">${esc(weekStart)} ~ ${esc(addDays(weekStart,6))}</b></div>
     <button class="btn ghost sm" id="nextWeek">다음주 ▶</button>
   </div>
-  <div class="scrollx"><table class="tbl" id="splanTable"><thead><tr>${head}</tr><tr>${subhead}</tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="scrollx fitW"><table class="tbl" id="splanTable"><thead><tr>${head}</tr><tr>${subhead}</tr></thead><tbody>${rows}</tbody></table></div>
   <div class="row" style="margin-top:14px;">
     <button class="btn warn ghost" id="splanResetBtn">초기화</button>
   </div>
@@ -5822,6 +5836,7 @@ function afterRender(){
   fitDocs();
   fitSafety();
   fitDispatch();
+  fitSplan();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
