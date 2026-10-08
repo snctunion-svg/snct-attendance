@@ -864,6 +864,15 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .bcArrow{border:0;background:transparent;color:#db2777;font-size:18px;cursor:pointer;padding:2px 6px;}
 .bcSearch #bcGo{background:#ec4899;border-color:#ec4899;color:#fff;padding:7px 22px;}
 @media (max-width:700px){ .bcSearch{gap:6px;padding:8px 10px;} .bcSearch input[type=date]{font-size:16px;padding:5px 6px;} .bcSearch #bcGo{padding:6px 14px;} }
+/* 결재칸·작업지휘자 이름 입력 */
+.svSignBox td{padding:0 2px;vertical-align:middle;}
+.svSignIn{width:100%;border:0;background:transparent;text-align:center;font:inherit;font-size:13px;font-weight:700;padding:0;outline:none;}
+.svSignIn:focus,.svBossIn:focus{background:#fffde8;}
+.svBossCell{white-space:nowrap;}
+.svBossIn{width:140px;border:0;border-bottom:1px dashed #9ca3af;background:transparent;text-align:center;font:inherit;font-weight:700;padding:0 2px;outline:none;}
+.svBossTxt{display:inline-block;min-width:140px;text-align:center;font-weight:700;}
+.svIn.svSignIn::placeholder,.svBossIn::placeholder{color:#cbd5e1;font-weight:400;}
+@media print{ .svSignIn::placeholder,.svBossIn::placeholder{color:transparent !important;} .svBossIn{border-bottom:0 !important;} }
 /* 경위서·학자금 메일 보내기 */
 .docSel{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;}
 .dmToRow{display:flex;gap:6px;align-items:center;} .dmToRow .dmIn{flex:1;min-width:0;}
@@ -5115,7 +5124,7 @@ function svPlanP1(ds, id){
       <tr><th>착용보호구</th><td colspan="3" class="l">■ 안전모 &nbsp;&nbsp; ■ 안전화 &nbsp;&nbsp; ■ 안전대</td></tr>
       <tr><th>운행 경로(거리)</th><td colspan="3" class="l">부두(에이프런) ↔ MARSHALLING YARD <span style="margin-left:36px;">※ 세부경로는 작업계획도 참조</span></td></tr>
       <tr><th>작업장소</th><td colspan="3" class="l">SNCT 선석 MSB 01, 02, 03 (800M), &nbsp;APRON (800 x 71.2m)</td></tr>
-      <tr><th>작업지휘자</th><td colspan="3" class="r">(서명) &nbsp;&nbsp;&nbsp;</td></tr>
+      <tr><th>작업지휘자</th><td colspan="3" class="r svBossCell">${live ? `<input class="svIn svBossIn" data-sv-boss="${ds}" value="${esc(p.boss!=null ? p.boss : (svSign.boss||''))}" placeholder="이름 입력" autocomplete="off">` : `<span class="svBossTxt">${esc(p.boss!=null ? p.boss : (svSign.boss||''))}</span>`} (서명) &nbsp;&nbsp;&nbsp;</td></tr>
     </table>
     <div class="svSec">[ 안전교육 일지 ]</div>
     <div class="svEdu">
@@ -5139,10 +5148,19 @@ function svPlanP1(ds, id){
 }
 
 // ---- 네 장 공통 틀: 같은 머리(제목 + 결재칸), 같은 본문 시작선, 본문 맨 아래 선, 같은 꼬리말 ----
-function svSignBox(){ return `<table class="svSignBox"><tr><th rowspan="2">결<br>재</th><th>담당</th><th>팀장</th></tr><tr><td></td><td></td></tr></table>`; }
+// 결재칸 담당·팀장 이름(이 기기에 기억, 네 장 모두 같은 이름) / 작업지휘자 기본값(마지막에 쓴 이름)
+const SV_SIGN_KEY = 'snct_sv_sign';
+let svSign = {dam:'', tim:'', boss:''};
+try{ const v = JSON.parse(localStorage.getItem(SV_SIGN_KEY) || 'null'); if(v) svSign = Object.assign(svSign, v); }catch(e){}
+function svSignSave(){ try{ localStorage.setItem(SV_SIGN_KEY, JSON.stringify(svSign)); }catch(e){} }
+function svSignBox(live){
+  const cell = k => live ? `<input class="svIn svSignIn" data-sv-sign="${k}" value="${esc(svSign[k]||'')}" placeholder="이름" autocomplete="off">` : esc(svSign[k]||'');
+  return `<table class="svSignBox"><tr><th rowspan="2">결<br>재</th><th>담당</th><th>팀장</th></tr><tr><td>${cell('dam')}</td><td>${cell('tim')}</td></tr></table>`;
+}
 function svFrame(id, title, body, opts={}){
+  const live = !/_/.test(id); // 화면에 보이는 장(svLog·svP1·svP2·svP3)만 입력칸, 출력용 사본은 글자로
   return `<div class="svPage svFramed" id="${id}">
-    <div class="svHdr"><div class="svHTitle${opts.underline?' u':''}">${title}</div>${opts.sign===false ? '' : svSignBox()}</div>
+    <div class="svHdr"><div class="svHTitle${opts.underline?' u':''}">${title}</div>${opts.sign===false ? '' : svSignBox(live)}</div>
     <div class="svBody">${body}</div>
     <div class="svFoot">선광신컨테이너터미널㈜</div>
   </div>`;
@@ -5370,6 +5388,8 @@ function bindSafety(el){
     w.marks[r+'_'+i] = nx; td.textContent = nx;
     td.classList.toggle('bad', nx==='X'); td.classList.toggle('mid', nx==='△');
   });
+  root.querySelectorAll('[data-sv-sign]').forEach(x=> x.oninput = ()=>{ const k = x.dataset.svSign; svSign[k] = x.value; svSignSave(); root.querySelectorAll(`[data-sv-sign="${k}"]`).forEach(y=>{ if(y!==x) y.value = x.value; }); });
+  root.querySelectorAll('[data-sv-boss]').forEach(x=> x.oninput = ()=>{ const p = svPlan(x.dataset.svBoss); p.boss = x.value; svSign.boss = x.value; svSignSave(); });
   root.querySelectorAll('[data-sv-act]').forEach(x=> x.oninput = ()=>{ const [ds, i] = x.dataset.svAct.split('|'); const p = svPlan(ds); p.act = p.act || {}; p.act[+i] = x.value; });
   root.querySelectorAll('[data-sv-pmark]').forEach(td=> td.onclick = ()=>{
     const [ds, i] = td.dataset.svPmark.split('|'); const p = svPlan(ds), cur = svPlanMark(p, +i);
