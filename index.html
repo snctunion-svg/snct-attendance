@@ -3351,7 +3351,8 @@ function subscribeInputClose(){
 }
 function isInputClosed(date, team){ const c = inputClose[date+'_'+team]; return !!(c && c.closed); }
 function isLeaderUser(){ return userRole==='leader' || userRole==='union' || userRole==='all'; }
-function inputLocked(){ return !isLeaderUser() && isInputClosed(inputViewDate || todayStr(), inputTeam); }
+// 마감되면 배포용 '출퇴근 입력'은 누구든(조장·UNION 로그인 상태여도) 잠김 → 수정은 '조장 근태관리'에서만
+function inputLocked(){ return VIEW==='input' && isInputClosed(inputViewDate || todayStr(), inputTeam); }
 async function toggleInputClose(){
   if(!isLeaderUser()){ showToast('마감은 조장관리·UNION에서 할 수 있어요.'); return; }
   const date = inputViewDate || todayStr(), team = inputTeam, id = date+'_'+team, now = isInputClosed(date, team);
@@ -3369,7 +3370,7 @@ function pageInput(){
   const [y,m,d] = date.split('-').map(Number);
   const list = employees.filter(e=> (e.team||'')===inputTeam).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
   const dirtyN = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|')).length;
-  const closedNow = isInputClosed(date, inputTeam), locked = !isLeaderUser() && closedNow;
+  const closedNow = isInputClosed(date, inputTeam), locked = VIEW==='input' && closedNow;
   const rows = list.map(e=>{
     const base = attStore[date+'_'+e.id] || {};
     const dr = inputDraft[date+'|'+e.id] || {};
@@ -3404,10 +3405,10 @@ function pageInput(){
       <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row" style="margin-top:12px;align-items:center;">
-      <button class="btn" id="inSave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
+      <button class="btn" id="inSave"${locked ? ' disabled' : ''}>저장${dirtyN && !locked ? ` (${dirtyN}명 변경)` : ''}</button>
       <button class="btn warn ghost" id="inReset">초기화</button>
       ${VIEW==='input2' ? `<span style="flex:0 0 14px;"></span><button class="btn ${closedNow?'':'ghost'} inCloseBtn${closedNow?' on':''}" id="inCloseBtn">${closedNow ? '🔒 마감됨 (누르면 해제)' : '🔓 마감'}</button>` : ''}
-      ${closedNow ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>마감</b>됐어요.${locked ? ' 수정은 조장관리에서만 할 수 있어요.' : ' 배포용 출퇴근 입력에서는 수정할 수 없어요.'}</span>` : ''}
+      ${closedNow ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>마감</b>됐어요.${locked ? ' 수정은 조장관리 &gt; 조장 근태관리에서만 할 수 있어요.' : ' 배포용 출퇴근 입력에서는 수정할 수 없고, 여기서는 수정할 수 있어요.'}</span>` : ''}
     </div>
   </div>`;
 }
