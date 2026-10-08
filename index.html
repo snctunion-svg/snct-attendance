@@ -677,7 +677,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .inTbl tr.inOff td{background:#e5e7eb !important;color:#6b7280;}
 .inTbl tr.inOff input.inCell{color:#6b7280;}
 /* 월별 OT현황: 담당 체크한 날은 아주 연한 분홍 */
-.otSum td.otDam{background:#fff1f6 !important;}
+.otSum td.otDam,.otSum td.otDam.wkA,.otSum td.otDam.wkB{background:#ffe4ef !important;}
 /* 근태관리(집계·월별 근태)·월별 OT현황: 3명마다 검은 구분선 */
 .ctbl tbody tr:nth-child(3n):not(:last-child) > td,.otSum tbody tr:nth-child(3n):not(:last-child) > td{border-bottom:var(--sepW,1px) solid #111 !important;}
 .ctbl tbody tr:nth-child(3n+1):not(:first-child) > td,.otSum tbody tr:nth-child(3n+1):not(:first-child) > td{border-top:var(--sepW,1px) solid #111 !important;}
@@ -687,6 +687,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable{border-collapse:collapse;margin:1px;}
 #splanTable th,#splanTable td{border:1px solid #111 !important;}
 #dpTable tr.dpOff .dpNote{color:#9ca3af;}
+#dpTable tr.dpGrp > td{border-bottom:1px solid #111 !important;}
 #dpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
 #dpTable th.dpMealH{border-top:2px solid #E03131 !important;}
 #dpTable td.dpMealF{border-bottom:2px solid #E03131 !important;}
@@ -3273,7 +3274,7 @@ let inputTeam = (()=>{ try{ return localStorage.getItem('snct_input_team')||'1';
 let inputDraft = {}; // `${date}|${empId}` -> {field: 값} (저장 전 입력 내용)
 const IN_TIME = ['checkIn','checkOut','supportIn','supportOut'];
 const IN_NUM = ['honjoComp','tajoComp'];
-const IN_CHK = ['jochul','seokchul','jungsik','yasik','extCode','damdang']; // extCode = 연근(휴일 2배·평일 전체 1.5배)
+const IN_CHK = ['jochul','seokchul','jungsik','yasik','damdang','extCode']; // extCode = 연근(휴일 2배·평일 전체 1.5배)
 // 엑셀식 시각 표기 ↔ 저장 형식: 8 → 8:00, 15.3 → 15:30, 7.3 → 7:30 (15:30 도 가능)
 function hmToExcel(hm){ if(!hm) return ''; const [h,m] = hm.split(':'); return Number(m) ? `${Number(h)}.${String(m).replace(/0$/,'')}` : String(Number(h)); }
 function excelToHm(v){
@@ -3335,7 +3336,7 @@ function pageInput(){
       <button class="btn ${inputTeam==='2'?'':'ghost'} sm" data-act="in-team" data-team="2">2조</button>
     </div>
     <div class="scrollx gridwrap"><table class="gtbl inTbl"><thead><tr>
-      <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>연근</th><th>담당</th><th>총OT</th>
+      <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row" style="margin-top:12px;align-items:center;">
       <button class="btn" id="inSave">저장${dirtyN ? ` (${dirtyN}명 변경)` : ''}</button>
@@ -3959,10 +3960,26 @@ function fitSafety(){
   const z = availW / g.scrollWidth; // 가로를 화면 폭에 꽉 맞춤(아래 줄은 스크롤해서 봄)
   g.style.zoom = Math.max(0.3, Math.min(1.4, Math.floor(z*1000)/1000));
 }
+// 배차표(휴대폰): 처음 화면에서 마지막 조원(16번)까지 한 번에 보이도록 표를 화면 높이에 맞춰 줄임
+function fitDispatch(){
+  const t = document.getElementById('dpTable'); if(!t) return;
+  t.style.zoom = '';
+  if(VIEW!=='dispatch' || window.innerWidth > 700) return;
+  const empRows = Array.from(t.querySelectorAll('tbody tr')).filter(tr=>{ const c = tr.querySelector('td.dpI1'); return c && /^\d+$/.test(c.textContent.trim()) && !tr.querySelector('input[data-dispatch-sup]'); });
+  if(!empRows.length) return;
+  const top = t.getBoundingClientRect().top + window.scrollY;
+  const lastBottom = empRows[empRows.length-1].getBoundingClientRect().bottom + window.scrollY;
+  const avail = window.innerHeight - 10;
+  const need = lastBottom; // 페이지 맨 위부터 마지막 조원 줄 아래까지
+  if(need <= avail) return;
+  const body = lastBottom - top;
+  const z = (avail - top) / body;
+  t.style.zoom = Math.max(0.55, Math.min(1, Math.floor(z*1000)/1000));
+}
 // 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
 function fitInputTable(){
   if(VIEW!=='input') return;
-  fitTableToScreen(document.querySelector('table.inTbl'), {fitW:false, fitH:true, reserve:92, minRow:30, maxRow:80});
+  fitTableToScreen(document.querySelector('table.inTbl'), {fitW:false, fitH:true, reserve:92, minRow:30, maxRow:80, ratio:0.85}); // 세로 85%
 }
 // 근태관리: 왼쪽 집계표·오른쪽 월별 근태를 각각 칸 폭과 화면 아래까지 꽉 맞춤
 function fitCombined(){
@@ -3993,7 +4010,7 @@ function fitCombined(){
   }, {passive:true, capture:true});
   document.addEventListener('focusout', ()=>{ clearTimeout(t); t = setTimeout(()=>{ m.content = FREE; }, 300); }, true);
 }catch(e){} })();
-window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); fitSafety(); }, 120); });
+window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); fitSafety(); fitDispatch(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
@@ -5215,7 +5232,8 @@ function pageDispatch(){
     const mcode = gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim());
     const dcode = mcode || scheduledShift(ds, e.team||'');
     const offDay = !!dcode && !DP_WORK_CODES.has(dcode); // D·N 계열이 아니면(휴무·휴가 등) 행을 흐린 회색으로
-    return `<tr class="${offDay ? 'dpOff' : ''}">
+    const grp = (idx % 3 === 2) && idx < sortedEmployees.length - 1; // 3명마다 검은 구분선
+    return `<tr class="${offDay ? 'dpOff' : ''}${grp ? ' dpGrp' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
       <td class="dpI dpI3">${mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
@@ -5603,6 +5621,7 @@ function afterRender(){
   fitCombined();
   fitDocs();
   fitSafety();
+  fitDispatch();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
