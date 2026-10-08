@@ -4968,9 +4968,10 @@ function svPlanP1(ds, id){
   const kdate = s => { const [a,b,c] = s.split('-').map(Number); return `${a} 년 &nbsp;${b}월 &nbsp;${c} 일`; };
   const cells = f => B.map(v=> `<td${f.l?' class="l"':''}>${v ? f.on(v) : f.off}</td>`).join('');
   let day = null, night = null;
-  // 작업전 안전교육: Actual Time of Berth(접안 시간) 20분 전 ~ 10분 뒤 (08~19시는 주간, 그 밖은 야간)
-  B.forEach(v=>{ const t = v && v.start; if(!t || t.h==null) return; const st = t.h*60 + (t.mi||0); const isDay = t.h>=8 && t.h<19; if(isDay && day==null) day = st; if(!isDay && night==null) night = st; });
-  const tr = st => { const bg = (st - 20 + 1440) % 1440, en = (st + 10) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(bg)} &nbsp;~&nbsp; ${f(en)}`; };
+  // 작업전 안전교육: 선석조회의 Estimated Time of Departure(출항 예정 시간) 20분 전부터 10분간
+  //  예) ETD 08:00 → 07:40 ~ 07:50 (ETD가 08~19시면 주간, 그 밖은 야간)
+  B.forEach(v=>{ const t = v && v.open; if(!t || t.h==null) return; const st = t.h*60 + (t.mi||0); const isDay = t.h>=8 && t.h<19; if(isDay && day==null) day = st; if(!isDay && night==null) night = st; });
+  const tr = st => { const bg = (st - 20 + 1440) % 1440, en = (st - 10 + 1440) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(bg)} &nbsp;~&nbsp; ${f(en)}`; };
   const blank = '&nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분 &nbsp;&nbsp;~&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분';
   const items = [['화물의 상태','선적, 양하 컨테이너의 이상 유무 (EXCEPTION LIST 참조)',1],['통행설비','WHARF LADDER 등 선박-육상간 설치된 통행설비의 이상 유무',3],[null,'DECK의 유분, 수분, 결빙 또는 파손상태'],[null,'선내 위험물질의 유출 여부'],['보호구','작업원의 안전모, 안전화 착용 여부',1],['선내조명','선내조명의 밝기',1],['작업도구','작업원의 음주, 과로 등 신체상태',3],[null,'화물의 중량에 적합한 WIRE ROPE 사용 여부'],[null,'하역도구의 부식 및 마모 상태']];
   const chkRows = items.map((it,i)=>{ const v = svPlanMark(p, i);
@@ -5199,14 +5200,14 @@ function openVslEdit(ds, bn){
   const v = svVessels(ds)[bn] || {};
   const old = document.getElementById('vslEditOv'); if(old) old.remove();
   const ov = document.createElement('div'); ov.id = 'vslEditOv'; ov.className = 'payScrim';
-  const hm = v.start && v.start.h!=null ? `${String(v.start.h).padStart(2,'0')}:${String(v.start.mi||0).padStart(2,'0')}` : '';
+  const hm = v.open && v.open.h!=null ? `${String(v.open.h).padStart(2,'0')}:${String(v.open.mi||0).padStart(2,'0')}` : '';
   ov.innerHTML = `<div class="pwBox pwDlg" role="dialog"><h3>${ds} · ${bn}번 선석</h3>
     <p style="margin:0 0 6px;">회사 자료가 없는 날은 여기서 직접 넣어요. 저장하면 다른 사람 화면·출력에도 똑같이 나와요.</p>
     <label class="pwLbl">선박명</label><input id="veName" class="pwIn" value="${esc(v.name||'')}" placeholder="예: STARSHIP TAURUS">
     <label class="pwLbl">접안일자</label><input id="veBerth" type="date" class="pwIn" value="${esc(v.berth||ds)}">
     <div style="display:flex;gap:8px;"><div style="flex:1"><label class="pwLbl">양하</label><input id="veDis" class="pwIn" inputmode="numeric" value="${esc(v.dis||'')}"></div>
       <div style="flex:1"><label class="pwLbl">적하</label><input id="veLdg" class="pwIn" inputmode="numeric" value="${esc(v.ldg||'')}"></div></div>
-    <label class="pwLbl">접안 시간 (교육시간: 접안 ~ 10분)</label><input id="veEtd" type="time" class="pwIn" value="${hm}">
+    <label class="pwLbl">출항 예정 시간 ETD (교육시간: ETD 20분 전부터 10분간)</label><input id="veEtd" type="time" class="pwIn" value="${hm}">
     <div class="pwMsg" id="veMsg"></div>
     <div class="pwBtns"><button class="pwOk" id="veSave">저장</button><button class="pwNo" id="veClear">비우기</button><button class="pwNo" id="veCancel">취소</button></div></div>`;
   document.body.appendChild(ov);
@@ -5223,7 +5224,7 @@ function openVslEdit(ds, bn){
   $('veSave').onclick = ()=>{
     const name = $('veName').value.trim(); if(!name){ $('veMsg').textContent = '선박명을 넣으세요. (배가 없으면 [비우기])'; return; }
     const t = $('veEtd').value; const [h, mi] = t ? t.split(':').map(Number) : [null, null];
-    put({name, berth: $('veBerth').value || ds, dis: $('veDis').value.trim(), ldg: $('veLdg').value.trim(), start: h!=null ? {h, mi} : null});
+    put({name, berth: $('veBerth').value || ds, dis: $('veDis').value.trim(), ldg: $('veLdg').value.trim(), start: (v.start && v.start.h!=null) ? {h:v.start.h, mi:v.start.mi||0} : null, open: h!=null ? {h, mi} : null});
   };
   setTimeout(()=>{ try{ $('veName').focus(); }catch(e){} }, 30);
 }
