@@ -759,6 +759,15 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   /* 폰 배차표: 수정·초반·후반·당직·정비·기타 버튼을 한 줄로 */
   .dpPal{flex-wrap:nowrap !important;gap:4px !important;padding:6px !important;margin-bottom:8px !important;}
   .dpPal .dpCatBtn{flex:1 1 0;min-width:0;padding:7px 0 !important;font-size:12px !important;border-radius:8px !important;white-space:nowrap;}
+  /* 폰 배차표 한 화면 맞춤: 줄 높이·글씨를 화면에 맞게 줄임(fitDispatch가 값 계산) */
+  #dpTable.dpFit tbody td{height:var(--dpRowH) !important;font-size:var(--dpFs);line-height:1;padding-top:0;padding-bottom:0;}
+  #dpTable.dpFit tbody .badge,#dpTable.dpFit tbody .rk{font-size:var(--dpFs) !important;height:auto;min-width:0;padding:1px 4px !important;line-height:1.05;transform:none;}
+  #dpTable.dpFit tbody input{height:calc(var(--dpRowH) - 3px);padding:0 3px !important;font-size:var(--dpFs) !important;}
+  /* 폰: 줄 높이를 낮춰 조원이 한 화면에 더 많이 들어오게 */
+  .dpBox > div:first-child{padding:5px 10px !important;font-size:13px !important;}
+  #dpTable{font-size:12px;}
+  #dpTable th,#dpTable td{height:28px;}
+  #dpTable .badge{padding:1px 5px;}
   /* 폰: No·성명·근태·순번·승무까지 고정(좁게) → 옆으로 밀어도 그대로 */
   #dpTable .dpI1{min-width:26px;width:26px;padding:0 1px;}
   #dpTable .dpI2{left:26px;min-width:58px;width:58px;padding:0 2px;}
@@ -4060,19 +4069,31 @@ function fitSafety(){
 // 배차표(휴대폰): 처음 화면에서 마지막 조원(16번)까지 한 번에 보이도록 표를 화면 높이에 맞춰 줄임
 function fitDispatch(){
   const t = document.getElementById('dpTable'); if(!t) return;
-  t.style.zoom = '';
+  t.style.zoom = ''; t.classList.remove('dpFit'); t.style.removeProperty('--dpRowH'); t.style.removeProperty('--dpFs');
   if(VIEW!=='dispatch' || window.innerWidth > 700) return;
   const empRows = Array.from(t.querySelectorAll('tbody tr')).filter(tr=>{ const c = tr.querySelector('td.dpI1'); return c && /^\d+$/.test(c.textContent.trim()) && !tr.querySelector('input[data-dispatch-sup]'); });
   if(!empRows.length) return;
-  const top = t.getBoundingClientRect().top + window.scrollY;
-  const lastBottom = empRows[empRows.length-1].getBoundingClientRect().bottom + window.scrollY;
-  const avail = window.innerHeight - 10;
-  const need = lastBottom; // 페이지 맨 위부터 마지막 조원 줄 아래까지
-  if(need <= avail) return;
-  const body = lastBottom - top;
-  const z = (avail - top) / body;
-  t.style.zoom = Math.max(0.55, Math.min(1, Math.floor(z*1000)/1000));
+  // 실제로 보이는 화면 높이(아이폰: 주소창·아래 도구막대·홈 막대 제외)
+  const vv = window.visualViewport;
+  const vh = Math.min(window.innerHeight, vv ? vv.height : window.innerHeight);
+  const sc = document.getElementById('content'), scY = sc ? sc.scrollTop : 0;
+  const tTop = t.getBoundingClientRect().top + scY;
+  const lastBottom = () => empRows[empRows.length-1].getBoundingClientRect().bottom + (sc ? sc.scrollTop : 0);
+  const avail = vh - 10;
+  if(lastBottom() <= avail) return;
+  // 1단계: 확대·축소(zoom) 없이 줄 높이와 글씨를 줄여서 마지막 조원까지 화면에 넣음(아이폰·안드로이드 모두 같은 방식)
+  const headH = t.tHead ? t.tHead.getBoundingClientRect().height : 0;
+  const rowH = Math.floor((avail - tTop - headH) / empRows.length);
+  const h = Math.max(15, Math.min(28, rowH));
+  t.style.setProperty('--dpRowH', h + 'px');
+  t.style.setProperty('--dpFs', Math.max(9, Math.min(12, Math.round(h * 0.5 * 10) / 10)) + 'px');
+  t.classList.add('dpFit');
+  // 2단계: 그래도 넘치면(조원이 아주 많을 때) 표 전체를 조금 줄임
+  const lb = lastBottom();
+  if(lb > avail){ const z = (avail - tTop) / (lb - tTop); t.style.zoom = Math.max(0.5, Math.min(1, Math.floor(z*1000)/1000)); }
 }
+// 휴대폰: 화면 높이가 바뀌면(주소창 접힘·펴짐) 배차표 다시 맞춤
+if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ clearTimeout(window._dpFitT); window._dpFitT = setTimeout(fitDispatch, 150); });
 // 지원계획표: 세로를 화면 높이의 85%로(줄 높이를 늘림)
 function fitSplan(){
   if(VIEW!=='splan') return;
@@ -5916,7 +5937,7 @@ function afterRender(){
   fitCombined();
   fitDocs();
   fitSafety();
-  fitDispatch();
+  fitDispatch(); if(VIEW==='dispatch' && window.innerWidth<=700){ setTimeout(fitDispatch, 300); }
   fitSplan();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
