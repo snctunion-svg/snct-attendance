@@ -693,9 +693,12 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .otSum tbody tr:nth-child(3n):not(:last-child) td.stNo{box-shadow:inset -1px 0 0 #c4cad3, inset 0 -1px 0 #111 !important;}
 .otSum tbody tr:nth-child(3n):not(:last-child) td.namecell.stName{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111, 1px 0 0 #111 !important;}
 /* 지원계획표: 모든 칸을 검은 선으로 */
-#splanTable{border-collapse:collapse;margin:2px;width:auto;border:2.5px solid #111 !important;}
-#splanTable td.spLbl{padding:2px 18px !important;}
-#splanTable th{padding:4px 8px !important;}
+#splanTable{border-collapse:collapse;margin:0;width:auto;border:0 !important;}
+@media (min-width:701px){ #splanTable{width:734px;table-layout:fixed;} #splanTable td.spLbl,#splanTable thead tr:first-child th:first-child{width:134px;} #splanTable td.spLbl{font-size:12px;letter-spacing:-.3px;} #splanTable .spIn{width:100% !important;box-sizing:border-box;} }
+#splanTable tr > :first-child{border-left:0 !important;} #splanTable tr > :last-child{border-right:0 !important;}
+#splanTable thead tr:first-child > th{border-top:0 !important;} #splanTable tbody tr:last-child > td{border-bottom:0 !important;}
+#splanTable td.spLbl{padding:2px 6px !important;}
+#splanTable th{padding:4px 2px !important;}
 #splanTable th,#splanTable td{color:#111 !important;text-align:center !important;vertical-align:middle;padding:2px 4px;}
 #splanTable thead th{font-weight:800;font-size:12px;background:#f1f5f9;}
 #splanTable td.spLbl{font-weight:700;white-space:nowrap;padding:2px 10px;}
@@ -4002,7 +4005,7 @@ function fitDispatch(){
 // 지원계획표: 세로를 화면 높이의 85%로(줄 높이를 늘림)
 function fitSplan(){
   if(VIEW!=='splan') return;
-  fitTableToScreen(document.getElementById('splanTable'), {fitW:false, fitH:true, reserve:80, minRow:30, maxRow:70, ratio:0.85});
+  fitTableToScreen(document.getElementById('splanTable'), {fitW:false, fitH:true, reserve:92, minRow:30, maxRow:80, ratio:0.85}); // 출퇴근 입력과 같은 기준
 }
 // 출퇴근 입력: 세로만 화면에 맞춤(아래 저장·초기화 버튼까지 보이게)
 function fitInputTable(){
@@ -5552,14 +5555,16 @@ function pageSupportPlan(){
   }).join('');
   return `
   <h2 class="pgttl">지원계획표</h2>
-  <div class="row" style="margin-bottom:14px;">
+  <div class="panel">
+  <div class="row" style="align-items:flex-end;margin-bottom:12px;">
+    <div class="field" style="min-width:auto;"><label>주간</label><b style="font-size:15px;line-height:38px;">${esc(weekStart)} ~ ${esc(addDays(weekStart,6))}</b></div>
     <button class="btn ghost sm" id="prevWeek">◀ 이전주</button>
-    <div class="field" style="min-width:auto;"><b style="font-size:14px;">${esc(weekStart)} ~ ${esc(addDays(weekStart,6))}</b></div>
     <button class="btn ghost sm" id="nextWeek">다음주 ▶</button>
   </div>
-  <div class="scrollx fitW"><table class="tbl" id="splanTable"><thead><tr>${head}</tr><tr>${subhead}</tr></thead><tbody>${rows}</tbody></table></div>
-  <div class="row" style="margin-top:14px;">
+  <div class="scrollx gridwrap fitW"><table class="tbl" id="splanTable"><thead><tr>${head}</tr><tr>${subhead}</tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="row" style="margin-top:12px;align-items:center;">
     <button class="btn warn ghost" id="splanResetBtn">초기화</button>
+  </div>
   </div>
   `;
 }
