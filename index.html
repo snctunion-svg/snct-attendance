@@ -4613,7 +4613,7 @@ function svVessels(ds){
     if(!(atb.d <= ds && (!atd || ds <= atd.d))) return;
     const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
     const q = svInfoGet(b, /DIS\s*\/\s*LDG/i).split('/').map(x=> x.trim());
-    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', open: svParseDT(svInfoGet(b, /Cargo\s*Open/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
+    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
     if(!out[bn] || v._t > out[bn]._t) out[bn] = v; // 같은 선석에 두 척이면 나중에 들어온 배
   });
   return out;
@@ -4625,7 +4625,7 @@ function svPlanP1(ds, id){
   const p = svPlan(ds), live = id==='svP1';
   const kdate = s => { const [a,b,c] = s.split('-').map(Number); return `${a} 년 &nbsp;${b}월 &nbsp;${c} 일`; };
   const cells = f => B.map(v=> `<td${f.l?' class="l"':''}>${v ? f.on(v) : f.off}</td>`).join('');
-  // 작업전 안전교육: Cargo Open time 20분 전 ~ Cargo Open time (08~19시는 주간, 그 밖은 야간)
+  // 작업전 안전교육: Estimated Time of Departure 20분 전 ~ ETD (08~19시는 주간, 그 밖은 야간)
   let day = null, night = null;
   B.forEach(v=>{ if(!v || !v.open || v.open.h==null) return; const end = v.open.h*60 + v.open.mi; const isDay = v.open.h>=8 && v.open.h<19; if(isDay && !day) day = end; if(!isDay && !night) night = end; });
   const tr = end => { const st = (end - 20 + 1440) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(st)} &nbsp;~&nbsp; ${f(end)}`; };
