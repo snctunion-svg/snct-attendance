@@ -4982,7 +4982,7 @@ function subscribeBerthLog(){
   if(!db || demoMode || unsub.berthLog) return;
   try{ unsub.berthLog = db.collection('berthLog').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); berthLog = m; if(VIEW==='safety') scheduleRender(); }, ()=>{}); }catch(e){}
 }
-function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', start: v.start && v.start.h!=null ? {h:v.start.h, mi:v.start.mi||0} : null, open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null, qc: Array.isArray(v.qc) ? v.qc.slice(0, 12) : []} : null; }
+function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', start: v.start && v.start.h!=null ? {h:v.start.h, mi:v.start.mi||0} : null, open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null, qc: Array.isArray(v.qc) ? v.qc.slice(0, 12) : [], arr: v.arr||'', dep: v.dep||''} : null; }
 async function saveBerthLog(){
   if(!db || demoMode || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
   const sets = Object.values(berthSets).filter(Boolean); if(berthData && !sets.includes(berthData)) sets.push(berthData);
@@ -4995,9 +4995,11 @@ async function saveBerthLog(){
     const old = berthLog[ds] && berthLog[ds].vessels;
     if(ds < t && old){                       // 지난 날: 이미 저장된 기록은 그대로 둠(일정이 바뀌어도 그날 모습 보존)
       // 예전에 저장돼 QC 시작 시간이 없는 기록만, 같은 배의 QC 시간을 한 번 덧붙임(배 이름·시간 등은 그대로)
-      if(!Object.values(old).some(v=> v && !Array.isArray(v.qc))) continue;
+      const lacks = o => o && (!Array.isArray(o.qc) || o.dep === undefined);
+      if(!Object.values(old).some(lacks)) continue;
       const up = {}; let ch = false;
-      Object.keys(old).forEach(bn=>{ const o = old[bn]; up[bn] = o; if(o && !Array.isArray(o.qc)){ const a = auto[bn]; up[bn] = Object.assign({}, o, {qc: (a && a.name===o.name && Array.isArray(a.qc)) ? a.qc.slice(0,12) : []}); ch = true; } });
+      Object.keys(old).forEach(bn=>{ const o = old[bn]; up[bn] = o; if(lacks(o)){ const a = auto[bn], same = a && a.name===o.name;
+        up[bn] = Object.assign({}, o, {qc: Array.isArray(o.qc) ? o.qc : (same && Array.isArray(a.qc) ? a.qc.slice(0,12) : []), arr: o.arr || (same ? a.arr||'' : ''), dep: o.dep || (same ? a.dep||'' : '')}); ch = true; } });
       if(!ch) continue;
       berthLog[ds] = Object.assign({}, berthLog[ds]||{}, {vessels: up});
       try{ await db.collection('berthLog').doc(ds).set({vessels: up, at: Date.now()}, {merge:true}); }catch(e){ return; }
@@ -5037,11 +5039,26 @@ function svVesselsAuto(ds){
     if(!(atb.d <= ds && (!atd || ds <= atd.d))) return;
     const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
     const q = svInfoGet(b, /DIS\s*\/\s*LDG/i).split('/').map(x=> x.trim());
+    const hm2 = t => t && t.h!=null ? `${t.d} ${String(t.h).padStart(2,'0')}:${String(t.mi||0).padStart(2,'0')}` : '';
     const qcs = (b.qc||[]).map(x=> (String(x.start||'').match(/\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}/)||[])[0]).filter(Boolean).sort().slice(0, 12);
-    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', qc: qcs, start: atb.h!=null ? {h:atb.h, mi:atb.mi||0} : null, open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
+    const v = {name, berth: atb.d, dis: q[0]||'', ldg: q[1]||'', qc: qcs, arr: hm2(atb), dep: hm2(atd), start: atb.h!=null ? {h:atb.h, mi:atb.mi||0} : null, open: svParseDT(svInfoGet(b, /^Estimated\s*Time\s*of\s*Depart/i)) || svParseDT(svInfoGet(b, /Time\s*of\s*Depart/i)), _t: atb.d + (atb.h!=null ? String(atb.h).padStart(2,'0') : '')};
     if(!out[bn] || v._t >= out[bn]._t) out[bn] = v; // 같은 선석에 두 척이면 나중에 들어온 배(같은 배면 나중에 받은 자료)
   });
   return out;
+}
+// 배가 부두에 있는 시간 [접안, 출항] ('YYYY-MM-DD HH:MM' 문자열 — 크기 비교 가능)
+function svVesselSpan(v){
+  if(!v) return null;
+  const pad = n => String(n).padStart(2,'0');
+  const arr = v.arr || (v.berth ? `${v.berth} ${v.start && v.start.h!=null ? pad(v.start.h)+':'+pad(v.start.mi||0) : '00:00'}` : '');
+  if(!arr) return null;
+  let dep = v.dep || '';
+  if(!dep && v.open && v.open.h!=null){ // 출항 날짜를 모르면: 접안 시각보다 늦으면 같은 날, 아니면 다음 날
+    const t = `${pad(v.open.h)}:${pad(v.open.mi||0)}`, d0 = arr.slice(0,10);
+    dep = `${t > arr.slice(11) ? d0 : addDays(d0, 1)} ${t}`;
+  }
+  if(!dep) dep = `${arr.slice(0,10)} 23:59`;
+  return [arr, dep];
 }
 function svPlanP1(ds, id){
   ds = ds || svForm.planDay;
@@ -5051,12 +5068,15 @@ function svPlanP1(ds, id){
   const kdate = s => { const [a,b,c] = s.split('-').map(Number); return `${a} 년 &nbsp;${b}월 &nbsp;${c} 일`; };
   const cells = f => B.map(v=> `<td${f.l?' class="l"':''}>${v ? f.on(v) : f.off}</td>`).join('');
   let day = null, night = null;
-  // 작업전 안전교육 (20분 전부터 10분간)
-  //  주간: 그날 QC 작업 시작(가장 이른 시각, 07~19시) 기준 — 예) QC 08:00 시작 → 07:40 ~ 07:50
-  //  야간: Estimated Time of Departure(출항 예정 시간)가 08~19시 밖이면 그 시각 기준 — 예) ETD 21:00 → 20:40 ~ 20:50
-  //  (QC 시간이 없는 배는 ETD가 08~19시일 때 주간에 씀)
-  B.forEach(v=>{ (v && v.qc || []).forEach(x=>{ const m = x.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})/); if(!m || m[1]!==ds) return; const h = +m[2], st = h*60 + (+m[3]); if(h>=7 && h<19 && (day==null || st < day)) day = st; }); });
-  B.forEach(v=>{ const t = v && v.open; if(!t || t.h==null) return; const st = t.h*60 + (t.mi||0); const isDay = t.h>=8 && t.h<19; if(isDay && day==null) day = st; if(!isDay && night==null) night = st; });
+  // 작업전 안전교육: 정해진 시각에 배가 부두에 있으면(접안 ~ 출항 사이) 그 시각 20분 전부터 10분간
+  //  주간: 08시에 배가 있으면 07:40~07:50, 없고 13시에 있으면 12:40~12:50
+  //  야간: 19시에 배가 있으면 18:40~18:50, 없고 (다음날) 01시에 있으면 00:40~00:50
+  const nextDs = addDays(ds, 1);
+  const pool = B.filter(Boolean).concat(Object.values(svVessels(nextDs)));
+  const at = (d, h)=> `${d} ${String(h).padStart(2,'0')}:00`;
+  const here = t => pool.some(v=>{ const sp = svVesselSpan(v); return sp && sp[0] <= t && t < sp[1]; });
+  if(here(at(ds, 8))) day = 8*60; else if(here(at(ds, 13))) day = 13*60;
+  if(here(at(ds, 19))) night = 19*60; else if(here(at(nextDs, 1))) night = 1*60;
   const tr = st => { const bg = (st - 20 + 1440) % 1440, en = (st - 10 + 1440) % 1440, f = x=> `${String(Math.floor(x/60)).padStart(2,'0')} 시 ${String(x%60).padStart(2,'0')} 분`; return `${f(bg)} &nbsp;~&nbsp; ${f(en)}`; };
   const blank = '&nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분 &nbsp;&nbsp;~&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; 시 &nbsp;&nbsp;&nbsp; 분';
   const items = [['화물의 상태','선적, 양하 컨테이너의 이상 유무 (EXCEPTION LIST 참조)',1],['통행설비','WHARF LADDER 등 선박-육상간 설치된 통행설비의 이상 유무',3],[null,'DECK의 유분, 수분, 결빙 또는 파손상태'],[null,'선내 위험물질의 유출 여부'],['보호구','작업원의 안전모, 안전화 착용 여부',1],['선내조명','선내조명의 밝기',1],['작업도구','작업원의 음주, 과로 등 신체상태',3],[null,'화물의 중량에 적합한 WIRE ROPE 사용 여부'],[null,'하역도구의 부식 및 마모 상태']];
@@ -5294,7 +5314,9 @@ function openVslEdit(ds, bn){
     <label class="pwLbl">접안일자</label><input id="veBerth" type="date" class="pwIn" value="${esc(v.berth||ds)}">
     <div style="display:flex;gap:8px;"><div style="flex:1"><label class="pwLbl">양하</label><input id="veDis" class="pwIn" inputmode="numeric" value="${esc(v.dis||'')}"></div>
       <div style="flex:1"><label class="pwLbl">적하</label><input id="veLdg" class="pwIn" inputmode="numeric" value="${esc(v.ldg||'')}"></div></div>
-    <label class="pwLbl">출항 예정 시간 ETD (교육시간: ETD 20분 전부터 10분간)</label><input id="veEtd" type="time" class="pwIn" value="${hm}">
+    <div style="display:flex;gap:8px;"><div style="flex:1"><label class="pwLbl">접안 시간</label><input id="veAtb" type="time" class="pwIn" value="${v.start && v.start.h!=null ? String(v.start.h).padStart(2,'0')+':'+String(v.start.mi||0).padStart(2,'0') : ''}"></div>
+      <div style="flex:1"><label class="pwLbl">출항 예정 시간 ETD</label><input id="veEtd" type="time" class="pwIn" value="${hm}"></div></div>
+    <p class="hint" style="margin:4px 0 0;">교육 시간: 08시·13시(주간), 19시·01시(야간)에 배가 있으면 그 시각 20분 전부터 10분</p>
     <div class="pwMsg" id="veMsg"></div>
     <div class="pwBtns"><button class="pwOk" id="veSave">저장</button><button class="pwNo" id="veClear">비우기</button><button class="pwNo" id="veCancel">취소</button></div></div>`;
   document.body.appendChild(ov);
@@ -5311,7 +5333,8 @@ function openVslEdit(ds, bn){
   $('veSave').onclick = ()=>{
     const name = $('veName').value.trim(); if(!name){ $('veMsg').textContent = '선박명을 넣으세요. (배가 없으면 [비우기])'; return; }
     const t = $('veEtd').value; const [h, mi] = t ? t.split(':').map(Number) : [null, null];
-    put({name, berth: $('veBerth').value || ds, dis: $('veDis').value.trim(), ldg: $('veLdg').value.trim(), start: (v.start && v.start.h!=null) ? {h:v.start.h, mi:v.start.mi||0} : null, open: h!=null ? {h, mi} : null});
+    const ta = $('veAtb').value; const [ah, am] = ta ? ta.split(':').map(Number) : [null, null];
+    put({name, berth: $('veBerth').value || ds, dis: $('veDis').value.trim(), ldg: $('veLdg').value.trim(), start: ah!=null ? {h:ah, mi:am} : null, open: h!=null ? {h, mi} : null});
   };
   setTimeout(()=>{ try{ $('veName').focus(); }catch(e){} }, 30);
 }
