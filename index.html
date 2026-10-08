@@ -837,6 +837,19 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbRight .cmbCtrl .row b{font-size:14px !important;}
   .cmbTeamRow{margin-bottom:8px !important;}
 }
+@media (max-width:700px){ header.app .status{min-width:0;flex-shrink:1;} header.app h1{flex:none;} }
+/* 월별 OT현황: 이전달 · 연월 · 다음달 한 줄 */
+.otMonRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 8px;}
+.otMonTxt{font-size:16px;white-space:nowrap;}
+.otMonRange{font-size:12px;color:var(--text-muted);white-space:nowrap;}
+@media (max-width:700px){
+  .otMonRow{gap:6px;margin:2px 0 6px;}
+  .otMonRow .btn.sm{padding:4px 8px;font-size:12px;}
+  .otMonTxt{font-size:15px;}
+  .otMonRange{display:none;} /* 휴대폰: 기간 글자는 숨겨서 빈 줄이 생기지 않게 */
+  .otMonRow{flex-wrap:nowrap;}
+  .otTeamRow{margin-bottom:8px !important;}
+}
 /* 경위서·학자금 메일 보내기 */
 .docSel{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;}
 .dmToRow{display:flex;gap:6px;align-items:center;} .dmToRow .dmIn{flex:1;min-width:0;}
@@ -3981,15 +3994,13 @@ function pageOT(){
 
   return `
   <h2 class="pgttl">월별 OT현황</h2>
-  <div class="row" style="margin-bottom:6px;align-items:center;">
-    <div class="field"><label>시작일</label><input type="date" id="otRangeStartInput" value="${esc(otMatrixStart)}"></div>
-    <div class="field"><label>종료일</label><input type="date" id="otRangeEndInput" value="${esc(otMatrixEnd)}"></div>
-    <span style="flex:1 1 auto;"></span>
+  <div class="otMonRow">
     <button class="btn ghost sm" id="prevPayMonth">◀ 이전달</button>
-    <div class="field" style="min-width:auto;"><b style="font-size:15px;">${otPayYear}년 ${otPayMonth}월 (${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)})</b></div>
+    <b class="otMonTxt">${otPayYear}년 ${otPayMonth}월</b>
     <button class="btn ghost sm" id="nextPayMonth">다음달 ▶</button>
+    <span class="otMonRange">(${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)})</span>
   </div>
-  <div class="row" style="margin-bottom:14px;">
+  <div class="row otTeamRow" style="margin-bottom:14px;">
     <button class="btn ${otTeamFilter===''?'':'ghost'} sm" data-act="ot-team-filter" data-team="">전체</button>
     <button class="btn ${otTeamFilter==='1'?'':'ghost'} sm" data-act="ot-team-filter" data-team="1">1조</button>
     <button class="btn ${otTeamFilter==='2'?'':'ghost'} sm" data-act="ot-team-filter" data-team="2">2조</button>
