@@ -1646,10 +1646,10 @@ function codeGroup(code){
   if(RED_CODES.has(code)) return 'red';
   return ({MC:'yellow', FC:'blue', VP:'pink', SP:'purple', SC:'gray'})[code] || 'black';
 }
-const BLACK_ORDER = ['D','N','DN','ND','DS','UJ','E','EC','CK','SV'];
+const BLACK_ORDER = ['D','N','DN','ND','UJ','E','EC','CK','SV']; // DS는 빨간 코드로 옮김(NS 위)
 function codeSortKey(code){
   const gi = CODE_GROUPS.findIndex(g=>g.key===codeGroup(code));
-  const bi = BLACK_ORDER.indexOf(code), ri = ['NS','FCH','MCH','MCS','AV','RV','LS','SL','TL'].indexOf(code);
+  const bi = BLACK_ORDER.indexOf(code), ri = ['DS','NS','FCH','MCH','MCS','AV','RV','LS','SL','TL'].indexOf(code); // DS를 NS 위에
   return gi*1000 + (bi>=0 ? bi : ri>=0 ? ri : 500);
 }
 function codeBadge(code){
