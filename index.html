@@ -1816,7 +1816,7 @@ function mailDayCount(a, b){ return Math.round((new Date(b+'T00:00:00') - new Da
 function mailHm(v){ if(!v) return ''; const [h,m] = String(v).split(':'); return Number(m) ? `${Number(h)}.${String(m).replace(/0$/,'')}` : String(Number(h)); }
 function pageMail(){
   const {start, end} = mailRangeNow();
-  const to = (mailConfig.to||[]).join('\n'), on = mailConfig.enabled !== false;
+  const to = (mailConfig.to||[]).join('\n');
   // 근태관리와 같은 순서(1조 → 2조, 조편성 순번)로 전원 표시
   const emps = employees.filter(e=>e.name && e.active!==false).slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999) || String(a.name).localeCompare(String(b.name)); });
   const sum = {}; let days = '';
@@ -1842,21 +1842,20 @@ function pageMail(){
   return `
   <h2 class="pgttl">메일 송부</h2>
   <div class="panel">
-    <h3>자동 발송 설정</h3>
-    <p class="hint" style="margin:0 0 10px;"><b>매주 화요일 오전 9시</b>에 <b>지난주(월~일) 1조·2조 출퇴근 입력 전체</b>를 아래 주소로 보냅니다.</p>
+    <h3>받는 사람</h3>
+    <p class="hint" style="margin:0 0 10px;">아래에서 <b>날짜를 골라 [보내기]</b>를 누르면 그 기간의 1조·2조 출퇴근 입력을 이 주소로 보내요.</p>
     <div class="field" style="max-width:520px;"><label>받는 사람 (한 줄에 한 명)</label>
       <textarea id="mailTo" rows="4" placeholder="예) leader@snct.co.kr" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);color:var(--text);font:inherit;">${esc(to)}</textarea></div>
-    <label style="display:flex;align-items:center;gap:6px;margin:8px 0;"><input type="checkbox" id="mailOn" ${on?'checked':''}> 자동 발송 켜기</label>
-    <button class="btn" id="mailSave">저장</button>
+    <button class="btn" id="mailSave" style="margin-top:8px;">저장</button>
   </div>
   <div class="panel">
     <div class="row" style="align-items:center;margin-bottom:8px;">
-      <h3 style="margin:0;">메일 미리보기</h3>
+      <h3 style="margin:0;">날짜 선택해서 보내기</h3>
       <input type="date" id="mailFrom" value="${start}" style="padding:5px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;">
       <span>~</span>
       <input type="date" id="mailTo2" value="${end}" style="padding:5px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;">
       <span style="flex:1"></span>
-      <button class="btn sm" id="mailSendNow" ${mailSending?'disabled':''}>${mailSending ? '보내는 중…' : '📨 즉시 발송'}</button>
+      <button class="btn sm" id="mailSendNow" ${mailSending?'disabled':''}>${mailSending ? '보내는 중…' : '📨 보내기'}</button>
     </div>
     ${days}
   </div>`;
@@ -1900,7 +1899,7 @@ function bindMailPage(){
     const list = document.getElementById('mailTo').value.split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean);
     const bad = list.filter(x=>!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
     if(bad.length){ showToast('이메일 형식을 확인해 주세요: ' + bad.join(', ')); return; }
-    mailConfig = {to:list, enabled: document.getElementById('mailOn').checked};
+    mailConfig = {to:list, enabled:false}; // 자동 발송은 없앰(날짜를 골라 직접 보내기만)
     render();
     if(!db || demoMode) return;
     try{ await db.doc('meta/mailConfig').set(mailConfig); showToast('저장되었습니다.'); }
