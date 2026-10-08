@@ -707,6 +707,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable th,#splanTable td{border:1px solid #111 !important;}
 #dpTable tr.dpOff .dpNote{color:#9ca3af;}
 #dpTable tr.dpGrp > td{border-bottom:1px solid #111 !important;}
+#dpTable td.dpRk{background:var(--g-soft) !important;}
+#dpTable td.dpRk .rkPlain{color:#111;font-weight:800;font-size:12px;}
+#dpTable tr.dpOff td.dpRk{background:#e5e7eb !important;}
 #dpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
 #dpTable th.dpMealH{border-top:2px solid #E03131 !important;}
 #dpTable td.dpMealF{border-bottom:2px solid #E03131 !important;}
@@ -5413,12 +5416,11 @@ function pageDispatch(){
       list.forEach((o,i)=>{ if(o.n!==prev){ rank = i+1; prev = o.n; } o.n = rank; o.tot = list.length; });
     });
   }
-  const otRankCell = empId => {
+  const otRankCell = empId => { // 순번: 근태관리처럼 칸 전체를 색으로, 숫자는 검은색
     const o = otRankOf[empId]; if(!o || o.n==null) return '';
-    const g = dayIsHol ? 'yel' : 'pur';
-    return `<span class="rk ${o.n<=3?'t1':(o.n<=Math.ceil(o.tot/2)?'t2':'t3')} g-${g}">${o.n}</span>`;
+    return `<span class="rkPlain">${o.n}</span>`;
   };
-  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${dayIsHol?'yel':'pur'}" title="근태관리 집계 기간(${esc(codeStatsStart)}~${esc(codeStatsEnd)}) 기준">${dayIsHol?'휴일':'평일'}<br>OT순번</th><th class="dpI dpI5">승무</th>` +
+  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${dayIsHol?'yel':'pur'}" title="근태관리 집계 기간(${esc(codeStatsStart)}~${esc(codeStatsEnd)}) 기준">순번</th><th class="dpI dpI5">승무</th>` +
     slots.map(s=>{
       const mm = s.split(':')[1], hh = slotHourLabel(s);
       const isRed = isMealSlot(s);
@@ -5451,7 +5453,7 @@ function pageDispatch(){
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
       <td class="dpI dpI3">${mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
-      <td class="dpI dpI4">${otRankCell(e.id)}</td>
+      <td class="dpI dpI4 dpRk g-${dayIsHol?'yel':'pur'}">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(Boolean).length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
       ${cells}
     </tr>`;
@@ -5475,7 +5477,7 @@ function pageDispatch(){
     return `<tr>
       ${supLabel}
       <td class="dpI dpI2"><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름" style="width:66px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:var(--text);"></td>
-      <td class="dpI dpI3"></td><td class="dpI dpI4"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
+      <td class="dpI dpI3"></td><td class="dpI dpI4 dpRk g-${dayIsHol?'yel':'pur'}"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
       ${cells}
     </tr>`;
   }).join('');
