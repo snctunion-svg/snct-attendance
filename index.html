@@ -674,6 +674,10 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbLeft{flex:0 0 min(calc(44% - 7px), 600px);max-width:min(calc(44% - 7px), 600px);min-width:0;}
   .cmbRight{flex:1 1 0;}
   .cmbLeft .ctbl td.namecell a,.cmbLeft .ctbl td.namecell{white-space:nowrap;}
+  /* OT 칸은 숫자(예: 549.5)만 들어갈 폭으로 좁게 */
+  .cmbLeft .ctbl th.otCol{width:50px;min-width:50px;max-width:50px;padding-left:2px !important;padding-right:2px !important;}
+  /* 월별 근태: 성명 칸을 이름 폭만큼만 */
+  .cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{width:58px;min-width:58px;max-width:58px;padding-left:2px !important;padding-right:2px !important;white-space:nowrap;}
 }
 .cmbCtrl{height:104px;display:flex;flex-direction:column;justify-content:space-between;margin-bottom:10px;}
 .cmbCtrl h3{margin:0;}
