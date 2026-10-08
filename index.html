@@ -4590,14 +4590,13 @@ function pageAccident(){
     <button class="btn warn ghost" id="accReset">새로 작성</button>
   </div>
   <p class="hint accNoPrint" style="margin:-4px 0 12px;">칸을 눌러 바로 입력하세요. 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요. 고른 서류만 한 장씩 출력돼요.</p>
-  <datalist id="accNames">${names}</datalist>
   <div class="docGrid">
   <div class="accWrap"><div class="docLabel accNoPrint">📝 사고경위서</div><div class="accSheet docFramed" id="accSheet">
     <div class="accTop">(내,외부 겸용)</div>
     <div class="accTitleBox"><img class="accLogo" src="${ACC_LOGO}" alt="SNCT"><div class="accTitle">경 위 서</div><div class="accSub">Accident Report</div></div>
     <table class="accTbl accTblTop">
       <colgroup><col style="width:7.9%"><col style="width:8.9%"><col style="width:21.2%"><col style="width:10.9%"><col style="width:7.9%"><col style="width:8.8%"><col style="width:21.4%"><col style="width:13%"></colgroup>
-      <tr class="accInfo"><th colspan="2">성 &nbsp; 명</th><td colspan="2">${inp('name','이름','list="accNames"')}</td><th colspan="2">소 &nbsp; 속</th><td colspan="2">${inp('dept')}</td></tr>
+      <tr class="accInfo"><th colspan="2">성 &nbsp; 명</th><td colspan="2">${inp('name','이름 입력')}</td><th colspan="2">소 &nbsp; 속</th><td colspan="2">${inp('dept')}</td></tr>
       <tr class="accInfo"><th colspan="2">생년월일</th><td colspan="2">${inp('birth')}</td><th colspan="2">직 &nbsp; 책</th><td colspan="2">${inp('role')}</td></tr>
       <tr class="accInfo"><th colspan="2">연락처</th><td colspan="2">${inp('phone','','inputmode="tel"')}</td><th colspan="2">입사일자</th><td colspan="2">${inp('hire')}</td></tr>
       <tr class="accHead"><th colspan="8">내 &nbsp; &nbsp; 용</th></tr>
@@ -5042,7 +5041,7 @@ function hakSheetHtml(){
     <div class="hakTitle">학 자 금 지 급 신 청 서</div>
     <table class="accTbl hakTbl">
       <colgroup><col style="width:13%"><col style="width:16%"><col style="width:27%"><col style="width:16%"><col style="width:28%"></colgroup>
-      <tr><th>신청인</th><th>소 속</th><td>${inp('dept')}</td><th>성 명</th><td>${inp('applicant','이름','list="accNames"')}</td></tr>
+      <tr><th>신청인</th><th>소 속</th><td>${inp('dept')}</td><th>성 명</th><td>${inp('applicant','이름 입력')}</td></tr>
       <tr><th rowspan="3">수혜자</th><th>성 명</th><td>${inp('kid')}</td><th>나 이</th><td>${inp('age','','inputmode="numeric"')}</td></tr>
       <tr class="hakKindRow"><th>구 분</th><td><div class="hakKinds">${kinds.map(box).join('')}</div></td><th>학교명</th><td>${inp('school')}</td></tr>
       <tr><th>학 년</th><td>${inp('grade')}</td><th>분기/학기</th><td>${inp('term')}</td></tr>
