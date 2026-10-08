@@ -275,6 +275,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .svM{text-align:center;font-size:15px;font-weight:800;cursor:pointer;user-select:none;}
 .svM:hover{background:#fff7d6;}
 .svM.mid{color:#b45309;}
+.svVsl{cursor:pointer;} .svVsl:hover{background:#fff7d6;}
 .svDate{padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;}
 .svCtl{flex-wrap:wrap;gap:6px;} .svM.bad{color:#dc2626;}
 .svGrpTop > *{border-top:1.5px solid #111 !important;}
@@ -1252,7 +1253,7 @@ async function reloadBerth(){
     const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
     const r = await fetch(api + (api.includes('?') ? '&' : '?') + 'type=berth&t=' + Date.now());
     const j = await r.json();
-    if(j && j.ok){ berthData = j; berthErr = ''; }
+    if(j && j.ok){ berthData = j; berthErr = ''; try{ saveBerthLog(); }catch(e){} }
     else if(j && j.dates === undefined) berthErr = 'Apps Script에 선석 조회 기능이 아직 없어요. 새 코드로 바꾸고 새 버전으로 배포해 주세요.';
     else berthErr = '회사 사이트에서 선석 정보를 받지 못했어요.';
   }catch(err){ berthErr = '선석 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'; }
@@ -2895,7 +2896,7 @@ function subscribeAll(){
     scheduleRender();
   }, dbErr);
   unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
-  unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{}); subscribeSlipPw();
+  unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{}); subscribeSlipPw(); subscribeBerthLog();
   unsub.mailConfig = db.doc('meta/mailConfig').onSnapshot(doc=>{ mailConfig = doc.exists ? doc.data() : {}; scheduleRender(); }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
@@ -4602,7 +4603,37 @@ function svInfoGet(b, re){
   const hit = list.find(x=> re.test(String(x.k||''))); return hit ? String(hit.v||'').trim() : '';
 }
 function svParseDT(s){ const m = String(s||'').match(/(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{1,2}):(\d{2}))?/); return m ? {d:`${m[1]}-${m[2]}-${m[3]}`, h:m[4]!=null?+m[4]:null, mi:m[5]!=null?+m[5]:null} : null; }
+// ----- 선석 기록 보관: 회사 사이트는 며칠치만 보여 주므로, 조장·UNION이 볼 때마다 그날그날 배 정보를 berthLog/{날짜}에 쌓아 둠 -----
+let berthLog = {};
+function subscribeBerthLog(){
+  if(!db || demoMode || unsub.berthLog) return;
+  try{ unsub.berthLog = db.collection('berthLog').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); berthLog = m; if(VIEW==='safety') scheduleRender(); }, ()=>{}); }catch(e){}
+}
+function svSlim(v){ return v ? {name:v.name||'', berth:v.berth||'', dis:v.dis||'', ldg:v.ldg||'', open: v.open && v.open.h!=null ? {h:v.open.h, mi:v.open.mi||0} : null} : null; }
+async function saveBerthLog(){
+  if(!berthData || !berthData.blocks || !db || demoMode || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
+  const t = todayStr();
+  for(let k=-3; k<=10; k++){
+    const ds = addDays(t, k), auto = svVesselsAuto(ds), keys = Object.keys(auto);
+    if(!keys.length) continue;
+    const vessels = {}; keys.forEach(bn=> vessels[bn] = svSlim(auto[bn]));
+    const old = berthLog[ds] && berthLog[ds].vessels;
+    if(old && JSON.stringify(old)===JSON.stringify(vessels)) continue;
+    try{ await db.collection('berthLog').doc(ds).set({vessels, at: Date.now()}, {merge:true}); }catch(e){ return; }
+  }
+}
+// 그날 1·2·3번 선석 배: 직접 고친 값 → 회사 사이트(지금 보이는 기간) → 쌓아 둔 기록 순서
 function svVessels(ds){
+  const auto = svVesselsAuto(ds), log = berthLog[ds] || {}, out = {};
+  ['1','2','3'].forEach(bn=>{
+    const man = log.manual && log.manual[bn];
+    if(man && man.cleared) return;
+    const v = (man && man.name) ? man : (auto[bn] || (log.vessels && log.vessels[bn]) || null);
+    if(v && v.name) out[bn] = v;
+  });
+  return out;
+}
+function svVesselsAuto(ds){
   const out = {};
   const blocks = (berthData && berthData.blocks) || [];
   blocks.forEach(b=>{
@@ -4637,7 +4668,7 @@ function svPlanP1(ds, id){
     <div class="svLegend">날씨 :</div>
     <table class="svPT svPT1">
       <colgroup><col style="width:19%"><col style="width:27%"><col style="width:27%"><col style="width:27%"></colgroup>
-      <tr><th>선 박 명</th>${cells({l:1, off:'M/V.', on:v=>`M/V. <b>${esc(v.name)}</b>`})}</tr>
+      <tr><th>선 박 명</th>${B.map((v,k)=> `<td class="l${live?' svVsl':''}"${live?` data-sv-vsl="${ds}|${k+1}" title="눌러서 선박 정보 입력·수정"`:''}>${v ? `M/V. <b>${esc(v.name)}</b>` : 'M/V.'}</td>`).join('')}</tr>
       <tr><th>접안일자</th>${cells({off:'', on:v=> kdate(v.berth)})}</tr>
       <tr><th>작업장소</th>${'<td>MSB &nbsp;01, 02, 03.</td>'.repeat(3)}</tr>
       <tr><th>작업공정</th>${'<td>컨테이너 양.적하</td>'.repeat(3)}</tr>
@@ -4852,7 +4883,41 @@ function svPrintHtml(pages, ids){
   const imgs = Array.from(d.images);
   Promise.all(imgs.map(im=> im.complete ? 1 : new Promise(r=>{ im.onload = im.onerror = r; }))).then(()=> setTimeout(go, 150));
 }
+function openVslEdit(ds, bn){
+  if(!(userRole==='leader' || userRole==='union' || userRole==='all')){ showToast('선박 정보 수정은 조장관리·UNION 로그인에서 할 수 있어요.'); return; }
+  const v = svVessels(ds)[bn] || {};
+  const old = document.getElementById('vslEditOv'); if(old) old.remove();
+  const ov = document.createElement('div'); ov.id = 'vslEditOv'; ov.className = 'payScrim';
+  const hm = v.open && v.open.h!=null ? `${String(v.open.h).padStart(2,'0')}:${String(v.open.mi||0).padStart(2,'0')}` : '';
+  ov.innerHTML = `<div class="pwBox pwDlg" role="dialog"><h3>${ds} · ${bn}번 선석</h3>
+    <p style="margin:0 0 6px;">회사 자료가 없는 날은 여기서 직접 넣어요. 저장하면 다른 사람 화면·출력에도 똑같이 나와요.</p>
+    <label class="pwLbl">선박명</label><input id="veName" class="pwIn" value="${esc(v.name||'')}" placeholder="예: STARSHIP TAURUS">
+    <label class="pwLbl">접안일자</label><input id="veBerth" type="date" class="pwIn" value="${esc(v.berth||ds)}">
+    <div style="display:flex;gap:8px;"><div style="flex:1"><label class="pwLbl">양하</label><input id="veDis" class="pwIn" inputmode="numeric" value="${esc(v.dis||'')}"></div>
+      <div style="flex:1"><label class="pwLbl">적하</label><input id="veLdg" class="pwIn" inputmode="numeric" value="${esc(v.ldg||'')}"></div></div>
+    <label class="pwLbl">출항 예정 시간 (교육시간 기준)</label><input id="veEtd" type="time" class="pwIn" value="${hm}">
+    <div class="pwMsg" id="veMsg"></div>
+    <div class="pwBtns"><button class="pwOk" id="veSave">저장</button><button class="pwNo" id="veClear">비우기</button><button class="pwNo" id="veCancel">취소</button></div></div>`;
+  document.body.appendChild(ov);
+  const $ = id=> ov.querySelector('#'+id), close = ()=> ov.remove();
+  const put = async (data)=>{
+    const log = berthLog[ds] = berthLog[ds] || {}; log.manual = Object.assign({}, log.manual||{}, {[bn]: data});
+    close(); render();
+    if(!db || demoMode) return;
+    try{ await db.collection('berthLog').doc(ds).set({manual: {[bn]: data}, at: Date.now()}, {merge:true}); showToast('선박 정보를 저장했어요.'); }
+    catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
+  };
+  $('veCancel').onclick = close; ov.onclick = e=>{ if(e.target===ov) close(); };
+  $('veClear').onclick = ()=> put({cleared:true});
+  $('veSave').onclick = ()=>{
+    const name = $('veName').value.trim(); if(!name){ $('veMsg').textContent = '선박명을 넣으세요. (배가 없으면 [비우기])'; return; }
+    const t = $('veEtd').value; const [h, mi] = t ? t.split(':').map(Number) : [null, null];
+    put({name, berth: $('veBerth').value || ds, dis: $('veDis').value.trim(), ldg: $('veLdg').value.trim(), open: h!=null ? {h, mi} : null});
+  };
+  setTimeout(()=>{ try{ $('veName').focus(); }catch(e){} }, 30);
+}
 function bindSafety(el){
+  el.querySelectorAll('[data-sv-vsl]').forEach(td=> td.onclick = ()=>{ const [ds, bn] = td.dataset.svVsl.split('|'); openVslEdit(ds, bn); });
   const root = el.querySelector('.svPages'); if(!root) return;
   const w = svWeek(svForm.week);
   root.querySelectorAll('[data-sv-mark]').forEach(td=> td.onclick = ()=>{
