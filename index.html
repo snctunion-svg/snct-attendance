@@ -1865,8 +1865,20 @@ function renderLeaveModal(){
   if(!emp) return '';
   if(!leaveYear) leaveYear = Number((codeStatsEnd || todayStr()).slice(0,4));
   const {cnt} = leaveCounts(emp, `${leaveYear}-01-01`); // 원본처럼 연 단위(1/1~12/31)
-  const cells = LEAVE_TYPES.map(([c,l])=>`<div class="card" style="padding:12px 10px;text-align:center;">
-      <div class="n" style="font-size:22px;">${cnt[c]}</div><div class="l">${esc(l)}<br><b style="color:var(--text);">${c}</b></div></div>`).join('');
+  // 연차(AV): 사용 개수 옆에 급여관리의 연차 개수(총)와 잔여를 함께 표시
+  const pm = payMgr[emp.id] || {}, manL = Number(pm.leave);
+  const totL = (pm.leave!=='' && pm.leave!=null && Number.isFinite(manL) && manL>0 && leaveYear===annualLeaveYear()) ? manL : leaveCountAuto(pm.hire, leaveYear);
+  const cells = LEAVE_TYPES.map(([c,l])=>{
+    if(c==='AV' && totL!=null){
+      const left = totL - cnt[c];
+      return `<div class="card" style="padding:12px 6px;text-align:center;">
+        <div class="n" style="font-size:22px;white-space:nowrap;">${cnt[c]}<span style="font-size:14px;color:var(--text-muted);font-weight:700;"> / ${totL}</span></div>
+        <div class="l">${esc(l)}<br><b style="color:var(--text);">${c}</b></div>
+        <div style="font-size:11px;font-weight:800;margin-top:3px;color:${left<0?'#dc2626':'#1d4ed8'};">잔여 ${left}</div></div>`;
+    }
+    return `<div class="card" style="padding:12px 10px;text-align:center;">
+      <div class="n" style="font-size:22px;">${cnt[c]}</div><div class="l">${esc(l)}<br><b style="color:var(--text);">${c}</b></div></div>`;
+  }).join('');
   return `<div id="leaveScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:460px;width:92%;margin:0;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
