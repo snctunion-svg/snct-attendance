@@ -756,17 +756,28 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   #dpTable .badge,#dpTable .rk{transform:scale(.85);}
 }
 @media (max-width:700px){
-  /* 폰: 번호·성명만 고정하고 좁게 → 시간 칸이 더 많이 보이게 */
-  #dpTable .dpI3,#dpTable .dpI4,#dpTable .dpI5{position:static;}
-  #dpTable .dpI1{min-width:28px;width:28px;padding:0 2px;}
-  #dpTable .dpI2{left:28px;min-width:64px;width:64px;border-right:2px solid var(--text-muted);}
-  #dpTable .dpI2 input{width:56px !important;}
-  #dpTable .dpI5{border-right:1px solid var(--border);}
-  #dpTable td.dpI1[colspan]{min-width:0;}
+  /* 폰 배차표: 수정·초반·후반·당직·정비·기타 버튼을 한 줄로 */
+  .dpPal{flex-wrap:nowrap !important;gap:4px !important;padding:6px !important;margin-bottom:8px !important;}
+  .dpPal .dpCatBtn{flex:1 1 0;min-width:0;padding:7px 0 !important;font-size:12px !important;border-radius:8px !important;white-space:nowrap;}
+  /* 폰: No·성명·근태·순번·승무까지 고정(좁게) → 옆으로 밀어도 그대로 */
+  #dpTable .dpI1{min-width:26px;width:26px;padding:0 1px;}
+  #dpTable .dpI2{left:26px;min-width:58px;width:58px;padding:0 2px;}
+  #dpTable .dpI2 input{width:52px !important;}
+  #dpTable .dpI3{left:84px;min-width:36px;width:36px;padding:0 1px;}
+  #dpTable .dpI4{left:120px;min-width:34px;width:34px;padding:0 1px;}
+  #dpTable .dpI5{left:154px;min-width:34px;width:34px;padding:0 1px;border-right:2px solid var(--text-muted);}
+  #dpTable td.dpI1[colspan]{min-width:188px;}
   .dpScrollBar .hint{display:none;}
   #dpTable td.dpCell,#dpTable th.dpSlotH{min-width:38px;width:38px;}
 }
 
+@media (max-width:700px){
+  /* 휴대폰 틀고정(근태 집계·월별 근태·월별 OT현황): 머리글 줄은 위에, No·성명은 왼쪽에 고정 */
+  .scrollx.mFreeze{overflow:auto;overscroll-behavior:contain;}
+  .scrollx.mFreeze thead th{position:sticky;z-index:5;}
+  .scrollx.mFreeze thead th.namehead{z-index:7;}
+  .scrollx.mFreeze thead th.namehead.noStick{z-index:5;}
+}
 .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:11.5px;color:var(--text-muted);align-items:center;}
 .legend .sw{display:inline-flex;align-items:center;gap:4px;}
 
@@ -3931,6 +3942,7 @@ function fitOtTable(){
   const wrap = t.parentElement;
   const rows = Array.from(t.querySelectorAll('tbody tr'));
   t.style.zoom = ''; rows.forEach(tr=> tr.style.height = '');
+  if(VIEW==='ot') mFreeze(t);
   if(VIEW!=='ot' || window.innerWidth <= 700) return;
   // 가로: 표 전체 폭이 화면에 들어오게 축소
   const availW = wrap.clientWidth - 2;
@@ -3949,6 +3961,20 @@ function fitOtTable(){
 }
 // 표를 PC 화면에 '맞춤': 남으면 늘리고(줄 높이·표 폭), 넘치면 줄임(zoom)
 //  fitW: 표 폭을 자기 칸 폭에 꽉 맞춤 / fitH: 표 아래가 화면 아래(reserve 만큼 위)에 닿도록 줄 높이 조절
+// 휴대폰 틀고정: 표 머리글 두 줄 + 왼쪽 No·성명 칸을 고정 (표 칸 안에서 위아래·옆으로 밀기)
+function mFreeze(t){
+  if(!t) return;
+  const wrap = t.closest('.scrollx'); if(!wrap) return;
+  const ths = t.querySelectorAll('thead th');
+  if(window.innerWidth > 700){ wrap.classList.remove('mFreeze'); wrap.style.maxHeight = ''; ths.forEach(th=> th.style.top = ''); return; }
+  wrap.classList.add('mFreeze');
+  const sc = document.getElementById('content');
+  const scTop = sc ? sc.getBoundingClientRect().top : 0;
+  const h = Math.max(260, window.innerHeight - Math.max(0, scTop) - 12);
+  wrap.style.maxHeight = h + 'px';
+  const head = t.tHead; if(!head) return;
+  [...head.rows].forEach(tr=>{ const y = tr.offsetTop - head.rows[0].offsetTop; [...tr.cells].forEach(th=> th.style.top = y + 'px'); });
+}
 function fitTableToScreen(t, {fitW=false, fitH=true, reserve=16, minRow=24, maxRow=90, ratio=1}={}){
   if(!t) return;
   const rows = Array.from(t.querySelectorAll('tbody tr'));
@@ -4063,6 +4089,7 @@ function fitCombined(){
   const wrap = document.querySelector('.cmbWrap'); if(!wrap) return;
   wrap.style.zoom = '';
   wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70, ratio:0.85})); // 세로 85%
+  wrap.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t));
 }
 // 자정이 지나면 화면을 다시 그려서 '오늘' 표시가 다음 날로 옮겨지게
 (function scheduleMidnight(){
@@ -5548,7 +5575,7 @@ function pageDispatch(){
     <button class="btn ${dispatchSunPart!=='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="day">주간</button>
     <button class="btn ${dispatchSunPart==='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="night">야간</button>` : ''}
   </div>
-  ${canEdit ? `<div class="panel" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>` : ''}
+  ${canEdit ? `<div class="panel dpPal" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>` : ''}
   <div class="dpBox"><div style="background:#fce7f3;color:#9d174d;font-weight:800;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;border:1px solid #fbcfe8;border-bottom:0;">${esc(dateBanner)}</div>
   ${sortedEmployees.length? `<div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다. 먼저 직원 관리에서 직원을 추가하세요.</div>`}</div>
