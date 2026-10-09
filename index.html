@@ -895,8 +895,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .otTopBar .otTeamRow{gap:3px;margin-left:auto !important;}
 }
 /* 배차표 근태 칸: 토요일 만근 표시(분홍 글씨) */
-#dpTable .dpMg{color:#db2777;font-weight:800;font-size:11px;letter-spacing:-.4px;line-height:1.05;white-space:nowrap;}
-@media (max-width:700px){ #dpTable .dpMg{font-size:9.5px;white-space:normal;display:inline-block;} }
+#dpTable .dpMg{color:#db2777;font-weight:800;font-size:12px;white-space:nowrap;}
+.inTbl .inMg{margin-left:4px;color:#db2777;font-weight:800;font-size:12.5px;white-space:nowrap;}
+@media (max-width:700px){ #dpTable .dpMg{font-size:11px;} }
 /* 경위서·학자금 메일 보내기 */
 .docSel{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;}
 .dmToRow{display:flex;gap:6px;align-items:center;} .dmToRow .dmIn{flex:1;min-width:0;}
@@ -3596,7 +3597,9 @@ function pageInput(){
     const tot = inputRowTotal(date, e);
     const off = !!dc && !DP_WORK_CODES.has(dc); // 배차표와 같은 기준: D·N 계열이 아니면 근무자 아님
     return `<tr class="${dr && Object.keys(dr).length ? 'inDirty' : ''}${off ? ' inOff' : ''}">
-      <td class="namecell inName">${esc(e.name)} ${dc ? `<span style="margin-left:4px;">${codeBadge(dc)}</span>` : ''}</td>
+      <td class="namecell inName">${esc(e.name)} ${(()=>{ // 토요일 만근이면 코드 대신 분홍 '만근'(배차표와 같은 기준)
+        const mg = !off && !!dc && new Date(date+'T00:00:00').getDay()===6 && recManguen(Object.assign({}, base||{}, {employeeId:e.id, date}), date);
+        return mg ? `<span class="inMg" title="토요일 만근(특근)">만근</span>` : (dc ? `<span style="margin-left:4px;">${codeBadge(dc)}</span>` : ''); })()}</td>
       ${t('checkIn')}${t('checkOut')}${t('supportIn')}${t('supportOut')}
       <td class="inRO">${suwu ? fmtH(suwu) : ''}</td>
       ${t('honjoComp')}${t('tajoComp')}
@@ -6097,7 +6100,7 @@ function pageDispatch(){
     return `<tr class="${offDay ? 'dpOff' : ''}${grp ? ' dpGrp' : ''}${lastEmp ? ' dpLast' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
-      <td class="dpI dpI3">${mgOn ? `<span class="dpMg" title="토요일 만근(특근)">만근<wbr>(${esc(dcode)})</span>` : mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
+      <td class="dpI dpI3">${mgOn ? `<span class="dpMg" title="토요일 만근(특근)">만근</span>` : mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
       <td class="dpI dpI4 dpRk g-${dayIsHol?'yel':'pur'}">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(x=> x && x!=='당직').length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
       ${cells}
