@@ -1672,7 +1672,7 @@ function updateSuwuLive(empId){
 function updateCountLive(slot){
   const cells = document.querySelectorAll(`.dpCell[data-dispatch-slot="${slot}"]`);
   let cnt = 0;
-  cells.forEach(td=>{ if(td.dataset.dispatchCur) cnt++; });
+  cells.forEach(td=>{ const v = td.dataset.dispatchCur; if(v && v!=='당직') cnt++; }); // 당직은 시간대별 인원에서 뺌
   const countCell = document.querySelector(`[data-dispatch-count="${slot}"]`);
   if(countCell){
     countCell.textContent = cnt || '';
@@ -6065,7 +6065,7 @@ function pageDispatch(){
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
-      if(v){ paintedSlots++; slotCounts[si]++; } else if(note && isMealSlot(s)) slotCounts[si]++;
+      if(v){ paintedSlots++; if(v!=='당직') slotCounts[si]++; } else if(note && isMealSlot(s)) slotCounts[si]++; // 당직은 시간대별 인원에서 뺌
       return slotCell(e.id, s, v, note);
     }).join('');
     // 근태: 월별 근태코드 표와 같은 코드(FC·MC·SC·AV·DN 등). 없으면 교대 순환 근무(D/N)
@@ -6095,7 +6095,7 @@ function pageDispatch(){
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
-      if(v){ supPainted++; slotCounts[si]++; } else if(note && isMealSlot(s)) slotCounts[si]++;
+      if(v){ supPainted++; if(v!=='당직') slotCounts[si]++; } else if(note && isMealSlot(s)) slotCounts[si]++; // 당직은 시간대별 인원에서 뺌
       return slotCell(supId, s, v, note);
     }).join('');
     const supLabel = i===0 ? `<td class="dpI dpI1" rowspan="${SUP_COUNT}" style="vertical-align:middle;">지원</td>` : '';
