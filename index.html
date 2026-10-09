@@ -876,7 +876,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 배차표·출퇴근 입력(조장 근태관리 포함): 칸 선은 검은 점선, 머리글 아래는 검은 실선 */
 #dpTable thead th{border-bottom:1px solid #111 !important;}
 .inTbl th,.inTbl td{border:1px dotted #111 !important;}
-.inTbl thead th{border-bottom:1px solid #111 !important;box-shadow:inset 0 -1px 0 #111;} /* 머리글이 위에 고정돼도 선이 보이게 */
+.inTbl thead th{border-bottom-style:hidden !important;box-shadow:inset 0 -1px 0 #111;} /* 머리글 아래 선: 겹쳐 두꺼워지지 않게 한 줄(1px)만 */
+.inTbl thead th.namehead{box-shadow:inset 0 -1px 0 #111, 2px 0 0 var(--bg) !important;} /* 머리글이 위에 고정돼도 선이 보이게 */
 /* 경위서·학자금 메일 보내기 */
 .docSel{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;}
 .dmToRow{display:flex;gap:6px;align-items:center;} .dmToRow .dmIn{flex:1;min-width:0;}
