@@ -883,6 +883,17 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .inTbl th,.inTbl td{border:1px dotted #111 !important;}
 .inTbl thead th{border-bottom-style:hidden !important;box-shadow:inset 0 -1px 0 #111;} /* 머리글 아래 선: 겹쳐 두꺼워지지 않게 한 줄(1px)만 */
 .inTbl thead th.namehead{box-shadow:inset 0 -1px 0 #111, 2px 0 0 var(--bg) !important;} /* 머리글이 위에 고정돼도 선이 보이게 */
+/* 월별 OT현황: 이전달·연월·다음달 + 전체·1조·2조 한 줄 */
+.otTopBar{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;margin:4px 0 10px;}
+.otTopBar .otMonRow{margin:0 !important;}
+.otTopBar .otTeamRow{margin:0 !important;gap:6px;flex-wrap:nowrap;}
+@media (max-width:700px){
+  .otTopBar{flex-wrap:nowrap;gap:4px;margin:2px 0 6px;}
+  .otTopBar .otMonRow{gap:3px;flex:0 1 auto;min-width:0;}
+  .otTopBar .btn.sm{padding:4px 6px !important;font-size:11.5px !important;white-space:nowrap;}
+  .otTopBar .otMonTxt{font-size:13px !important;white-space:nowrap;}
+  .otTopBar .otTeamRow{gap:3px;margin-left:auto !important;}
+}
 /* 경위서·학자금 메일 보내기 */
 .docSel{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;}
 .dmToRow{display:flex;gap:6px;align-items:center;} .dmToRow .dmIn{flex:1;min-width:0;}
@@ -4085,6 +4096,7 @@ function pageOT(){
 
   return `
   <h2 class="pgttl">월별 OT현황</h2>
+  <div class="otTopBar">
   <div class="otMonRow">
     <button class="btn ghost sm" id="prevPayMonth">◀ 이전달</button>
     <b class="otMonTxt">${otPayYear}년 ${otPayMonth}월</b>
@@ -4095,6 +4107,7 @@ function pageOT(){
     <button class="btn ${otTeamFilter===''?'':'ghost'} sm" data-act="ot-team-filter" data-team="">전체</button>
     <button class="btn ${otTeamFilter==='1'?'':'ghost'} sm" data-act="ot-team-filter" data-team="1">1조</button>
     <button class="btn ${otTeamFilter==='2'?'':'ghost'} sm" data-act="ot-team-filter" data-team="2">2조</button>
+  </div>
   </div>
   ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl otSum"><thead>
     <tr>
