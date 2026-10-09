@@ -826,7 +826,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .zoomFab{display:flex;position:fixed;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:60;align-items:center;gap:0;
     background:rgba(255,255,255,.94);border:1px solid #f9a8d4;border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.18);padding:2px;}
   .zoomFab button{border:0;background:transparent;font:inherit;font-weight:800;font-size:18px;color:#be185d;width:38px;height:34px;border-radius:999px;}
-  .zoomFab #zoomFabPct{font-size:11px;width:44px;color:#374151;}
+  .zoomFab #zoomFabPct{font-size:11px;width:46px;color:#374151;white-space:nowrap;padding:0;}
+  .zoomFab button{white-space:nowrap;line-height:1;}
   body.printing-sv .zoomFab,body.printing-acc .zoomFab,body.printing-ps .zoomFab{display:none !important;}
 }
 @media print{ .zoomFab,.zoomCtl{display:none !important;} }
@@ -4159,7 +4160,20 @@ function mFreeze(t){
   wrap.style.maxHeight = '';
   const topIn = wrap.getBoundingClientRect().top - scTop + (sc ? sc.scrollTop : 0);              // 페이지 안에서 표 상자 시작 위치
   const h = topIn < visH * 0.6 ? (visH - topIn - 10) : (visH - 12);                             // 첫 화면에 보이면 화면 아래까지, 아래쪽 표는 한 화면 높이
-  wrap.style.maxHeight = Math.max(240, Math.floor(h)) + 'px';
+  const boxH = Math.max(240, Math.floor(h));
+  wrap.style.maxHeight = boxH + 'px';
+  // 줄이 적어서 표가 상자보다 짧으면(예: 1조만 볼 때) 줄 높이를 늘려 화면 아래까지 꽉 채움(최대 60px)
+  const rows = t.tBodies[0] ? Array.from(t.tBodies[0].rows) : [];
+  rows.forEach(tr=> tr.style.height = '');
+  if(topIn < visH * 0.6 && rows.length){
+    const headH = t.tHead ? t.tHead.getBoundingClientRect().height : 0;
+    const need = t.getBoundingClientRect().height;
+    if(need < boxH - 4){
+      const per = Math.min(60, Math.floor((boxH - 4 - headH) / rows.length));
+      const cur = rows[0].getBoundingClientRect().height;
+      if(per > cur) rows.forEach(tr=> tr.style.height = per + 'px');
+    }
+  }
   const head = t.tHead; if(!head) return;
   [...head.rows].forEach(tr=>{ const y = tr.offsetTop - head.rows[0].offsetTop; [...tr.cells].forEach(th=> th.style.top = y + 'px'); });
 }
