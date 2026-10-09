@@ -750,8 +750,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable .dpI2 input{text-align:center;}
 #dpTable .dpI3{left:128px;min-width:48px;width:48px;font-weight:700;}
 #dpTable .dpI4{left:176px;min-width:50px;width:50px;}
-#dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:2px solid #111;}
-#dpTable td.dpI1[colspan]{min-width:272px;border-right:2px solid #111;}
+#dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:1px solid #111;}
+#dpTable td.dpI1[colspan]{min-width:272px;border-right:1px solid #111;}
 @media (min-width:701px){
   /* PC: 배차표를 작게 — 행·열이 한 화면에 들어오도록 칸 크기·글씨를 줄임 */
   #dpTable{font-size:11px;}
@@ -790,7 +790,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   #dpTable .dpI2 input{width:52px !important;}
   #dpTable .dpI3{left:84px;min-width:36px;width:36px;padding:0 1px;}
   #dpTable .dpI4{left:120px;min-width:34px;width:34px;padding:0 1px;}
-  #dpTable .dpI5{left:154px;min-width:34px;width:34px;padding:0 1px;border-right:2px solid #111;}
+  #dpTable .dpI5{left:154px;min-width:34px;width:34px;padding:0 1px;border-right:1px solid #111;}
   #dpTable td.dpI1[colspan]{min-width:188px;}
   .dpScrollBar .hint{display:none;}
   #dpTable td.dpCell,#dpTable th.dpSlotH{min-width:38px;width:38px;}
@@ -874,9 +874,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .svIn.svSignIn::placeholder,.svBossIn::placeholder{color:#cbd5e1;font-weight:400;}
 @media print{ .svSignIn::placeholder,.svBossIn::placeholder{color:transparent !important;} .svBossIn{border-bottom:0 !important;} }
 /* 배차표·출퇴근 입력(조장 근태관리 포함): 칸 선은 검은 점선, 머리글 아래는 검은 실선 */
-#dpTable thead th{border-bottom:2px solid #111 !important;}
+#dpTable thead th{border-bottom:1px solid #111 !important;}
 .inTbl th,.inTbl td{border:1px dotted #111 !important;}
-.inTbl thead th{border-bottom:2px solid #111 !important;box-shadow:inset 0 -2px 0 #111;} /* 머리글이 위에 고정돼도 선이 보이게 */
+.inTbl thead th{border-bottom:1px solid #111 !important;box-shadow:inset 0 -1px 0 #111;} /* 머리글이 위에 고정돼도 선이 보이게 */
 /* 경위서·학자금 메일 보내기 */
 .docSel{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;}
 .dmToRow{display:flex;gap:6px;align-items:center;} .dmToRow .dmIn{flex:1;min-width:0;}
