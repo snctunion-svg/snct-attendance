@@ -649,7 +649,6 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .ctbl th.sunday,.ctbl th.holiday{color:#dc2626 !important;font-weight:900 !important;-webkit-text-stroke:.3px #dc2626;} /* 월별 근태: 일요일·공휴일 빨간 글씨 더 굵게 */
 .ctbl th.wkA{background:#dbeafe !important;} .ctbl th.wkB{background:#dcfce7 !important;} /* 월별 근태 주 색: 연한 청색 / 연한 녹색 */
 .ctbl td.daycell.wkA,.ctbl td.daycell.wkB{background:var(--surface);}
-.ctbl td.daycell.sunD,.ctbl td.daycell.sunN{background:#eceef1;} /* 월별 근태 일요일(그 조 야간): 1조·2조 모두 흐린 회색 */
 /* 오늘 날짜 세로줄: 바깥 테두리보다 얇은 검은 테두리(PC·휴대폰 같은 굵기) */
 .ctbl .todayCol{border-left:calc(var(--sepW,1px) * 1.5) solid #111 !important;border-right:calc(var(--sepW,1px) * 1.5) solid #111 !important;}
 .ctbl :is(td,th):has(+ .todayCol){border-right:calc(var(--sepW,1px) * 1.5) solid #111 !important;}
@@ -3943,12 +3942,7 @@ function pageCombined(){
         if(dc) inner = `<span class="mini" style="color:${fill ? codeFillText(dc) : codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
       const memo = rec && rec.note ? String(rec.note) : '';
-      // 일요일 칠하기(1조·2조 화면에서만, 전체는 안 칠함): 그 조가 '야간'인 일요일만(2주마다) 세로줄 전체를 칠함
-      //  1조 야간 일요일 → 연한 녹색 / 2조 야간 일요일 → 연한 청색
-      let sunCls = '';
-      if((combinedTeamFilter==='1' || combinedTeamFilter==='2') && new Date(ds+'T00:00:00').getDay()===0 && scheduledShift(ds, combinedTeamFilter)==='N'){
-        sunCls = combinedTeamFilter==='1' ? ' sunN' : ' sunD';
-      }
+      const sunCls = ''; // 일요일 세로줄 칠하기는 없앰
       return `<td class="daycell ${cls} ${weekBand(ds)}${sunCls}${fill?' filled':''}${ds===TODAY ? (' todayCol'+(e.id===lastEmpId?' todayBot':'')) : ''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
