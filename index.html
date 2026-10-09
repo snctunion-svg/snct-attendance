@@ -733,6 +733,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable th,#splanTable td{border:1px solid #111 !important;}
 #dpTable tr.dpOff .dpNote{color:#9ca3af;}
 #dpTable tr.dpGrp > td{border-bottom:1px solid #111 !important;}
+#dpTable tr.dpLast > td{border-bottom:1px solid #111 !important;} /* 조원(No·성명) 끝나는 곳: 지원 줄과 구분 */
 #dpTable td.dpRk{background:var(--g-soft) !important;}
 #dpTable td.dpRk .rkPlain{color:#111;font-weight:800;font-size:12px;}
 #dpTable tr.dpOff td.dpRk{background:#e5e7eb !important;}
@@ -6049,7 +6050,8 @@ function pageDispatch(){
     const dcode = mcode || scheduledShift(ds, e.team||'');
     const offDay = !!dcode && !DP_WORK_CODES.has(dcode); // D·N 계열이 아니면(휴무·휴가 등) 행을 흐린 회색으로
     const grp = (idx % 3 === 2) && idx < sortedEmployees.length - 1; // 3명마다 검은 구분선
-    return `<tr class="${offDay ? 'dpOff' : ''}${grp ? ' dpGrp' : ''}">
+    const lastEmp = idx === sortedEmployees.length - 1; // 조원 마지막 줄(아래에 지원 줄 시작) — 검은 줄로 구분
+    return `<tr class="${offDay ? 'dpOff' : ''}${grp ? ' dpGrp' : ''}${lastEmp ? ' dpLast' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
       <td class="dpI dpI3">${mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
