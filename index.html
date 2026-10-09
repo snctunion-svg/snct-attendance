@@ -693,7 +693,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .dpScrollBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px;}
 .dpWrap{overflow:auto;max-height:calc(100vh - 150px);border:2px solid var(--text);border-radius:0 0 10px 10px;background:var(--surface);-webkit-overflow-scrolling:touch;}
 #dpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
-#dpTable th,#dpTable td{height:36px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;padding:0 4px;white-space:nowrap;}
+#dpTable th,#dpTable td{height:36px;border-right:1px dotted #111;border-bottom:1px dotted #111;text-align:center;padding:0 4px;white-space:nowrap;}
 #dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
 #dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;} /* manipulation = 스크롤+두 손가락 확대·축소 허용 */
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
@@ -750,8 +750,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable .dpI2 input{text-align:center;}
 #dpTable .dpI3{left:128px;min-width:48px;width:48px;font-weight:700;}
 #dpTable .dpI4{left:176px;min-width:50px;width:50px;}
-#dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:2px solid var(--text-muted);}
-#dpTable td.dpI1[colspan]{min-width:272px;border-right:2px solid var(--text-muted);}
+#dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:2px solid #111;}
+#dpTable td.dpI1[colspan]{min-width:272px;border-right:2px solid #111;}
 @media (min-width:701px){
   /* PC: 배차표를 작게 — 행·열이 한 화면에 들어오도록 칸 크기·글씨를 줄임 */
   #dpTable{font-size:11px;}
@@ -790,7 +790,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   #dpTable .dpI2 input{width:52px !important;}
   #dpTable .dpI3{left:84px;min-width:36px;width:36px;padding:0 1px;}
   #dpTable .dpI4{left:120px;min-width:34px;width:34px;padding:0 1px;}
-  #dpTable .dpI5{left:154px;min-width:34px;width:34px;padding:0 1px;border-right:2px solid var(--text-muted);}
+  #dpTable .dpI5{left:154px;min-width:34px;width:34px;padding:0 1px;border-right:2px solid #111;}
   #dpTable td.dpI1[colspan]{min-width:188px;}
   .dpScrollBar .hint{display:none;}
   #dpTable td.dpCell,#dpTable th.dpSlotH{min-width:38px;width:38px;}
