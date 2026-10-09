@@ -4150,10 +4150,14 @@ function mFreeze(t){
   const ths = t.querySelectorAll('thead th');
   if(window.innerWidth > 700){ wrap.classList.remove('mFreeze'); wrap.style.maxHeight = ''; ths.forEach(th=> th.style.top = ''); return; }
   wrap.classList.add('mFreeze');
+  // 표 상자 아래 끝이 휴대폰 화면 아래에 딱 맞게(아이폰 사파리 아래 도구막대 몫 제외) — 표 안에서 위아래·옆으로 밀어서 봄
   const sc = document.getElementById('content');
-  const scTop = sc ? sc.getBoundingClientRect().top : 0;
-  const h = Math.max(260, window.innerHeight - Math.max(0, scTop) - 12);
-  wrap.style.maxHeight = h + 'px';
+  const scTop = sc ? Math.max(0, sc.getBoundingClientRect().top) : 0;
+  const visH = (typeof phoneViewH === 'function' ? phoneViewH() : window.innerHeight) - scTop;   // 머리줄 아래 보이는 높이
+  wrap.style.maxHeight = '';
+  const topIn = wrap.getBoundingClientRect().top - scTop + (sc ? sc.scrollTop : 0);              // 페이지 안에서 표 상자 시작 위치
+  const h = topIn < visH * 0.6 ? (visH - topIn - 10) : (visH - 12);                             // 첫 화면에 보이면 화면 아래까지, 아래쪽 표는 한 화면 높이
+  wrap.style.maxHeight = Math.max(240, Math.floor(h)) + 'px';
   const head = t.tHead; if(!head) return;
   [...head.rows].forEach(tr=>{ const y = tr.offsetTop - head.rows[0].offsetTop; [...tr.cells].forEach(th=> th.style.top = y + 'px'); });
 }
@@ -4271,7 +4275,7 @@ function fitDispatch(){
   if(lb > avail){ const z = (avail - tTop) / (lb - tTop); t.style.zoom = Math.max(0.5, Math.min(1, Math.floor(z*1000)/1000)); }
 }
 // 휴대폰: 화면 높이가 바뀌면(주소창 접힘·펴짐) 배차표 다시 맞춤
-if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ if((window.visualViewport.scale||1) > 1.01) return; clearTimeout(window._dpFitT); window._dpFitT = setTimeout(()=>{ fitDispatch(); fitInputMobile(); applyUiZoom(); }, 150); });
+if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ if((window.visualViewport.scale||1) > 1.01) return; clearTimeout(window._dpFitT); window._dpFitT = setTimeout(()=>{ fitDispatch(); fitInputMobile(); if(window.innerWidth<=700){ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined') document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } applyUiZoom(); }, 150); });
 // 지원계획표: 세로를 화면 높이의 85%로(줄 높이를 늘림)
 function fitSplan(){
   if(VIEW!=='splan') return;
@@ -6445,6 +6449,7 @@ function afterRender(){
   fitSafety();
   fitDispatch();
   if(window.innerWidth<=700 && (VIEW==='dispatch' || VIEW==='input' || VIEW==='input2')){ [300, 1000].forEach(ms=> setTimeout(()=>{ fitDispatch(); fitInputMobile(); applyUiZoom(); }, ms)); }
+  if(window.innerWidth<=700 && (VIEW==='ot' || VIEW==='combined')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined') document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); }, ms)); }
   fitSplan();
   applyUiZoom();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
