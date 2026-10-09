@@ -894,6 +894,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .otTopBar .otMonTxt{font-size:13px !important;white-space:nowrap;}
   .otTopBar .otTeamRow{gap:3px;margin-left:auto !important;}
 }
+/* 배차표 근태 칸: 토요일 만근 표시(분홍 글씨) */
+#dpTable .dpMg{color:#db2777;font-weight:800;font-size:11px;letter-spacing:-.4px;line-height:1.05;white-space:nowrap;}
+@media (max-width:700px){ #dpTable .dpMg{font-size:9.5px;white-space:normal;display:inline-block;} }
 /* 경위서·학자금 메일 보내기 */
 .docSel{border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--surface);color:var(--text);font:inherit;font-weight:700;font-size:14px;}
 .dmToRow{display:flex;gap:6px;align-items:center;} .dmToRow .dmIn{flex:1;min-width:0;}
@@ -6086,12 +6089,15 @@ function pageDispatch(){
     const mcode = gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim());
     const dcode = mcode || scheduledShift(ds, e.team||'');
     const offDay = !!dcode && !DP_WORK_CODES.has(dcode); // D·N 계열이 아니면(휴무·휴가 등) 행을 흐린 회색으로
+    // 토요일 만근(그 주 월~금 개근 등 — 자동 판정 또는 월별 근태 '만근 수동 인정'): 근태 칸에 분홍 글씨 '만근(D)'
+    const isSat = new Date(ds+'T00:00:00').getDay()===6;
+    const mgOn = isSat && !offDay && !!dcode && recManguen(Object.assign({}, rec||{}, {employeeId:e.id, date:ds}), ds);
     const grp = (idx % 3 === 2) && idx < sortedEmployees.length - 1; // 3명마다 검은 구분선
     const lastEmp = idx === sortedEmployees.length - 1; // 조원 마지막 줄(아래에 지원 줄 시작) — 검은 줄로 구분
     return `<tr class="${offDay ? 'dpOff' : ''}${grp ? ' dpGrp' : ''}${lastEmp ? ' dpLast' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
-      <td class="dpI dpI3">${mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
+      <td class="dpI dpI3">${mgOn ? `<span class="dpMg" title="토요일 만근(특근)">만근<wbr>(${esc(dcode)})</span>` : mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
       <td class="dpI dpI4 dpRk g-${dayIsHol?'yel':'pur'}">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(x=> x && x!=='당직').length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
       ${cells}
