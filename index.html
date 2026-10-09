@@ -2321,7 +2321,9 @@ function computeDaily(rec, dateStr){
   let wc = (rec.workCode && rec.workCode!=='OFF') ? rec.workCode : '';
   const sched = (typeof empScheduled==='function' && rec.employeeId) ? empScheduled(rec.employeeId, dateStr) : '';
   if(!wc){
-    if(rec.attManual && rec.workCode==='OFF') return zero;
+    // 월별 근태에서 코드를 지우면 OFF로 남는데, 출퇴근 시간을 실제로 입력한 날은 근무한 것으로 계산.
+    // (휴가 등 근태코드가 있는 OFF 날만 계산하지 않음)
+    if(rec.attManual && rec.workCode==='OFF' && rec.statusCode) return zero;
     wc = sched || (toDec(rec.checkIn) <= 14 ? 'D' : 'N');
   }
 
