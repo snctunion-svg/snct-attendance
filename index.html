@@ -3943,8 +3943,14 @@ function pageCombined(){
         if(dc) inner = `<span class="mini" style="color:${fill ? codeFillText(dc) : codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
       const memo = rec && rec.note ? String(rec.note) : '';
-      // 일요일: 그 조가 주간이면 연한 청색, 야간이면 연한 녹색(1조·2조가 2주마다 같은 색)
-      const sunCls = (new Date(ds+'T00:00:00').getDay()===0) ? ({D:' sunD', N:' sunN'}[scheduledShift(ds, e.team||'')] || '') : '';
+      // 일요일 칠하기(1조·2조 화면에서만, 전체는 안 칠함)
+      //  1조: 주간 → 연한 청색, 야간 → 연한 녹색 / 2조: 반대(주간 → 연한 녹색, 야간 → 연한 청색)
+      let sunCls = '';
+      if((combinedTeamFilter==='1' || combinedTeamFilter==='2') && new Date(ds+'T00:00:00').getDay()===0){
+        const sh = scheduledShift(ds, combinedTeamFilter);
+        const blue = combinedTeamFilter==='1' ? sh==='D' : sh==='N';
+        if(sh==='D' || sh==='N') sunCls = blue ? ' sunD' : ' sunN';
+      }
       return `<td class="daycell ${cls} ${weekBand(ds)}${sunCls}${fill?' filled':''}${ds===TODAY ? (' todayCol'+(e.id===lastEmpId?' todayBot':'')) : ''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
