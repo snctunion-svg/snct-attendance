@@ -834,7 +834,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .zoomFab{display:none;}
 @media (max-width:700px){
   .zoomFab{display:flex;position:fixed;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:60;align-items:center;gap:0;
-    background:rgba(255,255,255,.94);border:1px solid #f9a8d4;border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.18);padding:2px;}
+    background:transparent;border:1px solid #f9a8d4;border-radius:999px;box-shadow:none;padding:2px;} /* 흰 배경 없이 투명 — 뒤 표가 비쳐 보임 */
   .zoomFab button{border:0;background:transparent;font:inherit;font-weight:800;font-size:18px;color:#be185d;width:38px;height:34px;border-radius:999px;}
   .zoomFab #zoomFabPct{font-size:11px;width:46px;color:#374151;white-space:nowrap;padding:0;}
   .zoomFab button{white-space:nowrap;line-height:1;}
@@ -3015,7 +3015,7 @@ async function initDb(){
     dbReady = true; authResolved = true; canEdit = true; userRole = 'all';
     updateStatusBar(); updateNavForRole();
     subscribeAll();
-    render();
+    if(VIEW!=='input') setView(VIEW); else render();
     return;
   }
   if(!db){
@@ -3027,6 +3027,7 @@ async function initDb(){
   dbReady = true;
   updateStatusBar();
   subscribeAll();
+  if(VIEW!=='input') setView(VIEW); // 새로 고침 전 보던 화면의 자료 구독
   fb.authM.onAuthStateChanged(fb.auth, user=>{
     currentUser = user;
     userRole = user ? roleOfEmail(user.email) : null;
@@ -3451,6 +3452,7 @@ function setView(v){
   canEdit = roleCanEdit(v);
   if(window._mgScroll) window._mgScroll.x = null; // 화면을 다시 열면 월별 근태는 오늘 날짜 위치부터
   VIEW = v;
+  try{ localStorage.setItem('snct_last_view', v); }catch(e){} // 새로 고침해도 보던 화면(배차표 등) 그대로
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
@@ -7268,7 +7270,10 @@ document.getElementById('scrim').addEventListener('click', ()=>{
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
 });
-document.querySelector('nav#nav a[data-view="input"]').classList.add('on');
+// 새로 고침하면 마지막으로 보던 화면(배차표 등)으로 다시 엶
+(function(){ let v = null; try{ v = localStorage.getItem('snct_last_view'); }catch(e){}
+  const a = v && document.querySelector(`nav#nav a[data-view="${v}"]`);
+  if(a){ VIEW = v; a.classList.add('on'); } else document.querySelector('nav#nav a[data-view="input"]').classList.add('on'); })();
 updateNavForRole();
 
 /* ========================= 시작 ========================= */
