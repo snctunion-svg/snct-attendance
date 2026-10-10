@@ -734,6 +734,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable .spIn{width:52px;border:1px solid #cbd5e1;border-radius:5px;padding:3px 2px;background:#fff;color:#111;text-align:center;font-size:12px;font:inherit;font-size:12px;}
 #splanTable.spTall .spIn{height:var(--spInH);font-size:15px;}
 #splanTable.spTall td{font-size:14px;}
+@media (max-width:700px){ #prevWeek,#nextWeek{display:none !important;} } /* 휴대폰 지원계획표: 이전주·다음주 버튼 숨김 */
 #splanTable td.sp-avail{color:#1d4ed8 !important;font-weight:800;}
 #splanTable td.sp-attend{color:#111 !important;font-weight:900;}
 #splanTable td.sp-ratio{color:#dc2626 !important;font-weight:800;}
@@ -4331,9 +4332,11 @@ function fitSplanMobile(){
   const sc = document.getElementById('content'), y0 = sc ? sc.scrollTop : 0;
   const tTop = t.getBoundingClientRect().top + y0;
   const btn = document.getElementById('splanResetBtn');
-  const btnH = btn ? (btn.getBoundingClientRect().height + 12 + 24) : 70;          // 아래 [초기화] 줄 + 여백
+  const btnH = btn ? (btn.getBoundingClientRect().height + 12) : 50;          // 아래 [초기화] 줄 + 여백
   const headH = t.tHead ? t.tHead.getBoundingClientRect().height : 0;
-  const avail = (typeof phoneViewH === 'function' ? phoneViewH() : window.innerHeight) - 8 - btnH;
+  const fab = document.getElementById('zoomFab');
+  const fabH = fab && getComputedStyle(fab).display !== 'none' ? (fab.getBoundingClientRect().height + 14 + 8) : 8;   // 아래 확대·축소 버튼과 겹치지 않게 그 위까지만
+  const avail = (typeof phoneViewH === 'function' ? phoneViewH() : window.innerHeight) - fabH - btnH;
   const per = Math.min(64, Math.floor((avail - tTop - headH) / rows.length));
   const cur = rows[0].getBoundingClientRect().height;
   if(per > cur){
