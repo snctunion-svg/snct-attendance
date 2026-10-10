@@ -663,6 +663,12 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   /* 휴대폰(아이폰 포함): MCH·MCS가 두 줄로 꺾이지 않고, 모든 칸이 같은 폭 */
   .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){width:46px;min-width:46px;max-width:none;font-size:11px !important;}
   .cmbLeft .ctbl tbody td:not(.namecell):not(:first-child){min-width:46px;}
+  /* 휴대폰 월별 근태: 근태 집계와 같은 크기로 크게(칸 넓게·줄 높게·글자 크게) — 옆으로 밀어서 봄 */
+  .cmbRight .ctbl.gtbl td.daycell{width:40px !important;min-width:40px;}
+  .cmbRight .ctbl.gtbl td.daycell .mini{font-size:12.5px;}
+  .cmbRight .ctbl.gtbl thead th{font-size:12.5px !important;min-width:40px;}
+  .cmbRight .ctbl.gtbl td.namecell,.cmbRight .ctbl.gtbl th.namehead{font-size:12.5px !important;min-width:64px;white-space:nowrap;}
+  .cmbRight .ctbl.gtbl tbody td{height:40px !important;}
 }
 /* 성명 칸 가운데 정렬(근태 집계·월별 근태·월별 OT현황) */
 .ctbl td.namecell,.ctbl th.namehead,.otSum td.namecell,.otSum th.namehead{text-align:center !important;}
