@@ -1013,7 +1013,8 @@ let teamOtFilter = ''; // 조별 월간집계: '' (전체), '1', '2'
 let otMatrixStart = null, otMatrixEnd = null; // 월별 OT현황: 작업기간
 let otPayYear = null, otPayMonth = null; // 월별 OT현황: 임금월(예: "10월"=9/26~10/25) 기준 연/월
 let otTeamFilter = (()=>{ try{ return localStorage.getItem('snct_team_ot')||''; }catch(e){ return ''; } })(); // 월별 OT현황 — 기기에 기억
-let dispatchTeamFilter = ''; // 배차표: '' (전체), '1', '2'
+let dispatchTeamFilter = ''; // 배차표: '' (전체), '1', '2' — 새로 고침해도 고른 것 그대로(이 기기에 기억)
+try{ const v = localStorage.getItem('snct_dp_team'); if(v==='' || v==='1' || v==='2') dispatchTeamFilter = v; }catch(e){}
 let addCodeFormOpen = false; // 근태코드 화면: 코드 추가 폼 표시 여부
 // 임금월 계산: "M월"은 (M-1월)26일 ~ M월25일
 function payPeriodRange(y,m){
@@ -3015,7 +3016,7 @@ async function initDb(){
     dbReady = true; authResolved = true; canEdit = true; userRole = 'all';
     updateStatusBar(); updateNavForRole();
     subscribeAll();
-    if(VIEW!=='input') setView(VIEW); else render();
+    render();
     return;
   }
   if(!db){
@@ -3027,7 +3028,6 @@ async function initDb(){
   dbReady = true;
   updateStatusBar();
   subscribeAll();
-  if(VIEW!=='input') setView(VIEW); // 새로 고침 전 보던 화면의 자료 구독
   fb.authM.onAuthStateChanged(fb.auth, user=>{
     currentUser = user;
     userRole = user ? roleOfEmail(user.email) : null;
@@ -3452,7 +3452,6 @@ function setView(v){
   canEdit = roleCanEdit(v);
   if(window._mgScroll) window._mgScroll.x = null; // 화면을 다시 열면 월별 근태는 오늘 날짜 위치부터
   VIEW = v;
-  try{ localStorage.setItem('snct_last_view', v); }catch(e){} // 새로 고침해도 보던 화면(배차표 등) 그대로
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
@@ -6542,7 +6541,7 @@ function afterRender(){
     render();
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
-  el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; autoDispatchShift(); render(); });
+  el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); }catch(e){} autoDispatchShift(); render(); });
   bindPayroll(el);
   bindAccident(el);
   bindSafety(el);
@@ -7270,10 +7269,7 @@ document.getElementById('scrim').addEventListener('click', ()=>{
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
 });
-// 새로 고침하면 마지막으로 보던 화면(배차표 등)으로 다시 엶
-(function(){ let v = null; try{ v = localStorage.getItem('snct_last_view'); }catch(e){}
-  const a = v && document.querySelector(`nav#nav a[data-view="${v}"]`);
-  if(a){ VIEW = v; a.classList.add('on'); } else document.querySelector('nav#nav a[data-view="input"]').classList.add('on'); })();
+document.querySelector('nav#nav a[data-view="input"]').classList.add('on');
 updateNavForRole();
 
 /* ========================= 시작 ========================= */
