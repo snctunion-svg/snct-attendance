@@ -732,7 +732,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable thead th{font-weight:800;font-size:12px;background:#f1f5f9;}
 #splanTable td.spLbl{font-weight:700;white-space:nowrap;padding:2px 10px;}
 #splanTable .spIn{width:52px;border:1px solid #cbd5e1;border-radius:5px;padding:3px 2px;background:#fff;color:#111;text-align:center;font-size:12px;font:inherit;font-size:12px;}
-#splanTable.spTall .spIn{height:var(--spInH);font-size:15px;}
+#splanTable.spTall .spIn{height:var(--spInH);font-size:15px;box-sizing:border-box;}
 #splanTable.spTall td{font-size:14px;}
 @media (max-width:700px){ #prevWeek,#nextWeek{display:none !important;} } /* 휴대폰 지원계획표: 이전주·다음주 버튼 숨김 */
 #splanTable td.sp-avail{color:#1d4ed8 !important;font-weight:800;}
@@ -4329,21 +4329,30 @@ function fitSplanMobile(){
   const rows = Array.from(t.querySelectorAll('tbody tr'));
   rows.forEach(tr=> tr.style.height = ''); t.classList.remove('spTall'); t.style.removeProperty('--spInH');
   if(!rows.length) return;
-  const sc = document.getElementById('content'), y0 = sc ? sc.scrollTop : 0;
-  const tTop = t.getBoundingClientRect().top + y0;
+  const sc = document.getElementById('content'), y0 = ()=> sc ? sc.scrollTop : 0;
+  // 표 아래 끝(또는 [초기화] 버튼이 보이면 그 버튼 아래 끝)이 확대·축소 버튼 위에서 끝나도록
   const btn = document.getElementById('splanResetBtn');
-  const btnH = btn ? (btn.getBoundingClientRect().height + 12) : 50;          // 아래 [초기화] 줄 + 여백
-  const headH = t.tHead ? t.tHead.getBoundingClientRect().height : 0;
+  const endY = ()=> {
+    const b = btn && getComputedStyle(btn).display !== 'none' ? btn : t;
+    return b.getBoundingClientRect().bottom + y0();
+  };
   const fab = document.getElementById('zoomFab');
-  const fabH = fab && getComputedStyle(fab).display !== 'none' ? (fab.getBoundingClientRect().height + 14 + 8) : 8;   // 아래 확대·축소 버튼과 겹치지 않게 그 위까지만
-  const avail = (typeof phoneViewH === 'function' ? phoneViewH() : window.innerHeight) - fabH - btnH;
-  const per = Math.min(64, Math.floor((avail - tTop - headH) / rows.length));
+  const viewH = (typeof phoneViewH === 'function' ? phoneViewH() : window.innerHeight);
+  const fabTop = fab && getComputedStyle(fab).display !== 'none' ? Math.min(fab.getBoundingClientRect().top, viewH - fab.getBoundingClientRect().height - 14) : viewH;
+  const target = fabTop - 10;
   const cur = rows[0].getBoundingClientRect().height;
-  if(per > cur){
+  let per = Math.floor(cur + (target - endY()) / rows.length);
+  if(per <= cur) return;                                   // 화면이 작으면 원래 크기 그대로
+  t.classList.add('spTall');
+  for(let k = 0; k < 4; k++){
+    per = Math.max(Math.ceil(cur), Math.min(64, per));
     rows.forEach(tr=> tr.style.height = per + 'px');
-    t.style.setProperty('--spInH', Math.max(26, per - 10) + 'px');                 // 입력칸도 줄 높이에 맞춰 크게
-    t.classList.add('spTall');
+    t.style.setProperty('--spInH', Math.max(26, per - 12) + 'px');   // 입력칸도 줄 높이에 맞춰 크게
+    const over = endY() - target;                           // 실제로 그려진 높이로 다시 맞춤(글꼴·기기 차이 보정)
+    if(over <= 0 && over > -rows.length) break;
+    per = per - Math.ceil(over / rows.length);
   }
+  if(endY() > target){ rows.forEach(tr=> tr.style.height = ''); t.classList.remove('spTall'); }
 }
 function fitSplan(){
   if(VIEW!=='splan') return;
@@ -6255,7 +6264,7 @@ function pageSupportPlan(){
   <h2 class="pgttl">지원계획표</h2>
   <div class="panel">
   <div class="row" style="align-items:flex-end;margin-bottom:12px;">
-    <div class="field" style="min-width:auto;"><label>주간</label><b style="font-size:15px;line-height:38px;">${esc(weekStart)} ~ ${esc(addDays(weekStart,6))}</b></div>
+    <div class="field" style="min-width:auto;"><b style="font-size:15px;line-height:38px;">${esc(weekStart)} ~ ${esc(addDays(weekStart,6))}</b></div>
     <button class="btn ghost sm" id="prevWeek">◀ 이전주</button>
     <button class="btn ghost sm" id="nextWeek">다음주 ▶</button>
   </div>
