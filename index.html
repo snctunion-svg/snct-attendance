@@ -3446,6 +3446,7 @@ function setView(v){
   if(v==='pay') v = 'combined'; // 급여 명세서는 잠시 숨김(나중에 다시 사용)
   if(authResolved && !roleCanSee(v)) v = 'combined';
   canEdit = roleCanEdit(v);
+  if(window._mgScroll) window._mgScroll.x = null; // 화면을 다시 열면 월별 근태는 오늘 날짜 위치부터
   VIEW = v;
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
   document.getElementById('nav').classList.remove('open');
@@ -4357,6 +4358,27 @@ function fitCombined(){
   wrap.style.zoom = '';
   wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70, ratio:0.85})); // 세로 85%
   wrap.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t));
+  // 휴대폰 월별 근태: 처음 열 때 어제·오늘 날짜가 성명 칸 바로 옆에 오도록 옆으로 밀어 둠.
+  //  그 뒤에는 손으로 민 위치를 기억해서, 화면이 새로 그려져도(자료 갱신 등) 그 자리 그대로
+  if(window.innerWidth <= 700){
+    const mt = wrap.querySelector('.cmbRight table.ctbl'), box = mt && mt.closest('.scrollx');
+    if(mt && box){
+      const key = (mt.querySelector('thead th.dayHead') ? mt.querySelector('thead th.dayHead').dataset.date || '' : '').slice(0,7);
+      const st = window._mgScroll || (window._mgScroll = {key:'', x:null});
+      if(st.key !== key || st.x == null){
+        const today = mt.querySelector('thead th.dayHead.todayCol'), name = mt.querySelector('thead th.namehead');
+        let x = 0;
+        if(today && name){
+          const prev = today.previousElementSibling && today.previousElementSibling.classList.contains('dayHead') ? today.previousElementSibling : today;
+          box.scrollLeft = 0;
+          x = Math.max(0, Math.round(prev.getBoundingClientRect().left - name.getBoundingClientRect().right));
+        }
+        st.key = key; st.x = x;
+      }
+      box.scrollLeft = st.x;
+      if(!box._mgHook){ box._mgHook = 1; box.addEventListener('scroll', ()=>{ st.x = box.scrollLeft; }, {passive:true}); }
+    }
+  }
 }
 // 자정이 지나면 화면을 다시 그려서 '오늘' 표시가 다음 날로 옮겨지게
 (function scheduleMidnight(){
