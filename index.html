@@ -5089,7 +5089,7 @@ function bindEqPay(el){
    선석배정(회사 사이트 선석조회)의 크레인(QC) 작업시간으로 조·근무(주/야)마다 필요한 인원을 구하고,
    원본 근무기록(EXCEL_ATT·EXCEL_CODES, 전체 STS 기사)의 실제 출근·지원과 비교.
    고정휴무(FC)를 하루 2명으로 묶었을 때 모자라는 인원이 얼마나 늘어나는지 계산. 저장은 안 함(계산만). */
-const FCA = {from:'2025-12-26', to:'2026-09-25', rate:18663, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null};
+const FCA = {from:'2025-12-26', to:'2026-09-25', rate:18663, annual:97260000, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null};
 function fcaDs(r){ return '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6); }
 function fcaMin(t){ const m = String(t||'').match(/(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})/); if(!m) return null; const [y,mo,d] = m[1].split('-').map(Number); return Date.UTC(y,mo-1,d, Number(m[2]), Number(m[3]))/60000; }
 function fcaAt(ds, h){ const [y,mo,d] = ds.split('-').map(Number); return Date.UTC(y,mo-1,d,h,0)/60000; }
@@ -5188,14 +5188,10 @@ function fcaAnalyze(){
     });
     return adj;
   };
-  const base2 = short(rows, 2), base18 = short(rows, 1.8);
+  const base2 = short(rows, 2);
   const sc = [
-    ['현재 (휴무 1명 · 교대율 2.0)', base2],
-    ['휴무 2명 · 교대율 2.0 — 순서대로 묶음', short(rows, 2, pairAdj('order', 2))],
-    ['휴무 2명 · 교대율 2.0 — 한가한 날에 2명', short(rows, 2, pairAdj('best', 2))],
-    ['휴무 2명 · 교대율 2.0 — 바쁜 날에 2명(최악)', short(rows, 2, pairAdj('worst', 2))],
-    ['휴무 2명 · 교대율 1.8 (회사안) — 순서대로', short(rows, 1.8, pairAdj('order', 1.8))],
-    ['참고: 휴무 1명 · 교대율 1.8', base18]
+    ['현재 (휴무 1명)', base2],
+    ['휴무 2명 (순서대로 묶음)', short(rows, 2, pairAdj('order', 2))]
   ];
   const months = rows.length ? Math.max(1, Math.round((fcaAt(FCA.to,0) - fcaAt(FCA.from,0)) / 1440 / 30.4)) : 1;
   const unit = avgSupH * FCA.rate * 1.5; // 모자라는 1명 = 지원 1건(평균 지원시간 × 통상시급 × 1.5)
@@ -5217,22 +5213,24 @@ function pageFcAna(){
   const err = FCA.err ? `<div class="note">${esc(FCA.err)}</div>` : '';
   let res = '';
   if(R){
-    const scRows = R.sc.map(([t, v], i)=>{
-      const d = v - R.base2, yr = d * 12 / R.months;
-      return `<tr${i===0?' class="fcaBase"':''}><td style="text-align:left;">${esc(t)}</td><td class="eqN">${W(v)}</td><td class="eqN">${i===0 ? '' : (d>0?'+':'')+W(d)}</td><td class="eqN">${i===0 ? '' : (yr>0?'+':'')+W(yr)}</td><td class="eqN">${i===0 ? '' : (yr>0?'+':'')+W(yr * R.unit)+'원'}</td></tr>`;
-    }).join('');
-    const qRows = Object.keys(R.byQ).map(Number).sort((a,b)=>a-b).map(q=>{ const o = R.byQ[q]; return `<tr><td>${q}대</td><td class="eqN">${o.n}</td><td class="eqN">${Math.ceil(q*2)}</td><td class="eqN">${(o.avail/o.n).toFixed(1)}</td><td class="eqN">${(o.sup/o.n).toFixed(2)}</td><td class="eqN">${(o.need/o.n).toFixed(2)}</td></tr>`; }).join('');
+    const now = R.sc[0][1], two = R.sc[1][1], d = two - now, yr = d * 12 / R.months, cost = yr * R.unit;
+    const totalPay = R.nPeople * FCA.annual, pct = totalPay ? cost / totalPay * 100 : 0;
+    const sg = v=> (v>0?'+':'');
     res = `
     <div class="panel">
       <h3>결과 (${esc(FCA.from)} ~ ${esc(FCA.to)} · 선석 자료 ${R.nDays}일 · 기사 ${R.nPeople}명, 전임 제외)</h3>
-      <div class="scrollx"><table class="tbl eqTbl"><thead><tr><th>경우</th><th>모자라는 인원<br>(조·근무 합계)</th><th>현재 대비</th><th>1년 환산</th><th>1년 추가 비용<br>(지원으로 메움)</th></tr></thead><tbody>${scRows}</tbody></table></div>
-      <p class="hint" style="margin:8px 0 0;">필요인원 = 그 근무(주간 08~18시 / 야간 18~08시)에 동시에 돈 크레인 최대 대수 × 교대율(올림). 모자라는 인원 = 필요인원 − 자기 조 출근 인원(0보다 클 때). 모자라는 1명 = 지원 1건 = 평균 지원 ${R.avgSupH.toFixed(1)}시간 × 통상시급 ${W(FCA.rate)}원 × 1.5 ≈ ${W(R.unit)}원.<br>
-      휴무 2명: 같은 조·같은 주에서 고정휴무(FC) 1명인 날(월·토 제외)을 둘씩 묶어 한 날에 2명, 다른 날은 0명으로 바꿈(1년 휴무일수는 그대로).</p>
-    </div>
-    <div class="panel">
-      <h3>검증: 크레인 대수별 평균</h3>
-      <div class="scrollx"><table class="tbl eqTbl"><thead><tr><th>크레인</th><th>조·근무 수</th><th>필요인원(2.0)</th><th>자기 조 출근</th><th>실제 지원 들어옴</th><th>계산상 부족</th></tr></thead><tbody>${qRows}</tbody></table></div>
-      <p class="hint" style="margin:8px 0 0;">계산상 부족과 실제 지원 인원이 비슷하게 움직이면 이 계산이 현장과 맞는다는 뜻이에요. (실제 지원 합계 ${W(R.totSup)}명 · 계산상 부족 합계 ${W(R.base2)}명)</p>
+      <div class="scrollx"><table class="tbl eqTbl"><thead><tr><th></th><th>현재<br>(휴무 1명)</th><th>휴무 2명<br>(순서대로)</th><th>차이</th></tr></thead><tbody>
+        <tr><td style="text-align:left;">모자라는 인원 (기간 합계)</td><td class="eqN">${W(now)}명</td><td class="eqN">${W(two)}명</td><td class="eqN eqTot">${sg(d)}${W(d)}명</td></tr>
+        <tr><td style="text-align:left;">1년 환산</td><td class="eqN">${W(now*12/R.months)}명</td><td class="eqN">${W(two*12/R.months)}명</td><td class="eqN eqTot">${sg(yr)}${W(yr)}명</td></tr>
+        <tr><td style="text-align:left;">1년 추가 비용 (지원으로 메움)</td><td></td><td></td><td class="eqN eqTot">${sg(cost)}${W(cost)}원</td></tr>
+        <tr><td style="text-align:left;">1인당 1년</td><td></td><td></td><td class="eqN">${sg(cost)}${W(R.nPeople ? cost/R.nPeople : 0)}원</td></tr>
+        <tr class="fcaBase"><td style="text-align:left;">기존 대비 시급 인상률로 환산</td><td></td><td></td><td class="eqN eqNet">${sg(pct)}${pct.toFixed(2)}%</td></tr>
+      </tbody></table></div>
+      <p class="hint" style="margin:8px 0 0;">필요인원 = 그 근무(주간 08~18시 / 야간 18~08시)에 동시에 돈 크레인 최대 대수 × 2(올림). 모자라는 인원 = 필요인원 − 자기 조 출근 인원.
+      모자라는 1명 = 지원 1건 = 평균 지원 ${R.avgSupH.toFixed(1)}시간 × 통상시급 ${W(FCA.rate)}원 × 1.5 ≈ ${W(R.unit)}원.<br>
+      휴무 2명: 같은 조·같은 주에서 고정휴무(FC) 1명인 날(월·토 제외)을 날짜 순서대로 둘씩 묶어 앞날 2명, 뒷날 0명(1년 휴무일수는 그대로).<br>
+      시급 인상률 환산 = 1년 추가 비용 ÷ 장비직 총인건비(${R.nPeople}명 × 1인 ${W(FCA.annual)}원 = ${W(totalPay)}원).
+      검증: 기간 중 실제 지원 들어온 인원 ${W(R.totSup)}명 · 계산상 모자라는 인원 ${W(now)}명.</p>
       <button class="btn ghost sm" data-act="fca-csv" style="margin-top:8px;">📥 날짜별 자료 내려받기(CSV)</button>
     </div>`;
   }
@@ -5243,6 +5241,7 @@ function pageFcAna(){
       <input type="date" id="fcaFrom" value="${FCA.from}" class="tx" style="padding:5px 6px;"> <span>~</span>
       <input type="date" id="fcaTo" value="${FCA.to}" class="tx" style="padding:5px 6px;">
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="fcaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
+      <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="fcaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       <button class="btn sm" data-act="fca-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '선석 자료 불러와서 분석'}</button>
     </div>
     <p class="hint" style="margin:8px 0 0;">회사 사이트 선석배정(선석 조회와 같은 자료)을 7일씩 받아서 근무기록과 비교해요. 기간이 길면 몇 분 걸려요. 원본 근무기록이 있는 날(~2026-09-28)까지만 정확해요.</p>
@@ -5257,6 +5256,8 @@ function bindFcAna(el){
     const f = el.querySelector('#fcaFrom').value, t = el.querySelector('#fcaTo').value, r = Number(String(el.querySelector('#fcaRate').value).replace(/[^0-9]/g,''));
     if(f && t && f <= t){ FCA.from = f; FCA.to = t; }
     if(r > 0) FCA.rate = r;
+    const an = Number(String(el.querySelector('#fcaAnnual').value).replace(/[^0-9]/g,'')); if(an > 0) FCA.annual = an;
+    if(FCA.result && !FCA.running && FCA.blocks.length && f===FCA.from && t===FCA.to){ fcaAnalyze(); render(); return; } // 자료는 그대로, 단가만 바꿔 다시 계산
     fcaLoadBerth();
   };
   const csv = el.querySelector('[data-act="fca-csv"]'); if(csv) csv.onclick = fcaCsv;
