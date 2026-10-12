@@ -2205,7 +2205,15 @@ function mergeExcelAtt(ym){
   });
 }
 function hasExcelAtt(ds, name){ const list = excelAttIndex().get(ds.slice(0,7)); return !!(list && list.some(([n, r])=> n===name && '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6)===ds)); }
-function isSupportCode(a){ return !!a && (a==='SP' || a==='D' || a==='N' || a==='DN' || a.startsWith('ND')); }
+function isSupportCode(a){ return !!a && (a==='SP' || a==='D' || a==='N' || a==='DN' || a==='DS' || a==='NS' || a.startsWith('ND')); }
+// 근태 집계 '지원근무' 개수: 선지원은 DS(주간지원)·NS(야간지원)로 입력.
+//  예전(2026-10-11까지)에는 근무 주와 반대인 D·N 을 지원으로 셌으므로 그 날짜까지만 D·N 도 지원으로 셈(지난 집계가 바뀌지 않게)
+const SUP_DSNS_FROM = '2026-10-12';
+function isSupportCount(a, ds){
+  if(!a) return false;
+  if(a==='D' || a==='N') return !!ds && ds < SUP_DSNS_FROM;
+  return isSupportCode(a);
+}
 function isSupportDay(rec){
   if(!rec) return false;
   const a = rec.attCode;
@@ -3873,7 +3881,7 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
       if(ds >= rangeStart){
         const ec = effCode(rec, ds, String(e.name||'').trim());
         if(codeCnt.hasOwnProperty(ec)) codeCnt[ec]++;
-        if(isSupportCode(ec)) supDays++;
+        if(isSupportCount(ec, ds)) supDays++;
       }
       if(!rec) continue;
       if(rec.attCode===undefined && ds<=IMPORT_LAST_DATE && (rec.checkIn || (rec.workCode && rec.workCode!=='OFF'))) noAttCount++;
@@ -4854,7 +4862,7 @@ function slipCalc(e, start, end){
       //  · 그 밖의 지원(DN·ND 연장 지원, SC 지원휴무 등) → 연장근로·평일야간에 포함
       //  · SC(지원휴무) 지원일은 하루 8시간 × 시급을 '특근수당'으로 추가
       const code = effCode(rec, ds, String(e.name||'').trim());
-      if(code==='D' || code==='N') supPrem += p.premium;
+      if(code==='D' || code==='N' || code==='DS' || code==='NS') supPrem += p.premium;
       else { wkNight += p.supNight; wkGroupPrem += p.premium; }
       if(code==='SC') tkDays++;
     }
