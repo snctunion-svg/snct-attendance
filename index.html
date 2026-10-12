@@ -1025,6 +1025,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="eqpay"><span class="ic">🧾</span>장비 급여 관리</a>
     <a data-view="fcana"><span class="ic">📊</span>휴무 2명 분석</a>
     <a data-view="supcut"><span class="ic">✂️</span>지원 폐지</a>
+    <a data-view="holguar"><span class="ic">🗓️</span>휴일 보전 폐지</a>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
@@ -2765,7 +2766,7 @@ const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','codes','accident','vessel','berth','pwchange']; // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2'];
-const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','accident'];
+const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','accident'];
 const LEADER_READONLY_VIEWS = ['codes','accident']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
@@ -3576,6 +3577,7 @@ function render(){
   else if(VIEW==='eqpay') el.innerHTML = pageEqPay();
   else if(VIEW==='fcana') el.innerHTML = pageFcAna();
   else if(VIEW==='supcut') el.innerHTML = pageSupCut();
+  else if(VIEW==='holguar') el.innerHTML = pageHolGuar();
   else if(VIEW==='accident') el.innerHTML = pageAccident();
   else if(VIEW==='safety') el.innerHTML = pageSafety();
   else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
@@ -5690,6 +5692,138 @@ function bindSupCut(el){
   el.querySelectorAll('[data-act="spc-tab"]').forEach(x=> x.onclick = ()=>{ SPC.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="spc-xls"]'); if(xb) xb.onclick = spcXls;
 }
+/* ========================= 휴일 보전 폐지 분석 (UNION) =========================
+   휴일 OT 월 60h 보장(보전)이 없어지면, 휴일 근무가 60h에 못 미쳐도 받던 보전 몫만큼 연봉이 줄어듦.
+   같은 연봉을 맞추는 시급 인상률을 계산. 근무기록만으로 계산(선석 자료 필요 없음, 저장 안 함) */
+const HGA = {from:'2025-12-26', to:'2026-09-25', guar:60, result:null, tab:1};
+function hgaAnalyze(){
+  const names = Object.keys(EXCEL_CODES), grp = {};
+  names.forEach(n=>{
+    const ujs = (EXCEL_CODES[n]||'').split(',').filter(x=> /:UJ$/.test(x)).length; if(ujs >= 40) return;
+    let a=0, b=0; (EXCEL_ATT[n]||[]).forEach(r=>{ if(!r[9]) return; if(r[9]===scheduledShift(fcaDs(r),'1')) a++; else b++; });
+    grp[n] = a >= b ? '1' : '2';
+  });
+  const people = Object.keys(grp), recOf = {};
+  people.forEach((n,i)=> (EXCEL_ATT[n]||[]).forEach(r=>{ recOf[fcaDs(r)+'|'+n] = normAtt(excelAttRec(r, 'hga'+i)); }));
+  const pm = {};
+  for(let ds = HGA.from; ds <= HGA.to; ds = addDays(ds,1)){
+    const key = fcaPayKey(ds);
+    people.forEach(n=>{
+      const o = pm[n+'|'+key] = pm[n+'|'+key] || {n, key, how:0, hsup:0, hdays:0};
+      const rec = recOf[ds+'|'+n]; if(!rec) return;
+      const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds);
+      if(c.valid && (c.category==='일요일' || c.category==='공휴일')){ o.how += c.premium; o.hdays++; }
+      if(p.valid){ const k = dayCategory(ds, !!rec.manguen, rec.employeeId); if(k==='SU' || k==='H'){ o.hsup += p.premium; o.hdays++; } }
+    });
+  }
+  Object.values(pm).forEach(o=>{ o.ho = o.how + o.hsup; o.paid = Math.max(o.ho, HGA.guar); o.fill = Math.max(0, HGA.guar - o.ho); });
+  const keys = [...new Set(Object.values(pm).map(o=> o.key))].sort();
+  const months = keys.map(key=>{ const os = Object.values(pm).filter(o=> o.key===key); const S = k=> os.reduce((t,o)=> t + o[k], 0);
+    return {key, how:S('how'), hsup:S('hsup'), ho:S('ho'), paid:S('paid'), fill:S('fill'), under: os.filter(o=> o.ho < HGA.guar).length, n: os.length}; });
+  const perPerson = people.map(n=>{ const os = keys.map(k=> pm[n+'|'+k]).filter(Boolean); const s = k=> os.reduce((t,o)=> t + o[k], 0);
+    return {n, g: grp[n], how:s('how'), hsup:s('hsup'), ho:s('ho'), paid:s('paid'), fill:s('fill'), under: os.filter(o=> o.ho < HGA.guar).length}; });
+  const T = k=> months.reduce((t,m)=> t + m[k], 0);
+  HGA.result = {people, grp, months, perPerson, nMon: months.length || 1, yr: 12 / (months.length || 1), n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length,
+    how:T('how'), hsup:T('hsup'), ho:T('ho'), paid:T('paid'), fill:T('fill'), under:T('under'), nPM:T('n')};
+}
+function hgaReport(){
+  const R = HGA.result; if(!R) return {sheets:[]};
+  const W = v=> Math.round(v).toLocaleString('ko-KR'), H1 = v=> (Math.round(v*10)/10).toLocaleString('ko-KR'), P = v=> v.toFixed(2)+'%';
+  const ppl = R.n1 + R.n2, rate = FCA.rate, y = R.yr, total = ppl * FCA.annual, G = HGA.guar;
+  const lostWon = R.fill * rate * y, lostPP = lostWon / ppl, raise = total > lostWon ? lostWon / (total - lostWon) * 100 : 0;
+  const pp = R.perPerson.map(p=>{ const lw = p.fill * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
+  const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
+  const anon = {}; R.people.forEach((n,i)=> anon[n] = '기사' + String(i+1).padStart(2,'0'));
+  const s1 = {name:'1.검토개요', rows:[
+    [`장비직 휴일 OT 월 ${G}h 보장(보전) 폐지 시 시급 보전 검토자료`], ['노동조합 · 2026 임금교섭 협의자료'], [],
+    ['1. 검토 목적'],
+    [`휴일(일요일·공휴일) OT 월 ${G}h 보장이 없어지면, 휴일 근무가 ${G}h에 못 미쳐도 받던 보전 몫만큼 연봉이 줄어듦. 줄어드는 금액과 같은 연봉을 유지하는 데 필요한 시급 인상률을 검토함.`], [],
+    ['2. 변경안 요지'],
+    [`휴일 OT 보장 (월 ${G}h)`, '있음 → 폐지', '실제 휴일 근무 OT만 지급'],
+    ['휴일 근무·휴일 지원', '변동 없음', '실제로 일한 휴일 OT는 그대로'], [],
+    ['3. 검토 결과 (결론)'],
+    ['연봉에서 빠지는 휴일 보전 (연, 전체)', W(lostWon) + '원', `1인 평균 ${W(lostPP)}원`],
+    ['같은 연봉 유지에 필요한 시급 인상률', P(raise), `총인건비 ${(total/1e8).toFixed(1)}억원 기준`],
+    ['기사별 필요 인상률', `최소 ${P(pcts[0]||0)} · 중간 ${P(med)} · 최대 ${P(pcts[pcts.length-1]||0)}`, '휴일 근무가 적던 기사일수록 큼'],
+    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어들며, 같은 연봉을 유지하려면 시급을 약 ${raise.toFixed(2)}% 올려야 하는 것으로 검토됨.`], [],
+    ['4. 산정 관점'],
+    [`지금은 기사마다 그달 휴일 OT(휴일 본근무 + 휴일 지원, 가산 반영 시간)가 ${G}h보다 적으면 ${G}h까지 채워 지급함. 보장이 없어지면 그 차이(${G}h − 실제)만큼 줄어듦. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
+    ['5. 자료 구성'],
+    ['2.검토조건', '분석기간·단가·인건비 기준'], ['3.비용산출', '단계별 산출'], ['4.검증데이터', '기사별 휴일 OT·보전·필요 인상률 (익명)'], ['5.월별현황', '급여월별 휴일 OT·보전']
+  ]};
+  const s2 = {name:'2.검토조건', rows:[
+    ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
+    ['분석기간', `${HGA.from} ~ ${HGA.to} (급여월 ${R.nMon}개월)`], ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
+    ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`], ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록)'], [],
+    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), '회사 검토자료 값'], [`휴일 OT 보장시간(월, h)`, G, '폐지 대상'], [],
+    ['[C] 인건비 기준'], ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), '회사 검토자료 값'], ['장비직 총인건비(원)', W(total)], [],
+    ['[D] 실측 기준'],
+    ['휴일 본근무 OT(h, 가산 반영)', H1(R.how)], ['휴일 지원 OT(h)', H1(R.hsup)],
+    [`휴일 OT가 ${G}h 미만이던 기사·월`, `${R.under} / ${R.nPM}`, P(R.nPM ? R.under/R.nPM*100 : 0)]
+  ]};
+  const s3 = {name:'3.비용산출', rows:[
+    ['비용 산출 (검증 내용)'], [`${R.nMon}개월 실적 → 1년 환산(× ${y.toFixed(3)}) · OT시간은 가산 반영 시간`], [],
+    ['[1단계] 지금 받는 휴일 OT', `${R.nMon}개월(h)`, '1년(원)'],
+    ['실제 휴일 근무 OT (본근무 + 지원)', H1(R.ho), W(R.ho*rate*y)],
+    [`${G}h 보전 (휴일 근무가 ${G}h에 못 미쳐도 받던 몫)`, H1(R.fill), W(lostWon)],
+    ['지금 지급 합계', H1(R.paid), W(R.paid*rate*y)], [],
+    ['[2단계] 보장 폐지 후'],
+    ['지급 = 실제 휴일 근무 OT만', H1(R.ho), W(R.ho*rate*y)],
+    ['줄어드는 몫 = 보전', H1(R.fill), W(lostWon)], ['1인 평균', '', W(lostPP)], [],
+    ['[3단계] 같은 연봉 유지에 필요한 시급 인상률'],
+    ['장비직 총인건비(원)', '', W(total)], ['보장 폐지 후 총인건비(원)', '', W(total - lostWon)], ['필요 시급 인상률', '', P(raise), '줄어든 연봉 ÷ 남은 연봉'], [],
+    ['[결론]'],
+    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어들어, 같은 연봉을 유지하려면 시급을 약 ${raise.toFixed(2)}% 올려야 함.`]
+  ]};
+  const s4 = {name:'4.검증데이터', rows:[['검증 데이터 — 기사별 연간(환산) 휴일 OT·보전·필요 인상률 (익명 처리)'], [`1인 연봉은 ${W(FCA.annual)}원으로 같다고 보고 계산`], [],
+    ['구분', '조', '휴일 본근무OT(h)', '휴일 지원OT(h)', '휴일 OT 합(h)', `${G}h 미만 달`, '보전(h)', '연 감소액(원)', '필요 인상률'],
+    ...pp.map(p=> [anon[p.n], p.g+'조', H1(p.how*y), H1(p.hsup*y), H1(p.ho*y), p.under, H1(p.fill*y), W(p.lw), P(p.pct)])]};
+  const s5 = {name:'5.월별현황', rows:[['급여월별 휴일 OT · 보전 현황'], [],
+    ['급여월', '휴일 본근무OT(h)', '휴일 지원OT(h)', '휴일 OT 합(h)', `${G}h 미만 기사`, '보전(h)', '보전 금액(원)'],
+    ...R.months.map(m=> [m.key, H1(m.how), H1(m.hsup), H1(m.ho), `${m.under} / ${m.n}`, H1(m.fill), W(m.fill*rate)]),
+    ['합계', H1(R.how), H1(R.hsup), H1(R.ho), `${R.under} / ${R.nPM}`, H1(R.fill), W(R.fill*rate)]]};
+  return {sheets:[s1,s2,s3,s4,s5]};
+}
+function repXls(rep, fname){
+  if(!rep.sheets.length) return;
+  const x = v=> String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const sheet = s=> `<Worksheet ss:Name="${x(s.name)}"><Table><Column ss:Width="260"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/>`
+    + s.rows.map((r,i)=> `<Row>${(r||[]).map(c=> `<Cell${i===0?' ss:StyleID="t"':''}><Data ss:Type="${typeof c==='number'?'Number':'String'}">${x(c)}</Data></Cell>`).join('')}</Row>`).join('') + `</Table></Worksheet>`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="t"><Font ss:Bold="1" ss:Size="13"/></Style></Styles>${rep.sheets.map(sheet).join('')}</Workbook>`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], {type:'application/vnd.ms-excel'})); a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+}
+function pageHolGuar(){
+  if(!HGA.result) hgaAnalyze();
+  const t = repTableHtml(hgaReport(), HGA.tab, 'hga-tab');
+  return `
+  <h2 class="pgttl">휴일 보전 폐지</h2>
+  <div class="panel">
+    <div class="row eqBar" style="align-items:center;">
+      <input type="date" id="hgaFrom" value="${HGA.from}" class="tx" style="padding:5px 6px;"> <span>~</span>
+      <input type="date" id="hgaTo" value="${HGA.to}" class="tx" style="padding:5px 6px;">
+      <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="hgaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
+      <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="hgaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
+      <label class="eqBonusIn"><span>휴일 보장</span><input type="text" inputmode="numeric" id="hgaGuar" value="${HGA.guar}" style="width:44px;"><span>h</span></label>
+      <button class="btn sm" data-act="hga-run">다시 계산</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0;">휴일(일요일·공휴일) OT 월 ${HGA.guar}h 보장이 없어지면 휴일 근무가 ${HGA.guar}h에 못 미쳐도 받던 보전만큼 연봉이 줄어요. 근무기록만으로 바로 계산해요(선석 자료 필요 없음).</p>
+  </div>
+  <div class="panel"><div class="row eqBar" style="align-items:center;margin-bottom:8px;">${t.tabs}<span style="flex:1"></span><button class="btn sm" data-act="hga-xls">📥 보고서 엑셀</button></div>${t.table}</div>`;
+}
+function bindHolGuar(el){
+  if(VIEW!=='holguar') return;
+  const run = el.querySelector('[data-act="hga-run"]');
+  if(run) run.onclick = ()=>{
+    const f = el.querySelector('#hgaFrom').value, t = el.querySelector('#hgaTo').value, num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
+    if(f && t && f <= t){ HGA.from = f; HGA.to = t; }
+    if(num('#hgaRate') > 0) FCA.rate = num('#hgaRate');
+    if(num('#hgaAnnual') > 0) FCA.annual = num('#hgaAnnual');
+    if(num('#hgaGuar') > 0) HGA.guar = num('#hgaGuar');
+    hgaAnalyze(); render();
+  };
+  el.querySelectorAll('[data-act="hga-tab"]').forEach(x=> x.onclick = ()=>{ HGA.tab = Number(x.dataset.tab); render(); });
+  const xb = el.querySelector('[data-act="hga-xls"]'); if(xb) xb.onclick = ()=> repXls(hgaReport(), `휴일보전폐지_시급보전검토_${HGA.from}_${HGA.to}.xls`);
+}
 function bindPayroll(el){
   // 급여관리 화면
   el.querySelectorAll('[data-act="pay-team"]').forEach(x=>x.onclick=()=>{ payMgrTeam = x.dataset.team; render(); });
@@ -7348,6 +7482,7 @@ function afterRender(){
   bindEqPay(el);
   bindFcAna(el);
   bindSupCut(el);
+  bindHolGuar(el);
   bindAccident(el);
   bindSafety(el);
   bindPwChange(el);
