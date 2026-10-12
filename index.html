@@ -5716,7 +5716,6 @@ function pageSupCut(){
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="spcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       <label class="eqBonusIn"><span>최소 교대비율</span><input type="text" inputmode="decimal" id="spcRatio" value="${SPC.ratio}" style="width:44px;"></label>
       <label class="eqBonusIn"><input type="checkbox" id="spcScBack" ${SPC.scBack?'checked':''}><span>SC 복귀 OT 반영</span></label>
-      <label class="eqBonusIn"><input type="checkbox" id="spcKeepOn" ${SPC.keepOn?'checked':''}><span>근태 반영(최소 인원 못 채운 근무는 지원 남김)</span></label>
       <button class="btn sm" data-act="spc-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '다시 계산'}</button>
       ${FCA.running || !bqMissing(SPC.from, SPC.to).length ? '' : '<button class="btn ghost sm" data-act="spc-berth">선석 자료 불러오기(운영 영향)</button>'}
     </div>
@@ -5733,7 +5732,7 @@ function bindSupCut(el){
     if(num('#spcRate') > 0) FCA.rate = num('#spcRate');
     if(num('#spcAnnual') > 0) FCA.annual = num('#spcAnnual');
     const rr = num('#spcRatio'); if(rr >= 1 && rr <= 3) SPC.ratio = rr;
-    SPC.keepGuar = false; SPC.scBack = el.querySelector('#spcScBack').checked; SPC.keepOn = el.querySelector('#spcKeepOn').checked;
+    SPC.keepGuar = false; SPC.scBack = el.querySelector('#spcScBack').checked;
   };
   const run = el.querySelector('[data-act="spc-run"]');
   if(run) run.onclick = ()=>{ read(); SPC.result = spcAnalyze(SPC.from, SPC.to); ALC.result = null; render(); };
@@ -5989,7 +5988,6 @@ function pageAllCut(){
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="alcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       <label class="eqBonusIn"><span>최소 교대비율</span><input type="text" inputmode="decimal" id="alcRatio" value="${SPC.ratio}" style="width:44px;"></label>
       <label class="eqBonusIn"><input type="checkbox" id="alcScBack" ${SPC.scBack?'checked':''}><span>SC 복귀 OT 반영</span></label>
-      <label class="eqBonusIn"><input type="checkbox" id="alcKeepOn" ${SPC.keepOn?'checked':''}><span>근태 반영(최소 인원 못 채운 근무는 지원 남김)</span></label>
       <button class="btn sm" data-act="alc-run">다시 계산</button>
       ${FCA.running ? `<span class="hint" style="margin:0;">선석 자료 받는 중… ${FCA.done} / ${FCA.total}</span>` : (!bqMissing(ALC.from, ALC.to).length ? '' : '<button class="btn ghost sm" data-act="alc-berth">선석 자료 불러오기(교대비율 반영)</button>')}
     </div>
@@ -6005,7 +6003,7 @@ function bindAllCut(el){
     ymRead(el, 'alc', ALC);
     if(num('#alcRate') > 0) FCA.rate = num('#alcRate');
     if(num('#alcAnnual') > 0) FCA.annual = num('#alcAnnual');
-    SPC.scBack = el.querySelector('#alcScBack').checked; SPC.keepOn = el.querySelector('#alcKeepOn').checked;
+    SPC.scBack = el.querySelector('#alcScBack').checked;
     const rr = Number(String(el.querySelector('#alcRatio').value).replace(/[^0-9.]/g,'')); if(rr >= 1 && rr <= 3) SPC.ratio = rr;
     ALC.result = spcAnalyze(ALC.from, ALC.to); SPC.result = null; render();
   };
