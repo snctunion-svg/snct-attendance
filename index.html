@@ -5307,15 +5307,15 @@ function fcaAnalyze(){
     people.forEach(n=>{ const r = rowOf[ds+'|'+n]; if(!r || !r[3]) return; const h = parseInt(r[3]); if(isNaN(h)) return; supIn[(h >= 6 && h < 16) ? 'D' : 'N']++; });
     ['1','2'].forEach(g=>{
       const sh = scheduledShift(ds, g), q = sh==='N' ? qN : qD;
-      let avail = 0, fc = 0, mc = 0; const off = {};
+      let avail = 0, fc = 0, mc = 0, hj = 0; const off = {}, pres = [];
       people.filter(n=> grp[n]===g).forEach(n=>{
         const r = rowOf[ds+'|'+n], c = excelAnyCode(ds, n);
-        if(r && r[1]) avail++;
+        if(r && r[1]){ avail++; pres.push(n); hj = Math.max(hj, Number(r[5])||0); }   // 본조보상(교대율 보전) = 그 근무 출근자에게 같은 값
         if(c==='FC' || c==='FCH') fc++;
         if(c==='MC' || c==='MCH' || c==='MCS') mc++;
         if(c && FCA_OFF[c] && !(r && r[1])) off[FCA_OFF[c]] = (off[FCA_OFF[c]]||0) + 1;
       });
-      rows.push({ds, wd, g, sh, q, need: req(q), avail, sup: supIn[sh], fc, mc, off, hol: isHol(ds), key: fcaPayKey(ds)});
+      rows.push({ds, wd, g, sh, q, need: req(q), avail, sup: supIn[sh], fc, mc, off, pres, hj, hol: isHol(ds), key: fcaPayKey(ds)});
     });
   }
   // 고정휴무 +1명이 생기는 날: 화~금(공휴일 제외)
@@ -5324,7 +5324,8 @@ function fcaAnalyze(){
     // 여유 = 크레인 × 2보다 1명 이상 많이 출근했고, 그날 실제로 지원도 안 부른 날.
     // 크레인이 적어도 지원을 부른 날(다른 휴무 겹침·연장 지원·작업 지연·크레인 외 인원 등)은 실제로 사람이 모자랐던 날로 봄
     r.tight = (r.avail - r.need < 1) || r.sup > 0;
-    r.res = !r.add ? '' : (r.mc > 0 ? 'mc' : (r.tight ? 'sup' : 'slack'));
+    // 그날 이미 본조보상(교대율 보전)이 붙었다 = 지원으로도 못 메운 날 → 한 명 더 빠지면 지원 대신 교대율 보전(출근 전원 × 1h)
+    r.res = !r.add ? '' : (r.mc > 0 ? 'mc' : (r.tight ? (r.hj > 0 ? 'comp' : 'sup') : 'slack'));
   });
   const busyAll = rows.filter(r=> !r.hol && r.mc===0 && ((r.avail - r.need < 1) || r.sup > 0)).length / Math.max(1, rows.length);
   const scRate = supCnt ? scCnt / supCnt : 0;
@@ -5333,21 +5334,23 @@ function fcaAnalyze(){
   const keys = [...new Set(rows.map(r=> r.key))].sort();
   const months = keys.map(key=>{
     const rs = rows.filter(r=> r.key===key);
-    const m = {key, nAdd: rs.filter(r=> r.add).length, nMC: rs.filter(r=> r.res==='mc').length, nSlack: rs.filter(r=> r.res==='slack').length, nSup: rs.filter(r=> r.res==='sup').length};
-    const add = {};
+    const m = {key, nAdd: rs.filter(r=> r.add).length, nMC: rs.filter(r=> r.res==='mc').length, nSlack: rs.filter(r=> r.res==='slack').length, nSup: rs.filter(r=> r.res==='sup').length, nComp: rs.filter(r=> r.res==='comp').length};
+    const add = {}; let supRaw = 0, compRaw = 0;
+    // 교대율 보전: 그날 출근한 조원(새로 쉬는 1명 제외) 전원에게 1h × 1.5 — 본조보상은 지원 OT에 들어가 월 지원 보장과 같이 계산됨
+    rs.filter(r=> r.res==='comp').forEach(r=>{ const k = r.avail ? (r.avail - 1) / r.avail : 0; r.pres.forEach(n=>{ add[n] = (add[n]||0) + 1.5 * k; compRaw += 1.5 * k; }); });
     rs.filter(r=> r.res==='sup').forEach(r=>{
       const other = people.filter(n=> grp[n]!==r.g);
       const tot = other.reduce((a,n)=> a + ((supBy[n+'|'+key]||{}).n||0), 0);
-      other.forEach(n=>{ const w = tot ? ((supBy[n+'|'+key]||{}).n||0) / tot : 1/other.length; add[n] = (add[n]||0) + avgPrem * mult * w; });
+      other.forEach(n=>{ const w = tot ? ((supBy[n+'|'+key]||{}).n||0) / tot : 1/other.length; add[n] = (add[n]||0) + avgPrem * mult * w; supRaw += avgPrem * mult * w; });
     });
     let raw = 0, paid = 0; const per = [];
     people.forEach(n=>{ const sp = (supBy[n+'|'+key]||{}).sp||0, a = add[n]||0; const nowH = Math.max(sp, FCA.guar), newH = Math.max(sp + a, FCA.guar); raw += a; paid += newH - nowH; per.push({n, sp, a, nowH, newH}); });
-    m.rawH = raw; m.paidH = paid; m.per = per; m.under = per.filter(p=> p.sp < FCA.guar).length;
+    m.rawH = raw; m.paidH = paid; m.per = per; m.supH = supRaw; m.compH = compRaw; m.under = per.filter(p=> p.sp < FCA.guar).length;
     return m;
   });
   const nMon = months.length || 1, yr = 12 / nMon;
   const S = k=> months.reduce((t,m)=> t + m[k], 0);
-  const nAdd = S('nAdd'), nMC = S('nMC'), nSlack = S('nSlack'), nSup = S('nSup'), rawH = S('rawH'), paidH = S('paidH');
+  const nAdd = S('nAdd'), nMC = S('nMC'), nSlack = S('nSlack'), nSup = S('nSup'), nComp = S('nComp'), rawH = S('rawH'), paidH = S('paidH'), supH = S('supH'), compH = S('compH');
   const mgRate = satWork ? satMg / satWork : 0, mgAvg = satMg ? mgDelta / satMg : 0;
   const mgLostH = nAdd * mgRate * mgAvg; // 평일 고정휴무가 늘어 토요일 만근(특근)을 못 받는 몫(확인 필요)
   // 크레인 여유인데 지원이 온 날(이유 확인용)
@@ -5356,7 +5359,7 @@ function fcaAnalyze(){
   const wdName = '일월화수목금토', fcByWd = {};
   rows.forEach(r=>{ const o = fcByWd[r.wd] = fcByWd[r.wd] || {n:0, fc:0}; o.n++; o.fc += r.fc; });
   FCA.result = {rows, months, people, grp, n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length, nDays: bqDaysIn(FCA.from, FCA.to),
-    avgPrem, supCnt, scCnt, scRate, busyAll, mult, nAdd, nMC, nSlack, nSup, rawH, paidH, mgRate, mgAvg, mgLostH, yr, nMon,
+    avgPrem, supCnt, scCnt, scRate, busyAll, mult, nAdd, nMC, nSlack, nSup, nComp, rawH, paidH, supH, compH, mgRate, mgAvg, mgLostH, yr, nMon,
     oddN: oddRows.length, nOdd: rows.filter(r=> r.res==='sup' && r.avail - r.need >= 1).length, oddOff, totSup: rows.reduce((t,r)=> t + r.sup, 0), fcByWd, wdName};
 }
 // 보고서 값(1년 환산·금액)
@@ -5387,13 +5390,14 @@ function fcaReport(){
     ['교대율', '2.0 유지', '필요 출근인원 = 크레인 대수 × 2'],
     [],
     ['3. 검토 결과 (결론)'],
-    ['연 환산 추가 지원 OT (원)', W(N.yPaid), '월 보장시간 반영 후, 지원 나가는 조합원에게 지급'],
+    ['연 환산 추가 OT (원)', W(N.yPaid), '지원 OT + 교대율 보전 · 월 보장시간 반영 후'],
     ['장비직 총인건비 대비', P(N.pctPaid), `총인건비 ${(N.total/1e8).toFixed(1)}억원 기준 · 시급 인상률로 환산한 값`],
     ['토요일 만근 영향 반영 시 (확인 필요)', W(N.yNet), P(N.pctNet)],
-    [`고정휴무를 1주 12명으로 늘리면 장비직에게 지급되는 지원 OT는 연 약 ${wonMan(N.yPaid)}(총인건비 대비 +${N.pctPaid.toFixed(2)}%) 늘어나는 것으로 검토됨.`],
+    [`고정휴무를 1주 12명으로 늘리면 장비직에게 지급되는 OT(지원 + 교대율 보전)는 연 약 ${wonMan(N.yPaid)}(총인건비 대비 +${N.pctPaid.toFixed(2)}%) 늘어나는 것으로 검토됨.`],
     [],
     ['4. 산정 관점'],
     ['늘어나는 고정휴무만큼 유동휴무(MC)가 줄어 개인별 휴무일수는 같음. 따라서 비용은 "고정휴무가 늘어난 날이 바쁜 날일 때" 생기는 지원근로에서만 발생함. 그날 MC가 있거나 크레인 대비 출근 인원에 여유가 있으면 비용 없음. 지원 나간 사람의 지원휴무(SC) 연쇄와 월 지원 보장시간(30h)을 반영함.'],
+    ['지원으로도 못 메운 날(그날 이미 본조보상이 붙은 날)은 교대율 보전으로 봄: 그날 출근한 조원 전원에게 부족 1명당 1시간(가산 1.5배)이 붙고, 본조보상은 지원 OT로 계산돼 월 지원 보장과 함께 반영됨.'],
     [],
     ['5. 자료 구성'],
     ['2.검토조건', '분석기간·단가·인건비·산정 기준 (기초값)'],
@@ -5426,7 +5430,8 @@ function fcaReport(){
     [`고정휴무 추가 조-일(${R.nMon}개월)`, R.nAdd, '화~금(공휴일 제외)마다 조당 +1명'],
     ['유동휴무(MC)가 있어 흡수되는 조-일', R.nMC, '같은 날 MC → MC를 덜 줌, 추가부족 없음'],
     ['크레인 대비 여유로 흡수되는 조-일', R.nSlack, '출근 인원 ≥ 크레인 대수 × 2 + 1 이고 그날 지원도 없던 날'],
-    ['지원 발생 조-일', R.nSup, '나머지 (추가 − MC − 여유)'],
+    ['교대율 보전 조-일', R.nComp, '그날 이미 본조보상이 붙은 날(지원으로도 못 메운 날) → 출근 조원 전원 × 1h(가산 1.5배)'],
+    ['지원 발생 조-일', R.nSup, '나머지 (추가 − MC − 여유 − 교대율 보전)'],
     ['  └ 그중 크레인은 적었지만 실제 지원이 온 날', R.nOdd, '다른 휴무 겹침·연장 지원(DN/ND)·작업 지연·크레인 외 인원 등'],
     ['지원 1건당 지원휴무(SC) 비율', P(R.scRate*100), `실측: SC ${W(R.scCnt)}일 ÷ 지원 ${W(R.supCnt)}건`],
     ['SC로 다시 지원이 생기는 비율', P(R.busyAll*100), '전체 조-일 중 MC 없고 여유 없는 날(실제 지원 온 날 포함)'],
@@ -5455,14 +5460,17 @@ function fcaReport(){
     ['고정휴무 추가 조-일 (화~금, 공휴일 제외)', R.nAdd, W(N.yAdd)],
     ['유동휴무(MC) 흡수', R.nMC, W(N.yMC)],
     ['크레인 대비 여유 흡수', R.nSlack, W(N.ySlack)],
+    ['교대율 보전 조-일', R.nComp, W(R.nComp*R.yr)],
     ['지원 발생 조-일', R.nSup, W(N.ySup)],
     [],
-    ['[2단계] 지원휴무(SC) 연쇄 반영'],
+    ['[2단계] 지원휴무(SC) 연쇄 반영 (지원 발생분만)'],
     ['연쇄 배수', R.mult.toFixed(3)],
     ['지원 발생 건수 (연쇄 반영)', H1(R.nSup*R.mult), W(N.ySupChain)],
     [],
     ['[3단계] 추가 지원 OT시간'],
-    ['추가 지원 OT시간(h, 연쇄 반영)', H1(R.rawH), W(R.rawH*R.yr), '지원 건수 × 1건 평균 OT시간'],
+    ['추가 지원 OT시간(h, 연쇄 반영)', H1(R.supH), W(R.supH*R.yr), '지원 건수 × 1건 평균 OT시간'],
+    ['추가 교대율 보전 OT시간(h)', H1(R.compH), W(R.compH*R.yr), '출근 조원 수 × 1h × 1.5 (새로 쉬는 1명 제외)'],
+    ['합계(h)', H1(R.rawH), W(R.rawH*R.yr)],
     [],
     ['[4단계] 상대 조 기사별 배분 · 월 보장시간 반영 (→ 5.검증데이터)'],
     ['보장 반영 후 실제 증가 OT시간(h)', H1(R.paidH), W(R.paidH*R.yr), `기사별 MAX(지원, 월 ${FCA.guarR}h × 1.5) 증가분 합계`],
@@ -5483,9 +5491,9 @@ function fcaReport(){
   R.people.forEach(n=> R.months.forEach(m=>{ const p = m.per.find(x=> x.n===n); if(!p) return; s5rows.push([anon[n], R.grp[n]+'조', m.key, H1(p.sp), H1(p.a), H1(p.nowH), H1(p.newH)]); }));
   const s5 = {name:'5.검증데이터', rows:[['검증 데이터 — 기사별·급여월별 지원 OT 실적 (익명 처리)'], [`현재 = MAX(평일 지원 OT, 월 보장 ${FCA.guarR}h × 1.5) · 변경안 = 추가 지원을 상대 조 기사의 그달 지원 실적 비율로 배분 후 같은 기준`], [], ...s5rows]};
   const s6 = {name:'6.월별현황', rows:[['급여월별 고정휴무 추가 · 흡수 · 지원 발생 현황'], [],
-    ['급여월', '추가 조-일', 'MC 흡수', '여유 흡수', '지원 발생', '추가 지원OT(h)', '보장 반영 후(h)', '금액(원)', '보장시간 미만 기사'],
-    ...R.months.map(m=> [m.key, m.nAdd, m.nMC, m.nSlack, m.nSup, H1(m.rawH), H1(m.paidH), W(m.paidH*FCA.rate), m.under]),
-    ['합계', R.nAdd, R.nMC, R.nSlack, R.nSup, H1(R.rawH), H1(R.paidH), W(R.paidH*FCA.rate), ''],
+    ['급여월', '추가 조-일', 'MC 흡수', '여유 흡수', '교대율 보전', '지원 발생', '추가 OT(h)', '보장 반영 후(h)', '금액(원)'],
+    ...R.months.map(m=> [m.key, m.nAdd, m.nMC, m.nSlack, m.nComp, m.nSup, H1(m.rawH), H1(m.paidH), W(m.paidH*FCA.rate)]),
+    ['합계', R.nAdd, R.nMC, R.nSlack, R.nComp, R.nSup, H1(R.rawH), H1(R.paidH), W(R.paidH*FCA.rate)],
     [],
     [`※ 크레인 대비 출근 인원에 여유가 있었는데도 지원이 들어온 조-근무: ${R.oddN}건. 그날 함께 빠진 인원: ` + (Object.entries(R.oddOff).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join(', ') || '없음')],
     [`※ 검증: 기간 중 실제 지원 들어온 인원 ${W(R.totSup)}명.`]
@@ -5515,14 +5523,14 @@ const FCA_MEMO = [
   ['[3] 다른 부분'],
   ['구분', '회사', '우리 앱', '누구에게 유리'],
   ['① 자리가 비는 날', 'MC 없는 날은 전부 빈다고 봄 (224일)', '선석 자료로 크레인 × 2보다 1명 이상 많고 지원도 안 부른 날은 안 빈다고 봄', '회사가 비는 날을 더 많이 셈'],
-  ['② 교대율 보전', '지원으로 못 메운 부족분은 출근 전원 × 부족인원만큼 보전 (425.4h)', '없음', '우리 앱이 빠뜨림 (규정 확인 필요)'],
+  ['② 교대율 보전', '지원으로 못 메운 부족분은 출근 전원 × 부족인원만큼 보전 (425.4h, 보정계수 0.898)', '반영함 (2026-10-13) — 그날 이미 본조보상이 붙은 날(지원으로도 못 메운 날)에 한 명 더 빠지면 출근 조원 전원 × 1h × 1.5', '같은 방식 · 우리는 실제 본조보상 기록으로 판단'],
   ['③ 야간 가산', '실근로 × 1.5배만', '실제 지원 기록의 가산 그대로 (야간 22~06시 0.5배 포함)', '회사가 낮게 잡음'],
   ['④ 연쇄 효과', '없음', '지원 → 지원휴무(SC) → 또 빈자리 몫 반영', '회사가 낮게 잡음'],
   ['⑤ 분석 기간', '2025.08.26 ~ 2026.06.25 (10개월)', '2026년 1~9월 급여월 (화면에서 바꿀 수 있음)', '숫자 직접 비교 안 됨'],
   ['⑥ 시급 · 인건비', '2025 급여대장 (18,663원 · 9,726만원)', '장비 시급 · 장비 급여 관리 실측 (2026)', '기준 연도 다름'],
   ['⑦ 물동량 연동', '고정휴무 비용에 OT 탄력성 1.62 적용', '없음', '2027 전망에만 영향'], [],
   ['[4] 핵심'],
-  ['1. ②는 우리가 빠뜨린 것 — 교대율 보전이 실제 급여 규정에 있으면 우리 계산도 그만큼 늘어야 함 (회사 산식: 출근인원 × 부족인원 × 0.898).'],
+  ['1. ②는 회사 말이 맞아 우리도 반영함 — 원본 근무기록의 본조보상이 그 근무 출근자 전원에게 같은 값(1·2·3 = 부족인원)으로 붙어 있음을 확인(본조보상 372건). 우리 앱은 보정계수 대신 실제 본조보상이 있던 날로 판단.'],
   ['2. ③ · ④는 회사가 빠뜨린 것 — 야간 가산과 SC 연쇄가 빠져 회사 숫자가 실제 지급보다 낮음.'],
   ['3. ①은 방향이 반대 — 회사 방식이 비는 날을 더 많이 셈. 회사가 이 비용을 "인상분으로 이미 준 돈"으로 쓰려 하면, 크레인 기준으로 실제 비는 날만 세야 한다고 반박 가능.'],
   ['4. 둘 다 빠뜨린 것 — 고정휴무가 1명 늘면 그 사람의 유동휴무가 다른 날에서 1번 빠짐 → 그날 1명 더 나와 지원이 줄 수 있음. 회사가 나중에 꺼내면 비용이 줄어들 수 있음.'], [],
@@ -5530,7 +5538,22 @@ const FCA_MEMO = [
   ['· 당직 519회 중 절감 발생 214회 (당직자보다 늦게 남은 본조 인원이 있던 회차는 제외) → 지급 감소 10개월 911.75h, 연 1,094.1h.'],
   ['· 휴일 당직이 빠져 휴일 OT가 하한(40h, 가산 전) 밑으로 내려가는 몫 120.6h는 보전수당으로 되돌아옴 → 실질 절감 연 973.5h × 18,663원 ≈ 1,817만원 (총인건비 −0.64%).'],
   ['· 회사 정리: 고정휴무 2명 +7,340만원 + 당직 폐지 −1,817만원 = +5,523만원 (총인건비 +1.96%). 이 묶음 비용을 인상 여력에서 빼려는 근거로 쓸 수 있음.'],
-  ['· 노조가 볼 점: 1인 평균 연 약 63만원 감소지만 당직을 많이 서던 사람에게 몰림 · 당직이 맡던 일(돌발 작업 · 장비 대기 등)을 폐지 후 누가 맡는지 빠져 있음.']
+  ['· 노조가 볼 점: 1인 평균 연 약 63만원 감소지만 당직을 많이 서던 사람에게 몰림 · 당직이 맡던 일(돌발 작업 · 장비 대기 등)을 폐지 후 누가 맡는지 빠져 있음.'],
+  [], ['[6] 회사가 고정휴무 비용에 쓴 OT 탄력성 1.62의 근거 (물동량 시트)'],
+  ['· 계산 방법: 급여월 9개(2025.09~2026.05)의 월 물동량(TEU)과 월 OT 합계(h)를 직선 회귀 → OT = 0.092 × TEU − 3,050h (1,000TEU ↑ → OT 약 92h ↑). 평균 지점(86,734TEU · 4,929h)에서 0.092 × 86,734 ÷ 4,929 = 1.62. 회사 표 숫자로 다시 계산해도 1.619 · r 0.884가 그대로 나옴.'],
+  ['· 회사 논리: 인원이 고정이라 일이 늘면 대부분 OT로 메워지고, 고정휴무 결원도 바쁠수록 지원으로 이어지니 OT와 같은 비율로 커진다고 봄.'],
+  ['약한 점'],
+  ['1. 고정휴무 비용을 직접 잰 값이 아님 — 전체 OT(평일 · 휴일 · 지원 · 식사)와 물동량의 관계를 그대로 빌려 씀. 결원 때문에 생기는 지원이 물동량에 얼마나 반응하는지는 확인 안 함.'],
+  ['2. 표본 9개라 흔들림 — 물동량이 유난히 낮은 3월(73,852TEU) 하나만 빼도 1.62 → 약 1.40, 상관계수 0.75로 떨어짐.'],
+  ['3. 1을 넘는 건 식 모양 때문이기도 함 — 절편이 −3,050h라 물동량이 낮을수록 탄력성이 크게 계산됨. 로그로 풀면 1.72 → 방식에 따라 1.4~1.7.'],
+  ['4. 다른 이유가 섞임 — 달마다 일수(28~31일) · 일요일 · 공휴일 수 · 휴가철이 다른데 걸러내지 않음.'],
+  ['5. 기간 확인 필요 — OT는 급여월(전달 26일~25일), 물동량이 달력 월이면 열흘 가까이 어긋남.'],
+  ['교섭에서의 의미'],
+  ['· 2027 표 ③에서 고정휴무 비용이 105만TEU 약 0.73억 → 120만TEU 약 0.90억으로 커짐. 탄력성을 붙이면 고정휴무가 "갈수록 비싸지는 양보"처럼 보임.'],
+  ['· 그러나 물동량이 늘어 생기는 OT는 조합원이 더 일해서 받는 돈이지, 고정휴무 때문에 생기는 비용이 아님.'],
+  ['· 대응 1: 탄력성은 전체 OT에서 나온 값이니 고정휴무 비용에는 1.0(물동량과 무관) 또는 실측값을 써야 함.'],
+  ['· 대응 2: 9개월 표본에 3월 하나만 빼도 1.40이 되는 숫자라 근거로 쓰기 어려움.'],
+  ['· 우리가 직접 재려면 월별 물동량 자료가 필요함 (회사 9개월은 우리 분석 기간 2026.01~09와 5개월만 겹침).']
 ];
 function fcaXls(){
   const rep = fcaReport(); if(!rep.sheets.length) return;
@@ -5545,7 +5568,7 @@ function fcaXls(){
 function fcaCsv(){
   const R = FCA.result; if(!R) return;
   const lines = ['날짜,요일,조,근무,크레인(최대),필요인원,자기조 출근,지원 들어옴,고정휴무,유동휴무,공휴일,고정휴무 +1 결과'];
-  const lab = {mc:'MC 흡수', slack:'여유 흡수', sup:'지원 발생', '':''};
+  const lab = {mc:'MC 흡수', slack:'여유 흡수', sup:'지원 발생', comp:'교대율 보전', '':''};
   R.rows.forEach(r=> lines.push([r.ds, R.wdName[r.wd], r.g+'조', r.sh, r.q, r.need, r.avail, r.sup, r.fc, r.mc, r.hol?'Y':'', lab[r.res]].join(',')));
   const blob = new Blob(['﻿' + lines.join('\n')], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `휴무분석_날짜별_${FCA.from}_${FCA.to}.csv`; document.body.appendChild(a); a.click(); a.remove();
