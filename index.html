@@ -907,6 +907,19 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable .dpMg{color:#db2777;font-weight:800;font-size:12px;white-space:nowrap;}
 .inTbl .inMg{margin-left:4px;color:#db2777;font-weight:800;font-size:12.5px;white-space:nowrap;}
 @media (max-width:700px){ #dpTable .dpMg{font-size:11px;} }
+/* 장비 급여 관리 */
+.eqTbl{border-collapse:collapse;font-size:12.5px;}
+.eqTbl th,.eqTbl td{border:1px solid #cbd5e1;padding:4px 6px;text-align:center;white-space:nowrap;}
+.eqTbl thead th{background:#f1f5f9;font-weight:800;line-height:1.2;}
+.eqTbl td.eqN{text-align:right;font-variant-numeric:tabular-nums;}
+.eqTbl td.eqTot{font-weight:800;color:#1d4ed8;background:#eff6ff;}
+.eqTbl td.eqDed{color:#b91c1c;}
+.eqTbl td.eqNet{font-weight:800;color:#be185d;background:#fdf2f8;}
+.eqTbl td.eqFut{background:#f8fafc;}
+.eqTbl tfoot td{font-weight:800;background:#f8fafc;border-top:2px solid #111;}
+.eqBar{flex-wrap:wrap;gap:6px;}
+@media (max-width:700px){ .eqTbl{font-size:11.5px;} .eqTbl th,.eqTbl td{padding:3px 4px;}
+  .eqTbl td.namecell,.eqTbl thead th:nth-child(3){position:sticky;left:0;z-index:2;background:#fff;box-shadow:1px 0 0 #94a3b8;} .eqTbl thead th:nth-child(3){background:#f1f5f9;} } /* 휴대폰: 옆으로 밀어도 성명 고정 */
 /* 경위서·학자금 메일 보내기 */
 /* 받는 사람 10칸(한 줄에 두 명) */
 .mtGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
@@ -990,7 +1003,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
-    <a data-view="payroll"><span class="ic">💰</span>급여관리</a>
+    <a data-view="payroll"><span class="ic">💰</span>장비 시급</a>
+    <a data-view="eqpay"><span class="ic">🧾</span>장비 급여 관리</a>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
@@ -2723,7 +2737,7 @@ const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','codes','accident','vessel','berth','pwchange']; // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2'];
-const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','accident'];
+const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','eqpay','accident'];
 const LEADER_READONLY_VIEWS = ['codes','accident']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
@@ -3233,6 +3247,7 @@ function ensureForView(){
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
   else if(VIEW==='mail'){ const mr = mailRangeNow(); ensureAttendanceRange(mr.start, mr.end); }
+  else if(VIEW==='eqpay') eqPayEnsure();
   else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }
 }
@@ -3530,6 +3545,7 @@ function render(){
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
   else if(VIEW==='payroll') el.innerHTML = pagePayroll();
+  else if(VIEW==='eqpay') el.innerHTML = pageEqPay();
   else if(VIEW==='accident') el.innerHTML = pageAccident();
   else if(VIEW==='safety') el.innerHTML = pageSafety();
   else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
@@ -4617,7 +4633,7 @@ function pagePayroll(){
     </tr>`;
   }).join('');
   return `
-  <h2 class="pgttl">급여관리</h2>
+  <h2 class="pgttl">장비 시급</h2>
   <div class="row" style="margin-bottom:14px;align-items:center;">
     ${payMgrTab==='info' ? `<button class="btn ${payMgrTeam===''?'':'ghost'} sm" data-act="pay-team" data-team="">전체</button>
     <button class="btn ${payMgrTeam==='1'?'':'ghost'} sm" data-act="pay-team" data-team="1">1조</button>
@@ -4842,13 +4858,12 @@ function slipCalc(e, start, end){
   const real = wk + ho + sp + meal, guar = wk + Math.max(ho,60) + Math.max(sp,30) + meal;
   return {guar, diff: Math.max(guar-real,0), extHours: Math.max((wkGroupPrem - wkNight*0.5)/1.5, 0), wkNight, holWork, holOT, holNight, holExtra, supPrem, tkDays};
 }
-function renderPaySlip(){
-  const e = employees.find(x=>x.id===paySlip.empId);
-  if(!e) return '';
+// 한 사람의 한 달(근무기간 start~end) 급여 계산 — 급여명세서·장비 급여 관리가 같이 씀
+function slipAmounts(e, start, end){
   const p = payMgr[e.id] || {};
-  const hourly = Number(p.hourly)||0, tenure = tenureAllowance(p.hire, otMatrixEnd); // 근속수당: 입사일 기준(근무기간 끝날 기준 근속연수)
-  const rate = Number(p.ordinary) || autoOrdinary(p, otMatrixEnd); // 통상시급: 입력값, 비어 있으면 (기본급+근속수당)/209
-  const pc = slipCalc(e, otMatrixStart, otMatrixEnd);
+  const hourly = Number(p.hourly)||0, tenure = tenureAllowance(p.hire, end); // 근속수당: 입사일 기준(근무기간 끝날 기준 근속연수)
+  const rate = Number(p.ordinary) || autoOrdinary(p, end); // 통상시급: 입력값, 비어 있으면 (기본급+근속수당)/209
+  const pc = slipCalc(e, start, end);
   const r10 = v => Math.round(v/10)*10;
   const a = {
     base: Math.floor(hourly * PAY_BASE_HOURS / 10) * 10, // 10원 미만 버림(명세서: 20,731×209 = 4,332,770)
@@ -4868,6 +4883,12 @@ function renderPaySlip(){
   const total = a.base + a.tenure + a.pos + a.tech + a.ext + a.night + a.hol + a.holOT + a.holN + a.etc + a.sup + a.tk;
   const ded = {}; PAY_DED.forEach(([k])=>{ ded[k] = dedAmount(payDedRates[k], total); });
   const dedTotal = PAY_DED.reduce((x,[k])=> x + ded[k], 0);
+  return {p, hourly, rate, pc, a, total, ded, dedTotal, net: total - dedTotal};
+}
+function renderPaySlip(){
+  const e = employees.find(x=>x.id===paySlip.empId);
+  if(!e) return '';
+  const {p, hourly, rate, pc, a, total, ded, dedTotal} = slipAmounts(e, otMatrixStart, otMatrixEnd);
   const H = t => `<td class="h">${t}</td>`, V = v => `<td>${v}</td>`, E6 = '<td></td>'.repeat(6);
   const sec = (t, n) => `<td class="sec" rowspan="${n}">${t}</td>`;
   const alt = n => Array.from({length:n}, (_,i)=>`<tr class="${i%2===0?'alt':''}">${E6}</tr>`).join('');
@@ -4903,6 +4924,120 @@ function renderPaySlip(){
       <tr><td class="h"></td><td></td><td colspan="2">${slipWon(total)}</td><td colspan="2">${slipWon(dedTotal)}</td><td>${slipWon(total - dedTotal)}</td></tr>
     </table></div>
   </div></div>`;
+}
+
+/* ========================= 장비 급여 관리 (UNION) =========================
+   장비 시급(시급·입사일·수당)과 근태 기록으로 기사별 월 급여와 연봉을 계산해서 보여 줌(저장 안 함, 계산만).
+   계산 방식은 급여명세서와 똑같음(slipAmounts). 근무기간: 전달 26일 ~ 이번 달 25일 */
+let eqTab = 'month', eqYm = null, eqYear = null, eqTeam = '';
+function eqPayInit(){
+  if(!eqYm){ const t = new Date(); let y = t.getFullYear(), m = t.getMonth()+1; if(t.getDate() >= 26){ m++; if(m>12){ m=1; y++; } } eqYm = {y, m}; }
+  if(!eqYear) eqYear = eqYm.y;
+}
+function eqPayEnsure(){
+  eqPayInit();
+  if(eqTab==='month'){ const [a,b] = payPeriodRange(eqYm.y, eqYm.m); ensureAttendanceRange(a, b); }
+  else { const last = eqYearLastMonth(); if(last){ ensureAttendanceRange(payPeriodRange(eqYear, 1)[0], payPeriodRange(eqYear, last)[1]); } }
+}
+// 연봉: 이미 시작된 달까지만 계산(앞으로 올 달은 빈칸)
+function eqYearLastMonth(){
+  const today = todayStr();
+  let last = 0;
+  for(let m=1; m<=12; m++){ if(payPeriodRange(eqYear, m)[0] <= today) last = m; }
+  return last;
+}
+function eqList(){
+  return employees.slice().filter(e=> !eqTeam || (e.team||'')===eqTeam).sort((a,b)=>{
+    const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999);
+  });
+}
+function pageEqPay(){
+  eqPayInit();
+  const W = n => n ? Math.round(n).toLocaleString('ko-KR') : '';
+  const list = eqList();
+  const teamBtns = `<button class="btn ${eqTeam===''?'':'ghost'} sm" data-act="eq-team" data-team="">전체</button>
+    <button class="btn ${eqTeam==='1'?'':'ghost'} sm" data-act="eq-team" data-team="1">1조</button>
+    <button class="btn ${eqTeam==='2'?'':'ghost'} sm" data-act="eq-team" data-team="2">2조</button>`;
+  const tabs = `<span style="flex:1"></span>
+    <button class="btn ${eqTab==='month'?'':'ghost'} sm" data-act="eq-tab" data-tab="month">월 급여</button>
+    <button class="btn ${eqTab==='year'?'':'ghost'} sm" data-act="eq-tab" data-tab="year">연봉</button>`;
+  const noHourly = list.filter(e=> !(Number((payMgr[e.id]||{}).hourly) > 0)).map(e=> e.name);
+  const warn = noHourly.length ? `<p class="hint" style="margin:0 0 8px;color:#b45309;">⚠ 장비 시급에 시급이 없는 사람: ${esc(noHourly.join(', '))} — 장비 시급 메뉴에서 넣으면 계산돼요.</p>` : '';
+  if(eqTab==='month'){
+    const [start, end] = payPeriodRange(eqYm.y, eqYm.m);
+    const tot = {};
+    const add = (k,v)=>{ tot[k] = (tot[k]||0) + (v||0); };
+    const rows = list.map((e,i)=>{
+      const r = slipAmounts(e, start, end), a = r.a, holSum = a.hol + a.holOT + a.holN;
+      const cols = [['base',a.base],['tenure',a.tenure],['pos',a.pos],['tech',a.tech],['ext',a.ext],['night',a.night],['hol',holSum],['tk',a.tk],['etc',a.etc],['sup',a.sup],['total',r.total],['ded',r.dedTotal],['net',r.net]];
+      cols.forEach(([k,v])=> add(k,v));
+      return `<tr><td>${i+1}</td><td>${esc(e.team?e.team+'조':'')}</td><td class="namecell">${esc(e.name)}</td>
+        ${cols.map(([k,v])=>`<td class="eqN${k==='total'?' eqTot':k==='net'?' eqNet':k==='ded'?' eqDed':''}">${W(v)}</td>`).join('')}</tr>`;
+    }).join('');
+    const keys = ['base','tenure','pos','tech','ext','night','hol','tk','etc','sup','total','ded','net'];
+    return `
+    <h2 class="pgttl">장비 급여 관리</h2>
+    <div class="row eqBar" style="margin-bottom:10px;align-items:center;">${teamBtns}${tabs}</div>
+    <div class="panel">
+      <div class="row eqBar" style="align-items:center;margin-bottom:8px;">
+        <button class="btn ghost sm" data-act="eq-prev">◀ 이전달</button>
+        <b style="font-size:15px;">${eqYm.y}년 ${eqYm.m}월 급여</b>
+        <button class="btn ghost sm" data-act="eq-next">다음달 ▶</button>
+        <span class="hint" style="margin:0;">근무기간 ${esc(start)} ~ ${esc(end)}</span>
+      </div>
+      ${warn}
+      ${list.length ? `<div class="scrollx"><table class="tbl eqTbl"><thead><tr>
+        <th>No</th><th>조</th><th>성명</th><th>기본급</th><th>근속<br>수당</th><th>직책<br>수당</th><th>기술<br>수당</th><th>연장<br>근로</th><th>평일<br>야간</th><th>휴일<br>근로</th><th>특근<br>수당</th><th>기타<br>수당</th><th>타조<br>지원</th><th>지급총액</th><th>공제총액</th><th>실지급액</th>
+      </tr></thead><tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="3">합계</td>${keys.map(k=>`<td class="eqN${k==='total'?' eqTot':k==='net'?' eqNet':k==='ded'?' eqDed':''}">${W(tot[k])}</td>`).join('')}</tr></tfoot></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
+      <p class="hint" style="margin:8px 0 0;">급여명세서와 같은 방법으로 근태 기록(출퇴근 입력)과 장비 시급의 시급·입사일·수당으로 계산해요. 휴일근로 = 휴일근로 + 휴일연장 + 휴일야간. 공제는 장비 시급 → 공제율 기준이에요.</p>
+    </div>`;
+  }
+  // 연봉
+  const last = eqYearLastMonth();
+  const months = Array.from({length:12}, (_,i)=> i+1);
+  const colTot = {}, add = (k,v)=>{ colTot[k] = (colTot[k]||0) + (v||0); };
+  const rows = list.map((e,i)=>{
+    let sum = 0, ded = 0, net = 0, n = 0;
+    const cells = months.map(m=>{
+      if(m > last) return '<td class="eqN eqFut"></td>';
+      const [a,b] = payPeriodRange(eqYear, m), r = slipAmounts(e, a, b);
+      sum += r.total; ded += r.dedTotal; net += r.net; if(r.total) n++;
+      add('m'+m, r.total);
+      return `<td class="eqN">${W(r.total)}</td>`;
+    }).join('');
+    add('sum', sum); add('ded', ded); add('net', net);
+    return `<tr><td>${i+1}</td><td>${esc(e.team?e.team+'조':'')}</td><td class="namecell">${esc(e.name)}</td>${cells}
+      <td class="eqN eqTot">${W(sum)}</td><td class="eqN">${W(n ? sum/n : 0)}</td><td class="eqN eqDed">${W(ded)}</td><td class="eqN eqNet">${W(net)}</td></tr>`;
+  }).join('');
+  return `
+  <h2 class="pgttl">장비 급여 관리</h2>
+  <div class="row eqBar" style="margin-bottom:10px;align-items:center;">${teamBtns}${tabs}</div>
+  <div class="panel">
+    <div class="row eqBar" style="align-items:center;margin-bottom:8px;">
+      <button class="btn ghost sm" data-act="eq-yprev">◀ 이전해</button>
+      <b style="font-size:15px;">${eqYear}년 연봉</b>
+      <button class="btn ghost sm" data-act="eq-ynext">다음해 ▶</button>
+      <span class="hint" style="margin:0;">${last ? `1월~${last}월 급여(지급총액) 합계${last<12 ? ' · 남은 달은 아직 계산 안 됨' : ''}` : '아직 시작된 달이 없어요'}</span>
+    </div>
+    ${warn}
+    ${list.length ? `<div class="scrollx"><table class="tbl eqTbl eqYearTbl"><thead><tr>
+      <th>No</th><th>조</th><th>성명</th>${months.map(m=>`<th>${m}월</th>`).join('')}<th>연봉<br>(지급총액)</th><th>월평균</th><th>공제<br>합계</th><th>실지급<br>합계</th>
+    </tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><td colspan="3">합계</td>${months.map(m=>`<td class="eqN">${m>last?'':W(colTot['m'+m])}</td>`).join('')}<td class="eqN eqTot">${W(colTot.sum)}</td><td></td><td class="eqN eqDed">${W(colTot.ded)}</td><td class="eqN eqNet">${W(colTot.net)}</td></tr></tfoot></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
+    <p class="hint" style="margin:8px 0 0;">달마다 근무기간(전달 26일 ~ 그달 25일)의 지급총액이에요. 연봉은 그 합계, 월평균은 급여가 있는 달로 나눈 값이에요.</p>
+  </div>`;
+}
+function bindEqPay(el){
+  if(VIEW!=='eqpay') return;
+  const go = ()=>{ eqPayEnsure(); render(); };
+  el.querySelectorAll('[data-act="eq-team"]').forEach(x=> x.onclick = ()=>{ eqTeam = x.dataset.team; render(); });
+  el.querySelectorAll('[data-act="eq-tab"]').forEach(x=> x.onclick = ()=>{ eqTab = x.dataset.tab; go(); });
+  const b = (a, f)=>{ const x = el.querySelector(`[data-act="${a}"]`); if(x) x.onclick = ()=>{ f(); go(); }; };
+  b('eq-prev', ()=>{ eqYm.m--; if(eqYm.m<1){ eqYm.m=12; eqYm.y--; } });
+  b('eq-next', ()=>{ eqYm.m++; if(eqYm.m>12){ eqYm.m=1; eqYm.y++; } });
+  b('eq-yprev', ()=>{ eqYear--; });
+  b('eq-ynext', ()=>{ eqYear++; });
 }
 function bindPayroll(el){
   // 급여관리 화면
@@ -6559,6 +6694,7 @@ function afterRender(){
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); }catch(e){} autoDispatchShift(); render(); });
   bindPayroll(el);
+  bindEqPay(el);
   bindAccident(el);
   bindSafety(el);
   bindPwChange(el);
