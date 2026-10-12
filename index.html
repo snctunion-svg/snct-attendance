@@ -908,6 +908,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .inTbl .inMg{margin-left:4px;color:#db2777;font-weight:800;font-size:12.5px;white-space:nowrap;}
 @media (max-width:700px){ #dpTable .dpMg{font-size:11px;} }
 /* 장비 급여 관리 */
+.eqTbl tr.fcaBase td{background:#f8fafc;font-weight:800;}
 .eqBonusBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-left:12px;}
 .eqBonusIn{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:13px;white-space:nowrap;}
 .eqBonusIn input{width:56px;border:1px solid var(--border);border-radius:7px;padding:4px 6px;text-align:right;font:inherit;background:var(--bg);color:var(--text);}
@@ -1010,6 +1011,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
     <a data-view="payroll"><span class="ic">💰</span>장비 시급</a>
     <a data-view="eqpay"><span class="ic">🧾</span>장비 급여 관리</a>
+    <a data-view="fcana"><span class="ic">📊</span>휴무 2명 분석</a>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
@@ -2750,7 +2752,7 @@ const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','codes','accident','vessel','berth','pwchange']; // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2'];
-const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','eqpay','accident'];
+const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','accident'];
 const LEADER_READONLY_VIEWS = ['codes','accident']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
@@ -3559,6 +3561,7 @@ function render(){
   else if(VIEW==='backup') el.innerHTML = pageBackup();
   else if(VIEW==='payroll') el.innerHTML = pagePayroll();
   else if(VIEW==='eqpay') el.innerHTML = pageEqPay();
+  else if(VIEW==='fcana') el.innerHTML = pageFcAna();
   else if(VIEW==='accident') el.innerHTML = pageAccident();
   else if(VIEW==='safety') el.innerHTML = pageSafety();
   else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
@@ -5080,6 +5083,183 @@ function bindEqPay(el){
   b('eq-next', ()=>{ eqYm.m++; if(eqYm.m>12){ eqYm.m=1; eqYm.y++; } });
   b('eq-yprev', ()=>{ eqYear--; });
   b('eq-ynext', ()=>{ eqYear++; });
+}
+
+/* ========================= 휴무 2명 분석 (UNION) =========================
+   선석배정(회사 사이트 선석조회)의 크레인(QC) 작업시간으로 조·근무(주/야)마다 필요한 인원을 구하고,
+   원본 근무기록(EXCEL_ATT·EXCEL_CODES, 전체 STS 기사)의 실제 출근·지원과 비교.
+   고정휴무(FC)를 하루 2명으로 묶었을 때 모자라는 인원이 얼마나 늘어나는지 계산. 저장은 안 함(계산만). */
+const FCA = {from:'2025-12-26', to:'2026-09-25', rate:18663, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null};
+function fcaDs(r){ return '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6); }
+function fcaMin(t){ const m = String(t||'').match(/(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})/); if(!m) return null; const [y,mo,d] = m[1].split('-').map(Number); return Date.UTC(y,mo-1,d, Number(m[2]), Number(m[3]))/60000; }
+function fcaAt(ds, h){ const [y,mo,d] = ds.split('-').map(Number); return Date.UTC(y,mo-1,d,h,0)/60000; }
+async function fcaFetch(qd){
+  const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
+  const r = await fetch(api + (api.includes('?') ? '&' : '?') + 'type=berth&date=' + qd + '&t=' + Date.now());
+  return r.json();
+}
+// 1) 선석 자료를 7일씩 받아서 모아 둠
+async function fcaLoadBerth(){
+  if(FCA.running) return;
+  if(!vslApi){ FCA.err = '본선작업(Apps Script) 주소가 없어요.'; render(); return; }
+  FCA.running = true; FCA.err = ''; FCA.blocks = []; FCA.days = {}; FCA.result = null;
+  const starts = []; for(let d = FCA.from; d <= FCA.to; d = addDays(d, 7)) starts.push(d);
+  FCA.total = starts.length; FCA.done = 0; render();
+  const seen = new Set();
+  for(const qd of starts){
+    let j = null;
+    for(let tryN = 0; tryN < 2 && !j; tryN++){ try{ j = await fcaFetch(qd); }catch(e){ j = null; } }
+    if(!j || !j.ok){ FCA.err = `${qd} 선석 자료를 받지 못했어요. (회사 사이트 또는 Apps Script)`; break; }
+    const dates = berthSetDates(j);
+    if(dates[0] !== qd){ FCA.err = `회사 사이트에서 ${qd} 날짜로 조회가 안 돼요(오늘 자료가 옴). 지난 날짜 조회가 막혀 있으면 이 분석은 할 수 없어요.`; break; }
+    dates.forEach(d=> FCA.days[d] = true);
+    (j.blocks || []).forEach(b=>{
+      const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
+      (b.qc || []).forEach(q=>{
+        const a = fcaMin(q.start), z = fcaMin(q.end); if(a==null || z==null || z <= a) return;
+        const k = name + '|' + q.no + '|' + a; if(seen.has(k)) return; seen.add(k);
+        FCA.blocks.push({no: String(q.no||'').trim(), a, z});
+      });
+    });
+    FCA.done++; render();
+  }
+  FCA.running = false;
+  if(!FCA.err || FCA.blocks.length) fcaAnalyze();
+  render();
+}
+// 근무 시간대 안에서 동시에 돌아간 크레인 최대 대수(30분 간격으로 셈)
+function fcaCranes(a0, z0){
+  let mx = 0;
+  const bs = FCA.blocks.filter(b=> b.a < z0 && b.z > a0);
+  for(let t = a0; t < z0; t += 30){
+    const on = new Set(); bs.forEach(b=>{ if(b.a <= t && t < b.z) on.add(b.no); });
+    if(on.size > mx) mx = on.size;
+  }
+  return mx;
+}
+// 2) 분석
+function fcaAnalyze(){
+  const names = Object.keys(EXCEL_CODES);
+  const codeOf = (n, ds)=> excelAnyCode(ds, n);
+  // 전임(UJ가 대부분) 제외, 조 구분: 편성근무가 1조 편성과 같으면 A조
+  const grp = {};
+  names.forEach(n=>{
+    const ujs = (EXCEL_CODES[n]||'').split(',').filter(x=> /:UJ$/.test(x)).length;
+    if(ujs >= 40) return;
+    let a=0, b=0; (EXCEL_ATT[n]||[]).forEach(r=>{ if(!r[9]) return; if(r[9]===scheduledShift(fcaDs(r),'1')) a++; else b++; });
+    grp[n] = a >= b ? 'A' : 'B';
+  });
+  const recOf = {}; names.forEach(n=> (EXCEL_ATT[n]||[]).forEach(r=>{ recOf[fcaDs(r)+'|'+n] = r; }));
+  const rows = [];
+  let supH = 0, supN = 0;
+  for(let ds = FCA.from; ds <= FCA.to; ds = addDays(ds,1)){
+    if(!FCA.days[ds]) continue;
+    const wd = new Date(ds+'T00:00:00').getDay();
+    const qD = fcaCranes(fcaAt(ds,8), fcaAt(ds,18)), qN = fcaCranes(fcaAt(ds,18), fcaAt(ds,18) + 14*60);
+    const supIn = {D:0, N:0};
+    names.forEach(n=>{ const r = recOf[ds+'|'+n]; if(!r || !r[3]) return; const h = parseInt(r[3]); if(isNaN(h)) return;
+      supIn[(h >= 6 && h < 16) ? 'D' : 'N']++;
+      const a = fcaMin(ds+' '+r[3]); let z = fcaMin(ds+' '+r[4]); if(a!=null && z!=null){ if(z <= a) z += 1440; supH += (z-a)/60; supN++; } });
+    ['A','B'].forEach(g=>{
+      const sh = g==='A' ? scheduledShift(ds,'1') : scheduledShift(ds,'2');
+      const q = sh==='N' ? qN : qD;
+      const mem = Object.keys(grp).filter(n=> grp[n]===g);
+      let avail = 0; const fcs = [];
+      mem.forEach(n=>{ const r = recOf[ds+'|'+n], c = codeOf(n, ds); if(r && r[1]) avail++; if(c==='FC' || c==='FCH') fcs.push(n); });
+      rows.push({ds, wd, g, sh, q, avail, sup: supIn[sh], fc: fcs.length});
+    });
+  }
+  const avgSupH = supN ? supH / supN : 8;
+  const req = (q, k)=> Math.ceil(q * k - 1e-9);
+  const short = (rs, k, adj)=> rs.reduce((t, r, i)=> t + Math.max(0, req(r.q, k) - (r.avail + (adj ? (adj[i]||0) : 0))), 0);
+  // 고정휴무 2명으로 묶기: 같은 조·같은 주(월요일 시작)에서 FC 1명인 날(월·토 제외)을 둘씩 묶어, 한 날로 휴무를 옮김
+  const pairAdj = (mode, k)=>{
+    const adj = new Array(rows.length).fill(0), byWk = {};
+    rows.forEach((r,i)=>{ if(r.fc===1 && r.wd!==1 && r.wd!==6){ const key = r.g+'|'+mondayOf(r.ds); (byWk[key] = byWk[key] || []).push(i); } });
+    Object.values(byWk).forEach(list=>{
+      for(let x = 0; x + 1 < list.length; x += 2){
+        const i = list[x], j = list[x+1];
+        const slack = t=> rows[t].avail - req(rows[t].q, k);
+        let two = i, zero = j; // two: 2명 쉬는 날(출근 −1), zero: 아무도 안 쉬는 날(출근 +1)
+        if(mode==='best' && slack(j) > slack(i)){ two = j; zero = i; }
+        if(mode==='worst' && slack(j) < slack(i)){ two = j; zero = i; }
+        adj[two] -= 1; adj[zero] += 1;
+      }
+    });
+    return adj;
+  };
+  const base2 = short(rows, 2), base18 = short(rows, 1.8);
+  const sc = [
+    ['현재 (휴무 1명 · 교대율 2.0)', base2],
+    ['휴무 2명 · 교대율 2.0 — 순서대로 묶음', short(rows, 2, pairAdj('order', 2))],
+    ['휴무 2명 · 교대율 2.0 — 한가한 날에 2명', short(rows, 2, pairAdj('best', 2))],
+    ['휴무 2명 · 교대율 2.0 — 바쁜 날에 2명(최악)', short(rows, 2, pairAdj('worst', 2))],
+    ['휴무 2명 · 교대율 1.8 (회사안) — 순서대로', short(rows, 1.8, pairAdj('order', 1.8))],
+    ['참고: 휴무 1명 · 교대율 1.8', base18]
+  ];
+  const months = rows.length ? Math.max(1, Math.round((fcaAt(FCA.to,0) - fcaAt(FCA.from,0)) / 1440 / 30.4)) : 1;
+  const unit = avgSupH * FCA.rate * 1.5; // 모자라는 1명 = 지원 1건(평균 지원시간 × 통상시급 × 1.5)
+  const byQ = {}; rows.forEach(r=>{ const o = byQ[r.q] = byQ[r.q] || {n:0, avail:0, sup:0, need:0}; o.n++; o.avail += r.avail; o.sup += r.sup; o.need += Math.max(0, req(r.q,2) - r.avail); });
+  const totSup = rows.reduce((t,r)=> t + r.sup, 0);
+  FCA.result = {rows, sc, base2, months, unit, avgSupH, byQ, totSup, nDays: Object.keys(FCA.days).length, nPeople: Object.keys(grp).length};
+}
+function fcaCsv(){
+  const R = FCA.result; if(!R) return;
+  const wdn = '일월화수목금토';
+  const lines = ['날짜,요일,조,근무,크레인(최대),필요인원(2.0),필요인원(1.8),자기조 출근,지원 들어옴,고정휴무(FC),부족(2.0)'];
+  R.rows.forEach(r=> lines.push([r.ds, wdn[r.wd], r.g, r.sh, r.q, Math.ceil(r.q*2), Math.ceil(r.q*1.8-1e-9), r.avail, r.sup, r.fc, Math.max(0, r.q*2 - r.avail)].join(',')));
+  const blob = new Blob(['﻿' + lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `휴무2명분석_${FCA.from}_${FCA.to}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+function pageFcAna(){
+  const R = FCA.result, W = n=> Math.round(n).toLocaleString('ko-KR');
+  const prog = FCA.running ? `<div class="hint">선석 자료 받는 중… ${FCA.done} / ${FCA.total} 주</div>` : '';
+  const err = FCA.err ? `<div class="note">${esc(FCA.err)}</div>` : '';
+  let res = '';
+  if(R){
+    const scRows = R.sc.map(([t, v], i)=>{
+      const d = v - R.base2, yr = d * 12 / R.months;
+      return `<tr${i===0?' class="fcaBase"':''}><td style="text-align:left;">${esc(t)}</td><td class="eqN">${W(v)}</td><td class="eqN">${i===0 ? '' : (d>0?'+':'')+W(d)}</td><td class="eqN">${i===0 ? '' : (yr>0?'+':'')+W(yr)}</td><td class="eqN">${i===0 ? '' : (yr>0?'+':'')+W(yr * R.unit)+'원'}</td></tr>`;
+    }).join('');
+    const qRows = Object.keys(R.byQ).map(Number).sort((a,b)=>a-b).map(q=>{ const o = R.byQ[q]; return `<tr><td>${q}대</td><td class="eqN">${o.n}</td><td class="eqN">${Math.ceil(q*2)}</td><td class="eqN">${(o.avail/o.n).toFixed(1)}</td><td class="eqN">${(o.sup/o.n).toFixed(2)}</td><td class="eqN">${(o.need/o.n).toFixed(2)}</td></tr>`; }).join('');
+    res = `
+    <div class="panel">
+      <h3>결과 (${esc(FCA.from)} ~ ${esc(FCA.to)} · 선석 자료 ${R.nDays}일 · 기사 ${R.nPeople}명, 전임 제외)</h3>
+      <div class="scrollx"><table class="tbl eqTbl"><thead><tr><th>경우</th><th>모자라는 인원<br>(조·근무 합계)</th><th>현재 대비</th><th>1년 환산</th><th>1년 추가 비용<br>(지원으로 메움)</th></tr></thead><tbody>${scRows}</tbody></table></div>
+      <p class="hint" style="margin:8px 0 0;">필요인원 = 그 근무(주간 08~18시 / 야간 18~08시)에 동시에 돈 크레인 최대 대수 × 교대율(올림). 모자라는 인원 = 필요인원 − 자기 조 출근 인원(0보다 클 때). 모자라는 1명 = 지원 1건 = 평균 지원 ${R.avgSupH.toFixed(1)}시간 × 통상시급 ${W(FCA.rate)}원 × 1.5 ≈ ${W(R.unit)}원.<br>
+      휴무 2명: 같은 조·같은 주에서 고정휴무(FC) 1명인 날(월·토 제외)을 둘씩 묶어 한 날에 2명, 다른 날은 0명으로 바꿈(1년 휴무일수는 그대로).</p>
+    </div>
+    <div class="panel">
+      <h3>검증: 크레인 대수별 평균</h3>
+      <div class="scrollx"><table class="tbl eqTbl"><thead><tr><th>크레인</th><th>조·근무 수</th><th>필요인원(2.0)</th><th>자기 조 출근</th><th>실제 지원 들어옴</th><th>계산상 부족</th></tr></thead><tbody>${qRows}</tbody></table></div>
+      <p class="hint" style="margin:8px 0 0;">계산상 부족과 실제 지원 인원이 비슷하게 움직이면 이 계산이 현장과 맞는다는 뜻이에요. (실제 지원 합계 ${W(R.totSup)}명 · 계산상 부족 합계 ${W(R.base2)}명)</p>
+      <button class="btn ghost sm" data-act="fca-csv" style="margin-top:8px;">📥 날짜별 자료 내려받기(CSV)</button>
+    </div>`;
+  }
+  return `
+  <h2 class="pgttl">휴무 2명 분석</h2>
+  <div class="panel">
+    <div class="row eqBar" style="align-items:center;">
+      <input type="date" id="fcaFrom" value="${FCA.from}" class="tx" style="padding:5px 6px;"> <span>~</span>
+      <input type="date" id="fcaTo" value="${FCA.to}" class="tx" style="padding:5px 6px;">
+      <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="fcaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
+      <button class="btn sm" data-act="fca-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '선석 자료 불러와서 분석'}</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0;">회사 사이트 선석배정(선석 조회와 같은 자료)을 7일씩 받아서 근무기록과 비교해요. 기간이 길면 몇 분 걸려요. 원본 근무기록이 있는 날(~2026-09-28)까지만 정확해요.</p>
+    ${prog}${err}
+  </div>
+  ${res}`;
+}
+function bindFcAna(el){
+  if(VIEW!=='fcana') return;
+  const run = el.querySelector('[data-act="fca-run"]');
+  if(run) run.onclick = ()=>{
+    const f = el.querySelector('#fcaFrom').value, t = el.querySelector('#fcaTo').value, r = Number(String(el.querySelector('#fcaRate').value).replace(/[^0-9]/g,''));
+    if(f && t && f <= t){ FCA.from = f; FCA.to = t; }
+    if(r > 0) FCA.rate = r;
+    fcaLoadBerth();
+  };
+  const csv = el.querySelector('[data-act="fca-csv"]'); if(csv) csv.onclick = fcaCsv;
 }
 function bindPayroll(el){
   // 급여관리 화면
@@ -6737,6 +6917,7 @@ function afterRender(){
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); }catch(e){} autoDispatchShift(); render(); });
   bindPayroll(el);
   bindEqPay(el);
+  bindFcAna(el);
   bindAccident(el);
   bindSafety(el);
   bindPwChange(el);
