@@ -922,6 +922,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .eqTbl tr.fcaBase td{background:#f8fafc;font-weight:800;}
 .eqBonusBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-left:12px;}
 .eqBonusIn{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:13px;white-space:nowrap;}
+.eqBonusIn input[type=checkbox]{width:auto !important;padding:0;}
 .eqBonusIn input{width:56px;border:1px solid var(--border);border-radius:7px;padding:4px 6px;text-align:right;font:inherit;background:var(--bg);color:var(--text);}
 .eqTbl td.eqBon{color:#047857;background:#f0fdf4;} .eqTbl th.eqBonH{background:#dcfce7;}
 @media (max-width:700px){ .eqBonusBar{margin-left:0;order:3;width:100%;} }
@@ -1023,6 +1024,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="payroll"><span class="ic">💰</span>장비 시급</a>
     <a data-view="eqpay"><span class="ic">🧾</span>장비 급여 관리</a>
     <a data-view="fcana"><span class="ic">📊</span>휴무 2명 분석</a>
+    <a data-view="supcut"><span class="ic">✂️</span>지원 폐지</a>
     <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
   </nav>
   <main id="content"></main>
@@ -2763,7 +2765,7 @@ const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','codes','accident','vessel','berth','pwchange']; // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2'];
-const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','accident'];
+const UNION_VIEWS  = ['team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes','accident']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
@@ -3573,6 +3575,7 @@ function render(){
   else if(VIEW==='payroll') el.innerHTML = pagePayroll();
   else if(VIEW==='eqpay') el.innerHTML = pageEqPay();
   else if(VIEW==='fcana') el.innerHTML = pageFcAna();
+  else if(VIEW==='supcut') el.innerHTML = pageSupCut();
   else if(VIEW==='accident') el.innerHTML = pageAccident();
   else if(VIEW==='safety') el.innerHTML = pageSafety();
   else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
@@ -5138,7 +5141,7 @@ async function fcaLoadBerth(){
     FCA.done++; render();
   }
   FCA.running = false;
-  if(!FCA.err || FCA.blocks.length) fcaAnalyze();
+  if(!FCA.err || FCA.blocks.length){ fcaAnalyze(); try{ spcAnalyze(); }catch(e){ console.error(e); } }
   render();
 }
 // 근무 시간대 안에서 동시에 돌아간 크레인 최대 대수(30분 간격)
@@ -5260,6 +5263,7 @@ function fcaNums(){
     yBase: won(base)*y, yChain: won(R.rawH)*y, yPaid: won(R.paidH)*y, yMg: won(R.mgLostH)*y, yNet: won(R.paidH - R.mgLostH)*y,
     pctPaid: total ? won(R.paidH)*y/total*100 : 0, pctNet: total ? won(R.paidH - R.mgLostH)*y/total*100 : 0};
 }
+function wonMan(v){ v = Math.round(v); const a = Math.floor(Math.abs(v)/1e8), b = Math.round((Math.abs(v)%1e8)/1e4); return (v<0?'-':'') + (a ? a+'억 ' + (b ? b.toLocaleString('ko-KR')+'만' : '') : b.toLocaleString('ko-KR')+'만') + '원'; }
 function fcaReport(){
   const R = FCA.result; if(!R) return {sheets:[]};
   const N = fcaNums(), W = v=> Math.round(v).toLocaleString('ko-KR'), H1 = v=> (Math.round(v*10)/10).toLocaleString('ko-KR'), P = v=> v.toFixed(2)+'%';
@@ -5278,9 +5282,9 @@ function fcaReport(){
     [],
     ['3. 검토 결과 (결론)'],
     ['연 환산 추가 지원 OT (원)', W(N.yPaid), '월 보장시간 반영 후, 지원 나가는 조합원에게 지급'],
-    ['장비직 총인건비 대비', P(N.pctPaid), `총인건비 ${W(N.total/1e8*100)/100}억원 기준 · 시급 인상률로 환산한 값`],
+    ['장비직 총인건비 대비', P(N.pctPaid), `총인건비 ${(N.total/1e8).toFixed(1)}억원 기준 · 시급 인상률로 환산한 값`],
     ['토요일 만근 영향 반영 시 (확인 필요)', W(N.yNet), P(N.pctNet)],
-    [`고정휴무를 1주 12명으로 늘리면 장비직에게 지급되는 지원 OT는 연 약 ${W(N.yPaid/1e4)}만원(총인건비 대비 +${N.pctPaid.toFixed(2)}%) 늘어나는 것으로 검토됨.`],
+    [`고정휴무를 1주 12명으로 늘리면 장비직에게 지급되는 지원 OT는 연 약 ${wonMan(N.yPaid)}(총인건비 대비 +${N.pctPaid.toFixed(2)}%) 늘어나는 것으로 검토됨.`],
     [],
     ['4. 산정 관점'],
     ['늘어나는 고정휴무만큼 유동휴무(MC)가 줄어 개인별 휴무일수는 같음. 따라서 비용은 "고정휴무가 늘어난 날이 바쁜 날일 때" 생기는 지원근로에서만 발생함. 그날 MC가 있거나 크레인 대비 출근 인원에 여유가 있으면 비용 없음. 지원 나간 사람의 지원휴무(SC) 연쇄와 월 지원 보장시간(30h)을 반영함.'],
@@ -5366,7 +5370,7 @@ function fcaReport(){
     ['만근 반영 시 순증', '', W(N.yNet) + ' (' + P(N.pctNet) + ')'],
     [],
     ['[결론]'],
-    [`고정휴무를 조당 1주 8명 → 12명으로 늘리면 지원 OT가 연 약 ${W(N.yPaid/1e4)}만원(총인건비 대비 +${N.pctPaid.toFixed(2)}%) 늘어나는 것으로 검토됨.`]
+    [`고정휴무를 조당 1주 8명 → 12명으로 늘리면 지원 OT가 연 약 ${wonMan(N.yPaid)}(총인건비 대비 +${N.pctPaid.toFixed(2)}%) 늘어나는 것으로 검토됨.`]
   ]};
   const anon = {}; R.people.forEach((n,i)=> anon[n] = '기사' + String(i+1).padStart(2,'0'));
   const s5rows = [['구분', '조', '급여월', '현재 지원OT(h)', '추가 배분(h)', '현재 월 보상(h)', '변경안 월 보상(h)']];
@@ -5456,6 +5460,235 @@ function bindFcAna(el){
   el.querySelectorAll('[data-act="fca-tab"]').forEach(x=> x.onclick = ()=>{ FCA.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="fca-xls"]'); if(xb) xb.onclick = fcaXls;
   const csv = el.querySelector('[data-act="fca-csv"]'); if(csv) csv.onclick = fcaCsv;
+}
+/* ========================= 지원 폐지 분석 (UNION) =========================
+   지원근로를 없애고 크레인당 최소 교대비율 1.5(필요인원 = 크레인 대수 × 1.5, 올림)로 자기 조 인원만으로 운영할 때,
+   · 조합원 연봉에서 빠지는 지원 OT(평일 지원 + 휴일 지원 + 지원 보장 30h 보전)를 계산하고
+   · 지원휴무(SC)가 없어져 본근무로 돌아오는 OT를 빼서
+   · 같은 연봉을 맞추려면 시급을 몇 % 올려야 하는지 보여 줌. 선석 자료는 '휴무 2명 분석'과 같은 것을 씀(계산만, 저장 안 함) */
+const SPC = {ratio:1.5, keepGuar:false, scBack:true, result:null, tab:1};
+function spcAnalyze(){
+  if(!FCA.blocks.length && !Object.keys(FCA.days).length){ SPC.result = null; return; }
+  const names = Object.keys(EXCEL_CODES), grp = {};
+  names.forEach(n=>{
+    const ujs = (EXCEL_CODES[n]||'').split(',').filter(x=> /:UJ$/.test(x)).length; if(ujs >= 40) return;
+    let a=0, b=0; (EXCEL_ATT[n]||[]).forEach(r=>{ if(!r[9]) return; if(r[9]===scheduledShift(fcaDs(r),'1')) a++; else b++; });
+    grp[n] = a >= b ? '1' : '2';
+  });
+  const people = Object.keys(grp), recOf = {}, rowOf = {};
+  people.forEach((n,i)=> (EXCEL_ATT[n]||[]).forEach(r=>{ const ds = fcaDs(r); rowOf[ds+'|'+n] = r; recOf[ds+'|'+n] = normAtt(excelAttRec(r, 'spc'+i)); }));
+  // 사람·급여월별 OT 구성
+  const pm = {};
+  for(let ds = FCA.from; ds <= FCA.to; ds = addDays(ds,1)){
+    const key = fcaPayKey(ds);
+    people.forEach(n=>{
+      const o = pm[n+'|'+key] = pm[n+'|'+key] || {n, key, wk:0, ho:0, sp:0, hsup:0, meal:0, wkDays:0, sc:0, supN:0};
+      if(excelAnyCode(ds, n)==='SC') o.sc++;
+      const rec = recOf[ds+'|'+n]; if(!rec) return;
+      const c = computeDaily(rec, ds), p = computeSupportDaily(rec, ds);
+      if(c.valid){ if(c.category==='일요일' || c.category==='공휴일') o.ho += c.premium; else { o.wk += c.premium; o.wkDays++; } }
+      if(p.valid){ o.supN++; const k = dayCategory(ds, !!rec.manguen, rec.employeeId); if(k==='SU' || k==='H'){ o.ho += p.premium; o.hsup += p.premium; } else o.sp += p.premium; }
+      o.meal += computeMealAllowance(rec) + computeDamdang(rec);
+    });
+  }
+  const G = FCA.guar;
+  Object.values(pm).forEach(o=>{
+    const perDay = o.wkDays ? o.wk / o.wkDays : 0;
+    o.now = o.wk + Math.max(o.ho, 60) + Math.max(o.sp, G) + o.meal;              // 지금 받는 OT(보장 반영)
+    o.scBackH = SPC.scBack ? o.sc * perDay : 0;                                    // SC 없어져 본근무로 돌아오는 OT
+    o.after = o.wk + o.scBackH + Math.max(o.ho - o.hsup, 60) + (SPC.keepGuar ? G : 0) + o.meal;
+    o.lost = o.now - o.after;
+    o.supPaid = Math.max(o.sp, G);                                                 // 지금 지원으로 받는 몫(평일, 보장 포함)
+    o.hsupPaid = Math.max(o.ho, 60) - Math.max(o.ho - o.hsup, 60);                 // 휴일 지원으로 받는 몫
+  });
+  const keys = [...new Set(Object.values(pm).map(o=> o.key))].sort();
+  // 조·근무별 운영 가능 여부(지원 없이 자기 조 출근만으로): 필요인원(2.0) / 최소(1.5)
+  const rows = [];
+  for(let ds = FCA.from; ds <= FCA.to; ds = addDays(ds,1)){
+    if(!FCA.days[ds]) continue;
+    const qD = fcaCranes(fcaAt(ds,8), fcaAt(ds,18)), qN = fcaCranes(fcaAt(ds,18), fcaAt(ds,18) + 14*60);
+    const supIn = {D:0, N:0};
+    people.forEach(n=>{ const r = rowOf[ds+'|'+n]; if(!r || !r[3]) return; const h = parseInt(r[3]); if(isNaN(h)) return; supIn[(h >= 6 && h < 16) ? 'D' : 'N']++; });
+    ['1','2'].forEach(g=>{
+      const sh = scheduledShift(ds, g), q = sh==='N' ? qN : qD;
+      let avail = 0; people.filter(n=> grp[n]===g).forEach(n=>{ const r = rowOf[ds+'|'+n]; if(r && r[1]) avail++; });
+      const n20 = Math.ceil(q*2 - 1e-9), n15 = Math.ceil(q*SPC.ratio - 1e-9);
+      rows.push({ds, key: fcaPayKey(ds), g, sh, q, avail, sup: supIn[sh], n20, n15, ok20: avail >= n20, ok15: avail >= n15, maxQ: Math.floor(avail / SPC.ratio + 1e-9)});
+    });
+  }
+  const months = keys.map(key=>{
+    const os = Object.values(pm).filter(o=> o.key===key), rs = rows.filter(r=> r.key===key);
+    const S = k=> os.reduce((t,o)=> t + o[k], 0);
+    return {key, now:S('now'), after:S('after'), lost:S('lost'), sp:S('sp'), hsup:S('hsup'), supPaid:S('supPaid'), hsupPaid:S('hsupPaid'), scBackH:S('scBackH'), sc:S('sc'), supN:S('supN'),
+      shifts: rs.length, sup: rs.reduce((t,r)=> t + r.sup, 0), short20: rs.filter(r=> !r.ok20).length, short15: rs.filter(r=> !r.ok15).length,
+      lostQ: rs.reduce((t,r)=> t + Math.max(0, r.q - r.maxQ), 0)};
+  });
+  const nMon = months.length || 1, yr = 12 / nMon;
+  const T = k=> months.reduce((t,m)=> t + m[k], 0);
+  const perPerson = people.map(n=>{ const os = keys.map(k=> pm[n+'|'+k]).filter(Boolean); const s = k=> os.reduce((t,o)=> t + o[k], 0); return {n, g: grp[n], now:s('now'), lost:s('lost'), sp:s('sp'), hsup:s('hsup'), sc:s('sc'), scBackH:s('scBackH')}; });
+  SPC.result = {people, grp, pm, keys, months, rows, nMon, yr, perPerson, n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length,
+    now:T('now'), after:T('after'), lost:T('lost'), sp:T('sp'), hsup:T('hsup'), supPaid:T('supPaid'), hsupPaid:T('hsupPaid'), scBackH:T('scBackH'), sc:T('sc'), supN:T('supN'),
+    shifts:T('shifts'), sup:T('sup'), short20:T('short20'), short15:T('short15'), lostQ:T('lostQ'), nDays: Object.keys(FCA.days).length};
+}
+function spcReport(){
+  const R = SPC.result; if(!R) return {sheets:[]};
+  const W = v=> Math.round(v).toLocaleString('ko-KR'), H1 = v=> (Math.round(v*10)/10).toLocaleString('ko-KR'), P = v=> v.toFixed(2)+'%';
+  const ppl = R.n1 + R.n2, rate = FCA.rate, y = R.yr, total = ppl * FCA.annual;
+  const lostWon = R.lost * rate * y, lostPP = lostWon / ppl;
+  const raise = total > lostWon ? lostWon / (total - lostWon) * 100 : 0;
+  const pp = R.perPerson.map(p=>{ const lw = p.lost * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
+  const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
+  const anon = {}; R.people.forEach((n,i)=> anon[n] = '기사' + String(i+1).padStart(2,'0'));
+  const s1 = {name:'1.검토개요', rows:[
+    ['장비직 지원근로 폐지 · 최소 교대비율 ' + SPC.ratio + ' 운영 시 시급 보전 검토자료'],
+    ['노동조합 · 2026 임금교섭 협의자료'], [],
+    ['1. 검토 목적'],
+    [`지원근로(타조 지원·연장 지원)를 없애고 크레인당 최소 교대비율 ${SPC.ratio}로 자기 조 인원만 운영할 때, 조합원 연봉에서 빠지는 지원 OT를 산출하고 같은 연봉을 유지하려면 시급을 몇 % 올려야 하는지 검토함.`], [],
+    ['2. 변경안 요지'],
+    ['지원근로', '있음 → 폐지', '크레인이 적어도 부르던 지원(다른 휴무 겹침·연장·작업 지연 등) 포함 전부'],
+    ['최소 교대비율', `2.0 → ${SPC.ratio}`, `필요 출근인원 = 크레인 대수 × ${SPC.ratio} (올림)`],
+    ['지원 보장시간(월 ' + FCA.guar + 'h)', SPC.keepGuar ? '유지' : '폐지', '지원이 없으므로 지원 보전도 없어짐'],
+    ['지원휴무(SC)', '폐지', SPC.scBack ? 'SC로 쉬던 날 본근무로 돌아와 OT 일부 회복' : '회복분 반영 안 함'], [],
+    ['3. 검토 결과 (결론)'],
+    ['연봉에서 빠지는 지원 OT (연, 전체)', W(lostWon) + '원', `1인 평균 ${W(lostPP)}원`],
+    ['같은 연봉 유지에 필요한 시급 인상률', P(raise), `총인건비 ${(total/1e8).toFixed(1)}억원 기준`],
+    ['기사별 필요 인상률', `최소 ${P(pcts[0]||0)} · 중간 ${P(med)} · 최대 ${P(pcts[pcts.length-1]||0)}`, '지원을 많이 하던 기사일수록 큼'],
+    [`지원근로를 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어들며, 같은 연봉을 유지하려면 시급을 약 ${raise.toFixed(2)}% 올려야 하는 것으로 검토됨.`], [],
+    ['4. 산정 관점'],
+    [`지금 받는 OT는 평일 지원(월 ${FCA.guar}h 보장)과 휴일 지원(휴일 60h 보장 안)으로 이루어짐. 지원 폐지 후에는 평일 지원과 그 보장, 휴일 지원이 빠지고, 지원휴무(SC)로 쉬던 날은 본근무로 돌아와 그만큼 OT가 다시 생김. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
+    ['5. 운영 영향'],
+    [`지원 없이 자기 조 인원만으로 크레인 × ${SPC.ratio}를 채우지 못한 조-근무: ${R.short15}건 / ${R.shifts}건 (${P(R.shifts ? R.short15/R.shifts*100 : 0)}). 그 근무에서 못 돌리게 되는 크레인 합계: ${R.lostQ}대·근무.`], [],
+    ['6. 자료 구성'],
+    ['2.검토조건', '분석기간·단가·인건비·산정 기준'], ['3.현재와비교', '현재(교대율 2.0 + 지원) vs 지원 폐지(최소 ' + SPC.ratio + ')'], ['4.비용산출', '단계별 산출'],
+    ['5.검증데이터', '기사별 연간 지원 OT·감소액·필요 인상률 (익명)'], ['6.월별현황', '급여월별 지원 OT·감소·운영 영향']
+  ]};
+  const s2 = {name:'2.검토조건', rows:[
+    ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
+    ['분석기간', `${FCA.from} ~ ${FCA.to} (급여월 ${R.nMon}개월 · 선석 자료 ${R.nDays}일)`],
+    ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
+    ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`],
+    ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록) · 선석배정현황(크레인 작업시간)'], [],
+    ['[B] 단가 기준'],
+    ['장비직 평균 통상시급(원)', W(rate), '회사 검토자료 값'],
+    ['지원 보장시간(월, h)', FCA.guar, SPC.keepGuar ? '폐지 후에도 유지로 계산' : '폐지 후 없어지는 것으로 계산'],
+    ['휴일 OT 보장시간(월, h)', 60, '유지'], [],
+    ['[C] 인건비 기준'],
+    ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), '회사 검토자료 값'], ['장비직 총인건비(원)', W(total)], [],
+    ['[D] 실측 기준'],
+    [`지원근로 건수(${R.nMon}개월)`, W(R.supN)],
+    ['평일 지원 OT(h, 가산 반영)', H1(R.sp)], ['휴일 지원 OT(h)', H1(R.hsup)],
+    ['지원휴무(SC) 일수', W(R.sc)],
+    ['최소 교대비율', SPC.ratio, `필요 출근인원 = 크레인 대수 × ${SPC.ratio} (올림)`]
+  ]};
+  const qs = [1,2,3,4,5,6,7];
+  const s3 = {name:'3.현재와비교', rows:[
+    ['현재 vs 지원 폐지 비교'], [], ['[표1] 제도 비교'],
+    ['구분', '현재', '지원 폐지', '비고'],
+    ['지원근로', '있음', '없음', '자기 조 인원만 운영'],
+    ['필요 출근인원 기준', '크레인 × 2.0', `크레인 × ${SPC.ratio} (최소)`, '올림'],
+    ['지원 보장(월 ' + FCA.guar + 'h)', '있음', SPC.keepGuar ? '유지' : '없음', ''],
+    ['지원휴무(SC)', '있음', '없음', ''], [],
+    ['[표2] 가동 크레인 대수별 필요 출근인원 (조당)'],
+    ['가동 크레인', '현재 (2.0)', `지원 폐지 (${SPC.ratio})`, '차이'],
+    ...qs.map(q=> [q+'대', Math.ceil(q*2), Math.ceil(q*SPC.ratio - 1e-9), Math.ceil(q*2) - Math.ceil(q*SPC.ratio - 1e-9)]), [],
+    ['[표3] 실적 기준 운영 가능 여부 (지원 없이 자기 조 출근만)'],
+    ['구분', '조-근무', '비율'],
+    ['크레인 × 2.0 충족', R.shifts - R.short20, P(R.shifts ? (R.shifts - R.short20)/R.shifts*100 : 0)],
+    [`크레인 × ${SPC.ratio} 충족`, R.shifts - R.short15, P(R.shifts ? (R.shifts - R.short15)/R.shifts*100 : 0)],
+    [`크레인 × ${SPC.ratio}도 못 채움`, R.short15, P(R.shifts ? R.short15/R.shifts*100 : 0)]
+  ]};
+  const s4 = {name:'4.비용산출', rows:[
+    ['비용 산출 (검증 내용)'], [`${R.nMon}개월 실적 → 1년 환산(× ${y.toFixed(3)}) · OT시간은 가산 반영 시간`], [],
+    ['[1단계] 지금 받는 지원 관련 OT', `${R.nMon}개월(h)`, '1년(원)'],
+    [`평일 지원 OT (월 ${FCA.guar}h 보장 반영)`, H1(R.supPaid), W(R.supPaid*rate*y)],
+    ['휴일 지원 OT (휴일 60h 보장 반영 후 실제 몫)', H1(R.hsupPaid), W(R.hsupPaid*rate*y)],
+    ['소계', H1(R.supPaid + R.hsupPaid), W((R.supPaid + R.hsupPaid)*rate*y)], [],
+    ['[2단계] 지원 폐지 후 남는 몫'],
+    ['지원 보장 유지분', SPC.keepGuar ? H1(FCA.guar * R.perPerson.length * R.nMon) : 0, SPC.keepGuar ? W(FCA.guar*R.perPerson.length*R.nMon*rate*y) : 0],
+    ['지원휴무(SC) 없어져 본근무로 돌아오는 OT', H1(R.scBackH), W(R.scBackH*rate*y), `SC ${W(R.sc)}일 × 기사별 평일 하루 평균 OT`], [],
+    ['[3단계] 연봉 감소'],
+    ['줄어드는 OT (1단계 − 2단계)', H1(R.lost), W(lostWon)],
+    ['1인 평균', '', W(lostPP)], [],
+    ['[4단계] 같은 연봉 유지에 필요한 시급 인상률'],
+    ['장비직 총인건비(원)', '', W(total)],
+    ['지원 폐지 후 총인건비(원)', '', W(total - lostWon)],
+    ['필요 시급 인상률', '', P(raise), '줄어든 연봉 ÷ 남은 연봉'], [],
+    ['[결론]'],
+    [`지원근로를 폐지하고 최소 교대비율 ${SPC.ratio}로 운영하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어들어, 같은 연봉을 유지하려면 시급을 약 ${raise.toFixed(2)}% 올려야 함.`]
+  ]};
+  const s5 = {name:'5.검증데이터', rows:[['검증 데이터 — 기사별 연간(환산) 지원 OT·감소액·필요 인상률 (익명 처리)'], [`1인 연봉은 ${W(FCA.annual)}원으로 같다고 보고 계산`], [],
+    ['구분', '조', '평일 지원OT(h)', '휴일 지원OT(h)', 'SC(일)', 'SC 회복OT(h)', '줄어드는 OT(h)', '연 감소액(원)', '필요 인상률'],
+    ...pp.map(p=> [anon[p.n], p.g+'조', H1(p.sp*y), H1(p.hsup*y), Math.round(p.sc*y), H1(p.scBackH*y), H1(p.lost*y), W(p.lw), P(p.pct)])]};
+  const s6 = {name:'6.월별현황', rows:[['급여월별 지원 OT · 감소 · 운영 영향'], [],
+    ['급여월', '지원 건수', '평일 지원OT(h)', '휴일 지원OT(h)', 'SC(일)', '줄어드는 OT(h)', '감소액(원)', `× ${SPC.ratio} 못 채운 근무`, '못 돌린 크레인'],
+    ...R.months.map(m=> [m.key, m.supN, H1(m.sp), H1(m.hsup), m.sc, H1(m.lost), W(m.lost*rate), m.short15, m.lostQ]),
+    ['합계', R.supN, H1(R.sp), H1(R.hsup), R.sc, H1(R.lost), W(R.lost*rate), R.short15, R.lostQ]]};
+  return {sheets:[s1,s2,s3,s4,s5,s6]};
+}
+function spcXls(){
+  const rep = spcReport(); if(!rep.sheets.length) return;
+  const x = v=> String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const sheet = s=> `<Worksheet ss:Name="${x(s.name)}"><Table><Column ss:Width="260"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/>`
+    + s.rows.map((r,i)=> `<Row>${(r||[]).map(c=> `<Cell${i===0?' ss:StyleID="t"':''}><Data ss:Type="${typeof c==='number'?'Number':'String'}">${x(c)}</Data></Cell>`).join('')}</Row>`).join('') + `</Table></Worksheet>`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="t"><Font ss:Bold="1" ss:Size="13"/></Style></Styles>${rep.sheets.map(sheet).join('')}</Workbook>`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], {type:'application/vnd.ms-excel'})); a.download = `지원폐지_시급보전검토_${FCA.from}_${FCA.to}.xls`; document.body.appendChild(a); a.click(); a.remove();
+}
+// 보고서 표(휴무 2명 분석과 같은 모양)
+function repTableHtml(rep, tab, act){
+  const tabs = rep.sheets.map((s,i)=> `<button class="btn ${tab===i+1?'':'ghost'} sm" data-act="${act}" data-tab="${i+1}">${esc(s.name)}</button>`).join('');
+  const s = rep.sheets[tab-1] || rep.sheets[0];
+  const body = s.rows.map((r,i)=>{
+    if(!r || !r.length) return '<tr class="fcaGap"><td colspan="9"></td></tr>';
+    if(i===0) return `<tr><td colspan="9" class="fcaTitle">${esc(r[0])}</td></tr>`;
+    if(r.length===1) return `<tr><td colspan="9" class="${/^\[|^\d\.\s/.test(String(r[0])) ? 'fcaSec' : 'fcaTxt'}">${esc(r[0])}</td></tr>`;
+    const hdr = /^(구분|요일|급여월|가동 크레인)$/.test(String(r[0]));
+    return `<tr${hdr?' class="fcaHdr"':''}>${r.map((c,j)=> `<td class="${j===0?'fcaK':'fcaV'}">${esc(c)}</td>`).join('')}</tr>`;
+  }).join('');
+  return {tabs, table: `<div class="scrollx"><table class="fcaRep">${body}</table></div>`};
+}
+function pageSupCut(){
+  const R = SPC.result;
+  const prog = FCA.running ? `<div class="hint">선석 자료 받는 중… ${FCA.done} / ${FCA.total} 주</div>` : '';
+  const err = FCA.err ? `<div class="note">${esc(FCA.err)}</div>` : '';
+  let res = '';
+  if(R){
+    const t = repTableHtml(spcReport(), SPC.tab, 'spc-tab');
+    res = `<div class="panel"><div class="row eqBar" style="align-items:center;margin-bottom:8px;">${t.tabs}<span style="flex:1"></span><button class="btn sm" data-act="spc-xls">📥 보고서 엑셀</button></div>${t.table}</div>`;
+  }
+  return `
+  <h2 class="pgttl">지원 폐지</h2>
+  <div class="panel">
+    <div class="row eqBar" style="align-items:center;">
+      <input type="date" id="spcFrom" value="${FCA.from}" class="tx" style="padding:5px 6px;"> <span>~</span>
+      <input type="date" id="spcTo" value="${FCA.to}" class="tx" style="padding:5px 6px;">
+      <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="spcRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
+      <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="spcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
+      <label class="eqBonusIn"><span>최소 교대비율</span><input type="text" inputmode="decimal" id="spcRatio" value="${SPC.ratio}" style="width:44px;"></label>
+      <label class="eqBonusIn"><input type="checkbox" id="spcKeep" ${SPC.keepGuar?'checked':''}><span>지원 보장 ${FCA.guar}h 유지</span></label>
+      <label class="eqBonusIn"><input type="checkbox" id="spcScBack" ${SPC.scBack?'checked':''}><span>SC 복귀 OT 반영</span></label>
+      <button class="btn sm" data-act="spc-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : (FCA.blocks.length ? '다시 계산' : '선석 자료 불러와서 분석')}</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0;">지원근로를 모두 없애고(크레인이 적어도 부르던 지원 포함) 크레인당 최소 교대비율로 자기 조 인원만 운영할 때, 연봉에서 빠지는 지원 OT와 같은 연봉을 맞추는 시급 인상률을 계산해요. 선석 자료는 '휴무 2명 분석'과 함께 써요(한 번 받으면 두 화면 모두 바로 계산).</p>
+    ${prog}${err}
+  </div>
+  ${res}`;
+}
+function bindSupCut(el){
+  if(VIEW!=='supcut') return;
+  const run = el.querySelector('[data-act="spc-run"]');
+  if(run) run.onclick = ()=>{
+    const f = el.querySelector('#spcFrom').value, t = el.querySelector('#spcTo').value, num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9.]/g,''));
+    const same = f===FCA.from && t===FCA.to;
+    if(f && t && f <= t){ FCA.from = f; FCA.to = t; }
+    if(num('#spcRate') > 0) FCA.rate = num('#spcRate');
+    if(num('#spcAnnual') > 0) FCA.annual = num('#spcAnnual');
+    const rr = num('#spcRatio'); if(rr >= 1 && rr <= 3) SPC.ratio = rr;
+    SPC.keepGuar = el.querySelector('#spcKeep').checked; SPC.scBack = el.querySelector('#spcScBack').checked;
+    if(FCA.blocks.length && !FCA.running && same){ spcAnalyze(); render(); return; }
+    fcaLoadBerth();
+  };
+  el.querySelectorAll('[data-act="spc-tab"]').forEach(x=> x.onclick = ()=>{ SPC.tab = Number(x.dataset.tab); render(); });
+  const xb = el.querySelector('[data-act="spc-xls"]'); if(xb) xb.onclick = spcXls;
 }
 function bindPayroll(el){
   // 급여관리 화면
@@ -7114,6 +7347,7 @@ function afterRender(){
   bindPayroll(el);
   bindEqPay(el);
   bindFcAna(el);
+  bindSupCut(el);
   bindAccident(el);
   bindSafety(el);
   bindPwChange(el);
