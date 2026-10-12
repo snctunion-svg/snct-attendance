@@ -5133,7 +5133,7 @@ function bindEqPay(el){
    · 화~금(공휴일 제외)마다 조당 고정휴무 +1명 → 그날 MC가 있으면 MC를 덜 줌(비용 없음), 크레인 대비 여유가 있고 실제 지원도 없던 날은 비용 없음, 아니면 지원 1건
    · 지원휴무(SC) 연쇄, 상대 조 기사별 지원 비율로 배분 → 월 보장시간(지원 30h) 반영, 토요일 만근 영향
    저장은 안 함(계산만). 결과는 회사 검토자료와 같은 6개 항목 보고서로 보여 주고 엑셀로 내려받음 */
-const FCA = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', rate:18663, annual:97260000, guar:30, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null, tab:1};
+const FCA = {basis:'max', fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', rate:18663, annual:97260000, guar:30, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null, tab:1};
 function fcaDs(r){ return '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6); }
 function fcaMin(t){ const m = String(t||'').match(/(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})/); if(!m) return null; const [y,mo,d] = m[1].split('-').map(Number); return Date.UTC(y,mo-1,d, Number(m[2]), Number(m[3]))/60000; }
 function fcaAt(ds, h){ const [y,mo,d] = ds.split('-').map(Number); return Date.UTC(y,mo-1,d,h,0)/60000; }
@@ -5229,6 +5229,17 @@ function payBaseSrc(kind){
 function payBaseHint(){
   return `<span class="hint" style="margin:0;">${FCA.rateMan ? '통상시급 직접 입력' : PAYB.rate ? `통상시급 = 장비 시급 평균(${PAYB.nRate}명)` : '장비 시급 자료 없음'} · ${FCA.annualMan ? '연 인건비 직접 입력' : PAYB.annual ? `연 인건비 = 장비 급여 관리 실측(${PAYB.nAnn}명, 상여 제외)` : '장비 급여 자료 없음'}</span>`;
 }
+// 요구 인상률 기준: 기사별 최소·중간·최대 중 고름(기본 최대) — 지원 폐지·휴일보전·보전 폐지 공통
+const BASIS_T = {min:'최소', med:'중간', max:'최대'};
+function basisPick(pp){ const a = pp.slice().sort((x,y)=> x.pct - y.pct); if(!a.length) return {pct:0, lw:0}; return a[FCA.basis==='min' ? 0 : FCA.basis==='med' ? Math.floor(a.length/2) : a.length-1]; }
+function basisLabel(){ return `기사별 ${BASIS_T[FCA.basis]} 기준`; }
+function basisNote(){ return FCA.basis==='min' ? '가장 적게 잃는 기사 기준' : FCA.basis==='med' ? '가운데 기사 기준 · 기사 절반 이상의 연봉이 줄지 않게' : '가장 많이 잃는 기사도 연봉이 줄지 않게'; }
+function basisWho(){ return FCA.basis==='min' ? '가장 적게 잃는 기사' : FCA.basis==='med' ? '가운데 기사' : '가장 많이 잃는 기사'; }
+function basisWhy(){ return FCA.basis==='min' ? '가장 적게 잃는 기사를 기준으로' : FCA.basis==='med' ? '기사 절반 이상의 연봉이 줄지 않도록' : '가장 많이 잃는 기사도 연봉이 줄지 않도록'; }
+function basisRadios(pre){
+  return `<span class="eqBonusIn"><b>인상률 기준</b>${['min','med','max'].map(k=> `<label style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;"><input type="radio" name="${pre}Basis" value="${k}" data-basis-pick="${pre}" ${FCA.basis===k?'checked':''} style="width:auto;">${BASIS_T[k]}</label>`).join('')}</span>`;
+}
+function basisBind(el, pre){ el.querySelectorAll(`[data-basis-pick="${pre}"]`).forEach(x=> x.onchange = ()=>{ FCA.basis = x.value; render(); }); }
 function ymInputs(pre, st){
   const last = typeof IMPORT_LAST_DATE !== 'undefined' ? IMPORT_LAST_DATE : '';
   return `<b style="font-size:13px;">급여월</b><input type="month" id="${pre}FromM" value="${st.fromM}" class="tx" style="width:auto;padding:4px 6px;"><span>~</span><input type="month" id="${pre}ToM" value="${st.toM}" class="tx" style="width:auto;padding:4px 6px;">`
@@ -5651,7 +5662,7 @@ function spcIntenseSheet(R, no, rAsk){
   const tail = [[], ['[표4] 근로강도 보상'], ['구분', '값', '비고'],
     ...(I ? [['근무 1회당 운전시간 증가율', P(I.up), '같은 근무시간에 크레인에 타는 시간이 늘어난 비율']] : []),
     ['근로강도 보상률', P(ik), I && I.up >= ik ? `운전시간 증가율 ${P(I.up)}보다 낮은 수준만 요구` : '인원이 줄어 근무 1회당 노동 밀도가 높아지는 데 대한 보상'],
-    ['연봉 보전 인상률 (기사별 최대)', P(rAsk), '지원 폐지로 줄어드는 연봉 보전'],
+    [`연봉 보전 인상률 (${basisLabel()})`, P(rAsk), '지원 폐지로 줄어드는 연봉 보전'],
     ['최종 요구 시급 인상률', P(rAsk + ik), '연봉 보전 + 근로강도 보상']];
   if(!I) return {name, rows:[['근로강도 변화 — 근무 1회 기준'], ['선석 자료를 불러오면 크레인 대수 기준으로 근무 1회당 운전시간·휴식시간 변화가 나옴.'], ...tail]};
   const a = I.all, row = (k, f, unit)=> [k, f(a.now[unit]), f(a.after[unit]), (a.after[unit] - a.now[unit] >= 0 ? '+' : '') + f(a.after[unit] - a.now[unit])];
@@ -5684,7 +5695,7 @@ function spcReport(){
   const pp = R.perPerson.map(p=>{ const lw = p.lost * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
   const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
   // 요구 인상률: 기사별 최대(아무도 손해 보지 않게)
-  const top = pp.slice().sort((a,b)=> b.pct - a.pct)[0] || {pct:0, lw:0};
+  const top = basisPick(pp);
   const r1 = top.pct, rAsk = r1, ik = SPC.intense || 0, INT = spcIntensity(R);
   const anon = {}; R.people.forEach((n,i)=> anon[n] = '기사' + String(i+1).padStart(2,'0'));
   const s1 = {name:'1.검토개요', rows:[
@@ -5702,7 +5713,7 @@ function spcReport(){
     ['연봉에서 빠지는 지원 OT (연, 전체)', W(lostWon) + '원', `1인 평균 ${W(lostPP)}원`],
     ['같은 연봉 유지에 필요한 시급 인상률', P(raise), `총인건비 ${(total/1e8).toFixed(1)}억원 기준`],
     ['기사별 필요 인상률', `최소 ${P(pcts[0]||0)} · 중간 ${P(med)} · 최대 ${P(pcts[pcts.length-1]||0)}`, '지원을 많이 하던 기사일수록 큼'],
-    ['연봉 보전 인상률 (기사별 최대 기준)', P(rAsk), '가장 많이 잃는 기사도 연봉이 줄지 않게'],
+    [`연봉 보전 인상률 (${basisLabel()})`, P(rAsk), basisNote()],
     ['근로강도 보상률', P(ik), INT ? `근무 1회당 1인 운전시간 ${INT.all.now.drive.toFixed(1)}h → ${INT.all.after.drive.toFixed(1)}h (+${INT.up.toFixed(2)}%)` : '인원이 줄어 근무 1회당 노동 밀도가 높아지는 데 대한 보상'],
     ['최종 요구 시급 인상률', P(rAsk + ik), '연봉 보전 + 근로강도 보상'],
     [`지원근로를 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어들고, 같은 근무시간에 크레인에 타는 시간이 늘어남. 연봉 보전 ${rAsk.toFixed(2)}%와 근로강도 보상 ${ik.toFixed(2)}%를 더해 시급 ${(rAsk + ik).toFixed(2)}% 인상을 요구함.`], [],
@@ -5767,7 +5778,7 @@ function spcReport(){
     ['지원 폐지 후 총인건비(원)', '', W(total - lostWon)],
     ['필요 시급 인상률 (전체 평균)', '', P(raise), '줄어든 연봉 ÷ 남은 연봉'], [],
     ['[5단계] 요구 시급 인상률'],
-    ['기사별 최대 기준', '', P(rAsk), `가장 많이 잃는 기사: 연 ${W(top.lw)}원 감소`], [],
+    [basisLabel(), '', P(rAsk), `${basisWho()}: 연 ${W(top.lw)}원 감소`], [],
     ['[6단계] 근로강도 보상'],
     ['근로강도 보상률', '', P(ik), INT ? `근무 1회당 운전시간 +${INT.up.toFixed(2)}% (7.근로강도)` : ''],
     ['최종 요구 시급 인상률', '', P(rAsk + ik), '연봉 보전 + 근로강도 보상'], [],
@@ -5866,6 +5877,7 @@ function pageSupCut(){
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="spcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       ${payBaseHint()}
       ${spcRatioRadios('spc')}
+      ${basisRadios('spc')}
       ${spcIntInput('spc')}
       <button class="btn sm" data-act="spc-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '다시 계산'}</button>
       ${spcBerthBtn('spc', SPC.from, SPC.to)}
@@ -5889,6 +5901,7 @@ function bindSupCut(el){
   const bb = el.querySelector('[data-act="spc-berth"]'); if(bb) bb.onclick = ()=>{ read(); fcaLoadBerth(SPC.from, SPC.to, ()=>{ SPC.result = spcAnalyze(SPC.from, SPC.to); ALC.result = null; }); };
   el.querySelectorAll('[data-ratio-pick="spc"]').forEach(x=> x.onchange = ()=>{ read(); SPC.result = spcAnalyze(SPC.from, SPC.to); ALC.result = null; render(); }); // 고르면 바로 다시 계산
   el.querySelectorAll('[data-int-pick="spc"]').forEach(x=> x.onchange = ()=>{ spcIntRead(el, 'spc'); render(); });
+  basisBind(el, 'spc');
   el.querySelectorAll('[data-act="spc-tab"]').forEach(x=> x.onclick = ()=>{ SPC.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="spc-xls"]'); if(xb) xb.onclick = spcXls;
 }
@@ -5934,7 +5947,7 @@ function hgaReport(){
   const pp = R.perPerson.map(p=>{ const lw = p.fill * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
   const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
   // 요구 인상률: 기사별 최대(아무도 손해 보지 않게) / 휴일 OT 단가 기준(보전 못 받는 시간을 실제 휴일 근무 단가로 메우는 인상률)
-  const top = pp.slice().sort((a,b)=> b.pct - a.pct)[0] || {pct:0, lw:0};
+  const top = basisPick(pp);
   const r1 = top.pct, rAsk = r1;
   const otAll = R.ho ? R.fill / R.ho * 100 : 0;
   const otPP = pp.map(p=> p.ho > 0 ? p.fill / p.ho * 100 : 0);
@@ -5951,9 +5964,9 @@ function hgaReport(){
     ['연봉에서 빠지는 휴일 보전 (연, 전체)', W(lostWon) + '원', `1인 평균 ${W(lostPP)}원`],
     ['같은 연봉 유지에 필요한 시급 인상률', P(raise), `총인건비 ${(total/1e8).toFixed(1)}억원 기준`],
     ['기사별 필요 인상률', `최소 ${P(pcts[0]||0)} · 중간 ${P(med)} · 최대 ${P(pcts[pcts.length-1]||0)}`, '휴일 근무가 적던 기사일수록 큼'],
-    ['요구 시급 인상률 (기사별 최대 기준)', P(rAsk), '가장 많이 잃는 기사도 연봉이 줄지 않게'],
+    [`요구 시급 인상률 (${basisLabel()})`, P(rAsk), basisNote()],
     ['보전 못 받는 시간에 대한 휴일 OT 단가 인상률', P(otAll), '보전시간 ÷ 실제 휴일 OT시간'],
-    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어듦. 가장 많이 잃는 기사도 연봉이 줄지 않도록 시급 ${rAsk.toFixed(2)}% 인상을 요구함. 보전 못 받는 시간을 휴일 OT 단가로 메우려면 휴일 OT 단가 ${otAll.toFixed(1)}% 인상이 필요함.`], [],
+    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상을 요구함. 보전 못 받는 시간을 휴일 OT 단가로 메우려면 휴일 OT 단가 ${otAll.toFixed(1)}% 인상이 필요함.`], [],
     ['4. 산정 관점'],
     [`지금은 기사마다 그달 휴일 OT(휴일 본근무 + 휴일 지원, 가산 반영 시간)가 ${G}h보다 적으면 ${G}h까지 채워 지급함. 보장이 없어지면 그 차이(${G}h − 실제)만큼 줄어듦. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
     ['5. 자료 구성'],
@@ -5984,9 +5997,9 @@ function hgaReport(){
     ['보전시간 ÷ 실제 휴일 OT시간 (전체)', `${H1(R.fill)} ÷ ${H1(R.ho)}`, P(otAll), '휴일 OT 단가를 이만큼 올려야 지금과 같은 휴일 OT를 받음'],
     [],
     ['[5단계] 요구 시급 인상률'],
-    ['기사별 최대 기준', '', P(rAsk), `가장 많이 잃는 기사: 연 ${W(top.lw)}원 감소`], [],
+    [basisLabel(), '', P(rAsk), `${basisWho()}: 연 ${W(top.lw)}원 감소`], [],
     ['[결론]'],
-    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어듦. 아무도 손해 보지 않도록 시급 ${rAsk.toFixed(2)}% 인상이 필요함. 보전 못 받는 시간을 휴일 OT 단가로 메우려면 ${otAll.toFixed(1)}% 인상이 필요함.`]
+    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상이 필요함. 보전 못 받는 시간을 휴일 OT 단가로 메우려면 ${otAll.toFixed(1)}% 인상이 필요함.`]
   ]};
   const s4 = {name:'4.검증데이터', rows:[['검증 데이터 — 기사별 연간(환산) 휴일 OT·보전·필요 인상률 (익명 처리)'], [`1인 연봉은 ${W(FCA.annual)}원으로 같다고 보고 계산`], [],
     ['구분', '조', '휴일 OT 합(h)', `${G}h 미만 달`, '보전(h)', '연 감소액(원)', '필요 인상률'],
@@ -6019,7 +6032,7 @@ function pageHolGuar(){
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="hgaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       ${payBaseHint()}
       <label class="eqBonusIn"><span>휴일 보장</span><input type="text" inputmode="numeric" id="hgaGuar" value="${HGA.guar}" style="width:44px;"><span>h</span></label>
-
+      ${basisRadios('hga')}
       <button class="btn sm" data-act="hga-run">다시 계산</button>
     </div>
     <p class="hint" style="margin:8px 0 0;">휴일(일요일·공휴일) OT 월 ${HGA.guar}h 보장이 없어지면 휴일 근무가 ${HGA.guar}h에 못 미쳐도 받던 보전만큼 연봉이 줄어요. 근무기록만으로 바로 계산해요(선석 자료 필요 없음).</p>
@@ -6036,12 +6049,13 @@ function bindHolGuar(el){
     if(num('#hgaGuar') > 0) HGA.guar = num('#hgaGuar');
     hgaAnalyze(); render();
   };
+  basisBind(el, 'hga');
   el.querySelectorAll('[data-act="hga-tab"]').forEach(x=> x.onclick = ()=>{ HGA.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="hga-xls"]'); if(xb) xb.onclick = ()=> repXls(hgaReport(), `휴일보전폐지_시급보전검토_${HGA.from}_${HGA.to}.xls`);
 }
 /* ========================= 보전 폐지 (지원 + 지원 30h 보장 + 휴일 60h 보장 동시 폐지) =========================
    지원 폐지 분석(spcAnalyze)의 기사·급여월별 OT 구성을 그대로 써서, 지원·지원 보장·휴일 보장이 한꺼번에 없어질 때
-   줄어드는 연봉과 같은 연봉을 맞추는 시급 인상률(기사별 최대 기준)을 계산. 겹치는 몫(휴일 지원 ↔ 휴일 보장)은 한 번만 셈 */
+   줄어드는 연봉과 같은 연봉을 맞추는 시급 인상률(기사별 ${BASIS_T[FCA.basis]} 기준)을 계산. 겹치는 몫(휴일 지원 ↔ 휴일 보장)은 한 번만 셈 */
 const ALC = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', result:null, tab:1};
 function alcRows(){
   if(!ALC.result) ALC.result = spcAnalyze(ALC.from, ALC.to);
@@ -6070,7 +6084,7 @@ function alcReport(){
   const lostWon = T('lost') * rate * y, lostPP = lostWon / ppl, raise = total > lostWon ? lostWon / (total - lostWon) * 100 : 0;
   const pp = D.per.map(p=>{ const lw = p.lost * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
   const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
-  const top = pp.slice().sort((a,b)=> b.pct - a.pct)[0] || {pct:0, lw:0}, rAsk = top.pct, ik = SPC.intense || 0, INT = spcIntensity(R);
+  const top = basisPick(pp), rAsk = top.pct, ik = SPC.intense || 0, INT = spcIntensity(R);
   const anon = {}; R.people.forEach((n,i)=> anon[n] = '기사' + String(i+1).padStart(2,'0'));
   const part = (k, t)=> [t, H1(T(k)), W(T(k)*rate*y)];
   const s1 = {name:'1.검토개요', rows:[
@@ -6086,7 +6100,7 @@ function alcReport(){
     ['연봉에서 빠지는 금액 (연, 전체)', W(lostWon) + '원', `1인 평균 ${W(lostPP)}원`],
     ['같은 연봉 유지에 필요한 시급 인상률 (전체 평균)', P(raise), `총인건비 ${(total/1e8).toFixed(1)}억원 기준`],
     ['기사별 필요 인상률', `최소 ${P(pcts[0]||0)} · 중간 ${P(med)} · 최대 ${P(pcts[pcts.length-1]||0)}`, ''],
-    ['연봉 보전 인상률 (기사별 최대 기준)', P(rAsk), '가장 많이 잃는 기사도 연봉이 줄지 않게'],
+    [`연봉 보전 인상률 (${basisLabel()})`, P(rAsk), basisNote()],
     ['근로강도 보상률', P(ik), INT ? `근무 1회당 1인 운전시간 ${INT.all.now.drive.toFixed(1)}h → ${INT.all.after.drive.toFixed(1)}h (+${INT.up.toFixed(2)}%)` : '지원이 없어져 근무 1회당 노동 밀도가 높아지는 데 대한 보상'],
     ['최종 요구 시급 인상률', P(rAsk + ik), '연봉 보전 + 근로강도 보상'],
     [`지원근로와 지원·휴일 보장을 함께 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어들고, 같은 근무시간에 크레인에 타는 시간이 늘어남. 연봉 보전 ${rAsk.toFixed(2)}%와 근로강도 보상 ${ik.toFixed(2)}%를 더해 시급 ${(rAsk + ik).toFixed(2)}% 인상을 요구함.`], [],
@@ -6118,7 +6132,7 @@ function alcReport(){
     ['[4단계] 시급 인상률'],
     ['장비직 총인건비(원)', '', W(total)], ['폐지 후 총인건비(원)', '', W(total - lostWon)],
     ['필요 시급 인상률 (전체 평균)', '', P(raise), '줄어든 연봉 ÷ 남은 연봉'],
-    ['연봉 보전 인상률 (기사별 최대 기준)', '', P(rAsk), `가장 많이 잃는 기사: 연 ${W(top.lw)}원 감소`], [],
+    [`연봉 보전 인상률 (${basisLabel()})`, '', P(rAsk), `${basisWho()}: 연 ${W(top.lw)}원 감소`], [],
     ['[5단계] 근로강도 보상'],
     ['근로강도 보상률', '', P(ik), INT ? `근무 1회당 운전시간 +${INT.up.toFixed(2)}% (6.근로강도)` : ''],
     ['최종 요구 시급 인상률', '', P(rAsk + ik), '연봉 보전 + 근로강도 보상'], [],
@@ -6147,11 +6161,12 @@ function pageAllCut(){
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="alcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       ${payBaseHint()}
       ${spcRatioRadios('alc')}
+      ${basisRadios('alc')}
       ${spcIntInput('alc')}
       <button class="btn sm" data-act="alc-run">다시 계산</button>
       ${spcBerthBtn('alc', ALC.from, ALC.to)}
     </div>
-    <p class="hint" style="margin:8px 0 0;">지원근로 + 지원 ${FCA.guar}h 보장 + 휴일 60h 보장이 한꺼번에 없어질 때 줄어드는 연봉과 같은 연봉을 맞추는 시급 인상률(기사별 최대 기준)이에요. 근무기록만으로 바로 계산해요.</p>
+    <p class="hint" style="margin:8px 0 0;">지원근로 + 지원 ${FCA.guar}h 보장 + 휴일 60h 보장이 한꺼번에 없어질 때 줄어드는 연봉과 같은 연봉을 맞추는 시급 인상률(기사별 ${BASIS_T[FCA.basis]} 기준)이에요. 근무기록만으로 바로 계산해요.</p>
   </div>
   <div class="panel"><div class="row eqBar" style="align-items:center;margin-bottom:8px;">${t.tabs}<span style="flex:1"></span><button class="btn sm" data-act="alc-xls">📥 보고서 엑셀</button></div>${t.table}</div>`;
 }
@@ -6169,6 +6184,7 @@ function bindAllCut(el){
   el.querySelectorAll('[data-ratio-pick="alc"]').forEach(x=> x.onchange = ()=>{ run.onclick(); });
   const bb = el.querySelector('[data-act="alc-berth"]'); if(bb) bb.onclick = ()=>{ ymRead(el, 'alc', ALC); fcaLoadBerth(ALC.from, ALC.to, ()=>{ ALC.result = spcAnalyze(ALC.from, ALC.to); SPC.result = null; }); };
   el.querySelectorAll('[data-int-pick="alc"]').forEach(x=> x.onchange = ()=>{ spcIntRead(el, 'alc'); render(); });
+  basisBind(el, 'alc');
   el.querySelectorAll('[data-act="alc-tab"]').forEach(x=> x.onclick = ()=>{ ALC.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="alc-xls"]'); if(xb) xb.onclick = ()=> repXls(alcReport(), `보전폐지_시급보전검토_${ALC.from}_${ALC.to}.xls`);
 }
