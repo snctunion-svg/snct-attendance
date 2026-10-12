@@ -704,6 +704,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
 #dpTable th,#dpTable td{height:36px;border-right:1px dotted #111;border-bottom:1px dotted #111;text-align:center;padding:0 4px;white-space:nowrap;}
 #dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
+#dpTable td.dpLockCell{min-width:42px;width:42px;background:repeating-linear-gradient(45deg,transparent 0 6px,rgba(0,0,0,.04) 6px 8px);cursor:not-allowed;}
 #dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;} /* manipulation = 스크롤+두 손가락 확대·축소 허용 */
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
 #dpTable th.dpHH{text-align:left;padding:0 0 0 1px !important;font-size:15px;font-weight:800;letter-spacing:-.3px;}
@@ -769,7 +770,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   /* PC: 배차표를 작게 — 행·열이 한 화면에 들어오도록 칸 크기·글씨를 줄임 */
   #dpTable{font-size:11px;}
   #dpTable th,#dpTable td{height:24px;padding:0 2px;}
-  #dpTable td.dpCell,#dpTable th.dpSlotH,#dpTable td.dpMeal{min-width:37px;width:37px;}
+  #dpTable td.dpCell,#dpTable td.dpLockCell,#dpTable th.dpSlotH,#dpTable td.dpMeal{min-width:37px;width:37px;}
   #dpTable th.dpHH{font-size:14px;}
   #dpTable th.dpMM{font-size:10px;}
   #dpTable .dpTxt{font-size:9px;}
@@ -806,7 +807,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   #dpTable .dpI5{left:154px;min-width:34px;width:34px;padding:0 1px;border-right:1px solid #111;}
   #dpTable td.dpI1[colspan]{min-width:188px;}
   .dpScrollBar .hint{display:none;}
-  #dpTable td.dpCell,#dpTable th.dpSlotH{min-width:38px;width:38px;}
+  #dpTable td.dpCell,#dpTable td.dpLockCell,#dpTable th.dpSlotH{min-width:38px;width:38px;}
 }
 
 @media (max-width:700px){
@@ -1367,13 +1368,20 @@ function startDpInlineEdit(td, firstChar){
 }
 // 1조/2조를 고르면 그 조의 그날 근무(교대 순환)에 맞춰 D → 주간(07~19시), N → 야간(18~07시)
 function isSundayDs(ds){ const [y,m,d] = String(ds).split('-').map(Number); return new Date(y, m-1, d).getDay()===0; }
-// 배차표의 '오늘': 야간 근무(18~08시)는 다음날 08시까지 전날 배차표로 봄 → 00~08시는 전날
-function dpWorkDate(){ const n = new Date(); return n.getHours() < 8 ? addDays(todayStr(), -1) : todayStr(); }
+// 배차표의 '오늘': 야간 배차표만 다음날 08시까지 전날로 봄(주간은 그대로 자정에 넘어감)
+//  00~08시에 보고 있는 조가 전날 야간 근무였으면(전체 보기 포함) 전날 야간, 주간 조면 오늘
+function dpWorkDate(){
+  const n = new Date(), today = todayStr();
+  if(n.getHours() >= 8) return today;
+  const y = addDays(today, -1), t = dispatchTeamFilter;
+  if(t!=='1' && t!=='2') return y;
+  return scheduledShift(y, t)==='N' ? y : today;
+}
 let dispatchAuto = true; // 날짜를 직접 고르지 않았으면 시간에 따라 자동(08시에 다음 날로)
 // 자동 날짜로 바꾸기: 08시 전이면 전날 야간(일요일이면 하루치의 야간 쪽)
 function dpApplyAutoDate(){
   dispatchDate = dpWorkDate(); autoDispatchShift();
-  if(new Date().getHours() < 8){ if(isSundayDs(dispatchDate)) dispatchSunPart = 'night'; else dispatchShift = 'night'; }
+  if(dispatchDate !== todayStr()){ if(isSundayDs(dispatchDate)) dispatchSunPart = 'night'; else dispatchShift = 'night'; } // 전날 야간
 }
 function autoDispatchShift(){
   if(isSundayDs(dispatchDate || todayStr())){ // 일요일: 하루치 한 장, 처음엔 고른 조의 근무(D/N)에 맞춰 주간·야간
@@ -1387,6 +1395,8 @@ function autoDispatchShift(){
   if(c) dispatchShift = c==='N' ? 'night' : 'day';
 }
 const DP_WORK_CODES = new Set(['D','N','DN','ND','DS','NS']); // 배차표에서 '근무'로 보는 코드
+// 지원 코드(DS·NS·DN·ND): 상대 조 배차표에 이름을 직접 써서 지원하므로, 자기 조 배차표에서는 흐리게·칠하기 막음·순번/인원에서 뺌
+const DP_SUPX_CODES = new Set(['DS','NS','DN','ND']);
 // ===== 본선작업 현황: 선석별 작업현황 · STS별 작업현황만 표시(1분마다 새로고침) =====
 // 회사 홈페이지를 구글 Apps Script(무료)가 대신 읽어 두 표만 JSON으로 넘겨줌 → 앱이 표로 그림
 let vslApi = '';             // Apps Script 웹 앱 주소(UNION이 설정, 클라우드 meta/config에 저장)
@@ -7239,7 +7249,7 @@ function pageDispatch(){
       const rec = attendance[ds+'_'+e.id] || {};
       const mc = gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim());
       const dc = mc || scheduledShift(ds, e.team||'');
-      const working = !dc || DP_WORK_CODES.has(dc);
+      const working = (!dc || DP_WORK_CODES.has(dc)) && !DP_SUPX_CODES.has(mc);
       const o = otRankOf[e.id];
       if(!o) return;
       if(!working || o.n==null){ o.n = null; return; }
@@ -7273,7 +7283,8 @@ function pageDispatch(){
     const id = `${ds}_${dispatchShift}_${e.id}`;
     const drec = dispatch[id];
     let paintedSlots = 0;
-    const cells = slots.map((s,si)=>{
+    const supX = DP_SUPX_CODES.has(gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim()));
+    const cells = supX ? slots.map(s=> `<td class="dpLockCell${isMealSlot(s) ? ' dpMeal'+mealEdge(s) : ''}" title="상대 조 지원(이름 직접 입력) — 여기서는 칠할 수 없어요"></td>`).join('') : slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
       if(v && v!=='당직'){ paintedSlots++; slotCounts[si]++; } // 당직은 승무·시간대별 인원에서 뺌
@@ -7283,7 +7294,7 @@ function pageDispatch(){
     // 근태: 월별 근태코드 표와 같은 코드(FC·MC·SC·AV·DN 등). 없으면 교대 순환 근무(D/N)
     const mcode = gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim());
     const dcode = mcode || scheduledShift(ds, e.team||'');
-    const offDay = !!dcode && !DP_WORK_CODES.has(dcode); // D·N 계열이 아니면(휴무·휴가 등) 행을 흐린 회색으로
+    const offDay = (!!dcode && !DP_WORK_CODES.has(dcode)) || supX; // D·N 계열이 아니면(휴무·휴가 등)·상대 조 지원이면 행을 흐린 회색으로
     // 토요일 만근(그 주 월~금 개근 등 — 자동 판정 또는 월별 근태 '만근 수동 인정'): 근태 칸에 분홍 글씨 '만근(D)'
     const isSat = new Date(ds+'T00:00:00').getDay()===6;
     const mgOn = isSat && !offDay && !!dcode && recManguen(Object.assign({}, rec||{}, {employeeId:e.id, date:ds}), ds);
@@ -7292,7 +7303,7 @@ function pageDispatch(){
     return `<tr class="${offDay ? 'dpOff' : ''}${grp ? ' dpGrp' : ''}${lastEmp ? ' dpLast' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
-      <td class="dpI dpI3">${mgOn ? `<span class="dpMg" title="토요일 만근(특근)">만근</span>` : mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
+      <td class="dpI dpI3">${supX ? codeBadge(mcode) : mgOn ? `<span class="dpMg" title="토요일 만근(특근)">만근</span>` : mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
       <td class="dpI dpI4 dpRk g-${dayIsHol?'yel':'pur'}">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(x=> x && x!=='당직').length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
       ${cells}
@@ -7669,7 +7680,7 @@ function afterRender(){
     render();
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
-  el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); }catch(e){} autoDispatchShift(); render(); });
+  el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
   bindPayroll(el);
   bindEqPay(el);
   bindFcAna(el);
