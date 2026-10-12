@@ -5735,7 +5735,6 @@ function pageSupCut(){
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="spcRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="spcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       <label class="eqBonusIn"><span>최소 교대비율</span><input type="text" inputmode="decimal" id="spcRatio" value="${SPC.ratio}" style="width:44px;"></label>
-      <label class="eqBonusIn"><input type="checkbox" id="spcScBack" ${SPC.scBack?'checked':''}><span>SC 복귀 OT 반영</span></label>
       <button class="btn sm" data-act="spc-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '다시 계산'}</button>
       ${FCA.running || !bqMissing(SPC.from, SPC.to).length ? '' : '<button class="btn ghost sm" data-act="spc-berth">선석 자료 불러오기(운영 영향)</button>'}
     </div>
@@ -5752,7 +5751,7 @@ function bindSupCut(el){
     if(num('#spcRate') > 0) FCA.rate = num('#spcRate');
     if(num('#spcAnnual') > 0) FCA.annual = num('#spcAnnual');
     const rr = num('#spcRatio'); if(rr >= 1 && rr <= 3) SPC.ratio = rr;
-    SPC.keepGuar = false; SPC.scBack = el.querySelector('#spcScBack').checked;
+    SPC.keepGuar = false; SPC.scBack = true;
   };
   const run = el.querySelector('[data-act="spc-run"]');
   if(run) run.onclick = ()=>{ read(); SPC.result = spcAnalyze(SPC.from, SPC.to); ALC.result = null; render(); };
@@ -6005,7 +6004,6 @@ function pageAllCut(){
       ${ymInputs('alc', ALC)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="alcRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="alcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
-      <label class="eqBonusIn"><input type="checkbox" id="alcScBack" ${SPC.scBack?'checked':''}><span>SC 복귀 OT 반영</span></label>
       <button class="btn sm" data-act="alc-run">다시 계산</button>
     </div>
     <p class="hint" style="margin:8px 0 0;">지원근로 + 지원 ${FCA.guar}h 보장 + 휴일 60h 보장이 한꺼번에 없어질 때 줄어드는 연봉과 같은 연봉을 맞추는 시급 인상률(기사별 최대 기준)이에요. 근무기록만으로 바로 계산해요.</p>
@@ -6020,7 +6018,7 @@ function bindAllCut(el){
     ymRead(el, 'alc', ALC);
     if(num('#alcRate') > 0) FCA.rate = num('#alcRate');
     if(num('#alcAnnual') > 0) FCA.annual = num('#alcAnnual');
-    SPC.scBack = el.querySelector('#alcScBack').checked;
+    SPC.scBack = true;
     ALC.result = spcAnalyze(ALC.from, ALC.to); SPC.result = null; render();
   };
   el.querySelectorAll('[data-act="alc-tab"]').forEach(x=> x.onclick = ()=>{ ALC.tab = Number(x.dataset.tab); render(); });
