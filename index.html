@@ -5193,6 +5193,42 @@ function ymRange(fromM, toM){
   const [y1,m1] = fromM.split('-').map(Number), [y2,m2] = toM.split('-').map(Number);
   return [payPeriodRange(y1,m1)[0], payPeriodRange(y2,m2)[1]];
 }
+// 통상시급·1인 연 인건비 자동값 — 통상시급 = 장비 시급의 평균, 연 인건비 = 장비 급여 관리 월 급여(지급총액) 실측 평균 × 12
+//   노조 전임(오원일·선종화) 제외 · 타결금·추석·설날·기타(상여) 제외 · 직접 고친 값이 있으면 그 값을 씀
+const PAYB_EXCL = new Set(['오원일','선종화']);
+let PAYB = {rate:0, annual:0, nRate:0, nAnn:0, fromM:'', toM:''};
+function payBaseCalc(fromM, toM){
+  const list = employees.filter(e=> !PAYB_EXCL.has(String(e.name||'').trim()));
+  const today = todayStr();
+  const rates = list.map(e=>{ const p = payMgr[e.id] || {}; return Number(p.ordinary) || autoOrdinary(p, today); }).filter(v=> v > 0);
+  const ms = []; if(fromM && toM){ let ym = fromM <= toM ? fromM : toM; const end = fromM <= toM ? toM : fromM, g = {n:0}; while(ym <= end && g.n++ < 36){ ms.push(ym); ym = nextYm(ym); } }
+  const live = ms.filter(ym=>{ const [y,m] = ym.split('-').map(Number); return payPeriodRange(y,m)[0] <= today; });
+  if(live.length){ const [y1,m1] = live[0].split('-').map(Number), [y2,m2] = live[live.length-1].split('-').map(Number); ensureAttendanceRange(payPeriodRange(y1,m1)[0], payPeriodRange(y2,m2)[1]); }
+  const anns = list.filter(e=> Number((payMgr[e.id]||{}).hourly) > 0).map(e=>{
+    let sum = 0, n = 0;
+    live.forEach(ym=>{ const [y,m] = ym.split('-').map(Number), [a,b] = payPeriodRange(y,m); const t = slipAmounts(e, a, b).total; if(t > 0){ sum += t; n++; } });
+    return n ? sum / n * 12 : 0;
+  }).filter(v=> v > 0);
+  const avg = a=> a.length ? Math.round(a.reduce((x,y)=> x + y, 0) / a.length) : 0;
+  PAYB = {rate: avg(rates), annual: avg(anns), nRate: rates.length, nAnn: anns.length, fromM, toM, nMon: live.length};
+  FCA.rate = FCA.rateMan || PAYB.rate || FCA.rate;
+  FCA.annual = FCA.annualMan || PAYB.annual || FCA.annual;
+  return PAYB;
+}
+// 입력칸 값 읽기: 자동값과 다르면 직접 고친 값으로 기억, 같거나 비우면 자동값으로 돌아감
+function payBaseInput(rateV, annV){
+  FCA.rateMan = rateV > 0 && rateV !== PAYB.rate ? rateV : 0;
+  FCA.annualMan = annV > 0 && annV !== PAYB.annual ? annV : 0;
+  FCA.rate = FCA.rateMan || PAYB.rate || FCA.rate;
+  FCA.annual = FCA.annualMan || PAYB.annual || FCA.annual;
+}
+function payBaseSrc(kind){
+  if(kind==='rate') return FCA.rateMan ? '직접 입력' : PAYB.rate ? `장비 시급 평균 (${PAYB.nRate}명, 노조 전임 제외)` : '회사 검토자료 값';
+  return FCA.annualMan ? '직접 입력' : PAYB.annual ? `장비 급여 관리 실측 (${PAYB.fromM}~${PAYB.toM} 월 급여 평균 × 12, ${PAYB.nAnn}명, 노조 전임·상여 제외)` : '회사 검토자료 값';
+}
+function payBaseHint(){
+  return `<span class="hint" style="margin:0;">${FCA.rateMan ? '통상시급 직접 입력' : PAYB.rate ? `통상시급 = 장비 시급 평균(${PAYB.nRate}명)` : '장비 시급 자료 없음'} · ${FCA.annualMan ? '연 인건비 직접 입력' : PAYB.annual ? `연 인건비 = 장비 급여 관리 실측(${PAYB.nAnn}명, 상여 제외)` : '장비 급여 자료 없음'}</span>`;
+}
 function ymInputs(pre, st){
   const last = typeof IMPORT_LAST_DATE !== 'undefined' ? IMPORT_LAST_DATE : '';
   return `<b style="font-size:13px;">급여월</b><input type="month" id="${pre}FromM" value="${st.fromM}" class="tx" style="width:auto;padding:4px 6px;"><span>~</span><input type="month" id="${pre}ToM" value="${st.toM}" class="tx" style="width:auto;padding:4px 6px;">`
@@ -5364,14 +5400,14 @@ function fcaReport(){
     ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록) · 선석배정현황(크레인 작업시간)'],
     [],
     ['[B] 단가 기준'],
-    ['장비직 평균 통상시급(원)', W(FCA.rate), '회사 검토자료 값'],
+    ['장비직 평균 통상시급(원)', W(FCA.rate), payBaseSrc('rate')],
     ['지원근로 1건 평균 OT시간(h, 가산 반영)', H1(R.avgPrem), `실측: 지원 ${W(R.supCnt)}건 평균`],
     ['지원근로 1건 비용(원)', W(R.avgPrem * FCA.rate), 'OT시간 × 통상시급'],
     ['지원 보상 보장시간(월, h)', FCA.guar, '월 보장 (현행 제도)'],
     [],
     ['[C] 인건비 기준'],
     ['장비직 인원(명)', ppl],
-    ['1인 연 인건비(원)', W(FCA.annual), '회사 검토자료 값'],
+    ['1인 연 인건비(원)', W(FCA.annual), payBaseSrc('annual')],
     ['장비직 총인건비(원)', W(N.total), '인원 × 1인 인건비'],
     [],
     ['[D] 변경안 산정 기준 (실측)'],
@@ -5463,6 +5499,7 @@ function fcaCsv(){
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `휴무분석_날짜별_${FCA.from}_${FCA.to}.csv`; document.body.appendChild(a); a.click(); a.remove();
 }
 function pageFcAna(){
+  payBaseCalc(FCA.fromM, FCA.toM);   // 통상시급·연 인건비 자동값(장비 시급·장비 급여 관리)
   const R = FCA.result;
   const prog = FCA.running ? `<div class="hint">선석 자료 받는 중… ${FCA.done} / ${FCA.total} 주</div>` : '';
   const err = FCA.err ? `<div class="note">${esc(FCA.err)}</div>` : '';
@@ -5493,6 +5530,7 @@ function pageFcAna(){
       ${ymInputs('fca', FCA)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="fcaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="fcaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
+      ${payBaseHint()}
       <label class="eqBonusIn"><span>월 지원 보장</span><input type="text" inputmode="numeric" id="fcaGuar" value="${FCA.guar}" style="width:44px;"><span>h</span></label>
       <button class="btn sm" data-act="fca-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '분석'}</button>
     </div>
@@ -5507,8 +5545,7 @@ function bindFcAna(el){
   if(run) run.onclick = ()=>{
     const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
     ymRead(el, 'fca', FCA);
-    if(num('#fcaRate') > 0) FCA.rate = num('#fcaRate');
-    if(num('#fcaAnnual') > 0) FCA.annual = num('#fcaAnnual');
+    payBaseInput(num('#fcaRate'), num('#fcaAnnual'));
     if(num('#fcaGuar') >= 0) FCA.guar = num('#fcaGuar');
     fcaLoadBerth(FCA.from, FCA.to, ()=> fcaAnalyze()); // 저장된 날짜는 다시 안 받고, 모자라는 날짜만 받아서 계산
   };
@@ -5684,11 +5721,11 @@ function spcReport(){
     ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`],
     ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록) · 선석배정현황(크레인 작업시간)'], [],
     ['[B] 단가 기준'],
-    ['장비직 평균 통상시급(원)', W(rate), '회사 검토자료 값'],
+    ['장비직 평균 통상시급(원)', W(rate), payBaseSrc('rate')],
     ['지원 보장시간(월, h)', FCA.guar, '지원 폐지 시 보전도 없어짐 (지원을 30h 못 해도 받던 몫 포함)'],
     ['휴일 OT 보장시간(월, h)', 60, '유지'], [],
     ['[C] 인건비 기준'],
-    ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), '회사 검토자료 값'], ['장비직 총인건비(원)', W(total)], [],
+    ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), payBaseSrc('annual')], ['장비직 총인건비(원)', W(total)], [],
     ['[D] 실측 기준'],
     [`지원근로 건수(${R.nMon}개월)`, W(R.supN)],
     ['평일 지원 OT(h, 가산 반영)', H1(R.sp)], ['휴일 지원 OT(h)', H1(R.hsup)],
@@ -5781,6 +5818,7 @@ function spcBerthBtn(pre, from, to){
   return `<button class="btn ghost sm" data-act="${pre}-berth">🚢 선석 자료 불러오기</button><span class="hint" style="margin:0;">${miss ? `저장된 선석 자료 ${have}일 · 새로 받을 날짜 ${miss}일` : `선석 자료 ${have}일 모두 저장됨`}</span>`;
 }
 function pageSupCut(){
+  payBaseCalc(SPC.fromM, SPC.toM);   // 통상시급·연 인건비 자동값(장비 시급·장비 급여 관리)
   if(!SPC.result && !FCA.running) SPC.result = spcAnalyze(SPC.from, SPC.to);
   const R = SPC.result;
   const prog = FCA.running ? `<div class="hint">선석 자료 받는 중… ${FCA.done} / ${FCA.total} 주</div>` : '';
@@ -5797,6 +5835,7 @@ function pageSupCut(){
       ${ymInputs('spc', SPC)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="spcRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="spcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
+      ${payBaseHint()}
       ${spcRatioRadios('spc')}
       ${spcIntInput('spc')}
       <button class="btn sm" data-act="spc-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '다시 계산'}</button>
@@ -5812,8 +5851,7 @@ function bindSupCut(el){
   const read = ()=>{
     const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9.]/g,''));
     ymRead(el, 'spc', SPC);
-    if(num('#spcRate') > 0) FCA.rate = num('#spcRate');
-    if(num('#spcAnnual') > 0) FCA.annual = num('#spcAnnual');
+    payBaseInput(num('#spcRate'), num('#spcAnnual'));
     const rp = el.querySelector('input[name="spcRatio"]:checked'); if(rp) SPC.ratio = Number(rp.value);
     SPC.keepGuar = false; SPC.scBack = true; spcIntRead(el, 'spc');
   };
@@ -5896,8 +5934,8 @@ function hgaReport(){
     ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
     ['분석기간', `${HGA.from} ~ ${HGA.to} (급여월 ${R.nMon}개월)`], ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
     ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`], ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록)'], [],
-    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), '회사 검토자료 값'], [`휴일 OT 보장시간(월, h)`, G, '폐지 대상'], [],
-    ['[C] 인건비 기준'], ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), '회사 검토자료 값'], ['장비직 총인건비(원)', W(total)], [],
+    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), payBaseSrc('rate')], [`휴일 OT 보장시간(월, h)`, G, '폐지 대상'], [],
+    ['[C] 인건비 기준'], ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), payBaseSrc('annual')], ['장비직 총인건비(원)', W(total)], [],
     ['[D] 실측 기준'],
     ['휴일 본근무 OT(h, 가산 반영)', H1(R.how)], ['휴일 지원 OT(h)', H1(R.hsup)],
     [`휴일 OT가 ${G}h 미만이던 기사·월`, `${R.under} / ${R.nPM}`, P(R.nPM ? R.under/R.nPM*100 : 0)]
@@ -5939,6 +5977,7 @@ function repXls(rep, fname){
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], {type:'application/vnd.ms-excel'})); a.download = fname; document.body.appendChild(a); a.click(); a.remove();
 }
 function pageHolGuar(){
+  payBaseCalc(HGA.fromM, HGA.toM);   // 통상시급·연 인건비 자동값(장비 시급·장비 급여 관리)
   if(!HGA.result) hgaAnalyze();
   const t = repTableHtml(hgaReport(), HGA.tab, 'hga-tab');
   return `
@@ -5948,6 +5987,7 @@ function pageHolGuar(){
       ${ymInputs('hga', HGA)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="hgaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="hgaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
+      ${payBaseHint()}
       <label class="eqBonusIn"><span>휴일 보장</span><input type="text" inputmode="numeric" id="hgaGuar" value="${HGA.guar}" style="width:44px;"><span>h</span></label>
 
       <button class="btn sm" data-act="hga-run">다시 계산</button>
@@ -5962,8 +6002,7 @@ function bindHolGuar(el){
   if(run) run.onclick = ()=>{
     const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
     ymRead(el, 'hga', HGA);
-    if(num('#hgaRate') > 0) FCA.rate = num('#hgaRate');
-    if(num('#hgaAnnual') > 0) FCA.annual = num('#hgaAnnual');
+    payBaseInput(num('#hgaRate'), num('#hgaAnnual'));
     if(num('#hgaGuar') > 0) HGA.guar = num('#hgaGuar');
     hgaAnalyze(); render();
   };
@@ -6030,8 +6069,8 @@ function alcReport(){
     ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
     ['분석기간', `${R.from} ~ ${R.to} (급여월 ${R.nMon}개월)`], ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
     ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`], ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록)'], [],
-    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), '회사 검토자료 값'], [`지원 보장(월, h)`, G, '폐지'], ['휴일 OT 보장(월, h)', 60, '폐지'], [],
-    ['[C] 인건비 기준'], ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), '회사 검토자료 값'], ['장비직 총인건비(원)', W(total)], [],
+    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), payBaseSrc('rate')], [`지원 보장(월, h)`, G, '폐지'], ['휴일 OT 보장(월, h)', 60, '폐지'], [],
+    ['[C] 인건비 기준'], ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), payBaseSrc('annual')], ['장비직 총인건비(원)', W(total)], [],
     ['[D] 실측 기준'], ['지원근로 건수', W(R.supN)], ['지원휴무(SC) 일수', W(R.sc)]
   ]};
   const s3 = {name:'3.비용산출', rows:[
@@ -6066,6 +6105,7 @@ function alcReport(){
   return {sheets:[s1,s2,s3,s4,s5, spcIntenseSheet(R, 6, rAsk)]};
 }
 function pageAllCut(){
+  payBaseCalc(ALC.fromM, ALC.toM);   // 통상시급·연 인건비 자동값(장비 시급·장비 급여 관리)
   if(!ALC.result) ALC.result = spcAnalyze(ALC.from, ALC.to);
   const t = repTableHtml(alcReport(), ALC.tab, 'alc-tab');
   return `
@@ -6075,6 +6115,7 @@ function pageAllCut(){
       ${ymInputs('alc', ALC)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="alcRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="alcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
+      ${payBaseHint()}
       ${spcRatioRadios('alc')}
       ${spcIntInput('alc')}
       <button class="btn sm" data-act="alc-run">다시 계산</button>
@@ -6090,8 +6131,7 @@ function bindAllCut(el){
   if(run) run.onclick = ()=>{
     const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
     ymRead(el, 'alc', ALC);
-    if(num('#alcRate') > 0) FCA.rate = num('#alcRate');
-    if(num('#alcAnnual') > 0) FCA.annual = num('#alcAnnual');
+    payBaseInput(num('#alcRate'), num('#alcAnnual'));
     SPC.scBack = true; spcIntRead(el, 'alc');
     const rp = el.querySelector('input[name="alcRatio"]:checked'); if(rp) SPC.ratio = Number(rp.value);
     ALC.result = spcAnalyze(ALC.from, ALC.to); SPC.result = null; render();
