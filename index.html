@@ -1367,6 +1367,14 @@ function startDpInlineEdit(td, firstChar){
 }
 // 1조/2조를 고르면 그 조의 그날 근무(교대 순환)에 맞춰 D → 주간(07~19시), N → 야간(18~07시)
 function isSundayDs(ds){ const [y,m,d] = String(ds).split('-').map(Number); return new Date(y, m-1, d).getDay()===0; }
+// 배차표의 '오늘': 야간 근무(18~08시)는 다음날 08시까지 전날 배차표로 봄 → 00~08시는 전날
+function dpWorkDate(){ const n = new Date(); return n.getHours() < 8 ? addDays(todayStr(), -1) : todayStr(); }
+let dispatchAuto = true; // 날짜를 직접 고르지 않았으면 시간에 따라 자동(08시에 다음 날로)
+// 자동 날짜로 바꾸기: 08시 전이면 전날 야간(일요일이면 하루치의 야간 쪽)
+function dpApplyAutoDate(){
+  dispatchDate = dpWorkDate(); autoDispatchShift();
+  if(new Date().getHours() < 8){ if(isSundayDs(dispatchDate)) dispatchSunPart = 'night'; else dispatchShift = 'night'; }
+}
 function autoDispatchShift(){
   if(isSundayDs(dispatchDate || todayStr())){ // 일요일: 하루치 한 장, 처음엔 고른 조의 근무(D/N)에 맞춰 주간·야간
     dispatchShift = 'full';
@@ -3509,7 +3517,7 @@ function setView(v){
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
-  if(v==='dispatch'){ if(!dispatchDate) dispatchDate = todayStr(); autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); }
+  if(v==='dispatch'){ if(!dispatchDate || dispatchAuto) dpApplyAutoDate(); else autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); }
   if(v==='input' || v==='input2'){ if(dbReady) subscribeDispatchDay(inputViewDate || todayStr()); }
   if(v==='splan'){ if(!weekStart) weekStart = mondayOf(todayStr()); if(dbReady) loadSupportPlanAll(); }
   if(v==='codestats' || v==='combined'){
@@ -4476,6 +4484,8 @@ function fitCombined(){
   }
 }
 // 자정이 지나면 화면을 다시 그려서 '오늘' 표시가 다음 날로 옮겨지게
+// 08시가 되면 배차표를 다음 날로(자동 날짜일 때만)
+setInterval(()=>{ if(VIEW==='dispatch' && dispatchAuto && dispatchDate !== dpWorkDate() && !document.querySelector('#content :focus')) render(); }, 60000);
 (function scheduleMidnight(){
   const n = new Date(), next = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1, 0, 0, 5);
   setTimeout(()=>{ try{ render(); }catch(e){} scheduleMidnight(); }, next - n);
@@ -7180,7 +7190,7 @@ function pageCodes(){
 
 /* ========================= 배차표 ========================= */
 function pageDispatch(){
-  if(!dispatchDate) dispatchDate = todayStr();
+  if(!dispatchDate || (dispatchAuto && dispatchDate !== dpWorkDate())){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); }
   const ds = dispatchDate;
   if(isSundayDs(ds)) dispatchShift = 'full'; else if(dispatchShift==='full') autoDispatchShift();
   const fullAll = FULL_SLOTS_FN(), cut = fullAll.indexOf('19:00');
@@ -7981,7 +7991,7 @@ function afterRender(){
 
   // 배차표
   const dpDate = document.getElementById('dpDate'), dpShift = document.getElementById('dpShift');
-  if(dpDate) dpDate.onchange = ()=>{ dpSel = null; dispatchDate = dpDate.value; autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
+  if(dpDate) dpDate.onchange = ()=>{ dpSel = null; dispatchDate = dpDate.value; dispatchAuto = (dispatchDate === dpWorkDate()); autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
   if(dpShift) dpShift.onchange = ()=>{ dispatchShift = dpShift.value; render(); };
   // 팔레트: 선택한 칸에 바로 적용(선택이 없으면 안내)
   el.querySelectorAll('.dpCatBtn').forEach(x=>{ x.onpointerdown = ev=> ev.preventDefault(); x.onclick = ()=> dpApplyCatToSel(x.dataset.cat); });
