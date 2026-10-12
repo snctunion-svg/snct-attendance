@@ -5133,7 +5133,7 @@ function bindEqPay(el){
    · 화~금(공휴일 제외)마다 조당 고정휴무 +1명 → 그날 MC가 있으면 MC를 덜 줌(비용 없음), 크레인 대비 여유가 있고 실제 지원도 없던 날은 비용 없음, 아니면 지원 1건
    · 지원휴무(SC) 연쇄, 상대 조 기사별 지원 비율로 배분 → 월 보장시간(지원 30h) 반영, 토요일 만근 영향
    저장은 안 함(계산만). 결과는 회사 검토자료와 같은 6개 항목 보고서로 보여 주고 엑셀로 내려받음 */
-const FCA = {basis:'max', fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', rate:18663, annual:97260000, guar:30, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null, tab:1};
+const FCA = {basis:'max', fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', rate:18663, annual:97260000, guarR:20 /* 지원 보장 월 20h(가산 전·회사 기준) */, guar:30 /* 계산용 = guarR × 1.5 */, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null, tab:1};
 function fcaDs(r){ return '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6); }
 function fcaMin(t){ const m = String(t||'').match(/(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})/); if(!m) return null; const [y,mo,d] = m[1].split('-').map(Number); return Date.UTC(y,mo-1,d, Number(m[2]), Number(m[3]))/60000; }
 function fcaAt(ds, h){ const [y,mo,d] = ds.split('-').map(Number); return Date.UTC(y,mo-1,d,h,0)/60000; }
@@ -5217,10 +5217,11 @@ function payBaseCalc(fromM, toM){
 }
 // 입력칸 값 읽기: 자동값과 다르면 직접 고친 값으로 기억, 같거나 비우면 자동값으로 돌아감
 function payBaseInput(rateV, annV){
-  FCA.rateMan = rateV > 0 && rateV !== PAYB.rate ? rateV : 0;
-  FCA.annualMan = annV > 0 && annV !== PAYB.annual ? annV : 0;
-  FCA.rate = FCA.rateMan || PAYB.rate || FCA.rate;
-  FCA.annual = FCA.annualMan || PAYB.annual || FCA.annual;
+  const dr = PAYB.rate || 18663, da = PAYB.annual || 97260000;   // 자동값(없으면 회사 검토자료 값)과 다를 때만 직접 입력으로 봄
+  FCA.rateMan = rateV > 0 && rateV !== dr ? rateV : 0;
+  FCA.annualMan = annV > 0 && annV !== da ? annV : 0;
+  FCA.rate = FCA.rateMan || PAYB.rate || 18663;
+  FCA.annual = FCA.annualMan || PAYB.annual || 97260000;
 }
 function payBaseSrc(kind){
   if(kind==='rate') return FCA.rateMan ? '직접 입력' : PAYB.rate ? `장비 시급 평균 (${PAYB.nRate}명, 노조 전임 제외)` : '회사 검토자료 값';
@@ -5414,7 +5415,7 @@ function fcaReport(){
     ['장비직 평균 통상시급(원)', W(FCA.rate), payBaseSrc('rate')],
     ['지원근로 1건 평균 OT시간(h, 가산 반영)', H1(R.avgPrem), `실측: 지원 ${W(R.supCnt)}건 평균`],
     ['지원근로 1건 비용(원)', W(R.avgPrem * FCA.rate), 'OT시간 × 통상시급'],
-    ['지원 보상 보장시간(월, h)', FCA.guar, '월 보장 (현행 제도)'],
+    ['지원 보상 보장시간(월, h)', FCA.guarR, `월 보장 (현행 제도 · 회사 기준 실근로·가산 전, 지급은 × 1.5 = ${FCA.guar}h)`],
     [],
     ['[C] 인건비 기준'],
     ['장비직 인원(명)', ppl],
@@ -5464,7 +5465,7 @@ function fcaReport(){
     ['추가 지원 OT시간(h, 연쇄 반영)', H1(R.rawH), W(R.rawH*R.yr), '지원 건수 × 1건 평균 OT시간'],
     [],
     ['[4단계] 상대 조 기사별 배분 · 월 보장시간 반영 (→ 5.검증데이터)'],
-    ['보장 반영 후 실제 증가 OT시간(h)', H1(R.paidH), W(R.paidH*R.yr), `기사별 MAX(지원, 월 ${FCA.guar}h) 증가분 합계`],
+    ['보장 반영 후 실제 증가 OT시간(h)', H1(R.paidH), W(R.paidH*R.yr), `기사별 MAX(지원, 월 ${FCA.guarR}h × 1.5) 증가분 합계`],
     ['보장으로 흡수된 OT시간(h)', H1(R.rawH - R.paidH), W((R.rawH-R.paidH)*R.yr), '원래 보장시간 미만이던 기사 몫'],
     [],
     ['[5단계] 비용 환산', '', '1년 환산(원)'],
@@ -5480,7 +5481,7 @@ function fcaReport(){
   const anon = {}; R.people.forEach((n,i)=> anon[n] = '기사' + String(i+1).padStart(2,'0'));
   const s5rows = [['구분', '조', '급여월', '현재 지원OT(h)', '추가 배분(h)', '현재 월 보상(h)', '변경안 월 보상(h)']];
   R.people.forEach(n=> R.months.forEach(m=>{ const p = m.per.find(x=> x.n===n); if(!p) return; s5rows.push([anon[n], R.grp[n]+'조', m.key, H1(p.sp), H1(p.a), H1(p.nowH), H1(p.newH)]); }));
-  const s5 = {name:'5.검증데이터', rows:[['검증 데이터 — 기사별·급여월별 지원 OT 실적 (익명 처리)'], [`현재 = MAX(평일 지원 OT, 월 보장 ${FCA.guar}h) · 변경안 = 추가 지원을 상대 조 기사의 그달 지원 실적 비율로 배분 후 같은 기준`], [], ...s5rows]};
+  const s5 = {name:'5.검증데이터', rows:[['검증 데이터 — 기사별·급여월별 지원 OT 실적 (익명 처리)'], [`현재 = MAX(평일 지원 OT, 월 보장 ${FCA.guarR}h × 1.5) · 변경안 = 추가 지원을 상대 조 기사의 그달 지원 실적 비율로 배분 후 같은 기준`], [], ...s5rows]};
   const s6 = {name:'6.월별현황', rows:[['급여월별 고정휴무 추가 · 흡수 · 지원 발생 현황'], [],
     ['급여월', '추가 조-일', 'MC 흡수', '여유 흡수', '지원 발생', '추가 지원OT(h)', '보장 반영 후(h)', '금액(원)', '보장시간 미만 기사'],
     ...R.months.map(m=> [m.key, m.nAdd, m.nMC, m.nSlack, m.nSup, H1(m.rawH), H1(m.paidH), W(m.paidH*FCA.rate), m.under]),
@@ -5489,11 +5490,51 @@ function fcaReport(){
     [`※ 크레인 대비 출근 인원에 여유가 있었는데도 지원이 들어온 조-근무: ${R.oddN}건. 그날 함께 빠진 인원: ` + (Object.entries(R.oddOff).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join(', ') || '없음')],
     [`※ 검증: 기간 중 실제 지원 들어온 인원 ${W(R.totSup)}명.`]
   ]};
-  return {sheets:[s1,s2,s3,s4,s5,s6]};
+  return {sheets:[s1,s2,s3,s4,s5,s6, {name:'7.참고(회사안 비교)', internal:true, rows:FCA_MEMO}]};
 }
 // 엑셀(여러 시트) 내려받기 — Excel 2003 XML 형식(.xls)
+// 7.참고(내부) — 회사안(관리팀 2026.08.10 「당직 폐지·물동량·고정휴무 2명」)과 계산법 비교. 화면에만 보이고 엑셀에는 안 들어감
+const FCA_MEMO = [
+  ['참고 — 회사안과 계산법 비교 (내부용 · 엑셀에 안 들어감) — 2026-10-13 정리'],
+  ['회사 자료: 선광신컨테이너터미널 관리팀 · 2026.08.10 · 「당직 폐지 · 물동량 · 고정휴무 2명」(현 임금수준 기준)'], [],
+  ['[1] 회사안 고정휴무 2명 숫자'],
+  ['구분', '값', '내용'],
+  ['고정휴무 1명 운영 조-일 (10개월)', '376', '근무일보 실측'],
+  ['유동휴무(MC)가 겹쳐 흡수되는 조-일', '152', '같은 날 유동휴무가 있으면 결원 안 생김'],
+  ['추가부족 조-일', '224', '376 − 152'],
+  ['지원근로 증가', '1,833.4h', '실근로(가산 전)'],
+  ['교대율 보전 증가', '425.4h', '보전시간 = 출근인원 × 부족인원 (보정계수 0.898)'],
+  ['월 보장시간 반영 후', '2,184.9h', '개인·급여월 지원 20h 보장 반영'],
+  ['연환산 → 할증 반영', '2,621.9h → 3,932.8h', '× 1.5'],
+  ['연 추가 부담', '73,397,112원', '총인건비 28.21억 대비 2.60%'], [],
+  ['[2] 같은 부분'],
+  ['· 개인 휴무일수는 그대로, 하루 고정휴무 인원만 1명 → 2명.'],
+  ['· 같은 날 유동휴무(MC)가 있으면 자리가 안 빔.'],
+  ['· 비는 날은 다른 조 지원으로 메우고, 개인·급여월 지원 보장시간 반영.'],
+  ['· 보장시간: 회사 지원 20h · 휴일 40h(실근로·가산 전) = 우리 30h · 60h(가산 후). 같은 기준 → 우리 앱도 회사 기준(20h · 40h, 가산 전)으로 표시하도록 맞춤(계산은 × 1.5).'], [],
+  ['[3] 다른 부분'],
+  ['구분', '회사', '우리 앱', '누구에게 유리'],
+  ['① 자리가 비는 날', 'MC 없는 날은 전부 빈다고 봄 (224일)', '선석 자료로 크레인 × 2보다 1명 이상 많고 지원도 안 부른 날은 안 빈다고 봄', '회사가 비는 날을 더 많이 셈'],
+  ['② 교대율 보전', '지원으로 못 메운 부족분은 출근 전원 × 부족인원만큼 보전 (425.4h)', '없음', '우리 앱이 빠뜨림 (규정 확인 필요)'],
+  ['③ 야간 가산', '실근로 × 1.5배만', '실제 지원 기록의 가산 그대로 (야간 22~06시 0.5배 포함)', '회사가 낮게 잡음'],
+  ['④ 연쇄 효과', '없음', '지원 → 지원휴무(SC) → 또 빈자리 몫 반영', '회사가 낮게 잡음'],
+  ['⑤ 분석 기간', '2025.08.26 ~ 2026.06.25 (10개월)', '2026년 1~9월 급여월 (화면에서 바꿀 수 있음)', '숫자 직접 비교 안 됨'],
+  ['⑥ 시급 · 인건비', '2025 급여대장 (18,663원 · 9,726만원)', '장비 시급 · 장비 급여 관리 실측 (2026)', '기준 연도 다름'],
+  ['⑦ 물동량 연동', '고정휴무 비용에 OT 탄력성 1.62 적용', '없음', '2027 전망에만 영향'], [],
+  ['[4] 핵심'],
+  ['1. ②는 우리가 빠뜨린 것 — 교대율 보전이 실제 급여 규정에 있으면 우리 계산도 그만큼 늘어야 함 (회사 산식: 출근인원 × 부족인원 × 0.898).'],
+  ['2. ③ · ④는 회사가 빠뜨린 것 — 야간 가산과 SC 연쇄가 빠져 회사 숫자가 실제 지급보다 낮음.'],
+  ['3. ①은 방향이 반대 — 회사 방식이 비는 날을 더 많이 셈. 회사가 이 비용을 "인상분으로 이미 준 돈"으로 쓰려 하면, 크레인 기준으로 실제 비는 날만 세야 한다고 반박 가능.'],
+  ['4. 둘 다 빠뜨린 것 — 고정휴무가 1명 늘면 그 사람의 유동휴무가 다른 날에서 1번 빠짐 → 그날 1명 더 나와 지원이 줄 수 있음. 회사가 나중에 꺼내면 비용이 줄어들 수 있음.'], [],
+  ['[5] 같은 자료의 당직 폐지안 (참고)'],
+  ['· 당직 519회 중 절감 발생 214회 (당직자보다 늦게 남은 본조 인원이 있던 회차는 제외) → 지급 감소 10개월 911.75h, 연 1,094.1h.'],
+  ['· 휴일 당직이 빠져 휴일 OT가 하한(40h, 가산 전) 밑으로 내려가는 몫 120.6h는 보전수당으로 되돌아옴 → 실질 절감 연 973.5h × 18,663원 ≈ 1,817만원 (총인건비 −0.64%).'],
+  ['· 회사 정리: 고정휴무 2명 +7,340만원 + 당직 폐지 −1,817만원 = +5,523만원 (총인건비 +1.96%). 이 묶음 비용을 인상 여력에서 빼려는 근거로 쓸 수 있음.'],
+  ['· 노조가 볼 점: 1인 평균 연 약 63만원 감소지만 당직을 많이 서던 사람에게 몰림 · 당직이 맡던 일(돌발 작업 · 장비 대기 등)을 폐지 후 누가 맡는지 빠져 있음.']
+];
 function fcaXls(){
   const rep = fcaReport(); if(!rep.sheets.length) return;
+  rep.sheets = rep.sheets.filter(s=> !s.internal);   // 내부 참고는 엑셀에 안 넣음
   const x = v=> String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const sheet = s=> `<Worksheet ss:Name="${x(s.name)}"><Table><Column ss:Width="260"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/>`
     + s.rows.map((r,i)=> `<Row>${(r||[]).map(c=> `<Cell${i===0?' ss:StyleID="t"':''}><Data ss:Type="${typeof c==='number'?'Number':'String'}">${x(c)}</Data></Cell>`).join('')}</Row>`).join('') + `</Table></Worksheet>`;
@@ -5542,7 +5583,7 @@ function pageFcAna(){
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="fcaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="fcaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       ${payBaseHint()}
-      <label class="eqBonusIn"><span>월 지원 보장</span><input type="text" inputmode="numeric" id="fcaGuar" value="${FCA.guar}" style="width:44px;"><span>h</span></label>
+      <label class="eqBonusIn"><span>월 지원 보장(가산 전)</span><input type="text" inputmode="numeric" id="fcaGuar" value="${FCA.guarR}" style="width:44px;"><span>h</span></label>
       <button class="btn sm" data-act="fca-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '분석'}</button>
     </div>
     <p class="hint" style="margin:8px 0 0;">고정휴무 조당 1주 8명(월2·화~금1·토2) → 12명(월~토2), 교대율 2.0 유지. 화~금(공휴일 제외) 조당 +1명 휴무 → 그날 MC 있으면 흡수, 크레인 × 2 대비 여유 있고 실제 지원도 없던 날이면 흡수, 아니면 지원 1건(크레인이 적어도 그날 지원을 불렀으면 사람이 모자랐던 날로 봄)(SC 연쇄 포함) → 상대 조 기사의 그달 지원 비율로 나눠 월 보장시간 반영. 선석 자료는 한 번 받은 지난 날짜를 이 기기에 저장해 두고, 새로 필요한 날짜만 받아요. (저장된 선석 자료 ${Object.keys(BQ.days).length}일)</p>
@@ -5557,7 +5598,7 @@ function bindFcAna(el){
     const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
     ymRead(el, 'fca', FCA);
     payBaseInput(num('#fcaRate'), num('#fcaAnnual'));
-    if(num('#fcaGuar') >= 0) FCA.guar = num('#fcaGuar');
+    if(num('#fcaGuar') >= 0){ FCA.guarR = num('#fcaGuar'); FCA.guar = FCA.guarR * 1.5; }
     fcaLoadBerth(FCA.from, FCA.to, ()=> fcaAnalyze()); // 저장된 날짜는 다시 안 받고, 모자라는 날짜만 받아서 계산
   };
   el.querySelectorAll('[data-act="fca-tab"]').forEach(x=> x.onclick = ()=>{ FCA.tab = Number(x.dataset.tab); render(); });
@@ -5620,13 +5661,13 @@ function spcAnalyze(from, to){
   const G = FCA.guar;
   Object.values(pm).forEach(o=>{
     const perDay = o.wkDays ? o.wk / o.wkDays : 0, keepShare = o.supN ? o.supKeepN / o.supN : 0;
-    o.now = o.wk + Math.max(o.ho, 60) + Math.max(o.sp, G) + o.meal;              // 지금 받는 OT(보장 반영)
+    o.now = o.wk + Math.max(o.ho, HGA.guar) + Math.max(o.sp, G) + o.meal;              // 지금 받는 OT(보장 반영)
     o.scBackH = SPC.scBack ? o.sc * (1 - keepShare) * perDay : 0;                  // 없어지는 지원만큼 SC도 없어져 본근무로 돌아오는 OT
-    o.after = o.wk + o.scBackH + Math.max(o.ho - o.hsup + o.hsupKeep, 60) + o.spKeep + o.meal; // 지원 30h 보장은 없어짐, 남는 지원은 실제만큼
+    o.after = o.wk + o.scBackH + Math.max(o.ho - o.hsup + o.hsupKeep, HGA.guar) + o.spKeep + o.meal; // 지원 보장은 없어짐, 남는 지원은 실제만큼
     o.lost = o.now - o.after;
     o.supPaid = Math.max(o.sp, G);                                                 // 지금 지원으로 받는 몫(평일, 보장 포함)
     o.guarFill = Math.max(0, G - o.sp);                                            // 지원 실적이 30h에 못 미쳐도 보장으로 받던 몫
-    o.hsupPaid = Math.max(o.ho, 60) - Math.max(o.ho - o.hsup + o.hsupKeep, 60);    // 없어지는 휴일 지원 몫(60h 보장 반영)
+    o.hsupPaid = Math.max(o.ho, HGA.guar) - Math.max(o.ho - o.hsup + o.hsupKeep, HGA.guar);    // 없어지는 휴일 지원 몫(휴일 보장 반영)
   });
   const keys = [...new Set(Object.values(pm).map(o=> o.key))].sort();
   const months = keys.map(key=>{
@@ -5706,7 +5747,7 @@ function spcReport(){
     ['2. 변경안 요지'],
     ['지원근로', '있음 → 전부 폐지', SPC.keepOn ? `자기 조 출근이 크레인 × ${SPC.ratio}보다 적은 근무에서만 모자라는 인원만큼 지원 발생` : '평일·휴일 지원 모두 없어지고 자기 조 인원만 운영'],
     ['최소 교대비율', `2.0 → ${SPC.ratio}`, `필요 출근인원 = 크레인 대수 × ${SPC.ratio} (올림)`],
-    ['지원 보장시간(월 ' + FCA.guar + 'h)', '폐지', '지원 실적이 30h에 못 미쳐도 받던 보전까지 없어짐'],
+    ['지원 보장시간(월 ' + FCA.guarR + 'h)', '폐지', `지원 실적이 ${FCA.guarR}h(가산 전)에 못 미쳐도 받던 보전까지 없어짐`],
     ['지원휴무(SC)', '폐지', SPC.scBack ? 'SC로 쉬던 날 본근무로 돌아와 OT 일부 회복' : '회복분 반영 안 함'],
     ...(SPC.keepOn ? [['1.5 미만 근무의 지원', R.hasBerth ? `연 ${W(R.kept*y)}명 발생` : '선석 자료 없음', R.hasBerth ? `자기 조 출근이 크레인 × ${SPC.ratio}보다 적은 근무는 모자라는 인원만큼 지원이 발생(그 OT는 지급)` : '선석 자료를 불러오면 반영(지금은 지원 전부 없어지는 것으로 계산)']] : []), [],
     ['3. 검토 결과 (결론)'],
@@ -5718,7 +5759,7 @@ function spcReport(){
     ['최종 요구 시급 인상률', P(rAsk + ik), '연봉 보전 + 근로강도 보상'],
     [`지원근로를 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어들고, 같은 근무시간에 크레인에 타는 시간이 늘어남. 연봉 보전 ${rAsk.toFixed(2)}%와 근로강도 보상 ${ik.toFixed(2)}%를 더해 시급 ${(rAsk + ik).toFixed(2)}% 인상을 요구함.`], [],
     ['4. 산정 관점'],
-    [`지금 받는 OT는 평일 지원(월 ${FCA.guar}h 보장)과 휴일 지원(휴일 60h 보장 안)으로 이루어짐. 지원 폐지 후에는 평일 지원과 월 ${FCA.guar}h 보전(지원을 덜 해도 받던 몫 포함), 휴일 지원이 빠지고, 지원휴무(SC)로 쉬던 날은 본근무로 돌아와 그만큼 OT가 다시 생김. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
+    [`지금 받는 OT는 평일 지원(월 ${FCA.guarR}h 보장)과 휴일 지원(휴일 ${HGA.guarR}h 보장 안)으로 이루어짐. 지원 폐지 후에는 평일 지원과 월 ${FCA.guarR}h 보전(지원을 덜 해도 받던 몫 포함), 휴일 지원이 빠지고, 지원휴무(SC)로 쉬던 날은 본근무로 돌아와 그만큼 OT가 다시 생김. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
     ['5. 운영 영향'],
     R.shifts ? [`지원 없이 자기 조 인원만으로 크레인 × ${SPC.ratio}를 채우지 못한 조-근무: ${R.short15}건 / ${R.shifts}건 (${P(R.shifts ? R.short15/R.shifts*100 : 0)}). 그 근무에서 못 돌리게 되는 크레인 합계: ${R.lostQ}대·근무.`] : ['선석 자료를 불러오면 크레인 대수 기준 운영 영향이 나옴.'], [],
     ['6. 자료 구성'],
@@ -5733,8 +5774,8 @@ function spcReport(){
     ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록) · 선석배정현황(크레인 작업시간)'], [],
     ['[B] 단가 기준'],
     ['장비직 평균 통상시급(원)', W(rate), payBaseSrc('rate')],
-    ['지원 보장시간(월, h)', FCA.guar, '지원 폐지 시 보전도 없어짐 (지원을 30h 못 해도 받던 몫 포함)'],
-    ['휴일 OT 보장시간(월, h)', 60, '유지'], [],
+    ['지원 보장시간(월, h)', FCA.guarR, `회사 기준 실근로(가산 전) · 지급 ${FCA.guar}h · 지원 폐지 시 보전도 없어짐`],
+    ['휴일 OT 보장시간(월, h)', HGA.guarR, `회사 기준 실근로(가산 전) · 지급 ${HGA.guar}h · 유지`], [],
     ['[C] 인건비 기준'],
     ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), payBaseSrc('annual')], ['장비직 총인건비(원)', W(total)], [],
     ['[D] 실측 기준'],
@@ -5749,7 +5790,7 @@ function spcReport(){
     ['구분', '현재', '지원 폐지', '비고'],
     ['지원근로', '있음', '없음', '자기 조 인원만 운영'],
     ['필요 출근인원 기준', '크레인 × 2.0', `크레인 × ${SPC.ratio} (최소)`, '올림'],
-    ['지원 보장(월 ' + FCA.guar + 'h)', '있음', '없음', '30h 미만이어도 받던 보전 포함'],
+    ['지원 보장(월 ' + FCA.guarR + 'h)', '있음', '없음', `${FCA.guarR}h 미만이어도 받던 보전 포함`],
     ['지원휴무(SC)', '있음', '없음', ''], [],
     ['[표2] 가동 크레인 대수별 필요 출근인원 (조당)'],
     ['가동 크레인', '현재 (2.0)', `지원 폐지 (${SPC.ratio})`, '차이'],
@@ -5765,8 +5806,8 @@ function spcReport(){
     ['[1단계] 지금 받는 지원 관련 OT', `${R.nMon}개월(h)`, '1년(원)'],
     ['평일 지원 OT — 실제 지원한 몫', H1(R.sp), W(R.sp*rate*y)],
     ...(SPC.keepOn ? [[`  └ 그중 ${SPC.ratio} 미만 근무라 계속 발생하는 지원`, '-' + H1(R.spKeep), '-' + W(R.spKeep*rate*y), R.hasBerth ? '그대로 지급' : '선석 자료 없음']] : []),
-    [`평일 지원 OT — 월 ${FCA.guar}h 보전 (지원을 덜 해도 보장으로 받던 몫)`, H1(R.guarFill), W(R.guarFill*rate*y), `${R.guarN}개 기사·월이 ${FCA.guar}h 미만`],
-    ['없어지는 휴일 지원 OT (휴일 60h 보장 반영)', H1(R.hsupPaid), W(R.hsupPaid*rate*y)],
+    [`평일 지원 OT — 월 ${FCA.guarR}h 보전 (지원을 덜 해도 보장으로 받던 몫)`, H1(R.guarFill), W(R.guarFill*rate*y), `${R.guarN}개 기사·월이 보장 미만`],
+    [`없어지는 휴일 지원 OT (휴일 ${HGA.guarR}h 보장 반영)`, H1(R.hsupPaid), W(R.hsupPaid*rate*y)],
     ['소계 (없어지는 몫)', H1(R.supPaid - R.spKeep + R.hsupPaid), W((R.supPaid - R.spKeep + R.hsupPaid)*rate*y)], [],
     ['[2단계] 지원 폐지 후 남는 몫'],
     ['지원휴무(SC) 없어져 본근무로 돌아오는 OT', H1(R.scBackH), W(R.scBackH*rate*y), `SC ${W(R.sc)}일 × 기사별 평일 하루 평균 OT`], [],
@@ -5786,10 +5827,10 @@ function spcReport(){
     [`지원근로를 폐지하고 최소 교대비율 ${SPC.ratio}로 운영하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어들고 근무 1회당 노동 밀도가 높아짐. 연봉 보전 ${rAsk.toFixed(2)}% + 근로강도 보상 ${ik.toFixed(2)}% = 시급 ${(rAsk + ik).toFixed(2)}% 인상이 필요함.`]
   ]};
   const s5 = {name:'5.검증데이터', rows:[['검증 데이터 — 기사별 연간(환산) 지원 OT·감소액·필요 인상률 (익명 처리)'], [`1인 연봉은 ${W(FCA.annual)}원으로 같다고 보고 계산`], [],
-    ['구분', '조', '평일 지원OT(h)', '30h 보전(h)', '휴일 지원OT(h)', 'SC 회복OT(h)', '줄어드는 OT(h)', '연 감소액(원)', '필요 인상률'],
+    ['구분', '조', '평일 지원OT(h)', `${FCA.guarR}h 보전(h)`, '휴일 지원OT(h)', 'SC 회복OT(h)', '줄어드는 OT(h)', '연 감소액(원)', '필요 인상률'],
     ...pp.map(p=> [anon[p.n], p.g+'조', H1((p.sp - p.spKeep)*y), H1(p.guarFill*y), H1((p.hsup - p.hsupKeep)*y), H1(p.scBackH*y), H1(p.lost*y), W(p.lw), P(p.pct)])]};
   const s6 = {name:'6.월별현황', rows:[['급여월별 지원 OT · 감소 · 운영 영향'], [],
-    ['급여월', '평일 지원OT(h)', '30h 보전(h)', '휴일 지원OT(h)', 'SC(일)', '줄어드는 OT(h)', '감소액(원)', `× ${SPC.ratio} 못 채운 근무`, '못 돌린 크레인'],
+    ['급여월', '평일 지원OT(h)', `${FCA.guarR}h 보전(h)`, '휴일 지원OT(h)', 'SC(일)', '줄어드는 OT(h)', '감소액(원)', `× ${SPC.ratio} 못 채운 근무`, '못 돌린 크레인'],
     ...R.months.map(m=> [m.key, H1(m.sp - m.spKeep), H1(m.guarFill), H1(m.hsup - m.hsupKeep), m.sc, H1(m.lost), W(m.lost*rate), m.short15, m.lostQ]),
     ['합계', H1(R.sp - R.spKeep), H1(R.guarFill), H1(R.hsup - R.hsupKeep), R.sc, H1(R.lost), W(R.lost*rate), R.short15, R.lostQ]]};
   return {sheets:[s1,s2,s3,s4,s5,s6, spcIntenseSheet(R, 7, rAsk), {name:'8.참고(내부)', internal:true, rows:SPC_MEMO}]};
@@ -5908,7 +5949,7 @@ function bindSupCut(el){
 /* ========================= 휴일 보전 폐지 분석 (UNION) =========================
    휴일 OT 월 60h 보장(보전)이 없어지면, 휴일 근무가 60h에 못 미쳐도 받던 보전 몫만큼 연봉이 줄어듦.
    같은 연봉을 맞추는 시급 인상률을 계산. 근무기록만으로 계산(선석 자료 필요 없음, 저장 안 함) */
-const HGA = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', guar:60, result:null, tab:1};
+const HGA = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', guarR:40 /* 휴일 보장 월 40h(가산 전·회사 기준) */, guar:60 /* 계산용 = guarR × 1.5 */, result:null, tab:1};
 function hgaAnalyze(){
   const names = Object.keys(EXCEL_CODES), grp = {};
   names.forEach(n=>{
@@ -5942,7 +5983,7 @@ function hgaAnalyze(){
 function hgaReport(){
   const R = HGA.result; if(!R) return {sheets:[]};
   const W = v=> Math.round(v).toLocaleString('ko-KR'), H1 = v=> (Math.round(v*10)/10).toLocaleString('ko-KR'), P = v=> v.toFixed(2)+'%';
-  const ppl = R.n1 + R.n2, rate = FCA.rate, y = R.yr, total = ppl * FCA.annual, G = HGA.guar;
+  const ppl = R.n1 + R.n2, rate = FCA.rate, y = R.yr, total = ppl * FCA.annual, G = HGA.guarR, GP = HGA.guar;   // G = 회사 기준 가산 전, GP = 지급(가산 후)
   const lostWon = R.fill * rate * y, lostPP = lostWon / ppl, raise = total > lostWon ? lostWon / (total - lostWon) * 100 : 0;
   const pp = R.perPerson.map(p=>{ const lw = p.fill * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
   const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
@@ -5968,7 +6009,7 @@ function hgaReport(){
     ['보전 못 받는 시간에 대한 휴일 OT 단가 인상률', P(otAll), '보전시간 ÷ 실제 휴일 OT시간'],
     [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상을 요구함. 보전 못 받는 시간을 휴일 OT 단가로 메우려면 휴일 OT 단가 ${otAll.toFixed(1)}% 인상이 필요함.`], [],
     ['4. 산정 관점'],
-    [`지금은 기사마다 그달 휴일 OT(휴일 본근무 + 휴일 지원, 가산 반영 시간)가 ${G}h보다 적으면 ${G}h까지 채워 지급함. 보장이 없어지면 그 차이(${G}h − 실제)만큼 줄어듦. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
+    [`지금은 기사마다 그달 휴일 OT(휴일 본근무 + 휴일 지원, 가산 반영 시간)가 보장 ${G}h(실근로·가산 전) × 1.5 = ${GP}h보다 적으면 ${GP}h까지 채워 지급함. 보장이 없어지면 그 차이(${GP}h − 실제)만큼 줄어듦. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
     ['5. 자료 구성'],
     ['2.검토조건', '분석기간·단가·인건비 기준'], ['3.비용산출', '단계별 산출'], ['4.검증데이터', '기사별 휴일 OT·보전·필요 인상률 (익명)'], ['5.월별현황', '급여월별 휴일 OT·보전']
   ]};
@@ -5976,7 +6017,7 @@ function hgaReport(){
     ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
     ['분석기간', `${HGA.from} ~ ${HGA.to} (급여월 ${R.nMon}개월)`], ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
     ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`], ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록)'], [],
-    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), payBaseSrc('rate')], [`휴일 OT 보장시간(월, h)`, G, '폐지 대상'], [],
+    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), payBaseSrc('rate')], [`휴일 OT 보장시간(월, h)`, G, `회사 기준 실근로(가산 전) · 지급 ${GP}h · 폐지 대상`], [],
     ['[C] 인건비 기준'], ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), payBaseSrc('annual')], ['장비직 총인건비(원)', W(total)], [],
     ['[D] 실측 기준'],
     ['휴일 본근무 OT(h, 가산 반영)', H1(R.how)], ['휴일 지원 OT(h)', H1(R.hsup)],
@@ -6031,11 +6072,11 @@ function pageHolGuar(){
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="hgaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="hgaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       ${payBaseHint()}
-      <label class="eqBonusIn"><span>휴일 보장</span><input type="text" inputmode="numeric" id="hgaGuar" value="${HGA.guar}" style="width:44px;"><span>h</span></label>
+      <label class="eqBonusIn"><span>휴일 보장(가산 전)</span><input type="text" inputmode="numeric" id="hgaGuar" value="${HGA.guarR}" style="width:44px;"><span>h</span></label>
       ${basisRadios('hga')}
       <button class="btn sm" data-act="hga-run">다시 계산</button>
     </div>
-    <p class="hint" style="margin:8px 0 0;">휴일(일요일·공휴일) OT 월 ${HGA.guar}h 보장이 없어지면 휴일 근무가 ${HGA.guar}h에 못 미쳐도 받던 보전만큼 연봉이 줄어요. 근무기록만으로 바로 계산해요(선석 자료 필요 없음).</p>
+    <p class="hint" style="margin:8px 0 0;">휴일(일요일·공휴일) OT 월 ${HGA.guarR}h(가산 전, 지급 ${HGA.guar}h) 보장이 없어지면 휴일 근무가 그만큼에 못 미쳐도 받던 보전만큼 연봉이 줄어요. 근무기록만으로 바로 계산해요(선석 자료 필요 없음).</p>
   </div>
   <div class="panel"><div class="row eqBar" style="align-items:center;margin-bottom:8px;">${t.tabs}<span style="flex:1"></span><button class="btn sm" data-act="hga-xls">📥 보고서 엑셀</button></div>${t.table}</div>`;
 }
@@ -6046,7 +6087,7 @@ function bindHolGuar(el){
     const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
     ymRead(el, 'hga', HGA);
     payBaseInput(num('#hgaRate'), num('#hgaAnnual'));
-    if(num('#hgaGuar') > 0) HGA.guar = num('#hgaGuar');
+    if(num('#hgaGuar') > 0){ HGA.guarR = num('#hgaGuar'); HGA.guar = HGA.guarR * 1.5; }
     hgaAnalyze(); render();
   };
   basisBind(el, 'hga');
@@ -6060,7 +6101,7 @@ const ALC = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25',
 function alcRows(){
   if(!ALC.result) ALC.result = spcAnalyze(ALC.from, ALC.to);
   const R = ALC.result; if(!R) return null;
-  const G = FCA.guar, HG = 60;
+  const G = FCA.guar, HG = HGA.guar;   // 가산 후(계산용) = 회사 기준 가산 전 × 1.5
   const per = {}, mon = {};
   Object.values(R.pm).forEach(o=>{
     const c = {
@@ -6079,7 +6120,7 @@ function alcRows(){
 function alcReport(){
   const D = alcRows(); if(!D) return {sheets:[]};
   const R = D.R, W = v=> Math.round(v).toLocaleString('ko-KR'), H1 = v=> (Math.round(v*10)/10).toLocaleString('ko-KR'), P = v=> v.toFixed(2)+'%';
-  const ppl = R.n1 + R.n2, rate = FCA.rate, y = R.yr, total = ppl * FCA.annual, G = FCA.guar;
+  const ppl = R.n1 + R.n2, rate = FCA.rate, y = R.yr, total = ppl * FCA.annual, G = FCA.guarR, HGR = HGA.guarR;   // 회사 기준 가산 전
   const T = k=> D.per.reduce((t,p)=> t + p[k], 0);
   const lostWon = T('lost') * rate * y, lostPP = lostWon / ppl, raise = total > lostWon ? lostWon / (total - lostWon) * 100 : 0;
   const pp = D.per.map(p=>{ const lw = p.lost * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
@@ -6090,11 +6131,11 @@ function alcReport(){
   const s1 = {name:'1.검토개요', rows:[
     ['장비직 지원근로·보장(보전) 동시 폐지 시 시급 보전 검토자료'], ['노동조합 · 2026 임금교섭 협의자료'], [],
     ['1. 검토 목적'],
-    [`지원근로와 지원 월 ${G}h 보장, 휴일 OT 월 60h 보장이 한꺼번에 없어질 때 조합원 연봉에서 빠지는 금액을 산출하고, 같은 연봉을 유지하려면 시급을 몇 % 올려야 하는지 검토함.`], [],
+    [`지원근로와 지원 월 ${G}h 보장, 휴일 OT 월 ${HGR}h 보장이 한꺼번에 없어질 때 조합원 연봉에서 빠지는 금액을 산출하고, 같은 연봉을 유지하려면 시급을 몇 % 올려야 하는지 검토함.`], [],
     ['2. 변경안 요지'],
     ['지원근로', '있음 → 전부 폐지', SPC.keepOn ? `평일·휴일 지원 모두 · 자기 조 출근이 크레인 × ${SPC.ratio}보다 적은 근무에서만 모자라는 인원만큼 지원 발생` : '평일·휴일 지원 모두 없어지고 자기 조 인원만 운영'],
     [`지원 보장 (월 ${G}h)`, '있음 → 폐지', '지원을 덜 해도 받던 보전 포함'],
-    ['휴일 OT 보장 (월 60h)', '있음 → 폐지', '실제 휴일 근무 OT만 지급'],
+    [`휴일 OT 보장 (월 ${HGR}h)`, '있음 → 폐지', '실제 휴일 근무 OT만 지급'],
     ['지원휴무(SC)', '폐지', 'SC로 쉬던 날 본근무로 돌아와 OT 일부 회복'], [],
     ['3. 검토 결과 (결론)'],
     ['연봉에서 빠지는 금액 (연, 전체)', W(lostWon) + '원', `1인 평균 ${W(lostPP)}원`],
@@ -6105,7 +6146,7 @@ function alcReport(){
     ['최종 요구 시급 인상률', P(rAsk + ik), '연봉 보전 + 근로강도 보상'],
     [`지원근로와 지원·휴일 보장을 함께 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어들고, 같은 근무시간에 크레인에 타는 시간이 늘어남. 연봉 보전 ${rAsk.toFixed(2)}%와 근로강도 보상 ${ik.toFixed(2)}%를 더해 시급 ${(rAsk + ik).toFixed(2)}% 인상을 요구함.`], [],
     ['4. 산정 관점'],
-    [`줄어드는 몫 = 평일 지원 OT + 지원 ${G}h 보전 + 휴일 지원 OT + 휴일 60h 보전 − SC 회복 OT. 휴일 지원과 휴일 보장이 겹치는 몫은 한 번만 셈. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
+    [`줄어드는 몫 = 평일 지원 OT + 지원 ${G}h 보전 + 휴일 지원 OT + 휴일 ${HGR}h 보전 − SC 회복 OT. 휴일 지원과 휴일 보장이 겹치는 몫은 한 번만 셈. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
     ['5. 자료 구성'],
     ['2.검토조건', '분석기간·단가·인건비 기준'], ['3.비용산출', '항목별 산출'], ['4.검증데이터', '기사별 감소액·필요 인상률 (익명)'], ['5.월별현황', '급여월별 항목별 감소'], ['6.근로강도', '근무 1회당 운전시간·휴식시간 변화와 근로강도 보상']
   ]};
@@ -6113,7 +6154,7 @@ function alcReport(){
     ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
     ['분석기간', `${R.from} ~ ${R.to} (급여월 ${R.nMon}개월)`], ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
     ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`], ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록)'], [],
-    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), payBaseSrc('rate')], [`지원 보장(월, h)`, G, '폐지'], ['휴일 OT 보장(월, h)', 60, '폐지'], [],
+    ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), payBaseSrc('rate')], [`지원 보장(월, h)`, G, `회사 기준 실근로(가산 전) · 지급 ${FCA.guar}h · 폐지`], ['휴일 OT 보장(월, h)', HGR, `회사 기준 실근로(가산 전) · 지급 ${HGA.guar}h · 폐지`], [],
     ['[C] 인건비 기준'], ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), payBaseSrc('annual')], ['장비직 총인건비(원)', W(total)], [],
     ['[D] 실측 기준'], ['지원근로 건수', W(R.supN)], ['지원휴무(SC) 일수', W(R.sc)]
   ]};
@@ -6123,7 +6164,7 @@ function alcReport(){
     part('sp', '평일 지원 OT'),
     part('spFill', `지원 ${G}h 보전 (지원을 덜 해도 받던 몫)`),
     part('hsup', '휴일 지원 OT'),
-    part('hoFill', '휴일 60h 보전 (휴일 근무가 60h에 못 미쳐도 받던 몫)'),
+    part('hoFill', `휴일 ${HGR}h 보전 (휴일 근무가 보장에 못 미쳐도 받던 몫)`),
     ['소계', H1(T('sp')+T('spFill')+T('hsup')+T('hoFill')), W((T('sp')+T('spFill')+T('hsup')+T('hoFill'))*rate*y)], [],
     ['[2단계] 다시 생기는 몫'],
     ['지원휴무(SC) 없어져 본근무로 돌아오는 OT', H1(T('scBack')), W(T('scBack')*rate*y), `SC ${W(R.sc)}일 × 기사별 평일 하루 평균 OT`], [],
@@ -6140,10 +6181,10 @@ function alcReport(){
     [`지원근로와 지원·휴일 보장을 함께 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어들고 근무 1회당 노동 밀도가 높아짐. 연봉 보전 ${rAsk.toFixed(2)}% + 근로강도 보상 ${ik.toFixed(2)}% = 시급 ${(rAsk + ik).toFixed(2)}% 인상이 필요함.`]
   ]};
   const s4 = {name:'4.검증데이터', rows:[['검증 데이터 — 기사별 연간(환산) 감소액·필요 인상률 (익명 처리)'], [`1인 연봉은 ${W(FCA.annual)}원으로 같다고 보고 계산`], [],
-    ['구분', '조', '평일 지원(h)', `${G}h 보전(h)`, '휴일 지원(h)', '60h 보전(h)', 'SC 회복(h)', '연 감소액(원)', '필요 인상률'],
+    ['구분', '조', '평일 지원(h)', `${G}h 보전(h)`, '휴일 지원(h)', `${HGR}h 보전(h)`, 'SC 회복(h)', '연 감소액(원)', '필요 인상률'],
     ...pp.map(p=> [anon[p.n], p.g+'조', H1(p.sp*y), H1(p.spFill*y), H1(p.hsup*y), H1(p.hoFill*y), H1(p.scBack*y), W(p.lw), P(p.pct)])]};
   const s5 = {name:'5.월별현황', rows:[['급여월별 항목별 감소'], [],
-    ['급여월', '평일 지원(h)', `${G}h 보전(h)`, '휴일 지원(h)', '60h 보전(h)', 'SC 회복(h)', '줄어드는 몫(h)', '감소액(원)'],
+    ['급여월', '평일 지원(h)', `${G}h 보전(h)`, '휴일 지원(h)', `${HGR}h 보전(h)`, 'SC 회복(h)', '줄어드는 몫(h)', '감소액(원)'],
     ...D.mon.map(m=> [m.key, H1(m.sp), H1(m.spFill), H1(m.hsup), H1(m.hoFill), H1(m.scBack), H1(m.lost), W(m.lost*rate)]),
     ['합계', H1(T('sp')), H1(T('spFill')), H1(T('hsup')), H1(T('hoFill')), H1(T('scBack')), H1(T('lost')), W(T('lost')*rate)]]};
   return {sheets:[s1,s2,s3,s4,s5, spcIntenseSheet(R, 6, rAsk)]};
@@ -6166,7 +6207,7 @@ function pageAllCut(){
       <button class="btn sm" data-act="alc-run">다시 계산</button>
       ${spcBerthBtn('alc', ALC.from, ALC.to)}
     </div>
-    <p class="hint" style="margin:8px 0 0;">지원근로 + 지원 ${FCA.guar}h 보장 + 휴일 60h 보장이 한꺼번에 없어질 때 줄어드는 연봉과 같은 연봉을 맞추는 시급 인상률(기사별 ${BASIS_T[FCA.basis]} 기준)이에요. 근무기록만으로 바로 계산해요.</p>
+    <p class="hint" style="margin:8px 0 0;">지원근로 + 지원 ${FCA.guarR}h 보장 + 휴일 ${HGA.guarR}h 보장(회사 기준 가산 전)이 한꺼번에 없어질 때 줄어드는 연봉과 같은 연봉을 맞추는 시급 인상률(기사별 ${BASIS_T[FCA.basis]} 기준)이에요. 근무기록만으로 바로 계산해요.</p>
   </div>
   <div class="panel"><div class="row eqBar" style="align-items:center;margin-bottom:8px;">${t.tabs}<span style="flex:1"></span><button class="btn sm" data-act="alc-xls">📥 보고서 엑셀</button></div>${t.table}</div>`;
 }
