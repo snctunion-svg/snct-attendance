@@ -5100,7 +5100,7 @@ function bindEqPay(el){
    고정휴무(FC)를 조당 1주 8명(월2·화~금1·토2) → 12명(월~토 2)으로 늘릴 때 생기는 지원 OT를 계산.
    · 선석배정(회사 사이트 선석조회)의 크레인(QC) 작업시간 → 조·근무(주/야)마다 필요인원 = 동시 가동 최대 대수 × 2
    · 원본 근무기록(EXCEL_ATT·EXCEL_CODES, 전체 STS 기사, 노조 전임 제외)의 실제 출근·MC·지원과 비교
-   · 화~금(공휴일 제외)마다 조당 고정휴무 +1명 → 그날 MC가 있으면 MC를 덜 줌(비용 없음), 크레인 대비 여유가 있으면 비용 없음, 아니면 지원 1건
+   · 화~금(공휴일 제외)마다 조당 고정휴무 +1명 → 그날 MC가 있으면 MC를 덜 줌(비용 없음), 크레인 대비 여유가 있고 실제 지원도 없던 날은 비용 없음, 아니면 지원 1건
    · 지원휴무(SC) 연쇄, 상대 조 기사별 지원 비율로 배분 → 월 보장시간(지원 30h) 반영, 토요일 만근 영향
    저장은 안 함(계산만). 결과는 회사 검토자료와 같은 6개 항목 보고서로 보여 주고 엑셀로 내려받음 */
 const FCA = {from:'2025-12-26', to:'2026-09-25', rate:18663, annual:97260000, guar:30, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null, tab:1};
@@ -5212,9 +5212,12 @@ function fcaAnalyze(){
   // 고정휴무 +1명이 생기는 날: 화~금(공휴일 제외)
   rows.forEach(r=>{
     r.add = r.wd>=2 && r.wd<=5 && !r.hol;
-    r.res = !r.add ? '' : (r.mc > 0 ? 'mc' : (r.avail - r.need >= 1 ? 'slack' : 'sup'));
+    // 여유 = 크레인 × 2보다 1명 이상 많이 출근했고, 그날 실제로 지원도 안 부른 날.
+    // 크레인이 적어도 지원을 부른 날(다른 휴무 겹침·연장 지원·작업 지연·크레인 외 인원 등)은 실제로 사람이 모자랐던 날로 봄
+    r.tight = (r.avail - r.need < 1) || r.sup > 0;
+    r.res = !r.add ? '' : (r.mc > 0 ? 'mc' : (r.tight ? 'sup' : 'slack'));
   });
-  const busyAll = rows.filter(r=> !r.hol && r.mc===0 && r.avail - r.need < 1).length / Math.max(1, rows.length);
+  const busyAll = rows.filter(r=> !r.hol && r.mc===0 && ((r.avail - r.need < 1) || r.sup > 0)).length / Math.max(1, rows.length);
   const scRate = supCnt ? scCnt / supCnt : 0;
   const mult = 1 / Math.max(0.2, 1 - scRate * busyAll);
   // 상대 조 기사에게 그 달 지원 실적 비율대로 배분 → 월 보장시간 반영
@@ -5245,7 +5248,7 @@ function fcaAnalyze(){
   rows.forEach(r=>{ const o = fcByWd[r.wd] = fcByWd[r.wd] || {n:0, fc:0}; o.n++; o.fc += r.fc; });
   FCA.result = {rows, months, people, grp, n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length, nDays: Object.keys(FCA.days).length,
     avgPrem, supCnt, scCnt, scRate, busyAll, mult, nAdd, nMC, nSlack, nSup, rawH, paidH, mgRate, mgAvg, mgLostH, yr, nMon,
-    oddN: oddRows.length, oddOff, totSup: rows.reduce((t,r)=> t + r.sup, 0), fcByWd, wdName};
+    oddN: oddRows.length, nOdd: rows.filter(r=> r.res==='sup' && r.avail - r.need >= 1).length, oddOff, totSup: rows.reduce((t,r)=> t + r.sup, 0), fcByWd, wdName};
 }
 // 보고서 값(1년 환산·금액)
 function fcaNums(){
@@ -5312,10 +5315,11 @@ function fcaReport(){
     ['[D] 변경안 산정 기준 (실측)'],
     [`고정휴무 추가 조-일(${R.nMon}개월)`, R.nAdd, '화~금(공휴일 제외)마다 조당 +1명'],
     ['유동휴무(MC)가 있어 흡수되는 조-일', R.nMC, '같은 날 MC → MC를 덜 줌, 추가부족 없음'],
-    ['크레인 대비 여유로 흡수되는 조-일', R.nSlack, '출근 인원 ≥ 크레인 대수 × 2 + 1'],
+    ['크레인 대비 여유로 흡수되는 조-일', R.nSlack, '출근 인원 ≥ 크레인 대수 × 2 + 1 이고 그날 지원도 없던 날'],
     ['지원 발생 조-일', R.nSup, '나머지 (추가 − MC − 여유)'],
+    ['  └ 그중 크레인은 적었지만 실제 지원이 온 날', R.nOdd, '다른 휴무 겹침·연장 지원(DN/ND)·작업 지연·크레인 외 인원 등'],
     ['지원 1건당 지원휴무(SC) 비율', P(R.scRate*100), `실측: SC ${W(R.scCnt)}일 ÷ 지원 ${W(R.supCnt)}건`],
-    ['SC로 다시 지원이 생기는 비율', P(R.busyAll*100), '전체 조-일 중 MC 없고 여유 없는 날'],
+    ['SC로 다시 지원이 생기는 비율', P(R.busyAll*100), '전체 조-일 중 MC 없고 여유 없는 날(실제 지원 온 날 포함)'],
     ['연쇄 배수', R.mult.toFixed(3), '1 ÷ (1 − SC비율 × 바쁜 날 비율)'],
     ['토요일 근무 중 만근 비율', P(R.mgRate*100), `만근 1건당 특근 차이 ${H1(R.mgAvg)}h (확인 필요)`],
     ['교대율', '2.0', '필요 출근인원 = 크레인 대수 × 2 (올림)']
@@ -5431,7 +5435,7 @@ function pageFcAna(){
       <label class="eqBonusIn"><span>월 지원 보장</span><input type="text" inputmode="numeric" id="fcaGuar" value="${FCA.guar}" style="width:44px;"><span>h</span></label>
       <button class="btn sm" data-act="fca-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '선석 자료 불러와서 분석'}</button>
     </div>
-    <p class="hint" style="margin:8px 0 0;">고정휴무 조당 1주 8명(월2·화~금1·토2) → 12명(월~토2), 교대율 2.0 유지. 화~금(공휴일 제외) 조당 +1명 휴무 → 그날 MC 있으면 흡수, 크레인 × 2 대비 여유 있으면 흡수, 아니면 지원 1건(SC 연쇄 포함) → 상대 조 기사의 그달 지원 비율로 나눠 월 보장시간 반영. 회사 사이트 선석배정을 7일씩 받아 계산해요(몇 분 걸려요).</p>
+    <p class="hint" style="margin:8px 0 0;">고정휴무 조당 1주 8명(월2·화~금1·토2) → 12명(월~토2), 교대율 2.0 유지. 화~금(공휴일 제외) 조당 +1명 휴무 → 그날 MC 있으면 흡수, 크레인 × 2 대비 여유 있고 실제 지원도 없던 날이면 흡수, 아니면 지원 1건(크레인이 적어도 그날 지원을 불렀으면 사람이 모자랐던 날로 봄)(SC 연쇄 포함) → 상대 조 기사의 그달 지원 비율로 나눠 월 보장시간 반영. 회사 사이트 선석배정을 7일씩 받아 계산해요(몇 분 걸려요).</p>
     ${prog}${err}
   </div>
   ${res}`;
