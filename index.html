@@ -5781,10 +5781,39 @@ function spcReport(){
     ['급여월', '평일 지원OT(h)', '30h 보전(h)', '휴일 지원OT(h)', 'SC(일)', '줄어드는 OT(h)', '감소액(원)', `× ${SPC.ratio} 못 채운 근무`, '못 돌린 크레인'],
     ...R.months.map(m=> [m.key, H1(m.sp - m.spKeep), H1(m.guarFill), H1(m.hsup - m.hsupKeep), m.sc, H1(m.lost), W(m.lost*rate), m.short15, m.lostQ]),
     ['합계', H1(R.sp - R.spKeep), H1(R.guarFill), H1(R.hsup - R.hsupKeep), R.sc, H1(R.lost), W(R.lost*rate), R.short15, R.lostQ]]};
-  return {sheets:[s1,s2,s3,s4,s5,s6, spcIntenseSheet(R, 7, rAsk)]};
+  return {sheets:[s1,s2,s3,s4,s5,s6, spcIntenseSheet(R, 7, rAsk), {name:'8.참고(내부)', internal:true, rows:SPC_MEMO}]};
 }
+// 8.참고(내부) — 사용자가 나중에 볼 메모. 화면에만 보이고 보고서 엑셀에는 안 들어감(internal)
+const SPC_MEMO = [
+  ['참고 메모 (내부용 · 엑셀에 안 들어감) — 2026-10-13 정리'],
+  ['지원 폐지 인상률 15.25% / 9.28% 차이와 교대비율(1.5·1.75) 반영 방법 — 보류 중'], [],
+  ['[1] 9.28%가 나온 이유'],
+  ['선석 자료를 불러오면 "모자라서 어차피 남는 지원"이 빠지기 때문에 내려감.'], [],
+  ['[2] 두 숫자의 차이'],
+  ['· 15.25% (지원 전부 폐지): 지원 OT가 100% 사라지는 경우라 가장 높게 나옴. 크레인 수와 상관없음.'],
+  ['· 9.28% (1.5 미만 근무는 지원 남김, 선석 자료 필요): 근무마다 그날 크레인 수를 확인해서, 자기 조 출근이 크레인 × 1.5보다 적은 근무는 모자라는 인원만큼 지원이 그대로 남는다고 계산.'],
+  ['   예) 크레인 6대면 최소 9명 필요. 자기 조가 7명뿐이면 2명은 여전히 지원을 받음.'],
+  ['   남는 지원 OT는 없어지는 돈이 아니므로 보전할 금액에서 빠짐.'],
+  ['· 줄어든 6%p쯤 = 지원을 없애도 인원이 모자라서 실제로 계속 나올 지원만큼. 시급 인상률이 가장 큰 기사 기준으로 지금 받는 지원 OT의 대략 40%가 남는다는 뜻 → 1~9월에 크레인 대비 인원이 모자라서 부른 지원이 꽤 있었다는 근거도 됨.'], [],
+  ['[3] 1.75를 고르면 더 내려가는 이유 (9.28% 방식일 때)'],
+  ['기준이 높아지면 크레인 × 1.75를 못 채우는 근무가 늘어남 → 남는 지원이 많아짐 → 없어지는 OT가 줄어 인상률이 더 낮아짐.'], [],
+  ['[4] 직접 확인하는 방법'],
+  ['· 5.검증데이터: 기사별 지원 OT가 지금 얼마이고 폐지 뒤 얼마 남는지 비교.'],
+  ['· 6.월별현황: 급여월별 지원 OT·감소, 크레인 × 비율 못 채운 근무 수.'], [],
+  ['[5] 교섭 자료로 쓸 때'],
+  ['· 15.25% = 지원을 완전히 없앨 때의 값 → 지금 기본으로 제시하는 숫자.'],
+  ['· 9.28% = 원칙만 폐지하고 1.5 미만 근무에서는 지원을 남길 때의 값.'],
+  ['· 회사안이 "원칙 폐지, 1.5 미만이면 지원"이라면 9.28%가 회사가 반박하기 어려운 숫자.'], [],
+  ['[6] 교대비율(1.5·1.75)에 따라 인상률이 바뀌게 하려면 — 셋 중 하나 결정 필요 (보류)'],
+  ['지원을 전부 폐지하면 두 비율 다 없어지는 지원 OT가 똑같아서, 지금 상태로는 인상률이 달라질 수 없음.'],
+  ['1. 비율 미만이면 지원 남김 (이전 방식): 자기 조 출근이 크레인 × 비율보다 적은 근무만 모자란 인원만큼 지원을 남김. 1.5는 9.28%, 1.75는 더 낮음. 단점: 15.25%는 선석 자료를 불러오기 전에만 보임.'],
+  ['2. 근로강도 보상률을 비율에 따라 자동 계산: 연봉 보전은 15.25%로 고정, 근로강도 보상률이 비율에 따라 바뀜(1.5가 1.75보다 높음). 단점: 7%를 직접 입력하는 방식은 없어짐.'],
+  ['3. 둘 다 표시: 15.25%를 기본으로, 1번 값을 참고로 같이 보여줌. 단점: 낮은 숫자가 보고서에 같이 나와 회사가 근거로 삼을 수 있음.'],
+  ['→ Claude 추천: 2번 (15.25%를 지키면서, 비율이 낮을수록 더 힘들어지니 더 받아야 한다는 논리가 회사 기준과 맞음).']
+];
 function spcXls(){
   const rep = spcReport(); if(!rep.sheets.length) return;
+  rep.sheets = rep.sheets.filter(s=> !s.internal);   // 내부 메모는 엑셀에 안 넣음
   const x = v=> String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const sheet = s=> `<Worksheet ss:Name="${x(s.name)}"><Table><Column ss:Width="260"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/>`
     + s.rows.map((r,i)=> `<Row>${(r||[]).map(c=> `<Cell${i===0?' ss:StyleID="t"':''}><Data ss:Type="${typeof c==='number'?'Number':'String'}">${x(c)}</Data></Cell>`).join('')}</Row>`).join('') + `</Table></Worksheet>`;
@@ -5969,6 +5998,7 @@ function hgaReport(){
   return {sheets:[s1,s2,s3,s4,s5]};
 }
 function repXls(rep, fname){
+  rep = Object.assign({}, rep, {sheets: (rep.sheets||[]).filter(s=> !s.internal)});   // 내부 메모는 엑셀에 안 넣음
   if(!rep.sheets.length) return;
   const x = v=> String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const sheet = s=> `<Worksheet ss:Name="${x(s.name)}"><Table><Column ss:Width="260"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/>`
