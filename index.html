@@ -5110,7 +5110,7 @@ function bindEqPay(el){
    · 화~금(공휴일 제외)마다 조당 고정휴무 +1명 → 그날 MC가 있으면 MC를 덜 줌(비용 없음), 크레인 대비 여유가 있고 실제 지원도 없던 날은 비용 없음, 아니면 지원 1건
    · 지원휴무(SC) 연쇄, 상대 조 기사별 지원 비율로 배분 → 월 보장시간(지원 30h) 반영, 토요일 만근 영향
    저장은 안 함(계산만). 결과는 회사 검토자료와 같은 6개 항목 보고서로 보여 주고 엑셀로 내려받음 */
-const FCA = {from:'2025-12-26', to:'2026-09-25', rate:18663, annual:97260000, guar:30, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null, tab:1};
+const FCA = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', rate:18663, annual:97260000, guar:30, running:false, done:0, total:0, err:'', blocks:[], days:{}, result:null, tab:1};
 function fcaDs(r){ return '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6); }
 function fcaMin(t){ const m = String(t||'').match(/(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})/); if(!m) return null; const [y,mo,d] = m[1].split('-').map(Number); return Date.UTC(y,mo-1,d, Number(m[2]), Number(m[3]))/60000; }
 function fcaAt(ds, h){ const [y,mo,d] = ds.split('-').map(Number); return Date.UTC(y,mo-1,d,h,0)/60000; }
@@ -5120,38 +5120,69 @@ async function fcaFetch(qd){
   return r.json();
 }
 // 1) 선석 자료를 7일씩 받아서 모아 둠
-async function fcaLoadBerth(){
-  if(FCA.running) return;
-  if(!vslApi){ FCA.err = '본선작업(Apps Script) 주소가 없어요.'; render(); return; }
-  FCA.running = true; FCA.err = ''; FCA.blocks = []; FCA.days = {}; FCA.result = null;
-  const starts = []; for(let d = FCA.from; d <= FCA.to; d = addDays(d, 7)) starts.push(d);
-  FCA.total = starts.length; FCA.done = 0; render();
-  const seen = new Set();
-  for(const qd of starts){
+// ===== 선석 크레인 자료 저장소: 한 번 받은 지난 날짜는 이 기기에 저장해 두고 다시 받지 않음(오늘·앞으로 날짜만 새로 받음) =====
+const BQ_KEY = 'snct_berth_qc_v1';
+const BQ = (()=>{ try{ const o = JSON.parse(localStorage.getItem(BQ_KEY) || 'null'); if(o && o.days && Array.isArray(o.blocks)) return {days:o.days, blocks:o.blocks.map(b=>({no:b[0], a:b[1], z:b[2]}))}; }catch(e){} return {days:{}, blocks:[]}; })();
+function bqSave(){ try{ localStorage.setItem(BQ_KEY, JSON.stringify({days: BQ.days, blocks: BQ.blocks.map(b=>[b.no, b.a, b.z])})); }catch(e){} }
+function bqFinal(ds){ return BQ.days[ds] === 2; } // 2 = 지난 날짜(끝남, 다시 안 받음) / 1 = 오늘·앞으로(새로 받을 수 있음)
+function bqDaysIn(from, to){ let n = 0; for(let d = from; d <= to; d = addDays(d,1)) if(BQ.days[d]) n++; return n; }
+function bqMissing(from, to){ const out = []; for(let d = from; d <= to; d = addDays(d,1)) if(!bqFinal(d)) out.push(d); return out; }
+// 모자라는 날짜만 7일씩 받아서 저장소에 합침
+async function bqEnsure(from, to){
+  const today = todayStr();
+  let miss = bqMissing(from, addDays(to, 1)); // 마지막 날 야간(다음날 08시까지)용으로 하루 더
+  FCA.total = Math.ceil(miss.length / 7) || 0; FCA.done = 0; render();
+  while(miss.length){
+    const qd = miss[0];
     let j = null;
     for(let tryN = 0; tryN < 2 && !j; tryN++){ try{ j = await fcaFetch(qd); }catch(e){ j = null; } }
     if(!j || !j.ok){ FCA.err = `${qd} 선석 자료를 받지 못했어요. (회사 사이트 또는 Apps Script)`; break; }
     const dates = berthSetDates(j);
     if(dates[0] !== qd){ FCA.err = `회사 사이트에서 ${qd} 날짜로 조회가 안 돼요(오늘 자료가 옴). 지난 날짜 조회가 막혀 있으면 이 분석은 할 수 없어요.`; break; }
-    dates.forEach(d=> FCA.days[d] = true);
-    (j.blocks || []).forEach(b=>{
-      const name = svInfoGet(b, /Name\s*of\s*Vessel/i);
-      (b.qc || []).forEach(q=>{
-        const a = fcaMin(q.start), z = fcaMin(q.end); if(a==null || z==null || z <= a) return;
-        const k = name + '|' + q.no + '|' + a; if(seen.has(k)) return; seen.add(k);
-        FCA.blocks.push({no: String(q.no||'').trim(), a, z});
-      });
-    });
+    // 이 7일 안에서 아직 끝나지 않은 날(오늘·앞으로)의 예전 자료는 지우고 새 자료로
+    const a0 = fcaAt(dates[0], 0), z0 = fcaAt(addDays(dates[dates.length-1], 1), 0);
+    BQ.blocks = BQ.blocks.filter(b=> !(b.a >= a0 && b.a < z0 && !bqFinal(new Date(b.a*60000).toISOString().slice(0,10))));
+    const seen = new Set(BQ.blocks.map(b=> b.no + '|' + b.a));
+    (j.blocks || []).forEach(b=> (b.qc || []).forEach(q=>{
+      const a = fcaMin(q.start), z = fcaMin(q.end); if(a==null || z==null || z <= a) return;
+      if(a < a0 || a >= z0) return;
+      const no = String(q.no||'').trim(), k = no + '|' + a; if(seen.has(k)) return; seen.add(k);
+      BQ.blocks.push({no, a, z});
+    }));
+    dates.forEach(d=>{ if(!bqFinal(d)) BQ.days[d] = d < today ? 2 : 1; });
+    bqSave();
+    miss = miss.filter(d=> !dates.includes(d));
     FCA.done++; render();
   }
-  FCA.running = false;
-  if(!FCA.err || FCA.blocks.length){ fcaAnalyze(); try{ spcAnalyze(); }catch(e){ console.error(e); } }
+}
+// 선석 자료 불러오기(필요한 날짜만) → 다 받으면 after() 실행
+async function fcaLoadBerth(from, to, after){
+  if(FCA.running) return;
+  if(!vslApi){ FCA.err = '본선작업(Apps Script) 주소가 없어요.'; render(); return; }
+  FCA.running = true; FCA.err = ''; render();
+  try{ await bqEnsure(from, to); } finally { FCA.running = false; }
+  if(after) try{ after(); }catch(e){ console.error(e); }
   render();
 }
-// 근무 시간대 안에서 동시에 돌아간 크레인 최대 대수(30분 간격)
+// 급여월(YYYY-MM) 범위 → 날짜 범위(전달 26일 ~ 그달 25일)
+function ymRange(fromM, toM){
+  if(!fromM || !toM) return null; if(toM < fromM) [fromM, toM] = [toM, fromM];
+  const [y1,m1] = fromM.split('-').map(Number), [y2,m2] = toM.split('-').map(Number);
+  return [payPeriodRange(y1,m1)[0], payPeriodRange(y2,m2)[1]];
+}
+function ymInputs(pre, st){
+  const last = typeof IMPORT_LAST_DATE !== 'undefined' ? IMPORT_LAST_DATE : '';
+  return `<b style="font-size:13px;">급여월</b><input type="month" id="${pre}FromM" value="${st.fromM}" class="tx" style="width:auto;padding:4px 6px;"><span>~</span><input type="month" id="${pre}ToM" value="${st.toM}" class="tx" style="width:auto;padding:4px 6px;">`
+    + (last && st.to > last ? `<span class="hint" style="margin:0;color:#b45309;">원본 근무기록은 ${last}까지라 그 뒤 날짜는 근무 실적이 비어 있어요</span>` : '');
+}
+function ymRead(el, pre, st){
+  const a = el.querySelector('#'+pre+'FromM').value, b = el.querySelector('#'+pre+'ToM').value;
+  if(a && b){ st.fromM = a <= b ? a : b; st.toM = a <= b ? b : a; }
+  const r = ymRange(st.fromM, st.toM); st.from = r[0]; st.to = r[1];
+}
 function fcaCranes(a0, z0){
   let mx = 0;
-  const bs = FCA.blocks.filter(b=> b.a < z0 && b.z > a0);
+  const bs = BQ.blocks.filter(b=> b.a < z0 && b.z > a0);
   for(let t = a0; t < z0; t += 30){
     const on = new Set(); bs.forEach(b=>{ if(b.a <= t && t < b.z) on.add(b.no); });
     if(on.size > mx) mx = on.size;
@@ -5198,7 +5229,7 @@ function fcaAnalyze(){
   // 조·근무별 하루 자료
   const rows = [];
   for(let ds = FCA.from; ds <= FCA.to; ds = addDays(ds,1)){
-    if(!FCA.days[ds]) continue;
+    if(!BQ.days[ds]) continue;
     const wd = new Date(ds+'T00:00:00').getDay();
     const qD = fcaCranes(fcaAt(ds,8), fcaAt(ds,18)), qN = fcaCranes(fcaAt(ds,18), fcaAt(ds,18) + 14*60);
     const supIn = {D:0, N:0};
@@ -5253,7 +5284,7 @@ function fcaAnalyze(){
   const oddOff = {}; oddRows.forEach(r=> Object.entries(r.off).forEach(([k,v])=> oddOff[k] = (oddOff[k]||0) + v));
   const wdName = '일월화수목금토', fcByWd = {};
   rows.forEach(r=>{ const o = fcByWd[r.wd] = fcByWd[r.wd] || {n:0, fc:0}; o.n++; o.fc += r.fc; });
-  FCA.result = {rows, months, people, grp, n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length, nDays: Object.keys(FCA.days).length,
+  FCA.result = {rows, months, people, grp, n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length, nDays: bqDaysIn(FCA.from, FCA.to),
     avgPrem, supCnt, scCnt, scRate, busyAll, mult, nAdd, nMC, nSlack, nSup, rawH, paidH, mgRate, mgAvg, mgLostH, yr, nMon,
     oddN: oddRows.length, nOdd: rows.filter(r=> r.res==='sup' && r.avail - r.need >= 1).length, oddOff, totSup: rows.reduce((t,r)=> t + r.sup, 0), fcByWd, wdName};
 }
@@ -5436,14 +5467,13 @@ function pageFcAna(){
   <h2 class="pgttl">휴무 2명 분석</h2>
   <div class="panel">
     <div class="row eqBar" style="align-items:center;">
-      <input type="date" id="fcaFrom" value="${FCA.from}" class="tx" style="padding:5px 6px;"> <span>~</span>
-      <input type="date" id="fcaTo" value="${FCA.to}" class="tx" style="padding:5px 6px;">
+      ${ymInputs('fca', FCA)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="fcaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="fcaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       <label class="eqBonusIn"><span>월 지원 보장</span><input type="text" inputmode="numeric" id="fcaGuar" value="${FCA.guar}" style="width:44px;"><span>h</span></label>
-      <button class="btn sm" data-act="fca-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '선석 자료 불러와서 분석'}</button>
+      <button class="btn sm" data-act="fca-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '분석'}</button>
     </div>
-    <p class="hint" style="margin:8px 0 0;">고정휴무 조당 1주 8명(월2·화~금1·토2) → 12명(월~토2), 교대율 2.0 유지. 화~금(공휴일 제외) 조당 +1명 휴무 → 그날 MC 있으면 흡수, 크레인 × 2 대비 여유 있고 실제 지원도 없던 날이면 흡수, 아니면 지원 1건(크레인이 적어도 그날 지원을 불렀으면 사람이 모자랐던 날로 봄)(SC 연쇄 포함) → 상대 조 기사의 그달 지원 비율로 나눠 월 보장시간 반영. 회사 사이트 선석배정을 7일씩 받아 계산해요(몇 분 걸려요).</p>
+    <p class="hint" style="margin:8px 0 0;">고정휴무 조당 1주 8명(월2·화~금1·토2) → 12명(월~토2), 교대율 2.0 유지. 화~금(공휴일 제외) 조당 +1명 휴무 → 그날 MC 있으면 흡수, 크레인 × 2 대비 여유 있고 실제 지원도 없던 날이면 흡수, 아니면 지원 1건(크레인이 적어도 그날 지원을 불렀으면 사람이 모자랐던 날로 봄)(SC 연쇄 포함) → 상대 조 기사의 그달 지원 비율로 나눠 월 보장시간 반영. 선석 자료는 한 번 받은 지난 날짜를 이 기기에 저장해 두고, 새로 필요한 날짜만 받아요. (저장된 선석 자료 ${Object.keys(BQ.days).length}일)</p>
     ${prog}${err}
   </div>
   ${res}`;
@@ -5452,14 +5482,12 @@ function bindFcAna(el){
   if(VIEW!=='fcana') return;
   const run = el.querySelector('[data-act="fca-run"]');
   if(run) run.onclick = ()=>{
-    const f = el.querySelector('#fcaFrom').value, t = el.querySelector('#fcaTo').value, num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
-    const same = f===FCA.from && t===FCA.to;
-    if(f && t && f <= t){ FCA.from = f; FCA.to = t; }
+    const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
+    ymRead(el, 'fca', FCA);
     if(num('#fcaRate') > 0) FCA.rate = num('#fcaRate');
     if(num('#fcaAnnual') > 0) FCA.annual = num('#fcaAnnual');
     if(num('#fcaGuar') >= 0) FCA.guar = num('#fcaGuar');
-    if(FCA.result && !FCA.running && FCA.blocks.length && same){ fcaAnalyze(); render(); return; } // 선석 자료는 그대로, 단가만 바꿔 다시 계산
-    fcaLoadBerth();
+    fcaLoadBerth(FCA.from, FCA.to, ()=> fcaAnalyze()); // 저장된 날짜는 다시 안 받고, 모자라는 날짜만 받아서 계산
   };
   el.querySelectorAll('[data-act="fca-tab"]').forEach(x=> x.onclick = ()=>{ FCA.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="fca-xls"]'); if(xb) xb.onclick = fcaXls;
@@ -5469,9 +5497,9 @@ function bindFcAna(el){
    지원근로를 없애고 크레인당 최소 교대비율 1.5(필요인원 = 크레인 대수 × 1.5, 올림)로 자기 조 인원만으로 운영할 때,
    · 조합원 연봉에서 빠지는 지원 OT(평일 지원 + 휴일 지원 + 지원 보장 30h 보전)를 계산하고
    · 지원휴무(SC)가 없어져 본근무로 돌아오는 OT를 빼서
-   · 같은 연봉을 맞추려면 시급을 몇 % 올려야 하는지 보여 줌. 선석 자료는 '휴무 2명 분석'과 같은 것을 씀(계산만, 저장 안 함) */
-const SPC = {ratio:1.5, keepGuar:false /* 지원 폐지 시 30h 보전도 없어짐(고정) */, scBack:true, result:null, tab:1};
-function spcAnalyze(){
+   · 같은 연봉을 맞추려면 시급을 몇 % 올려야 하는지 보여 줌. 선석 자료는 모든 분석 화면이 함께 씀(계산만, 저장 안 함) */
+const SPC = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', ratio:1.5, keepGuar:false /* 지원 폐지 시 30h 보전도 없어짐(고정) */, scBack:true, result:null, tab:1};
+function spcAnalyze(from, to){
   const names = Object.keys(EXCEL_CODES), grp = {};
   names.forEach(n=>{
     const ujs = (EXCEL_CODES[n]||'').split(',').filter(x=> /:UJ$/.test(x)).length; if(ujs >= 40) return;
@@ -5482,7 +5510,7 @@ function spcAnalyze(){
   people.forEach((n,i)=> (EXCEL_ATT[n]||[]).forEach(r=>{ const ds = fcaDs(r); rowOf[ds+'|'+n] = r; recOf[ds+'|'+n] = normAtt(excelAttRec(r, 'spc'+i)); }));
   // 사람·급여월별 OT 구성
   const pm = {};
-  for(let ds = FCA.from; ds <= FCA.to; ds = addDays(ds,1)){
+  for(let ds = from; ds <= to; ds = addDays(ds,1)){
     const key = fcaPayKey(ds);
     people.forEach(n=>{
       const o = pm[n+'|'+key] = pm[n+'|'+key] || {n, key, wk:0, ho:0, sp:0, hsup:0, meal:0, wkDays:0, sc:0, supN:0};
@@ -5508,8 +5536,8 @@ function spcAnalyze(){
   const keys = [...new Set(Object.values(pm).map(o=> o.key))].sort();
   // 조·근무별 운영 가능 여부(지원 없이 자기 조 출근만으로): 필요인원(2.0) / 최소(1.5)
   const rows = [];
-  for(let ds = FCA.from; ds <= FCA.to; ds = addDays(ds,1)){
-    if(!FCA.days[ds]) continue;
+  for(let ds = from; ds <= to; ds = addDays(ds,1)){
+    if(!BQ.days[ds]) continue;
     const qD = fcaCranes(fcaAt(ds,8), fcaAt(ds,18)), qN = fcaCranes(fcaAt(ds,18), fcaAt(ds,18) + 14*60);
     const supIn = {D:0, N:0};
     people.forEach(n=>{ const r = rowOf[ds+'|'+n]; if(!r || !r[3]) return; const h = parseInt(r[3]); if(isNaN(h)) return; supIn[(h >= 6 && h < 16) ? 'D' : 'N']++; });
@@ -5530,9 +5558,9 @@ function spcAnalyze(){
   const nMon = months.length || 1, yr = 12 / nMon;
   const T = k=> months.reduce((t,m)=> t + m[k], 0);
   const perPerson = people.map(n=>{ const os = keys.map(k=> pm[n+'|'+k]).filter(Boolean); const s = k=> os.reduce((t,o)=> t + o[k], 0); return {n, g: grp[n], now:s('now'), lost:s('lost'), sp:s('sp'), guarFill:s('guarFill'), hsup:s('hsup'), sc:s('sc'), scBackH:s('scBackH')}; });
-  SPC.result = {people, grp, pm, keys, months, rows, nMon, yr, perPerson, n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length,
+  return {from, to, people, grp, pm, keys, months, rows, nMon, yr, perPerson, n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length,
     now:T('now'), after:T('after'), lost:T('lost'), sp:T('sp'), guarFill:T('guarFill'), hsup:T('hsup'), supPaid:T('supPaid'), hsupPaid:T('hsupPaid'), scBackH:T('scBackH'), sc:T('sc'), supN:T('supN'),
-    guarN: Object.values(pm).filter(o=> o.sp < G).length, shifts:T('shifts'), sup:T('sup'), short20:T('short20'), short15:T('short15'), lostQ:T('lostQ'), nDays: Object.keys(FCA.days).length};
+    guarN: Object.values(pm).filter(o=> o.sp < G).length, shifts:T('shifts'), sup:T('sup'), short20:T('short20'), short15:T('short15'), lostQ:T('lostQ'), nDays: bqDaysIn(from, to)};
 }
 function spcReport(){
   const R = SPC.result; if(!R) return {sheets:[]};
@@ -5572,7 +5600,7 @@ function spcReport(){
   ]};
   const s2 = {name:'2.검토조건', rows:[
     ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
-    ['분석기간', `${FCA.from} ~ ${FCA.to} (급여월 ${R.nMon}개월 · 선석 자료 ${R.nDays}일)`],
+    ['분석기간', `${R.from} ~ ${R.to} (급여월 ${R.nMon}개월 · 선석 자료 ${R.nDays}일)`],
     ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
     ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`],
     ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록) · 선석배정현황(크레인 작업시간)'], [],
@@ -5641,7 +5669,7 @@ function spcXls(){
   const sheet = s=> `<Worksheet ss:Name="${x(s.name)}"><Table><Column ss:Width="260"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="140"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/><Column ss:Width="120"/>`
     + s.rows.map((r,i)=> `<Row>${(r||[]).map(c=> `<Cell${i===0?' ss:StyleID="t"':''}><Data ss:Type="${typeof c==='number'?'Number':'String'}">${x(c)}</Data></Cell>`).join('')}</Row>`).join('') + `</Table></Worksheet>`;
   const xml = `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="t"><Font ss:Bold="1" ss:Size="13"/></Style></Styles>${rep.sheets.map(sheet).join('')}</Workbook>`;
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], {type:'application/vnd.ms-excel'})); a.download = `지원폐지_시급보전검토_${FCA.from}_${FCA.to}.xls`; document.body.appendChild(a); a.click(); a.remove();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([xml], {type:'application/vnd.ms-excel'})); a.download = `지원폐지_시급보전검토_${SPC.from}_${SPC.to}.xls`; document.body.appendChild(a); a.click(); a.remove();
 }
 // 보고서 표(휴무 2명 분석과 같은 모양)
 function repTableHtml(rep, tab, act){
@@ -5657,7 +5685,7 @@ function repTableHtml(rep, tab, act){
   return {tabs, table: `<div class="scrollx"><table class="fcaRep">${body}</table></div>`};
 }
 function pageSupCut(){
-  if(!SPC.result && !FCA.running) spcAnalyze();
+  if(!SPC.result && !FCA.running) SPC.result = spcAnalyze(SPC.from, SPC.to);
   const R = SPC.result;
   const prog = FCA.running ? `<div class="hint">선석 자료 받는 중… ${FCA.done} / ${FCA.total} 주</div>` : '';
   const err = FCA.err ? `<div class="note">${esc(FCA.err)}</div>` : '';
@@ -5670,42 +5698,39 @@ function pageSupCut(){
   <h2 class="pgttl">지원 폐지</h2>
   <div class="panel">
     <div class="row eqBar" style="align-items:center;">
-      <input type="date" id="spcFrom" value="${FCA.from}" class="tx" style="padding:5px 6px;"> <span>~</span>
-      <input type="date" id="spcTo" value="${FCA.to}" class="tx" style="padding:5px 6px;">
+      ${ymInputs('spc', SPC)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="spcRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="spcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       <label class="eqBonusIn"><span>최소 교대비율</span><input type="text" inputmode="decimal" id="spcRatio" value="${SPC.ratio}" style="width:44px;"></label>
       <label class="eqBonusIn"><input type="checkbox" id="spcScBack" ${SPC.scBack?'checked':''}><span>SC 복귀 OT 반영</span></label>
       <button class="btn sm" data-act="spc-run" ${FCA.running?'disabled':''}>${FCA.running ? '분석 중…' : '다시 계산'}</button>
-      ${FCA.blocks.length || FCA.running ? '' : '<button class="btn ghost sm" data-act="spc-berth">선석 자료 불러오기(운영 영향)</button>'}
+      ${FCA.running || !bqMissing(SPC.from, SPC.to).length ? '' : '<button class="btn ghost sm" data-act="spc-berth">선석 자료 불러오기(운영 영향)</button>'}
     </div>
-    <p class="hint" style="margin:8px 0 0;">지원근로를 모두 없애고(크레인이 적어도 부르던 지원 포함) 크레인당 최소 교대비율로 자기 조 인원만 운영할 때, 연봉에서 빠지는 지원 OT와 같은 연봉을 맞추는 시급 인상률을 계산해요. 선석 자료는 '휴무 2명 분석'과 함께 써요(한 번 받으면 두 화면 모두 바로 계산).</p>
+    <p class="hint" style="margin:8px 0 0;">지원근로를 모두 없애고(크레인이 적어도 부르던 지원 포함) 크레인당 최소 교대비율로 자기 조 인원만 운영할 때, 연봉에서 빠지는 지원 OT와 같은 연봉을 맞추는 시급 인상률을 계산해요. 선석 자료는 모든 분석 화면이 함께 써요. 한 번 받은 지난 날짜는 다시 받지 않아요.</p>
     ${prog}${err}
   </div>
   ${res}`;
 }
 function bindSupCut(el){
   if(VIEW!=='supcut') return;
-  const run = el.querySelector('[data-act="spc-run"]');
-  if(run) run.onclick = ()=>{
-    const f = el.querySelector('#spcFrom').value, t = el.querySelector('#spcTo').value, num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9.]/g,''));
-    const same = f===FCA.from && t===FCA.to;
-    if(f && t && f <= t){ FCA.from = f; FCA.to = t; }
+  const read = ()=>{
+    const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9.]/g,''));
+    ymRead(el, 'spc', SPC);
     if(num('#spcRate') > 0) FCA.rate = num('#spcRate');
     if(num('#spcAnnual') > 0) FCA.annual = num('#spcAnnual');
     const rr = num('#spcRatio'); if(rr >= 1 && rr <= 3) SPC.ratio = rr;
     SPC.keepGuar = false; SPC.scBack = el.querySelector('#spcScBack').checked;
-    if(!FCA.running && (same || !FCA.blocks.length)){ if(!same){ FCA.blocks = []; FCA.days = {}; } spcAnalyze(); render(); return; }
-    fcaLoadBerth();
   };
-  const bb = el.querySelector('[data-act="spc-berth"]'); if(bb) bb.onclick = ()=> fcaLoadBerth();
+  const run = el.querySelector('[data-act="spc-run"]');
+  if(run) run.onclick = ()=>{ read(); SPC.result = spcAnalyze(SPC.from, SPC.to); render(); };
+  const bb = el.querySelector('[data-act="spc-berth"]'); if(bb) bb.onclick = ()=>{ read(); fcaLoadBerth(SPC.from, SPC.to, ()=>{ SPC.result = spcAnalyze(SPC.from, SPC.to); }); };
   el.querySelectorAll('[data-act="spc-tab"]').forEach(x=> x.onclick = ()=>{ SPC.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="spc-xls"]'); if(xb) xb.onclick = spcXls;
 }
 /* ========================= 휴일 보전 폐지 분석 (UNION) =========================
    휴일 OT 월 60h 보장(보전)이 없어지면, 휴일 근무가 60h에 못 미쳐도 받던 보전 몫만큼 연봉이 줄어듦.
    같은 연봉을 맞추는 시급 인상률을 계산. 근무기록만으로 계산(선석 자료 필요 없음, 저장 안 함) */
-const HGA = {from:'2025-12-26', to:'2026-09-25', guar:60, result:null, tab:1};
+const HGA = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', guar:60, result:null, tab:1};
 function hgaAnalyze(){
   const names = Object.keys(EXCEL_CODES), grp = {};
   names.forEach(n=>{
@@ -5822,8 +5847,7 @@ function pageHolGuar(){
   <h2 class="pgttl">휴일보전</h2>
   <div class="panel">
     <div class="row eqBar" style="align-items:center;">
-      <input type="date" id="hgaFrom" value="${HGA.from}" class="tx" style="padding:5px 6px;"> <span>~</span>
-      <input type="date" id="hgaTo" value="${HGA.to}" class="tx" style="padding:5px 6px;">
+      ${ymInputs('hga', HGA)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="hgaRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="hgaAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       <label class="eqBonusIn"><span>휴일 보장</span><input type="text" inputmode="numeric" id="hgaGuar" value="${HGA.guar}" style="width:44px;"><span>h</span></label>
@@ -5838,8 +5862,8 @@ function bindHolGuar(el){
   if(VIEW!=='holguar') return;
   const run = el.querySelector('[data-act="hga-run"]');
   if(run) run.onclick = ()=>{
-    const f = el.querySelector('#hgaFrom').value, t = el.querySelector('#hgaTo').value, num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
-    if(f && t && f <= t){ HGA.from = f; HGA.to = t; }
+    const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
+    ymRead(el, 'hga', HGA);
     if(num('#hgaRate') > 0) FCA.rate = num('#hgaRate');
     if(num('#hgaAnnual') > 0) FCA.annual = num('#hgaAnnual');
     if(num('#hgaGuar') > 0) HGA.guar = num('#hgaGuar');
@@ -5851,10 +5875,10 @@ function bindHolGuar(el){
 /* ========================= 보전 폐지 (지원 + 지원 30h 보장 + 휴일 60h 보장 동시 폐지) =========================
    지원 폐지 분석(spcAnalyze)의 기사·급여월별 OT 구성을 그대로 써서, 지원·지원 보장·휴일 보장이 한꺼번에 없어질 때
    줄어드는 연봉과 같은 연봉을 맞추는 시급 인상률(기사별 최대 기준)을 계산. 겹치는 몫(휴일 지원 ↔ 휴일 보장)은 한 번만 셈 */
-const ALC = {tab:1};
+const ALC = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', result:null, tab:1};
 function alcRows(){
-  if(!SPC.result) spcAnalyze();
-  const R = SPC.result; if(!R) return null;
+  if(!ALC.result) ALC.result = spcAnalyze(ALC.from, ALC.to);
+  const R = ALC.result; if(!R) return null;
   const G = FCA.guar, HG = 60;
   const per = {}, mon = {};
   Object.values(R.pm).forEach(o=>{
@@ -5904,7 +5928,7 @@ function alcReport(){
   ]};
   const s2 = {name:'2.검토조건', rows:[
     ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
-    ['분석기간', `${FCA.from} ~ ${FCA.to} (급여월 ${R.nMon}개월)`], ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
+    ['분석기간', `${R.from} ~ ${R.to} (급여월 ${R.nMon}개월)`], ['분석기간(개월)', R.nMon, '연 환산 기준'], ['급여월 기준', '전월 26일 ~ 당월 25일'],
     ['분석 대상', `장비직(STS 장비기사) ${ppl}명 (1조 ${R.n1}명 · 2조 ${R.n2}명, 노조 전임 제외)`], ['자료 출처', '근무 실적(장비관리 앱 원본 근무기록)'], [],
     ['[B] 단가 기준'], ['장비직 평균 통상시급(원)', W(rate), '회사 검토자료 값'], [`지원 보장(월, h)`, G, '폐지'], ['휴일 OT 보장(월, h)', 60, '폐지'], [],
     ['[C] 인건비 기준'], ['장비직 인원(명)', ppl], ['1인 연 인건비(원)', W(FCA.annual), '회사 검토자료 값'], ['장비직 총인건비(원)', W(total)], [],
@@ -5939,14 +5963,13 @@ function alcReport(){
   return {sheets:[s1,s2,s3,s4,s5]};
 }
 function pageAllCut(){
-  if(!SPC.result) spcAnalyze();
+  if(!ALC.result) ALC.result = spcAnalyze(ALC.from, ALC.to);
   const t = repTableHtml(alcReport(), ALC.tab, 'alc-tab');
   return `
   <h2 class="pgttl">보전 폐지</h2>
   <div class="panel">
     <div class="row eqBar" style="align-items:center;">
-      <input type="date" id="alcFrom" value="${FCA.from}" class="tx" style="padding:5px 6px;"> <span>~</span>
-      <input type="date" id="alcTo" value="${FCA.to}" class="tx" style="padding:5px 6px;">
+      ${ymInputs('alc', ALC)}
       <label class="eqBonusIn"><span>통상시급</span><input type="text" inputmode="numeric" id="alcRate" value="${FCA.rate}" style="width:80px;"><span>원</span></label>
       <label class="eqBonusIn"><span>1인 연 인건비</span><input type="text" inputmode="numeric" id="alcAnnual" value="${FCA.annual}" style="width:100px;"><span>원</span></label>
       <label class="eqBonusIn"><input type="checkbox" id="alcScBack" ${SPC.scBack?'checked':''}><span>SC 복귀 OT 반영</span></label>
@@ -5960,15 +5983,15 @@ function bindAllCut(el){
   if(VIEW!=='allcut') return;
   const run = el.querySelector('[data-act="alc-run"]');
   if(run) run.onclick = ()=>{
-    const f = el.querySelector('#alcFrom').value, t = el.querySelector('#alcTo').value, num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
-    if(f && t && f <= t && (f!==FCA.from || t!==FCA.to)){ FCA.from = f; FCA.to = t; FCA.blocks = []; FCA.days = {}; }
+    const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
+    ymRead(el, 'alc', ALC);
     if(num('#alcRate') > 0) FCA.rate = num('#alcRate');
     if(num('#alcAnnual') > 0) FCA.annual = num('#alcAnnual');
     SPC.scBack = el.querySelector('#alcScBack').checked;
-    spcAnalyze(); render();
+    ALC.result = spcAnalyze(ALC.from, ALC.to); render();
   };
   el.querySelectorAll('[data-act="alc-tab"]').forEach(x=> x.onclick = ()=>{ ALC.tab = Number(x.dataset.tab); render(); });
-  const xb = el.querySelector('[data-act="alc-xls"]'); if(xb) xb.onclick = ()=> repXls(alcReport(), `보전폐지_시급보전검토_${FCA.from}_${FCA.to}.xls`);
+  const xb = el.querySelector('[data-act="alc-xls"]'); if(xb) xb.onclick = ()=> repXls(alcReport(), `보전폐지_시급보전검토_${ALC.from}_${ALC.to}.xls`);
 }
 function bindPayroll(el){
   // 급여관리 화면
