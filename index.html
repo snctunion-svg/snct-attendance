@@ -908,6 +908,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .inTbl .inMg{margin-left:4px;color:#db2777;font-weight:800;font-size:12.5px;white-space:nowrap;}
 @media (max-width:700px){ #dpTable .dpMg{font-size:11px;} }
 /* 장비 급여 관리 */
+.eqBonusBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-left:12px;}
+.eqBonusIn{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:13px;white-space:nowrap;}
+.eqBonusIn input{width:56px;border:1px solid var(--border);border-radius:7px;padding:4px 6px;text-align:right;font:inherit;background:var(--bg);color:var(--text);}
+.eqTbl td.eqBon{color:#047857;background:#f0fdf4;} .eqTbl th.eqBonH{background:#dcfce7;}
+@media (max-width:700px){ .eqBonusBar{margin-left:0;order:3;width:100%;} }
 .eqTbl{border-collapse:collapse;font-size:12.5px;}
 .eqTbl th,.eqTbl td{border:1px solid #cbd5e1;padding:4px 6px;text-align:center;white-space:nowrap;}
 .eqTbl thead th{background:#f1f5f9;font-weight:800;line-height:1.2;}
@@ -4930,12 +4935,30 @@ function renderPaySlip(){
    장비 시급(시급·입사일·수당)과 근태 기록으로 기사별 월 급여와 연봉을 계산해서 보여 줌(저장 안 함, 계산만).
    계산 방식은 급여명세서와 똑같음(slipAmounts). 근무기간: 전달 26일 ~ 이번 달 25일 */
 let eqTab = 'month', eqYm = null, eqYear = null, eqTeam = '';
+// 연봉 상여(타결금·추석·설날·기타): 해마다 기본급의 몇 %인지 — 클라우드 meta/eqBonus 에 {연도: {tg, cs, sn, etc}} 로 저장
+const EQ_BONUS = [['tg','타결금'],['cs','추석'],['sn','설날'],['etc','기타']];
+let eqBonus = {};
+function subscribeEqBonus(){
+  if(!db || demoMode || unsub.eqBonus) return;
+  try{ unsub.eqBonus = db.doc('meta/eqBonus').onSnapshot(doc=>{ eqBonus = doc.exists ? (doc.data()||{}) : {}; if(VIEW==='eqpay' && !document.querySelector('.eqBonusBar :focus')) scheduleRender(); }, ()=>{}); }catch(e){}
+}
+function eqBonusPct(y){ const o = eqBonus[String(y)] || {}; const r = {}; EQ_BONUS.forEach(([k])=>{ const v = Number(o[k]); r[k] = Number.isFinite(v) && v > 0 ? v : 0; }); return r; }
+let eqBonusTimer = null;
+function saveEqBonus(y, k, v){
+  const key = String(y); eqBonus[key] = Object.assign({}, eqBonus[key]||{}, {[k]: v});
+  if(!db || demoMode) return;
+  clearTimeout(eqBonusTimer);
+  eqBonusTimer = setTimeout(async ()=>{
+    try{ await db.doc('meta/eqBonus').set({[key]: eqBonus[key], updatedAt: Date.now()}, {merge:true}); showToast('상여 %를 저장했어요.'); }
+    catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
+  }, 700);
+}
 function eqPayInit(){
   if(!eqYm){ const t = new Date(); let y = t.getFullYear(), m = t.getMonth()+1; if(t.getDate() >= 26){ m++; if(m>12){ m=1; y++; } } eqYm = {y, m}; }
   if(!eqYear) eqYear = eqYm.y;
 }
 function eqPayEnsure(){
-  eqPayInit();
+  eqPayInit(); subscribeEqBonus();
   if(eqTab==='month'){ const [a,b] = payPeriodRange(eqYm.y, eqYm.m); ensureAttendanceRange(a, b); }
   else { const last = eqYearLastMonth(); if(last){ ensureAttendanceRange(payPeriodRange(eqYear, 1)[0], payPeriodRange(eqYear, last)[1]); } }
 }
@@ -4958,7 +4981,9 @@ function pageEqPay(){
   const teamBtns = `<button class="btn ${eqTeam===''?'':'ghost'} sm" data-act="eq-team" data-team="">전체</button>
     <button class="btn ${eqTeam==='1'?'':'ghost'} sm" data-act="eq-team" data-team="1">1조</button>
     <button class="btn ${eqTeam==='2'?'':'ghost'} sm" data-act="eq-team" data-team="2">2조</button>`;
-  const tabs = `<span style="flex:1"></span>
+  const bp = eqBonusPct(eqYear);
+  const bonusBar = eqTab==='year' ? `<div class="eqBonusBar">${EQ_BONUS.map(([k,t])=>`<label class="eqBonusIn"><span>${t}</span><input type="text" inputmode="decimal" data-eq-bonus="${k}" value="${bp[k] ? esc(String(bp[k])) : ''}" placeholder="0"><span>%</span></label>`).join('')}<span class="hint" style="margin:0;">${eqYear}년 · 기본급의 %</span></div>` : '';
+  const tabs = `${bonusBar}<span style="flex:1"></span>
     <button class="btn ${eqTab==='month'?'':'ghost'} sm" data-act="eq-tab" data-tab="month">월 급여</button>
     <button class="btn ${eqTab==='year'?'':'ghost'} sm" data-act="eq-tab" data-tab="year">연봉</button>`;
   const noHourly = list.filter(e=> !(Number((payMgr[e.id]||{}).hourly) > 0)).map(e=> e.name);
@@ -5006,9 +5031,13 @@ function pageEqPay(){
       add('m'+m, r.total);
       return `<td class="eqN">${W(r.total)}</td>`;
     }).join('');
-    add('sum', sum); add('ded', ded); add('net', net);
+    const base = Math.floor((Number((payMgr[e.id]||{}).hourly)||0) * PAY_BASE_HOURS / 10) * 10;   // 기본급(시급 × 209)
+    let bsum = 0;
+    const bcells = EQ_BONUS.map(([k])=>{ const v = Math.floor(base * bp[k] / 100 / 10) * 10; bsum += v; add('b'+k, v); return `<td class="eqN eqBon">${W(v)}</td>`; }).join('');
+    const year = sum + bsum;
+    add('sum', sum); add('year', year); add('ded', ded); add('net', net);
     return `<tr><td>${i+1}</td><td>${esc(e.team?e.team+'조':'')}</td><td class="namecell">${esc(e.name)}</td>${cells}
-      <td class="eqN eqTot">${W(sum)}</td><td class="eqN">${W(n ? sum/n : 0)}</td><td class="eqN eqDed">${W(ded)}</td><td class="eqN eqNet">${W(net)}</td></tr>`;
+      <td class="eqN">${W(sum)}</td>${bcells}<td class="eqN eqTot">${W(year)}</td><td class="eqN">${W(n ? sum/n : 0)}</td><td class="eqN eqDed">${W(ded)}</td><td class="eqN eqNet">${W(net)}</td></tr>`;
   }).join('');
   return `
   <h2 class="pgttl">장비 급여 관리</h2>
@@ -5022,15 +5051,20 @@ function pageEqPay(){
     </div>
     ${warn}
     ${list.length ? `<div class="scrollx"><table class="tbl eqTbl eqYearTbl"><thead><tr>
-      <th>No</th><th>조</th><th>성명</th>${months.map(m=>`<th>${m}월</th>`).join('')}<th>연봉<br>(지급총액)</th><th>월평균</th><th>공제<br>합계</th><th>실지급<br>합계</th>
+      <th>No</th><th>조</th><th>성명</th>${months.map(m=>`<th>${m}월</th>`).join('')}<th>월 급여<br>합계</th>${EQ_BONUS.map(([k,t])=>`<th class="eqBonH">${t}<br><span style="font-weight:400;">${bp[k] ? bp[k]+'%' : '-'}</span></th>`).join('')}<th>연봉</th><th>월평균</th><th>공제<br>합계</th><th>실지급<br>합계</th>
     </tr></thead><tbody>${rows}</tbody>
-    <tfoot><tr><td colspan="3">합계</td>${months.map(m=>`<td class="eqN">${m>last?'':W(colTot['m'+m])}</td>`).join('')}<td class="eqN eqTot">${W(colTot.sum)}</td><td></td><td class="eqN eqDed">${W(colTot.ded)}</td><td class="eqN eqNet">${W(colTot.net)}</td></tr></tfoot></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
-    <p class="hint" style="margin:8px 0 0;">달마다 근무기간(전달 26일 ~ 그달 25일)의 지급총액이에요. 연봉은 그 합계, 월평균은 급여가 있는 달로 나눈 값이에요.</p>
+    <tfoot><tr><td colspan="3">합계</td>${months.map(m=>`<td class="eqN">${m>last?'':W(colTot['m'+m])}</td>`).join('')}<td class="eqN">${W(colTot.sum)}</td>${EQ_BONUS.map(([k])=>`<td class="eqN eqBon">${W(colTot['b'+k])}</td>`).join('')}<td class="eqN eqTot">${W(colTot.year)}</td><td></td><td class="eqN eqDed">${W(colTot.ded)}</td><td class="eqN eqNet">${W(colTot.net)}</td></tr></tfoot></table></div>` : '<div class="empty">등록된 직원이 없습니다.</div>'}
+    <p class="hint" style="margin:8px 0 0;">달마다 근무기간(전달 26일 ~ 그달 25일)의 지급총액이에요. 타결금·추석·설날·기타 = 기본급(시급 × 209) × 위에 넣은 %(10원 미만 버림). 연봉 = 월 급여 합계 + 타결금·추석·설날·기타. 월평균·공제·실지급은 월 급여만으로 계산해요.</p>
   </div>`;
 }
 function bindEqPay(el){
   if(VIEW!=='eqpay') return;
   const go = ()=>{ eqPayEnsure(); render(); };
+  el.querySelectorAll('[data-eq-bonus]').forEach(x=>{
+    x.oninput = ()=>{ let t = x.value.replace(/[^0-9.]/g,''); const i = t.indexOf('.'); if(i>=0) t = t.slice(0,i+1) + t.slice(i+1).replace(/\./g,''); if(t!==x.value) x.value = t; };
+    x.onchange = ()=>{ if(!requireEdit()) return; const v = Number(x.value); saveEqBonus(eqYear, x.dataset.eqBonus, Number.isFinite(v) && v > 0 ? v : 0); render(); };
+    x.onkeydown = ev=>{ if(ev.key==='Enter') x.blur(); };
+  });
   el.querySelectorAll('[data-act="eq-team"]').forEach(x=> x.onclick = ()=>{ eqTeam = x.dataset.team; render(); });
   el.querySelectorAll('[data-act="eq-tab"]').forEach(x=> x.onclick = ()=>{ eqTab = x.dataset.tab; go(); });
   const b = (a, f)=>{ const x = el.querySelector(`[data-act="${a}"]`); if(x) x.onclick = ()=>{ f(); go(); }; };
