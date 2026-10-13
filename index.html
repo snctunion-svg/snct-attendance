@@ -3749,14 +3749,21 @@ async function inputLeaderLock(){
   });
 }
 // [✏️ 수정]: 잠긴 날을 다시 열기 — OT 반영한 날은 월별 OT에서 빠짐(다시 [OT 반영]해야 들어감), 조장 마감은 조장 근태관리에서만 풂
-async function inputReopen(){   // 조장 근태관리 [수정]: 조장 마감 풀기
-  if(!isLeaderUser()){ showToast('조장 마감은 조장관리·UNION에서 풀 수 있어요.'); return; }
-  const date = inputViewDate || todayStr(), team = inputTeam, id = date+'_'+team;
-  if(!isInputClosed(date, team)){ showToast('조장 마감 안 된 날이라 바로 고칠 수 있어요.'); return; }
-  delete inputClose[id]; render(); showToast('조장 마감을 풀었어요.');
-  if(!db || demoMode) return;
-  try{ await db.collection('inputClose').doc(id).delete(); }
-  catch(err){ showToast(saveErrMsg('조장 마감 해제에 실패했습니다.', err)); }
+// [✏️ 수정]: 저장된 날 고치기(칸 열기) · 고치는 중이면 [수정 취소] · 조장 마감된 날은 조장 근태관리에서 마감 풀기
+async function inputReopen(){
+  const date = inputViewDate || todayStr(), team = inputTeam, id = date+'_'+team, key = date+'_'+team, leaderMode = VIEW==='input2';
+  if(isInputClosed(date, team)){
+    if(!(leaderMode && isLeaderUser())){ showToast('조장 마감된 날이에요. 고치려면 조장에게 말씀하세요.'); return; }
+    delete inputClose[id]; inputEdit[key] = true; render(); showToast('조장 마감을 풀었어요. 고친 뒤 [저장]을 누르세요.');
+    if(!db || demoMode) return;
+    try{ await db.collection('inputClose').doc(id).delete(); }catch(err){ showToast(saveErrMsg('조장 마감 해제에 실패했습니다.', err)); }
+    return;
+  }
+  const dirty = Object.keys(inputDraft).some(k=> k.startsWith(date+'|'));
+  if(inputEdit[key] || dirty){ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputEdit[key]; render(); return; }   // 수정 취소
+  if(!requireEdit()) return;
+  inputEdit[key] = true; render();
+  const c = document.querySelector('.inTbl input.inCell:not([disabled])'); if(c) c.focus();
 }
 async function toggleInputClose(){
   if(!isLeaderUser()){ showToast('마감은 조장관리·UNION에서 할 수 있어요.'); return; }
@@ -3782,14 +3789,19 @@ function pageInput(){
   const canReflect = !reflected && (!leaderClosed || (leaderMode && leader));
   // 이미 저장된 기록이 있는 날은 보기만 → [수정]을 눌러야 고칠 수 있음. 저장하면 다시 보기 상태(저장해야 월별 OT에 반영)
   const held = list.some(e=>{ const b = attStore[date+'_'+e.id]; return b && b.otHold; });   // 저장만 하고 아직 마감 안 한 기록(월별 OT에 안 들어감)
-  const viewOnly = false;
+  // 저장된 기록이 있는 날은 처음엔 보기만 → [수정]을 눌러야 고칠 수 있음, [저장]하면 다시 보기 상태
+  const editKey = date+'_'+inputTeam, editing = !!inputEdit[editKey] || dirtyN > 0;
+  const hasSaved = list.some(e=>{ const b = attStore[date+'_'+e.id]; return b && ['checkIn','checkOut','supportIn','supportOut','honjoComp','tajoComp'].some(f=> b[f]); });
+  const viewOnly = !leaderClosed && hasSaved && !editing;
   const rows = list.map(e=>{
     const base = attStore[date+'_'+e.id] || {};
     const dr = inputDraft[date+'|'+e.id] || {};
+    const dc0 = gridCode(base, date, String(e.name||'').trim()) || scheduledShift(date, e.team||'');
+    const off0 = !!dc0 && !DP_WORK_CODES.has(dc0);   // 근무 코드(D·N·DN·ND·DS·NS)가 아닌 사람(FC·AV 등)은 입력 막음
     const val = f => dr[f]!==undefined ? dr[f] : (IN_TIME.includes(f) ? hmToExcel(base[f]) : (base[f]||''));
     const chk = f => (dr[f]!==undefined ? dr[f] : base[f]) ? 'checked' : '';
     const bad = f => IN_TIME.includes(f) && dr[f]!==undefined && excelToHm(dr[f])===null ? ' bad' : '';
-    const t = f => `<td><input type="text" inputmode="decimal" class="inCell${bad(f)}" data-emp="${esc(e.id)}" data-f="${f}" value="${esc(val(f))}"></td>`;
+    const t = f => `<td><input type="text" inputmode="decimal" class="inCell${bad(f)}" data-emp="${esc(e.id)}" data-f="${f}" value="${esc(val(f))}"${off0 ? ' disabled data-off="1" title="근무 코드가 아니라 입력할 수 없어요"' : ''}></td>`;
     const suwu = ['day','night','full'].reduce((a,sh)=>{ const dd = dispatch[`${date}_${sh}_${e.id}`]; return a + (dd && dd.slots ? Object.values(dd.slots).filter(x=> x && x!=='당직').length*0.5 : 0); }, 0); // 당직은 승무 시간에서 뺌
     const dc = gridCode(base, date, String(e.name||'').trim()) || scheduledShift(date, e.team||'');
     const tot = inputRowTotal(date, e);
@@ -3801,7 +3813,7 @@ function pageInput(){
       ${t('checkIn')}${t('checkOut')}${t('supportIn')}${t('supportOut')}
       <td class="inRO">${suwu ? fmtH(suwu) : ''}</td>
       ${t('honjoComp')}${t('tajoComp')}
-      ${IN_CHK.map(f=>`<td style="text-align:center;"><input type="checkbox" class="inChk" data-emp="${esc(e.id)}" data-f="${f}" ${chk(f)}></td>`).join('')}
+      ${IN_CHK.map(f=>`<td style="text-align:center;"><input type="checkbox" class="inChk" data-emp="${esc(e.id)}" data-f="${f}" ${chk(f)}${off0 ? ' disabled data-off="1"' : ''}></td>`).join('')}
       <td class="inRO inTot" data-emp="${esc(e.id)}">${tot ? fmtH(tot) : ''}</td>
     </tr>`;
   }).join('');
@@ -3819,10 +3831,14 @@ function pageInput(){
       <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row" style="margin-top:12px;align-items:center;">
-      <button class="btn" id="inSave"${locked ? ' disabled' : ''}>저장${dirtyN && !locked ? ` (${dirtyN}명 변경)` : ''}</button>
-      ${leaderMode && leader ? `<button class="btn ghost" id="inEdit"${leaderClosed ? '' : ' disabled'} title="조장 마감 풀기">✏️ 수정</button>
-      <button class="btn ${leaderClosed ? '' : 'ghost'} inCloseBtn${leaderClosed ? ' on' : ''}" id="inCloseBtn"${leaderClosed ? ' disabled' : ''} title="배포용 출퇴근 입력에서 못 고치게 잠금">${leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감'}</button>` : ''}
-      ${leaderClosed ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>조장 마감</b>됐어요.${leaderMode ? ' 고치려면 [수정]을 누르세요.' : ' 고치려면 조장에게 말씀하세요.'}</span>` : ''}
+      <button class="btn" id="inSave"${locked || viewOnly ? ' disabled' : ''}>저장${dirtyN && !locked ? ` (${dirtyN}명 변경)` : ''}</button>
+      ${(()=>{ const lcLeader = leaderClosed && leaderMode && leader;
+        const en = lcLeader || (!leaderClosed && (viewOnly || editing));
+        const lab = editing && !leaderClosed ? '수정 취소' : '✏️ 수정';
+        return `<button class="btn ${editing && !leaderClosed ? 'warn ' : ''}ghost" id="inEdit"${en ? '' : ' disabled'} title="${leaderClosed ? '조장 마감 풀기' : editing ? '고친 것 버리고 보기 상태로' : '저장된 기록 고치기'}">${lab}</button>`; })()}
+      ${leaderMode && leader ? `<button class="btn ${leaderClosed ? '' : 'ghost'} inCloseBtn${leaderClosed ? ' on' : ''}" id="inCloseBtn"${leaderClosed ? ' disabled' : ''} title="배포용 출퇴근 입력에서 못 고치게 잠금">${leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감'}</button>` : ''}
+      ${leaderClosed ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>조장 마감</b>됐어요.${leaderMode ? ' 고치려면 [수정]을 누르세요.' : ' 고치려면 조장에게 말씀하세요.'}</span>`
+        : viewOnly ? `<span class="hint" style="margin:0;">저장된 기록이에요. 고치려면 [수정]을 누르세요.</span>` : ''}
     </div>
   </div>`;
 }
@@ -3862,7 +3878,7 @@ function bindInputTable(el){
   });
   el.querySelectorAll('.inChk').forEach(x=> x.onchange = ()=>{ setDraft(x.dataset.emp, x.dataset.f, x.checked); refreshRow(x.dataset.emp, x); });
   const eb = document.getElementById('inEdit'); if(eb) eb.onclick = inputReopen;
-  if(inputLocked()) el.querySelectorAll('.inTbl input').forEach(x=> x.disabled = true);
+  if(inputLocked() || el.querySelector('.inTbl.inView')) el.querySelectorAll('.inTbl input').forEach(x=> x.disabled = true);
   const cb = document.getElementById('inCloseBtn'); if(cb) cb.onclick = inputLeaderLock;
   document.getElementById('inSave').onclick = async ()=>{
     if(inputLocked()){ showToast('조장 마감된 날이라 고칠 수 없어요. 조장에게 말씀하세요.'); return; }
@@ -3884,7 +3900,8 @@ function bindInputTable(el){
     for(let i=0;i<partials.length;i++) partials[i] = withEmbedded(partials[i]);
     partials.forEach(p=>{ const key = p.date+'_'+p.employeeId; attStore[key] = normAtt(Object.assign({}, attStore[key]||{}, p, {_emb:false})); });
     keys.forEach(k=> delete inputDraft[k]);
-    render();   // 화면은 그대로(입력 칸 열린 상태)
+    delete inputEdit[date+'_'+inputTeam];   // 저장하면 다시 보기 상태(고치려면 [수정])
+    render();
     try{
       await Promise.all(partials.map(p=> db.collection('attendance').doc(p.date+'_'+p.employeeId).set(p, {merge:true})));
       showToast(`${partials.length}명 저장되었습니다.`);
