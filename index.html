@@ -7571,14 +7571,17 @@ function pageDispatch(){
   }).join('');
 
   // 지원 인력 - 이름 칸 10개. 직접 쓴 이름은 그대로 두고, 빈 칸에는 그날 지원 코드(DN·ND·DS·NS)인 사람을 자동으로 채움
-  //   이 근무를 지원하는 사람만: 주간 = DS·ND, 야간 = NS·DN (일요일은 전부)
+  //   이 근무를 지원하는 사람만: 주간 = 그날 DS + 전날 ND(야간 끝나고 다음 날 주간 연장), 야간 = 그날 NS·DN (일요일: 주간 몫 + 야간 몫)
   //   순서: DN·ND(연장 지원 — 먼저 퇴근) → DS·NS, 같은 묶음 안에서는 지원 순번(근태관리 지원 일수가 적은 순)
   const SUP_COUNT = 10;
   const supRankOf = {}; cd.perEmp.forEach((r,i)=>{ supRankOf[r.emp.id] = cd.rankSup[i]; });
-  const supFor = dispatchShift==='day' ? new Set(['DS','ND']) : dispatchShift==='night' ? new Set(['NS','DN']) : DP_SUPX_CODES;
+  const supToday = dispatchShift==='day' ? new Set(['DS']) : dispatchShift==='night' ? new Set(['NS','DN']) : new Set(['DS','NS','DN']);
+  const ndPrev = dispatchShift!=='night';   // 주간(일요일 포함): 전날 ND인 사람이 이 주간을 연장 지원
   const early = c=> (c==='DN' || c==='ND') ? 0 : 1;
-  const autoSup = allSorted.map(e=>{ const rec = attendance[ds+'_'+e.id] || {}; return {e, c: gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim())}; })
-    .filter(x=> supFor.has(x.c))
+  const codeOn = (e, d)=>{ const rec = attendance[d+'_'+e.id] || {}; return gridCode(rec && rec.date ? rec : null, d, String(e.name||'').trim()); };
+  const prevDs = addDays(ds, -1);
+  const autoSup = allSorted.map(e=>{ const c = codeOn(e, ds); if(supToday.has(c)) return {e, c}; if(ndPrev && codeOn(e, prevDs)==='ND') return {e, c:'ND'}; return null; })
+    .filter(Boolean)
     .sort((a,b)=> (early(a.c) - early(b.c)) || ((supRankOf[a.e.id] ?? 999) - (supRankOf[b.e.id] ?? 999)) || ((a.e.teamOrder||999) - (b.e.teamOrder||999)));
   const storedSup = Array.from({length:SUP_COUNT}, (_,i)=>{ const d = dispatch[`${ds}_${dispatchShift}_sup${pad2(i+1)}`]; return d && d.name ? String(d.name).trim() : ''; });
   const autoQueue = autoSup.filter(x=> !storedSup.includes(String(x.e.name||'').trim()));
