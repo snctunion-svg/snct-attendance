@@ -7730,7 +7730,18 @@ function pageDispatch(){
 
   const slotCounts = slots.map(()=>0); // 시간대(칸)별 배치 인원 수
 
-  const rows = sortedEmployees.map((e,idx)=>{
+  // 그날 근무자만 보임: 휴무·휴가 등(근무 코드 아님)과 상대 조 지원(DS·NS)은 줄을 숨김
+  //   단, 그 줄에 이미 칠한 배차가 있으면 지워지지 않게 그대로 보여 줌(회색)
+  const hasPaint = d=> !!(d && ((d.slots && Object.values(d.slots).some(Boolean)) || (d.notes && Object.values(d.notes).some(Boolean))));
+  const dayEmployees = sortedEmployees.filter(e=>{
+    const rec = attendance[ds+'_'+e.id] || {};
+    const mc = gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim());
+    const dc = mc || scheduledShift(ds, e.team||'');
+    const off = (!!dc && !DP_WORK_CODES.has(dc)) || DP_SUPX_CODES.has(mc);
+    return !off || hasPaint(dispatch[`${ds}_${dispatchShift}_${e.id}`]);
+  });
+
+  const rows = dayEmployees.map((e,idx)=>{
     const rec = attendance[ds+'_'+e.id] || {};
     const id = `${ds}_${dispatchShift}_${e.id}`;
     const drec = dispatch[id];
@@ -7750,8 +7761,8 @@ function pageDispatch(){
     // 토요일 만근(그 주 월~금 개근 등 — 자동 판정 또는 월별 근태 '만근 수동 인정'): 근태 칸에 분홍 글씨 '만근(D)'
     const isSat = new Date(ds+'T00:00:00').getDay()===6;
     const mgOn = isSat && !offDay && !!dcode && recManguen(Object.assign({}, rec||{}, {employeeId:e.id, date:ds}), ds);
-    const grp = (idx % 3 === 2) && idx < sortedEmployees.length - 1; // 3명마다 검은 구분선
-    const lastEmp = idx === sortedEmployees.length - 1; // 조원 마지막 줄(아래에 지원 줄 시작) — 검은 줄로 구분
+    const grp = (idx % 3 === 2) && idx < dayEmployees.length - 1; // 3명마다 검은 구분선
+    const lastEmp = idx === dayEmployees.length - 1; // 조원 마지막 줄(아래에 지원 줄 시작) — 검은 줄로 구분
     return `<tr class="${offDay ? 'dpOff' : ''}${grp ? ' dpGrp' : ''}${lastEmp ? ' dpLast' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
@@ -7798,13 +7809,19 @@ function pageDispatch(){
   window._dpAutoSup = {};
   Object.entries(linked).forEach(([sid, x])=> window._dpAutoSup[sid] = fullOf(x));
   if(staleIds.length && canEdit && db){ setTimeout(()=> staleIds.forEach(id=>{ const cur = dispatch[id]; if(!cur || !cur.name) return; const nx = Object.assign({}, cur, {name:''}); dispatch[id] = nx; db.collection('dispatch').doc(id).set(nx).catch(()=>{}); }), 0); }
-  const supRows = Array.from({length:SUP_COUNT}, (_,i)=>{
+  // 지원 줄: 이름이 있거나 칠한 배차가 있는 줄만 보임. 빈 줄은 숨김(편집 화면에서만 새 이름을 쓸 빈 줄 1개)
+  const supList = Array.from({length:SUP_COUNT}, (_,i)=>{
     const supId = 'sup'+pad2(i+1);
-    const id = `${ds}_${dispatchShift}_${supId}`;
-    const drec = dispatch[id];
     const auto = linked[supId] || (storedSup[i] ? null : autoQueue.shift() || null);   // 빈 칸이면 지원 코드인 사람을 순서대로
     if(auto) window._dpAutoSup[supId] = String(auto.e.name||'').trim();
     const supName = auto ? String(auto.e.name||'').trim() : storedSup[i];
+    return {i, supId, auto, supName, used: !!supName || hasPaint(dispatch[`${ds}_${dispatchShift}_${supId}`])};
+  });
+  const firstBlank = supList.find(x=> !x.used);
+  const supShow = supList.filter(x=> x.used || (canEdit && x===firstBlank));
+  const supRows = supShow.map(({i, supId, auto, supName}, vi)=>{
+    const id = `${ds}_${dispatchShift}_${supId}`;
+    const drec = dispatch[id];
     let supPainted = 0;
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
@@ -7813,7 +7830,7 @@ function pageDispatch(){
       else if(v){} else if(note && isMealSlot(s)) slotCounts[si]++; // 당직은 시간대별 인원에서 뺌
       return slotCell(supId, s, v, note);
     }).join('');
-    const supLabel = i===0 ? `<td class="dpI dpI1" rowspan="${SUP_COUNT}" style="vertical-align:middle;">지원</td>` : '';
+    const supLabel = vi===0 ? `<td class="dpI dpI1" rowspan="${supShow.length}" style="vertical-align:middle;">지원</td>` : '';
     return `<tr>
       ${supLabel}
       <td class="dpI dpI2"><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름"${auto ? ` data-auto="1" title="근태 ${esc(auto.c)} · 지원 순번 ${supRankOf[auto.e.id] ?? '-'} (자동)"` : ''} style="width:66px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:${auto ? '#0f766e' : 'var(--text)'};"></td>
@@ -7839,7 +7856,7 @@ function pageDispatch(){
   </div>
   ${canEdit ? `<div class="panel dpPal" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>` : ''}
   <div class="dpBox"><div style="background:#fce7f3;color:#9d174d;font-weight:800;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;border:1px solid #fbcfe8;border-bottom:0;">${esc(dateBanner)}</div>
-  ${sortedEmployees.length? `<div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
+  ${(dayEmployees.length || supShow.length)? `<div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
     : `<div class="empty">등록된 직원이 없습니다. 먼저 직원 관리에서 직원을 추가하세요.</div>`}</div>
   ${dpPop ? renderDpPop() : ''}
   `;
