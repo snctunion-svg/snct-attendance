@@ -651,11 +651,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .ctbl th.wkA{background:#dbeafe !important;} .ctbl th.wkB{background:#dcfce7 !important;} /* 월별 근태 주 색: 연한 청색 / 연한 녹색 */
 .ctbl td.daycell.wkA,.ctbl td.daycell.wkB{background:var(--surface);}
 /* 오늘 날짜 세로줄: 바깥 테두리보다 얇은 검은 테두리(PC·휴대폰 같은 굵기) */
-.ctbl .todayCol{border-left:calc(var(--sepW,1px) * 1.5) solid #111 !important;border-right:calc(var(--sepW,1px) * 1.5) solid #111 !important;}
-.ctbl :is(td,th):has(+ .todayCol){border-right:calc(var(--sepW,1px) * 1.5) solid #111 !important;}
-.ctbl .todayCol + :is(td,th){border-left:calc(var(--sepW,1px) * 1.5) solid #111 !important;}
-.ctbl .todayCol.todayTop{border-top:calc(var(--sepW,1px) * 1.5) solid #111 !important;}
-.ctbl .todayCol.todayBot{border-bottom:calc(var(--sepW,1px) * 1.5) solid #111 !important;}
+.ctbl .todayCol{border-left:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;border-right:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
+.ctbl :is(td,th):has(+ .todayCol){border-right:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
+.ctbl .todayCol + :is(td,th){border-left:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
+.ctbl .todayCol.todayTop{border-top:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
+.ctbl .todayCol.todayBot{border-bottom:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
 /* 근태 집계: OT 칸 말고는 칸 폭을 똑같이 */
 .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){width:32px;min-width:32px;max-width:32px;}
 .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){padding:4px 0 !important;letter-spacing:-.5px;white-space:nowrap !important;word-break:keep-all;}
@@ -674,6 +674,25 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .ctbl td.namecell,.ctbl th.namehead,.otSum td.namecell,.otSum th.namehead{text-align:center !important;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
   :root:not([data-theme="light"]) .gtbl td.daycell.wkA{background:#161d2b;} :root:not([data-theme="light"]) .gtbl td.daycell.wkB{background:#1d2637;} }
+/* 월별 근태: 그 조가 야간인 주의 일요일 칸은 회색 */
+.ctbl.gtbl td.daycell.sunN{background:#d1d5db;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .ctbl.gtbl td.daycell.sunN{background:#3a4150;} }
+:root[data-theme="dark"] .ctbl.gtbl td.daycell.sunN{background:#3a4150;}
+/* 휴대폰 가로 화면(안드로이드·아이폰): PC처럼 근태 집계와 월별 근태를 한 줄로 나란히, 좌우 높이를 맞춤 */
+@media (orientation:landscape) and (max-height:500px) and (pointer:coarse){
+  .cmbWrap{flex-wrap:nowrap !important;gap:8px !important;align-items:stretch;}
+  .cmbWrap .panel{padding:8px !important;}
+  .cmbLeft{flex:0 0 calc(44% - 4px) !important;max-width:calc(44% - 4px) !important;min-width:0 !important;}
+  .cmbRight{flex:1 1 0 !important;min-width:0 !important;}
+  .cmbLeft .scrollx,.cmbRight .scrollx{overflow:hidden !important;max-height:none !important;}
+  .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){width:32px !important;min-width:32px !important;max-width:32px !important;}
+  .cmbLeft .ctbl tbody td:not(.namecell):not(:first-child){min-width:0 !important;}
+  .cmbLeft .ctbl th.otCol{width:50px;min-width:50px;max-width:50px;}
+  .cmbRight .ctbl.gtbl td.daycell{width:auto !important;min-width:0 !important;}
+  .cmbRight .ctbl.gtbl thead th{min-width:0 !important;}
+  .cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{width:58px !important;min-width:58px !important;max-width:58px !important;white-space:nowrap;}
+  .cmbRight .ctbl.gtbl tbody td{height:auto !important;}
+}
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
 .cmbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
 .cmbWrap .panel{margin-bottom:0;padding:14px;}
@@ -4026,7 +4045,7 @@ function pageCombined(){
   // 월별 근태코드 표
   const {y:cy, m:cm} = combinedYm;
   const monthDays = Array.from({length:daysInMonth(cy,cm)}, (_,i)=>dstr(cy,cm,i+1));
-  const TODAY = todayStr(); // 오늘 날짜 칸은 얇은 검은 테두리(매일 바뀜)
+  const TODAY = todayStr(); // 오늘 날짜 칸은 파란 테두리(매일 바뀜)
   const lastEmpId = sortedEmployees.length ? sortedEmployees[sortedEmployees.length-1].id : '';
   const dayHead = monthDays.map(ds=>{
     const d = Number(ds.slice(8,10));
@@ -4052,7 +4071,7 @@ function pageCombined(){
         if(dc) inner = `<span class="mini" style="color:${fill ? codeFillText(dc) : codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
       const memo = rec && rec.note ? String(rec.note) : '';
-      const sunCls = ''; // 일요일 세로줄 칠하기는 없앰
+      const sunCls = (new Date(ds+'T00:00:00').getDay()===0 && (e.team==='1' || e.team==='2') && scheduledShift(ds, e.team)==='N') ? ' sunN' : ''; // 야간 주의 일요일은 회색(근태코드 색이 있으면 그 색)
       return `<td class="daycell ${cls} ${weekBand(ds)}${sunCls}${fill?' filled':''}${ds===TODAY ? (' todayCol'+(e.id===lastEmpId?' todayBot':'')) : ''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
     return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
@@ -4256,11 +4275,13 @@ function fitOtTable(){
 // 표를 PC 화면에 '맞춤': 남으면 늘리고(줄 높이·표 폭), 넘치면 줄임(zoom)
 //  fitW: 표 폭을 자기 칸 폭에 꽉 맞춤 / fitH: 표 아래가 화면 아래(reserve 만큼 위)에 닿도록 줄 높이 조절
 // 휴대폰 틀고정: 표 머리글 두 줄 + 왼쪽 No·성명 칸을 고정 (표 칸 안에서 위아래·옆으로 밀기)
+// 휴대폰 가로 화면(높이 500px 이하·터치) — 근태관리는 PC처럼 나란히 보여 줌
+function landPhone(){ try{ return matchMedia('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)').matches; }catch(e){ return false; } }
 function mFreeze(t){
   if(!t) return;
   const wrap = t.closest('.scrollx'); if(!wrap) return;
   const ths = t.querySelectorAll('thead th');
-  if(window.innerWidth > 700){ wrap.classList.remove('mFreeze'); wrap.style.maxHeight = ''; ths.forEach(th=> th.style.top = ''); return; }
+  if(window.innerWidth > 700 || (VIEW==='combined' && landPhone())){ wrap.classList.remove('mFreeze'); wrap.style.maxHeight = ''; ths.forEach(th=> th.style.top = ''); return; }
   wrap.classList.add('mFreeze');
   // 표 상자 아래 끝이 휴대폰 화면 아래에 딱 맞게(아이폰 사파리 아래 도구막대 몫 제외) — 표 안에서 위아래·옆으로 밀어서 봄
   const sc = document.getElementById('content');
@@ -4470,11 +4491,12 @@ function fitCombined(){
   if(VIEW!=='combined') return;
   const wrap = document.querySelector('.cmbWrap'); if(!wrap) return;
   wrap.style.zoom = '';
+  if(landPhone()){ fitCombinedLand(wrap); return; }
   wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70, ratio:0.85})); // 세로 85%
   wrap.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t));
   // 휴대폰 월별 근태: 처음 열 때 어제·오늘 날짜가 성명 칸 바로 옆에 오도록 옆으로 밀어 둠.
   //  그 뒤에는 손으로 민 위치를 기억해서, 화면이 새로 그려져도(자료 갱신 등) 그 자리 그대로
-  if(window.innerWidth <= 700){
+  if(window.innerWidth <= 700 && !landPhone()){
     const mt = wrap.querySelector('.cmbRight table.ctbl'), box = mt && mt.closest('.scrollx');
     if(mt && box){
       const key = (mt.querySelector('thead th.dayHead') ? mt.querySelector('thead th.dayHead').dataset.date || '' : '').slice(0,7);
@@ -4493,6 +4515,37 @@ function fitCombined(){
       if(!box._mgHook){ box._mgHook = 1; box.addEventListener('scroll', ()=>{ st.x = box.scrollLeft; }, {passive:true}); }
     }
   }
+}
+// 휴대폰 가로: 두 표를 각자 칸 너비에 맞춰 줄이고(zoom), 머리줄·줄 높이를 화면에 보이는 크기 기준으로 똑같이 맞춰 좌우 대칭
+function fitCombinedLand(wrap){
+  const L = wrap.querySelector('.cmbLeft table.ctbl'), Rt = wrap.querySelector('.cmbRight table.ctbl');
+  [L, Rt].forEach(t=>{ if(!t) return; mFreeze(t); t.style.zoom = ''; t.style.width = ''; t.querySelectorAll('tr').forEach(tr=> tr.style.height = ''); t.style.removeProperty('--sepW'); });
+  const fitW = t=>{ if(!t) return 1; const w = t.parentElement.clientWidth - 2; t.style.width = '100%'; const sw = t.scrollWidth; let z = 1; if(sw > w + 2){ z = Math.max(0.3, Math.floor(w / sw * 1000)/1000 - 0.005); t.style.zoom = z; } if(z < 1) t.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); return z; };
+  const zL = fitW(L), zR = fitW(Rt);
+  if(!L || !Rt) return;
+  const info = (t, z)=>{ const hr = [...t.querySelectorAll('thead tr')], br = [...t.querySelectorAll('tbody tr')];
+    return {z, hr, br, top: t.getBoundingClientRect().top, head: hr.reduce((a,r)=> a + r.getBoundingClientRect().height, 0), row: br.reduce((a,r)=> Math.max(a, r.getBoundingClientRect().height), 0)}; };
+  const a = info(L, zL), b = info(Rt, zR);
+  // 머리줄 아래 끝(= 첫 줄 시작)을 화면에서 같은 높이로, 줄 높이도 같게 → 좌우 줄이 나란히
+  const headEnd = Math.max(a.top + a.head, b.top + b.head), row = Math.max(a.row, b.row);
+  [a, b].forEach(o=>{
+    const k = o.head ? (headEnd - o.top) / o.head : 1;
+    const hs = o.hr.map(r=> r.getBoundingClientRect().height);
+    o.hr.forEach((r,i)=> r.style.height = (hs[i] * k / o.z) + 'px');
+    o.br.forEach(r=> r.style.height = (row / o.z) + 'px');
+  });
+  // 줄 높이를 맞춘 뒤 표가 칸보다 넓어졌으면(글자 줄바꿈 변화 등) 조금 더 줄여서 한 번 더 맞춤
+  const over = [L, Rt].some(t=> t.getBoundingClientRect().width > t.parentElement.clientWidth + 1);
+  if(over && !wrap._landRetry){
+    wrap._landRetry = 1;
+    [L, Rt].forEach(t=>{ const w = t.parentElement.clientWidth - 2, tw = t.getBoundingClientRect().width; if(tw > w){ const z = (parseFloat(t.style.zoom)||1) * w / tw - 0.004; t.style.zoom = Math.max(0.3, z); t.style.setProperty('--sepW', (1/Math.max(0.3, z)).toFixed(2)+'px'); } });
+    const a2 = info(L, parseFloat(L.style.zoom)||1), b2 = info(Rt, parseFloat(Rt.style.zoom)||1);
+    [a2, b2].forEach(o=>{ o.hr.forEach(r=> r.style.height = ''); o.br.forEach(r=> r.style.height = ''); });
+    const a3 = info(L, a2.z), b3 = info(Rt, b2.z);
+    const he = Math.max(a3.top + a3.head, b3.top + b3.head), rw = Math.max(a3.row, b3.row);
+    [a3, b3].forEach(o=>{ const k = o.head ? (he - o.top) / o.head : 1; const hs = o.hr.map(r=> r.getBoundingClientRect().height); o.hr.forEach((r,i)=> r.style.height = (hs[i] * k / o.z) + 'px'); o.br.forEach(r=> r.style.height = (rw / o.z) + 'px'); });
+  }
+  wrap._landRetry = 0;
 }
 // 자정이 지나면 화면을 다시 그려서 '오늘' 표시가 다음 날로 옮겨지게
 // 08시가 되면 배차표를 다음 날로(자동 날짜일 때만)
@@ -4528,7 +4581,7 @@ const UI_ZOOM_TARGETS = '#content table.otSum, #content table.ctbl, #content tab
 function applyUiZoom(){
   const pct = document.getElementById('zoomPct'); if(pct) pct.textContent = Math.round(uiZoom*100) + '%';
   const fp = document.getElementById('zoomFabPct'); if(fp) fp.textContent = Math.round(uiZoom*100) + '%';
-  const phone = window.innerWidth <= 700;
+  const phone = window.innerWidth <= 700 || (VIEW==='combined' && landPhone()); // 휴대폰 가로 근태관리도 최소 75% 없이 칸에 맞춤
   document.querySelectorAll(UI_ZOOM_TARGETS).forEach(el=>{
     const cur = parseFloat(el.style.zoom) || 1;
     const z = (phone ? cur : Math.max(cur, Math.min(1, PC_FIT_FLOOR))) * uiZoom;
