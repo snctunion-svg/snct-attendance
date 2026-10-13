@@ -2074,8 +2074,11 @@ let dayMemos = {}; // 날짜별 메모(월별 근태코드 날짜 머리글) —
 // 날짜 메모에 이름을 적으면(예: 인규,동화,인기,치수) 그날 VP·AV·RV·LS 칸에 적은 순서(1,2,3,4)를 아주 작은 숫자로 표시
 //   이름은 성 빼고 써도 됨(인규 = 노인규). 쉼표·띄어쓰기·가운뎃점·슬래시로 구분, '메모:' 같은 앞말은 무시
 const MEMO_NO_CODES = new Set(['VP','AV','RV','LS']);
-function memoOrderNo(ds, name){
-  let txt = String(dayMemos[ds] || ''); const ci = Math.max(txt.lastIndexOf(':'), txt.lastIndexOf('：')); if(ci >= 0) txt = txt.slice(ci + 1);   // '10월5일 메모 :' 같은 앞말은 버림
+// 메모는 조별로 따로 저장: 키 = '날짜_조'(예: 2026-10-05_1). 예전(날짜만) 메모는 조별 메모가 없을 때만 보여 줌
+function memoKey(ds, team){ return (team==='1' || team==='2') ? ds + '_' + team : ds; }
+function memoOf(ds, team){ const k = memoKey(ds, team); return (k in dayMemos) ? (dayMemos[k] || '') : (dayMemos[ds] || ''); }
+function memoOrderNo(ds, name, team){
+  let txt = String(memoOf(ds, team) || ''); const ci = Math.max(txt.lastIndexOf(':'), txt.lastIndexOf('：')); if(ci >= 0) txt = txt.slice(ci + 1);   // '10월5일 메모 :' 같은 앞말은 버림
   if(!txt) return 0;
   const full = String(name||'').trim(); if(!full) return 0;
   const toks = txt.split(/[,，、·\/\s]+/).map(t=> t.trim()).filter(Boolean);
@@ -2083,14 +2086,18 @@ function memoOrderNo(ds, name){
   return i >= 0 ? i + 1 : 0;
 }
 let dayMemoOpen = null;
+function dayMemoTeams(){ return combinedTeamFilter ? [combinedTeamFilter] : ['1','2']; }   // 1조/2조 화면은 그 조만, 전체는 둘 다
 function renderDayMemo(){
   const ds = dayMemoOpen, [y,m,d] = ds.split('-').map(Number);
-  const v = dayMemos[ds] || '';
+  const teams = dayMemoTeams(), two = teams.length > 1;
+  const box = t => { const v = memoOf(ds, t);
+    return `${`<div style="font-weight:700;font-size:13px;margin:${t===teams[0]?'0':'10px'} 0 4px;color:var(--primary);">${t}조</div>`}` +
+      (canEdit ? `<textarea class="dmText" data-team="${t}" ${t===teams[0]?'id="dmText"':''} rows="${two?3:4}" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);color:var(--text);font:inherit;">${esc(v)}</textarea>`
+               : `<div style="white-space:pre-wrap;min-height:${two?24:40}px;">${v ? esc(v) : '<span class="hint">메모가 없습니다.</span>'}</div>`); };
   return `<div id="dmScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:380px;width:92%;margin:0;">
       <h3 style="margin:0 0 10px;">${m}/${d}(${weekdayKr(y,m,d)}) 메모</h3>
-      ${canEdit ? `<textarea id="dmText" rows="4" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);color:var(--text);font:inherit;">${esc(v)}</textarea>`
-                : `<div style="white-space:pre-wrap;min-height:40px;">${v ? esc(v) : '<span class="hint">메모가 없습니다.</span>'}</div>`}
+      ${teams.map(box).join('')}
       <div class="row" style="justify-content:flex-end;margin-top:10px;">
         <button class="btn ghost sm" id="dmClose">닫기</button>${canEdit ? '<button class="btn sm" id="dmSave">저장</button>' : ''}
       </div>
@@ -4199,7 +4206,7 @@ function pageCombined(){
         if(dc) inner = `<span class="mini" style="color:${fill ? codeFillText(dc) : codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
       const memo = rec && rec.note ? String(rec.note) : '';
-      const mno = (dc && MEMO_NO_CODES.has(dc)) ? memoOrderNo(ds, e.name) : 0;   // 날짜 메모에 적힌 이름 순서(VP·AV·RV·LS만)
+      const mno = (dc && MEMO_NO_CODES.has(dc)) ? memoOrderNo(ds, e.name, e.team) : 0;   // 날짜 메모에 적힌 이름 순서(VP·AV·RV·LS만)
       if(mno) inner += `<sup class="mmNo">${mno}</sup>`;
       const sunCls = (new Date(ds+'T00:00:00').getDay()===0 && (e.team==='1' || e.team==='2') && scheduledShift(ds, e.team)==='N') ? ' sunN' : ''; // 야간 주의 일요일은 회색(근태코드 색이 있으면 그 색)
       return `<td class="daycell ${cls} ${weekBand(ds)}${sunCls}${fill?' filled':''}${ds===TODAY ? (' todayCol'+(e.id===lastEmpId?' todayBot':'')) : ''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
@@ -8250,8 +8257,11 @@ function afterRender(){
     const sv = document.getElementById('dmSave');
     if(sv) sv.onclick = async ()=>{
       if(!requireEdit()) return;
-      const ds = dayMemoOpen, v = document.getElementById('dmText').value.trim();
-      if(v) dayMemos[ds] = v; else delete dayMemos[ds];
+      const ds = dayMemoOpen;
+      // 예전(날짜만) 메모가 있으면 먼저 1조·2조 둘 다에 나눠 담고 지움 → 이후로는 조별로 따로
+      if(ds in dayMemos){ ['1','2'].forEach(t=>{ if(!(memoKey(ds,t) in dayMemos)) dayMemos[memoKey(ds,t)] = dayMemos[ds]; }); delete dayMemos[ds]; }
+      document.querySelectorAll('.dmText').forEach(t=>{ const v = t.value.trim(), k = memoKey(ds, t.dataset.team); if(v) dayMemos[k] = v; else dayMemos[k] = ''; });
+      ['1','2'].forEach(t=>{ const k = memoKey(ds,t); if(dayMemos[k]==='') delete dayMemos[k]; });
       dayMemoOpen = null; render();
       try{ await db.doc('meta/dayMemos').set({memos: dayMemos}); showToast('메모가 저장되었습니다.'); }
       catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
