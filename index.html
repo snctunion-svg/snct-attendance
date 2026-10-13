@@ -674,6 +674,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .ctbl td.namecell,.ctbl th.namehead,.otSum td.namecell,.otSum th.namehead{text-align:center !important;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
   :root:not([data-theme="light"]) .gtbl td.daycell.wkA{background:#161d2b;} :root:not([data-theme="light"]) .gtbl td.daycell.wkB{background:#1d2637;} }
+/* 서류 메일: 보내는 사람 이름·메일 한 줄(휴대폰은 두 줄) */
+.dmFromRow{display:flex;gap:6px;flex-wrap:wrap;}
+.dmFromRow input{flex:1 1 140px;min-width:0;}
 /* 출퇴근 입력: 저장된 날은 [수정] 전까지 보기만(칸 흐리게) */
 .inTbl.inView input.inCell{background:transparent !important;border-color:transparent !important;color:var(--text) !important;-webkit-text-fill-color:var(--text);opacity:1;}
 .inTbl.inView input.inChk{opacity:.75;}
@@ -7163,6 +7166,12 @@ const DOC_MAIL_MAX_BYTES = 15 * 1024 * 1024;
 // 받는 사람은 서류별로 클라우드(meta/docMailTo)에 저장 — 조장관리·UNION만 수정, 배포용은 보기만
 let docMailTo = {acc:'', hak:''};
 let docMail = {acc:{to:null, subj:'', body:'', sending:false}, hak:{to:null, subj:'', body:'', sending:false, files:[]}};
+// 보내는 사람(이름·메일): 실제 발송 계정은 Apps Script 계정이지만, 받는 사람에게 이 이름으로 보이고 [답장]은 이 메일로 감 + 이 메일로 사본(참조)
+//   이 기기에 기억(다음에 다시 안 써도 됨)
+let docMailFrom = {name:'', email:''};
+try{ const v = JSON.parse(localStorage.getItem('snct_dm_from') || 'null'); if(v && typeof v==='object') docMailFrom = {name:String(v.name||''), email:String(v.email||'')}; }catch(e){}
+function saveDocMailFrom(){ try{ localStorage.setItem('snct_dm_from', JSON.stringify(docMailFrom)); }catch(e){} }
+const DM_EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 function docMailToList(v){ return String(v||'').split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean); }
 function subscribeDocMailTo(){
   if(!db || demoMode || unsub.docMailTo) return;
@@ -7209,6 +7218,8 @@ function docMailBox(k){
       ${isLeaderUser()
         ? `<div class="dmToBox">${mailToGrid(m.to == null ? docMailTo[k] : m.to, `data-dm-to="${k}"`, '예) safety@snct.co.kr')}<div class="mtSave"><button type="button" class="btn ghost sm" data-dm-to-save="${k}">저장</button></div></div>`
         : (docMailTo[k] ? `<div class="mtGrid mtView">${docMailToList(docMailTo[k]).map(x=>`<div class="mtCell">${esc(x)}</div>`).join('')}</div>` : '<div class="dmToView"><span class="dmSub">아직 정해지지 않았어요. 조장에게 말씀하세요.</span></div>')}</div>
+    <div class="field dmField"><label>보내는 사람 <span class="dmSub">(받는 사람에게 이 이름으로 보이고, 답장은 이 메일로 와요 · 이 메일로 사본도 가요)</span></label>
+      <div class="dmFromRow"><input class="dmIn" data-dm-from="name" value="${esc(docMailFrom.name)}" placeholder="이름 예) 김의섭"><input class="dmIn" type="email" inputmode="email" data-dm-from="email" value="${esc(docMailFrom.email)}" placeholder="메일 예) me@snct.co.kr"></div></div>
     <div class="field dmField"><label>제목</label><input class="dmIn" data-dm-f="subj" value="${esc(m.subj)}" placeholder="${esc(docMailDefSubj(k))}"></div>
     <div class="field dmField"><label>내용</label><textarea class="dmIn" data-dm-f="body" rows="4" placeholder="메일에 쓸 내용 (비워 두면 기본 문구로 보내요)">${esc(m.body)}</textarea></div>
     ${files}
@@ -7217,6 +7228,8 @@ function docMailBox(k){
 }
 function bindDocMail(el){
   el.querySelectorAll('.docMail [data-dm-to]').forEach(x=>{ const k = x.dataset.dmTo; x.oninput = ()=>{ docMail[k].to = mailToRead(x.closest('.mtGrid')).join(', '); }; });
+  el.querySelectorAll('.docMail [data-dm-from]').forEach(x=>{ x.oninput = ()=>{ docMailFrom[x.dataset.dmFrom] = x.value.trim(); saveDocMailFrom();
+    el.querySelectorAll(`.docMail [data-dm-from="${x.dataset.dmFrom}"]`).forEach(y=>{ if(y!==x) y.value = x.value; }); }; });   // 경위서·학자금 칸을 같이 맞춤
   el.querySelectorAll('.docMail [data-dm-f]').forEach(x=>{ const k = x.closest('.docMail').dataset.dm; x.oninput = ()=>{ docMail[k][x.dataset.dmF] = x.value; }; });
   el.querySelectorAll('[data-dm-file]').forEach(x=> x.onchange = async ()=>{
     const k = x.dataset.dmFile, list = Array.from(x.files || []); x.value = '';
@@ -7242,9 +7255,11 @@ async function sendDocMail(k){
   if(!to.length) return showToast(isLeaderUser() ? '받는 사람을 입력하고 [저장]하세요.' : '받는 사람이 아직 정해지지 않았어요. 조장에게 말씀하세요.');
   if(!vslApi) return showToast('메일 보내는 주소(Apps Script)가 아직 설정되지 않았어요. UNION에 알려 주세요.');
   const docName = k==='acc' ? '사고경위서' : '학자금 지급신청서';
+  const fromName = (docMailFrom.name || '').trim().slice(0, 40), fromEmail = (docMailFrom.email || '').trim();
+  if(fromEmail && !DM_EMAIL_RE.test(fromEmail)) return showToast('보내는 사람 메일 주소를 확인해 주세요.');
   const subject = (m.subj || '').trim() || docMailDefSubj(k);
   const extra = k==='hak' && m.files.length ? ` + 첨부 ${m.files.length}개` : '';
-  appConfirm(`${docName}(PDF${extra})를 ${to.join(', ')} 에게 보낼까요?`, async ()=>{
+  appConfirm(`${docName}(PDF${extra})를 ${to.join(', ')} 에게 보낼까요?${fromName || fromEmail ? ` (보내는 사람: ${fromName}${fromEmail ? ' <' + fromEmail + '>' : ''})` : ''}`, async ()=>{
     m.sending = true; render();
     try{
       const who = k==='acc' ? (accForm && accForm.name) : (hakForm && hakForm.applicant);
@@ -7253,7 +7268,7 @@ async function sendDocMail(k){
       const files = [doc].concat(k==='hak' ? m.files.map(f=>({name:f.name, type:f.type, data:f.data})) : []);
       const body = (m.body || '').trim() || `${docName}를 보내드립니다.${who ? '\n작성자: ' + who : ''}`;
       const api = vslApi.replace(/\/macros\/u\/\d+\/s\//, '/macros/s/');
-      const r = await fetch(api, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({type:'docmail', doc:k, subject, body, files})});
+      const r = await fetch(api, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({type:'docmail', doc:k, subject, body, files, fromName, fromEmail})});
       const j = await r.json().catch(()=>null);
       if(j && j.ok){
         showToast(`보냈어요. (${(j.to||to).length}명${doc.type!=='application/pdf' ? ' · 서류는 HTML 파일로 첨부' : ''})`);
