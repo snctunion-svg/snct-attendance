@@ -3726,6 +3726,8 @@ function pageInput(){
   // 이미 저장된 기록이 있는 날은 보기만 → [수정]을 눌러야 고칠 수 있음. 저장하면 다시 보기 상태(저장해야 월별 OT에 반영)
   const editKey = date+'_'+inputTeam;
   const hasSaved = list.some(e=>{ const b = attStore[date+'_'+e.id]; return b && ['checkIn','checkOut','supportIn','supportOut','honjoComp','tajoComp'].some(f=> b[f]); });
+  const held = list.some(e=>{ const b = attStore[date+'_'+e.id]; return b && b.otHold; });   // 다른 기기에서 [수정]을 눌러도 같이 수정 중으로
+  if(held) inputEdit[editKey] = true;
   const viewOnly = !locked && hasSaved && !inputEdit[editKey] && !dirtyN;
   const rows = list.map(e=>{
     const base = attStore[date+'_'+e.id] || {};
@@ -3771,6 +3773,21 @@ function pageInput(){
     </div>
   </div>`;
 }
+// 출퇴근 입력 [수정] 중 표시(otHold): 그날 그 조 기록에 저장해서 모든 기기의 월별 OT에서 빼고, [저장]·[수정 취소]하면 풂
+function setInputHold(date, team, on){
+  const list = employees.filter(e=> (e.team||'')===team);
+  const parts = [];
+  list.forEach(e=>{
+    const k = date+'_'+e.id, cur = attStore[k];
+    if(!cur) return;   // 기록 없는 사람은 OT도 없음
+    if(!!cur.otHold === on) return;
+    const p = withEmbedded({date, employeeId:e.id, team, otHold:on});   // 원본 기록만 있는 날은 원본 내용까지 같이 저장(원본이 가려지지 않게)
+    attStore[k] = normAtt(Object.assign({}, cur, p, {_emb:false}));
+    parts.push(p);
+  });
+  if(!parts.length || !db || !canEdit) return;
+  Promise.all(parts.map(p=> db.collection('attendance').doc(p.date+'_'+p.employeeId).set(p, {merge:true}))).catch(err=> showToast(saveErrMsg('수정 표시 저장에 실패했습니다.', err)));
+}
 function bindInputTable(el){
   const dEl = document.getElementById('inDate'); if(!dEl) return;
   const go = ds=>{ inputViewDate = ds; if(dbReady) subscribeDispatchDay(ds); render(); };
@@ -3793,8 +3810,8 @@ function bindInputTable(el){
   const rb = document.getElementById('inReset');
   if(rb) rb.onclick = ()=>{
     const key = inputViewDate+'_'+inputTeam;
-    if(rb.dataset.mode==='edit'){ if(!requireEdit()) return; inputEdit[key] = true; render(); return; }
-    Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(inputViewDate+'|')) delete inputDraft[k]; }); delete inputEdit[key]; render();   // 수정 취소: 고친 것 버리고 보기 상태로
+    if(rb.dataset.mode==='edit'){ if(!requireEdit()) return; inputEdit[key] = true; setInputHold(inputViewDate, inputTeam, true); render(); return; }
+    Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(inputViewDate+'|')) delete inputDraft[k]; }); delete inputEdit[key]; setInputHold(inputViewDate, inputTeam, false); render();   // 수정 취소: 고친 것 버리고 보기 상태로, 월별 OT에 다시 넣음
   };
   if(inputLocked() || el.querySelector('.inTbl.inView')) el.querySelectorAll('.inTbl input').forEach(x=> x.disabled = true);
   const cb = document.getElementById('inCloseBtn'); if(cb) cb.onclick = toggleInputClose;
@@ -3803,7 +3820,9 @@ function bindInputTable(el){
     if(!requireEdit()) return;
     const date = inputViewDate;
     const keys = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|'));
-    if(!keys.length){ showToast('변경된 내용이 없습니다.'); return; }
+    const teamList = employees.filter(e=> (e.team||'')===inputTeam);
+    const heldIds = teamList.filter(e=>{ const b = attStore[date+'_'+e.id]; return b && b.otHold; }).map(e=> e.id);
+    if(!keys.length){ if(heldIds.length){ setInputHold(date, inputTeam, false); delete inputEdit[date+'_'+inputTeam]; render(); showToast('바뀐 내용 없이 저장했어요. 월별 OT에 다시 들어갔어요.'); return; } showToast('변경된 내용이 없습니다.'); return; }
     const badCells = keys.some(k=> IN_TIME.some(f=> inputDraft[k][f]!==undefined && excelToHm(inputDraft[k][f])===null));
     if(badCells){ showToast('빨간 칸의 시각 형식을 확인해 주세요 (예: 8, 15.3, 7.3).'); return; }
     const partials = keys.map(k=>{
@@ -3811,8 +3830,10 @@ function bindInputTable(el){
       IN_TIME.forEach(f=>{ if(dr[f]!==undefined) p[f] = excelToHm(dr[f]) || ''; });
       IN_NUM.forEach(f=>{ if(dr[f]!==undefined) p[f] = String(dr[f]).trim(); });
       IN_CHK.forEach(f=>{ if(dr[f]!==undefined) p[f] = !!dr[f]; });
+      p.otHold = false;   // 저장하면 월별 OT에 다시 넣음
       return p;
     });
+    heldIds.filter(id=> !keys.includes(date+'|'+id)).forEach(id=> partials.push({date, employeeId:id, otHold:false}));   // 안 고친 사람도 수정 중 표시를 풂
     for(let i=0;i<partials.length;i++) partials[i] = withEmbedded(partials[i]);
     partials.forEach(p=>{ const key = p.date+'_'+p.employeeId; attStore[key] = normAtt(Object.assign({}, attStore[key]||{}, p, {_emb:false})); });
     keys.forEach(k=> delete inputDraft[k]);
@@ -4184,7 +4205,7 @@ function pageOT(){
     let wkTotal=0, hoTotal=0, spTotal=0, mealTotal=0;
     const daily = {}, damDays = {};
     days.forEach(ds=>{
-      const rec = otMatrixAttendance[ds+'_'+e.id];
+      const rec0 = otMatrixAttendance[ds+'_'+e.id], rec = rec0 && rec0.otHold ? null : rec0;   // 출퇴근 입력에서 [수정] 중인 기록은 [저장] 전까지 월별 OT에서 뺌
       const c = computeDaily(rec, ds);
       const s = computeSupportDaily(rec, ds);
       const meal = computeMealAllowance(rec) + computeDamdang(rec); // 담당은 식사연장과 같은 OT(월별 OT현황에만)
@@ -4251,8 +4272,10 @@ function pageOT(){
     ${days.map(()=>'<td></td>').join('')}
   </tr>`;
 
+  const holdList = (()=>{ const m = {}; Object.keys(otMatrixAttendance).forEach(k=>{ const r = otMatrixAttendance[k]; if(!r || !r.otHold) return; const ds = k.slice(0,10); if(ds < otMatrixStart || ds > otMatrixEnd) return; const e = employees.find(x=> x.id===r.employeeId); const t = (e && e.team) || r.team || ''; m[ds+'|'+t] = 1; }); return Object.keys(m).sort().map(x=>{ const [d,t] = x.split('|'); return `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}${t ? ' '+t+'조' : ''}`; }); })();
   return `
   <h2 class="pgttl">월별 OT현황</h2>
+  ${holdList.length ? `<div class="note" style="margin:0 0 10px;">✏️ 출퇴근 입력에서 수정 중이라 OT에서 빠진 날: <b>${esc(holdList.join(', '))}</b> — [저장]을 누르면 다시 들어가요.</div>` : ''}
   <div class="otTopBar">
   <div class="otMonRow">
     <button class="btn ghost sm" id="prevPayMonth">◀ 이전달</button>
@@ -7242,7 +7265,7 @@ function pageTeamOT(){
     let jochul=0, seokchul=0, jungsik=0, yasik=0;
     for(let ds=otMatrixStart; ds<=otMatrixEnd; ds=addDays(ds,1)){
       const rec = otMatrixAttendance[ds+'_'+e.id];
-      if(!rec) continue;
+      if(!rec || rec.otHold) continue;   // [수정] 중인 기록은 [저장] 전까지 뺌
       const c = computeDaily(rec, ds);
       if(c.valid){
         if(c.category==='평일') wkWeekday += c.premium;
