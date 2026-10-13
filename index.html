@@ -3834,8 +3834,8 @@ function pageInput(){
       <button class="btn" id="inSave"${locked || viewOnly ? ' disabled' : ''}>저장${dirtyN && !locked ? ` (${dirtyN}명 변경)` : ''}</button>
       ${(()=>{ const lcLeader = leaderClosed && leaderMode && leader;
         const en = lcLeader || (!leaderClosed && (viewOnly || editing));
-        const lab = editing && !leaderClosed ? '수정 취소' : '✏️ 수정';
-        return `<button class="btn ${editing && !leaderClosed ? 'warn ' : ''}ghost" id="inEdit"${en ? '' : ' disabled'} title="${leaderClosed ? '조장 마감 풀기' : editing ? '고친 것 버리고 보기 상태로' : '저장된 기록 고치기'}">${lab}</button>`; })()}
+        const on = editing && !leaderClosed;   // 고치는 중이면 버튼을 눌린 모양으로(다시 누르면 고친 것 버리고 보기 상태)
+        return `<button class="btn ${on ? '' : 'ghost'}" id="inEdit"${en ? '' : ' disabled'} title="${leaderClosed ? '조장 마감 풀기' : on ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '저장된 기록 고치기'}">✏️ 수정</button>`; })()}
       ${leaderMode && leader ? `<button class="btn ${leaderClosed ? '' : 'ghost'} inCloseBtn${leaderClosed ? ' on' : ''}" id="inCloseBtn"${leaderClosed ? ' disabled' : ''} title="배포용 출퇴근 입력에서 못 고치게 잠금">${leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감'}</button>` : ''}
       ${leaderClosed ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>조장 마감</b>됐어요.${leaderMode ? ' 고치려면 [수정]을 누르세요.' : ' 고치려면 조장에게 말씀하세요.'}</span>`
         : viewOnly ? `<span class="hint" style="margin:0;">저장된 기록이에요. 고치려면 [수정]을 누르세요.</span>` : ''}
