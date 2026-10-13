@@ -651,11 +651,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .ctbl th.wkA{background:#dbeafe !important;} .ctbl th.wkB{background:#dcfce7 !important;} /* 월별 근태 주 색: 연한 청색 / 연한 녹색 */
 .ctbl td.daycell.wkA,.ctbl td.daycell.wkB{background:var(--surface);}
 /* 오늘 날짜 세로줄: 바깥 테두리보다 얇은 검은 테두리(PC·휴대폰 같은 굵기) */
-.ctbl .todayCol{border-left:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;border-right:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
-.ctbl :is(td,th):has(+ .todayCol){border-right:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
-.ctbl .todayCol + :is(td,th){border-left:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
-.ctbl .todayCol.todayTop{border-top:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
-.ctbl .todayCol.todayBot{border-bottom:calc(var(--sepW,1px) * 1.5) solid #2563eb !important;}
+.ctbl .todayCol{border-left:calc(var(--sepW,1px) * 3) solid #7c3aed !important;border-right:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
+.ctbl :is(td,th):has(+ .todayCol){border-right:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
+.ctbl .todayCol + :is(td,th){border-left:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
+.ctbl .todayCol.todayTop{border-top:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
+.ctbl .todayCol.todayBot{border-bottom:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
 /* 근태 집계: OT 칸 말고는 칸 폭을 똑같이 */
 .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){width:32px;min-width:32px;max-width:32px;}
 .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){padding:4px 0 !important;letter-spacing:-.5px;white-space:nowrap !important;word-break:keep-all;}
@@ -674,6 +674,12 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .ctbl td.namecell,.ctbl th.namehead,.otSum td.namecell,.otSum th.namehead{text-align:center !important;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
   :root:not([data-theme="light"]) .gtbl td.daycell.wkA{background:#161d2b;} :root:not([data-theme="light"]) .gtbl td.daycell.wkB{background:#1d2637;} }
+/* 출퇴근 입력: 저장된 날은 [수정] 전까지 보기만(칸 흐리게) */
+.inTbl.inView input.inCell{background:transparent !important;border-color:transparent !important;color:var(--text) !important;-webkit-text-fill-color:var(--text);opacity:1;}
+.inTbl.inView input.inChk{opacity:.75;}
+/* 월별 근태: 날짜 메모 순서 번호(아주 작게, 근태코드 크기는 그대로) */
+.ctbl td.daycell{position:relative;}
+.ctbl td.daycell sup.mmNo{position:absolute;top:1px;right:1px;font-size:7px;line-height:1;font-weight:800;color:#111;opacity:.85;pointer-events:none;}
 /* 월별 근태: 그 조가 야간인 주의 일요일 칸은 회색 */
 .ctbl.gtbl td.daycell.sunN{background:#d1d5db;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .ctbl.gtbl td.daycell.sunN{background:#3a4150;} }
@@ -2062,6 +2068,17 @@ function renderAdjPop(){
     </div></div>`;
 }
 let dayMemos = {}; // 날짜별 메모(월별 근태코드 날짜 머리글) — 팝업에서만 보임
+// 날짜 메모에 이름을 적으면(예: 인규,동화,인기,치수) 그날 VP·AV·RV·LS 칸에 적은 순서(1,2,3,4)를 아주 작은 숫자로 표시
+//   이름은 성 빼고 써도 됨(인규 = 노인규). 쉼표·띄어쓰기·가운뎃점·슬래시로 구분, '메모:' 같은 앞말은 무시
+const MEMO_NO_CODES = new Set(['VP','AV','RV','LS']);
+function memoOrderNo(ds, name){
+  let txt = String(dayMemos[ds] || ''); const ci = Math.max(txt.lastIndexOf(':'), txt.lastIndexOf('：')); if(ci >= 0) txt = txt.slice(ci + 1);   // '10월5일 메모 :' 같은 앞말은 버림
+  if(!txt) return 0;
+  const full = String(name||'').trim(); if(!full) return 0;
+  const toks = txt.split(/[,，、·\/\s]+/).map(t=> t.trim()).filter(Boolean);
+  const i = toks.findIndex(t=> t===full || (t.length >= 2 && full.length > t.length && full.endsWith(t)));
+  return i >= 0 ? i + 1 : 0;
+}
 let dayMemoOpen = null;
 function renderDayMemo(){
   const ds = dayMemoOpen, [y,m,d] = ds.split('-').map(Number);
@@ -3650,6 +3667,7 @@ function workBadge(code){
 /* ========================= 출퇴근 입력 ========================= */
 let inputTeam = (()=>{ try{ return localStorage.getItem('snct_input_team')||'1'; }catch(e){ return '1'; } })();
 let inputDraft = {}; // `${date}|${empId}` -> {field: 값} (저장 전 입력 내용)
+let inputEdit = {};  // `${date}_${team}` -> true: [수정]을 눌러 고치는 중 (저장된 기록이 있는 날은 [수정]을 눌러야 칸이 열림)
 const IN_TIME = ['checkIn','checkOut','supportIn','supportOut'];
 const IN_NUM = ['honjoComp','tajoComp'];
 const IN_CHK = ['jochul','seokchul','jungsik','yasik','damdang','extCode']; // extCode = 연근(휴일 2배·평일 전체 1.5배)
@@ -3705,6 +3723,10 @@ function pageInput(){
   const list = employees.filter(e=> (e.team||'')===inputTeam).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
   const dirtyN = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|')).length;
   const closedNow = isInputClosed(date, inputTeam), locked = VIEW==='input' && closedNow;
+  // 이미 저장된 기록이 있는 날은 보기만 → [수정]을 눌러야 고칠 수 있음. 저장하면 다시 보기 상태(저장해야 월별 OT에 반영)
+  const editKey = date+'_'+inputTeam;
+  const hasSaved = list.some(e=>{ const b = attStore[date+'_'+e.id]; return b && ['checkIn','checkOut','supportIn','supportOut','honjoComp','tajoComp'].some(f=> b[f]); });
+  const viewOnly = !locked && hasSaved && !inputEdit[editKey] && !dirtyN;
   const rows = list.map(e=>{
     const base = attStore[date+'_'+e.id] || {};
     const dr = inputDraft[date+'|'+e.id] || {};
@@ -3737,12 +3759,13 @@ function pageInput(){
       <button class="btn ${inputTeam==='2'?'':'ghost'} sm" data-act="in-team" data-team="2">2조</button>
       <b style="font-size:15px;margin-left:6px;">${y}년 ${m}월 ${d}일 (${weekdayKr(y,m,d)})${holidays[date] ? ' <span style="color:var(--warn);">'+esc(holidays[date])+'</span>' : ''}</b>
     </div>
-    <div class="scrollx gridwrap fitW"><table class="gtbl inTbl${locked ? ' inLocked' : ''}"><thead><tr>
+    <div class="scrollx gridwrap fitW"><table class="gtbl inTbl${locked ? ' inLocked' : ''}${viewOnly ? ' inView' : ''}"><thead><tr>
       <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row" style="margin-top:12px;align-items:center;">
-      <button class="btn" id="inSave"${locked ? ' disabled' : ''}>저장${dirtyN && !locked ? ` (${dirtyN}명 변경)` : ''}</button>
-      <button class="btn warn ghost" id="inReset">초기화</button>
+      <button class="btn" id="inSave"${locked || viewOnly ? ' disabled' : ''}>저장${dirtyN && !locked ? ` (${dirtyN}명 변경)` : ''}</button>
+      ${locked ? '' : viewOnly ? `<button class="btn ghost" id="inReset" data-mode="edit">✏️ 수정</button>` : (inputEdit[editKey] || dirtyN) ? `<button class="btn warn ghost" id="inReset" data-mode="cancel">수정 취소</button>` : ''}
+      ${viewOnly ? `<span class="hint" style="margin:0;">저장된 기록이에요. 고치려면 [수정]을 누르고, 다 고친 뒤 [저장]을 눌러야 월별 OT에 반영돼요.</span>` : (inputEdit[editKey] || dirtyN) && !locked ? `<span class="hint" style="margin:0;">고친 내용은 [저장]을 눌러야 월별 OT에 반영돼요.</span>` : ''}
       ${VIEW==='input2' ? `<span style="flex:0 0 14px;"></span><button class="btn ${closedNow?'':'ghost'} inCloseBtn${closedNow?' on':''}" id="inCloseBtn">${closedNow ? '🔒 마감됨 (누르면 해제)' : '🔓 마감'}</button>` : ''}
       ${closedNow ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>마감</b>됐어요.${locked ? ' 수정은 조장관리 &gt; 조장 근태관리에서만 할 수 있어요.' : ' 배포용 출퇴근 입력에서는 수정할 수 없고, 여기서는 수정할 수 있어요.'}</span>` : ''}
     </div>
@@ -3767,8 +3790,13 @@ function bindInputTable(el){
     x.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); const all = [...el.querySelectorAll('.inCell')]; const i = all.indexOf(x); const cols = 6; const nx = all[i+cols] || all[i+1]; if(nx){ nx.focus(); nx.select(); } } };
   });
   el.querySelectorAll('.inChk').forEach(x=> x.onchange = ()=>{ setDraft(x.dataset.emp, x.dataset.f, x.checked); refreshRow(x.dataset.emp, x); });
-  document.getElementById('inReset').onclick = ()=>{ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(inputViewDate+'|')) delete inputDraft[k]; }); render(); };
-  if(inputLocked()) el.querySelectorAll('.inTbl input').forEach(x=> x.disabled = true);
+  const rb = document.getElementById('inReset');
+  if(rb) rb.onclick = ()=>{
+    const key = inputViewDate+'_'+inputTeam;
+    if(rb.dataset.mode==='edit'){ if(!requireEdit()) return; inputEdit[key] = true; render(); return; }
+    Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(inputViewDate+'|')) delete inputDraft[k]; }); delete inputEdit[key]; render();   // 수정 취소: 고친 것 버리고 보기 상태로
+  };
+  if(inputLocked() || el.querySelector('.inTbl.inView')) el.querySelectorAll('.inTbl input').forEach(x=> x.disabled = true);
   const cb = document.getElementById('inCloseBtn'); if(cb) cb.onclick = toggleInputClose;
   document.getElementById('inSave').onclick = async ()=>{
     if(inputLocked()){ showToast('마감된 날이라 수정할 수 없어요. 조장에게 말씀하세요.'); return; }
@@ -3788,6 +3816,7 @@ function bindInputTable(el){
     for(let i=0;i<partials.length;i++) partials[i] = withEmbedded(partials[i]);
     partials.forEach(p=>{ const key = p.date+'_'+p.employeeId; attStore[key] = normAtt(Object.assign({}, attStore[key]||{}, p, {_emb:false})); });
     keys.forEach(k=> delete inputDraft[k]);
+    delete inputEdit[date+'_'+inputTeam];   // 저장하면 다시 보기 상태
     render();
     try{
       await Promise.all(partials.map(p=> db.collection('attendance').doc(p.date+'_'+p.employeeId).set(p, {merge:true})));
@@ -4057,7 +4086,7 @@ function pageCombined(){
   // 월별 근태코드 표
   const {y:cy, m:cm} = combinedYm;
   const monthDays = Array.from({length:daysInMonth(cy,cm)}, (_,i)=>dstr(cy,cm,i+1));
-  const TODAY = todayStr(); // 오늘 날짜 칸은 파란 테두리(매일 바뀜)
+  const TODAY = todayStr(); // 오늘 날짜 칸은 보라색 굵은 테두리(매일 바뀜)
   const lastEmpId = sortedEmployees.length ? sortedEmployees[sortedEmployees.length-1].id : '';
   const dayHead = monthDays.map(ds=>{
     const d = Number(ds.slice(8,10));
@@ -4083,6 +4112,8 @@ function pageCombined(){
         if(dc) inner = `<span class="mini" style="color:${fill ? codeFillText(dc) : codeColor(dc)};font-weight:800;">${esc(dc)}</span>`;
       }
       const memo = rec && rec.note ? String(rec.note) : '';
+      const mno = (dc && MEMO_NO_CODES.has(dc)) ? memoOrderNo(ds, e.name) : 0;   // 날짜 메모에 적힌 이름 순서(VP·AV·RV·LS만)
+      if(mno) inner += `<sup class="mmNo">${mno}</sup>`;
       const sunCls = (new Date(ds+'T00:00:00').getDay()===0 && (e.team==='1' || e.team==='2') && scheduledShift(ds, e.team)==='N') ? ' sunN' : ''; // 야간 주의 일요일은 회색(근태코드 색이 있으면 그 색)
       return `<td class="daycell ${cls} ${weekBand(ds)}${sunCls}${fill?' filled':''}${ds===TODAY ? (' todayCol'+(e.id===lastEmpId?' todayBot':'')) : ''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
