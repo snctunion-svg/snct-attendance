@@ -7580,7 +7580,11 @@ function pageDispatch(){
   const early = c=> (c==='DN' || c==='ND') ? 0 : 1;
   const codeOn = (e, d)=>{ const rec = attendance[d+'_'+e.id] || {}; return gridCode(rec && rec.date ? rec : null, d, String(e.name||'').trim()); };
   const prevDs = addDays(ds, -1);
-  const autoSup = allSorted.map(e=>{ const c = codeOn(e, ds); if(supToday.has(c)) return {e, c}; if(ndPrev && codeOn(e, prevDs)==='ND') return {e, c:'ND'}; return null; })
+  // 지원란에는 상대 조 사람만: 1조 지원자는 2조 배차표, 2조 지원자는 1조 배차표에 나옴
+  //   이 배차표의 조 = 조 버튼(1조·2조)으로 고른 조, 전체면 그날 이 근무(주간·야간)를 하는 조
+  const workTeam = dispatchTeamFilter || (dispatchShift==='day' ? (scheduledShift(ds,'1')==='D' ? '1' : '2') : dispatchShift==='night' ? (scheduledShift(ds,'1')==='N' ? '1' : '2') : '');
+  const autoSup = allSorted.filter(e=> !workTeam || (e.team||'') !== workTeam)
+    .map(e=>{ const c = codeOn(e, ds); if(supToday.has(c)) return {e, c}; if(ndPrev && codeOn(e, prevDs)==='ND') return {e, c:'ND'}; return null; })
     .filter(Boolean)
     .sort((a,b)=> (early(a.c) - early(b.c)) || ((supRankOf[a.e.id] ?? 999) - (supRankOf[b.e.id] ?? 999)) || ((a.e.teamOrder||999) - (b.e.teamOrder||999)));
   const storedSup = Array.from({length:SUP_COUNT}, (_,i)=>{ const d = dispatch[`${ds}_${dispatchShift}_sup${pad2(i+1)}`]; return d && d.name ? String(d.name).trim() : ''; });
