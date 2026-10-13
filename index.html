@@ -3465,7 +3465,7 @@ async function saveDispatchSlots(dateStr, shift, empId, changes, clearNotes){
   if(!requireEdit()) return;
   const id = `${dateStr}_${shift}_${empId}`;
   const cur = Object.assign({date:dateStr, shift, employeeId:empId, slots:{}}, dispatch[id]||{});
-  if(/^sup\d+$/.test(empId) && !cur.name && window._dpAutoSup && window._dpAutoSup[empId]) cur.name = window._dpAutoSup[empId]; // 자동으로 채운 지원자 이름을 칠할 때 같이 저장(줄이 바뀌지 않게)
+  if(/^sup\d+$/.test(empId) && window._dpAutoSup && window._dpAutoSup[empId]) cur.name = window._dpAutoSup[empId]; // 자동으로 채운 지원자 이름을 칠할 때 같이 저장(줄이 바뀌지 않게)
   cur.slots = Object.assign({}, cur.slots, changes);
   if(clearNotes && clearNotes.length){ cur.notes = Object.assign({}, cur.notes||{}); clearNotes.forEach(k=> delete cur.notes[k]); } // '수정'은 글자도 지움
   dispatch[id] = cur; // 낙관적 로컬 업데이트: 저장 성공 여부와 무관하게 화면엔 즉시 반영
@@ -7587,16 +7587,32 @@ function pageDispatch(){
     .map(e=>{ const c = codeOn(e, ds); if(supToday.has(c)) return {e, c}; if(ndPrev && codeOn(e, prevDs)==='ND') return {e, c:'ND'}; return null; })
     .filter(Boolean)
     .sort((a,b)=> (early(a.c) - early(b.c)) || ((supRankOf[a.e.id] ?? 999) - (supRankOf[b.e.id] ?? 999)) || ((a.e.teamOrder||999) - (b.e.teamOrder||999)));
-  const storedSup = Array.from({length:SUP_COUNT}, (_,i)=>{ const d = dispatch[`${ds}_${dispatchShift}_sup${pad2(i+1)}`]; return d && d.name ? String(d.name).trim() : ''; });
-  const autoQueue = autoSup.filter(x=> !storedSup.includes(String(x.e.name||'').trim()));
+  // 직접 써 둔 이름이 자동 지원자와 같은 사람이면(성 빼고 쓴 이름 포함 — 예: 훈희 = 고훈희) 수기 이름은 지우고 자동 이름으로 바꿈
+  //   그 줄에 칠한 배차가 있으면 줄은 그대로 두고 이름만 정식 이름으로 표시 / 칠한 게 없으면 빈 줄로 보고 자동 이름을 위에서부터 채움
+  const fullOf = x=> String(x.e.name||'').trim();
+  const sameP = (typed, full)=> !!typed && (typed===full || (typed.length >= 2 && full.length > typed.length && full.endsWith(typed)));
+  const linked = {}, staleIds = [];
+  const storedSup = Array.from({length:SUP_COUNT}, (_,i)=>{
+    const sid = 'sup'+pad2(i+1), d = dispatch[`${ds}_${dispatchShift}_${sid}`];
+    const nm = d && d.name ? String(d.name).trim() : ''; if(!nm) return '';
+    const hit = autoSup.find(x=> sameP(nm, fullOf(x)) && !Object.values(linked).includes(x));
+    if(!hit) return nm;
+    const painted = d.slots && Object.values(d.slots).some(Boolean);
+    if(painted){ linked[sid] = hit; return fullOf(hit); }
+    staleIds.push(`${ds}_${dispatchShift}_${sid}`);   // 칠한 게 없는 수기 이름 → 지움
+    return '';
+  });
+  const autoQueue = autoSup.filter(x=> !Object.values(linked).includes(x) && !storedSup.includes(fullOf(x)));
   window._dpAutoSup = {};
+  Object.entries(linked).forEach(([sid, x])=> window._dpAutoSup[sid] = fullOf(x));
+  if(staleIds.length && canEdit && db){ setTimeout(()=> staleIds.forEach(id=>{ const cur = dispatch[id]; if(!cur || !cur.name) return; const nx = Object.assign({}, cur, {name:''}); dispatch[id] = nx; db.collection('dispatch').doc(id).set(nx).catch(()=>{}); }), 0); }
   const supRows = Array.from({length:SUP_COUNT}, (_,i)=>{
     const supId = 'sup'+pad2(i+1);
     const id = `${ds}_${dispatchShift}_${supId}`;
     const drec = dispatch[id];
-    const auto = storedSup[i] ? null : autoQueue.shift() || null;   // 빈 칸이면 지원 코드인 사람을 순서대로
+    const auto = linked[supId] || (storedSup[i] ? null : autoQueue.shift() || null);   // 빈 칸이면 지원 코드인 사람을 순서대로
     if(auto) window._dpAutoSup[supId] = String(auto.e.name||'').trim();
-    const supName = storedSup[i] || (auto ? String(auto.e.name||'').trim() : '');
+    const supName = auto ? String(auto.e.name||'').trim() : storedSup[i];
     let supPainted = 0;
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
