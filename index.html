@@ -3465,6 +3465,7 @@ async function saveDispatchSlots(dateStr, shift, empId, changes, clearNotes){
   if(!requireEdit()) return;
   const id = `${dateStr}_${shift}_${empId}`;
   const cur = Object.assign({date:dateStr, shift, employeeId:empId, slots:{}}, dispatch[id]||{});
+  if(/^sup\d+$/.test(empId) && !cur.name && window._dpAutoSup && window._dpAutoSup[empId]) cur.name = window._dpAutoSup[empId]; // 자동으로 채운 지원자 이름을 칠할 때 같이 저장(줄이 바뀌지 않게)
   cur.slots = Object.assign({}, cur.slots, changes);
   if(clearNotes && clearNotes.length){ cur.notes = Object.assign({}, cur.notes||{}); clearNotes.forEach(k=> delete cur.notes[k]); } // '수정'은 글자도 지움
   dispatch[id] = cur; // 낙관적 로컬 업데이트: 저장 성공 여부와 무관하게 화면엔 즉시 반영
@@ -5241,6 +5242,10 @@ function basisRadios(pre){
   return `<span class="eqBonusIn"><b>인상률 기준</b>${['min','med','max'].map(k=> `<label style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;"><input type="radio" name="${pre}Basis" value="${k}" data-basis-pick="${pre}" ${FCA.basis===k?'checked':''} style="width:auto;">${BASIS_T[k]}</label>`).join('')}</span>`;
 }
 function basisBind(el, pre){ el.querySelectorAll(`[data-basis-pick="${pre}"]`).forEach(x=> x.onchange = ()=>{ FCA.basis = x.value; render(); }); }
+// 보장 상실 보상률(직접 입력) — 휴일보전·보전 폐지 공통
+function lossCompInput(pre){ return `<label class="eqBonusIn"><span>보장 상실 보상</span><input type="text" inputmode="decimal" id="${pre}Loss" value="${HGA.lossComp}" style="width:50px;"><span>%</span></label>`; }
+function lossCompRead(el, pre){ const x = el.querySelector('#'+pre+'Loss'); if(!x) return; const v = Number(String(x.value).replace(/[^0-9.]/g,'')); HGA.lossComp = isFinite(v) ? v : 0; }
+function lossCompBind(el, pre){ const x = el.querySelector('#'+pre+'Loss'); if(x) x.onchange = ()=>{ lossCompRead(el, pre); render(); }; }
 function ymInputs(pre, st){
   const last = typeof IMPORT_LAST_DATE !== 'undefined' ? IMPORT_LAST_DATE : '';
   return `<b style="font-size:13px;">급여월</b><input type="month" id="${pre}FromM" value="${st.fromM}" class="tx" style="width:auto;padding:4px 6px;"><span>~</span><input type="month" id="${pre}ToM" value="${st.toM}" class="tx" style="width:auto;padding:4px 6px;">`
@@ -5720,14 +5725,16 @@ function spcIntensity(R){
   return {all, up, D: pair(rs.filter(r=> r.sh!=='N')), N: pair(rs.filter(r=> r.sh==='N')), byQ, shifts: rs.length,
     lowNow: rs.filter(r=> r.pn < Math.ceil(r.q*SPC.ratio - 1e-9)).length, lowAfter: rs.filter(r=> r.pa < Math.ceil(r.q*SPC.ratio - 1e-9)).length};
 }
-function spcIntenseSheet(R, no, rAsk){
+function spcIntenseSheet(R, no, rAsk, lc){
+  lc = lc || 0;
   const I = spcIntensity(R), P = v=> v.toFixed(2)+'%', F = v=> v.toFixed(2), H = v=> (Math.round(v*10)/10).toFixed(1), ik = SPC.intense || 0;
   const name = no + '.근로강도';
   const tail = [[], ['[표4] 근로강도 보상'], ['구분', '값', '비고'],
     ...(I ? [['근무 1회당 운전시간 증가율', P(I.up), '같은 근무시간에 크레인에 타는 시간이 늘어난 비율']] : []),
     ['근로강도 보상률', P(ik), I && I.up >= ik ? `운전시간 증가율 ${P(I.up)}보다 낮은 수준만 요구` : '인원이 줄어 근무 1회당 노동 밀도가 높아지는 데 대한 보상'],
     [`연봉 보전 인상률 (${basisLabel()})`, P(rAsk), '지원 폐지로 줄어드는 연봉 보전'],
-    ['최종 요구 시급 인상률', P(rAsk + ik), '연봉 보전 + 근로강도 보상']];
+    ...(lc ? [['보장 상실 보상률', P(lc), '휴일보전 6.보장 상실 참고']] : []),
+    ['최종 요구 시급 인상률', P(rAsk + ik + lc), lc ? '연봉 보전 + 근로강도 보상 + 보장 상실 보상' : '연봉 보전 + 근로강도 보상']];
   if(!I) return {name, rows:[['근로강도 변화 — 근무 1회 기준'], ['선석 자료를 불러오면 크레인 대수 기준으로 근무 1회당 운전시간·휴식시간 변화가 나옴.'], ...tail]};
   const a = I.all, row = (k, f, unit)=> [k, f(a.now[unit]), f(a.after[unit]), (a.after[unit] - a.now[unit] >= 0 ? '+' : '') + f(a.after[unit] - a.now[unit])];
   return {name, rows:[
@@ -5972,7 +5979,7 @@ function bindSupCut(el){
 /* ========================= 휴일 보전 폐지 분석 (UNION) =========================
    휴일 OT 월 60h 보장(보전)이 없어지면, 휴일 근무가 60h에 못 미쳐도 받던 보전 몫만큼 연봉이 줄어듦.
    같은 연봉을 맞추는 시급 인상률을 계산. 근무기록만으로 계산(선석 자료 필요 없음, 저장 안 함) */
-const HGA = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', guarR:40 /* 휴일 보장 월 40h(가산 전·회사 기준) */, guar:60 /* 계산용 = guarR × 1.5 */, result:null, tab:1};
+const HGA = {fromM:'2026-01', toM:'2026-09', from:'2025-12-26', to:'2026-09-25', guarR:40 /* 휴일 보장 월 40h(가산 전·회사 기준) */, guar:60 /* 계산용 = guarR × 1.5 */, lossComp:0 /* 보장 상실 보상률(%) — 직접 입력 */, result:null, tab:1};
 function hgaAnalyze(){
   const names = Object.keys(EXCEL_CODES), grp = {};
   names.forEach(n=>{
@@ -5996,12 +6003,13 @@ function hgaAnalyze(){
   Object.values(pm).forEach(o=>{ o.ho = o.how + o.hsup; o.paid = Math.max(o.ho, HGA.guar); o.fill = Math.max(0, HGA.guar - o.ho); });
   const keys = [...new Set(Object.values(pm).map(o=> o.key))].sort();
   const months = keys.map(key=>{ const os = Object.values(pm).filter(o=> o.key===key); const S = k=> os.reduce((t,o)=> t + o[k], 0);
-    return {key, how:S('how'), hsup:S('hsup'), ho:S('ho'), paid:S('paid'), fill:S('fill'), under: os.filter(o=> o.ho < HGA.guar).length, n: os.length}; });
+    return {key, how:S('how'), hsup:S('hsup'), ho:S('ho'), paid:S('paid'), fill:S('fill'), under: os.filter(o=> o.ho < HGA.guar).length, n: os.length, u1: os.filter(o=> o.ho < HGA.guar && grp[o.n]==='1').length, u2: os.filter(o=> o.ho < HGA.guar && grp[o.n]==='2').length}; });
   const perPerson = people.map(n=>{ const os = keys.map(k=> pm[n+'|'+k]).filter(Boolean); const s = k=> os.reduce((t,o)=> t + o[k], 0);
     return {n, g: grp[n], how:s('how'), hsup:s('hsup'), ho:s('ho'), paid:s('paid'), fill:s('fill'), under: os.filter(o=> o.ho < HGA.guar).length}; });
   const T = k=> months.reduce((t,m)=> t + m[k], 0);
   HGA.result = {people, grp, months, perPerson, nMon: months.length || 1, yr: 12 / (months.length || 1), n1: people.filter(n=> grp[n]==='1').length, n2: people.filter(n=> grp[n]==='2').length,
-    how:T('how'), hsup:T('hsup'), ho:T('ho'), paid:T('paid'), fill:T('fill'), under:T('under'), nPM:T('n')};
+    how:T('how'), hsup:T('hsup'), ho:T('ho'), paid:T('paid'), fill:T('fill'), under:T('under'), nPM:T('n'),
+    ever: perPerson.filter(p=> p.under > 0).length, minUnder: perPerson.length ? Math.min(...perPerson.map(p=> p.under)) : 0, maxUnder: perPerson.length ? Math.max(...perPerson.map(p=> p.under)) : 0};
 }
 function hgaReport(){
   const R = HGA.result; if(!R) return {sheets:[]};
@@ -6012,7 +6020,7 @@ function hgaReport(){
   const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
   // 요구 인상률: 기사별 최대(아무도 손해 보지 않게)
   const top = basisPick(pp);
-  const r1 = top.pct, rAsk = r1;
+  const r1 = top.pct, rAsk = r1, lc = HGA.lossComp || 0;
   const otAll = R.ho ? R.fill / R.ho * 100 : 0;
   const otPP = pp.map(p=> p.ho > 0 ? p.fill / p.ho * 100 : 0);
   pp.forEach((p,i)=> p.otPct = otPP[i]);
@@ -6028,12 +6036,14 @@ function hgaReport(){
     ['연봉에서 빠지는 휴일 보전 (연, 전체)', W(lostWon) + '원', `1인 평균 ${W(lostPP)}원`],
     ['같은 연봉 유지에 필요한 시급 인상률', P(raise), `총인건비 ${(total/1e8).toFixed(1)}억원 기준`],
     ['기사별 필요 인상률', `최소 ${P(pcts[0]||0)} · 중간 ${P(med)} · 최대 ${P(pcts[pcts.length-1]||0)}`, '휴일 근무가 적던 기사일수록 큼'],
-    [`요구 시급 인상률 (${basisLabel()})`, P(rAsk), basisNote()],
-    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상을 요구함.`], [],
+    [`연봉 보전 인상률 (${basisLabel()})`, P(rAsk), basisNote()],
+    ['보장 상실 보상률', P(lc), `보장 없이 휴일 근무 변동 위험을 조합원이 떠안는 데 대한 보상 (6.보장 상실)`],
+    ['최종 요구 시급 인상률', P(rAsk + lc), '연봉 보전 + 보장 상실 보상'],
+    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}), 10년이면 약 ${wonMan(lostWon*10)} 줄어듦. 분석 기간 동안 장비직 ${R.ever}/${ppl}명 전원이 보장을 받았음. 연봉 보전 ${rAsk.toFixed(2)}%와 보장 상실 보상 ${lc.toFixed(2)}%를 더해 시급 ${(rAsk + lc).toFixed(2)}% 인상을 요구함.`], [],
     ['4. 산정 관점'],
     [`지금은 기사마다 그달 휴일 OT(휴일 본근무 + 휴일 지원, 가산 반영 시간)가 보장 ${G}h(실근로·가산 전) × 1.5 = ${GP}h보다 적으면 ${GP}h까지 채워 지급함. 보장이 없어지면 그 차이(${GP}h − 실제)만큼 줄어듦. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
     ['5. 자료 구성'],
-    ['2.검토조건', '분석기간·단가·인건비 기준'], ['3.비용산출', '단계별 산출'], ['4.검증데이터', '기사별 휴일 OT·보전·필요 인상률 (익명)'], ['5.월별현황', '급여월별 휴일 OT·보전']
+    ['2.검토조건', '분석기간·단가·인건비 기준'], ['3.비용산출', '단계별 산출'], ['4.검증데이터', '기사별 휴일 OT·보전·필요 인상률 (익명)'], ['5.월별현황', '급여월별 휴일 OT·보전'], ['6.보장 상실', '보장 수혜 현황·10년 누적 손실·보장 상실 보상']
   ]};
   const s2 = {name:'2.검토조건', rows:[
     ['검토 조건 (전제·기준)'], [], ['[A] 분석 기준'],
@@ -6058,8 +6068,11 @@ function hgaReport(){
     ['장비직 총인건비(원)', '', W(total)], ['보장 폐지 후 총인건비(원)', '', W(total - lostWon)], ['필요 시급 인상률 (전체 평균)', '', P(raise), '줄어든 연봉 ÷ 남은 연봉'], [],
     ['[4단계] 요구 시급 인상률'],
     [basisLabel(), '', P(rAsk), `${basisWho()}: 연 ${W(top.lw)}원 감소`], [],
+    ['[5단계] 보장 상실 보상'],
+    ['보장 상실 보상률', '', P(lc), '6.보장 상실'],
+    ['최종 요구 시급 인상률', '', P(rAsk + lc), '연봉 보전 + 보장 상실 보상'], [],
     ['[결론]'],
-    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상이 필요함.`]
+    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상이 필요함. 보장 상실 보상 ${lc.toFixed(2)}%를 더해 최종 ${(rAsk + lc).toFixed(2)}% 인상을 요구함.`]
   ]};
   const s4 = {name:'4.검증데이터', rows:[['검증 데이터 — 기사별 연간(환산) 휴일 OT·보전·필요 인상률 (익명 처리)'], [`1인 연봉은 ${W(FCA.annual)}원으로 같다고 보고 계산`], [],
     ['구분', '조', '휴일 OT 합(h)', `${G}h 미만 달`, '보전(h)', '연 감소액(원)', '필요 인상률'],
@@ -6068,7 +6081,27 @@ function hgaReport(){
     ['급여월', '휴일 본근무OT(h)', '휴일 지원OT(h)', '휴일 OT 합(h)', `${G}h 미만 기사`, '보전(h)', '보전 금액(원)'],
     ...R.months.map(m=> [m.key, H1(m.how), H1(m.hsup), H1(m.ho), `${m.under} / ${m.n}`, H1(m.fill), W(m.fill*rate)]),
     ['합계', H1(R.how), H1(R.hsup), H1(R.ho), `${R.under} / ${R.nPM}`, H1(R.fill), W(R.fill*rate)]]};
-  return {sheets:[s1,s2,s3,s4,s5]};
+  const g10 = Array.from({length:10}, (_,k)=> Math.pow(1.03, k)).reduce((a,b)=> a + b, 0);   // 임금 연 3% 상승 시 10년 합계 배수
+  const s6 = {name:'6.보장 상실', rows:[['보장(월 ' + G + 'h) 상실 — 수혜 현황 · 10년 누적 손실 · 보상'], [`${HGA.from} ~ ${HGA.to} 근무 실적 · 보장은 시간(${G}h) 단위라 임금이 오르면 보장 금액도 같이 오름`], [],
+    ['[1] 보장 수혜 현황'],
+    ['구분', '값', '비고'],
+    ['한 번이라도 보장을 받은 기사', `${R.ever} / ${ppl}명`, `분석 ${R.nMon}개월 중`],
+    ['기사 1명당 보장 받은 달 (평균)', (R.under / Math.max(1, ppl)).toFixed(1) + '달', `최소 ${R.minUnder}달 · 최대 ${R.maxUnder}달`],
+    ['한 달에 보장 받은 기사 (최대)', `${Math.max(0, ...R.months.map(m=> m.under))}명`, '같은 달에 조원 대부분이 함께 미달되는 달이 있음'], [],
+    ['[2] 급여월별 보장 받은 기사 수'],
+    ['급여월', '1조', '2조', '합계'],
+    ...R.months.map(m=> [m.key, `${m.u1} / ${R.n1}`, `${m.u2} / ${R.n2}`, `${m.under} / ${m.n}`]), [],
+    ['[3] 보장 폐지 시 누적 손실 (전체)'],
+    ['구분', '전체(원)', '1인 평균(원)', '비고'],
+    ['1년', W(lostWon), W(lostPP), ''],
+    ['10년 (임금 동결 가정)', W(lostWon*10), W(lostPP*10), '1년 × 10'],
+    ['10년 (임금 연 3% 상승 가정)', W(lostWon*g10), W(lostPP*g10), `1년 × ${g10.toFixed(2)}`], [],
+    ['[4] 보장 상실 보상'],
+    ['구분', '값', '비고'],
+    [`연봉 보전 인상률 (${basisLabel()})`, P(rAsk), '보장으로 받던 미달 시간을 시급으로 돌려받음'],
+    ['보장 상실 보상률', P(lc), '앞으로 휴일 근무가 줄어드는 달의 손실 위험을 조합원이 떠안는 데 대한 보상'],
+    ['최종 요구 시급 인상률', P(rAsk + lc), '연봉 보전 + 보장 상실 보상']]};
+  return {sheets:[s1,s2,s3,s4,s5,s6]};
 }
 function repXls(rep, fname){
   rep = Object.assign({}, rep, {sheets: (rep.sheets||[]).filter(s=> !s.internal)});   // 내부 메모는 엑셀에 안 넣음
@@ -6093,6 +6126,7 @@ function pageHolGuar(){
       ${payBaseHint()}
       <label class="eqBonusIn"><span>휴일 보장(가산 전)</span><input type="text" inputmode="numeric" id="hgaGuar" value="${HGA.guarR}" style="width:44px;"><span>h</span></label>
       ${basisRadios('hga')}
+      ${lossCompInput('hga')}
       <button class="btn sm" data-act="hga-run">다시 계산</button>
     </div>
     <p class="hint" style="margin:8px 0 0;">휴일(일요일·공휴일) OT 월 ${HGA.guarR}h(가산 전, 지급 ${HGA.guar}h) 보장이 없어지면 휴일 근무가 그만큼에 못 미쳐도 받던 보전만큼 연봉이 줄어요. 근무기록만으로 바로 계산해요(선석 자료 필요 없음).</p>
@@ -6106,10 +6140,11 @@ function bindHolGuar(el){
     const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
     ymRead(el, 'hga', HGA);
     payBaseInput(num('#hgaRate'), num('#hgaAnnual'));
+    lossCompRead(el, 'hga');
     if(num('#hgaGuar') > 0){ HGA.guarR = num('#hgaGuar'); HGA.guar = HGA.guarR * 1.5; }
     hgaAnalyze(); render();
   };
-  basisBind(el, 'hga');
+  basisBind(el, 'hga'); lossCompBind(el, 'hga');
   el.querySelectorAll('[data-act="hga-tab"]').forEach(x=> x.onclick = ()=>{ HGA.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="hga-xls"]'); if(xb) xb.onclick = ()=> repXls(hgaReport(), `휴일보전폐지_시급보전검토_${HGA.from}_${HGA.to}.xls`);
 }
@@ -6144,7 +6179,7 @@ function alcReport(){
   const lostWon = T('lost') * rate * y, lostPP = lostWon / ppl, raise = total > lostWon ? lostWon / (total - lostWon) * 100 : 0;
   const pp = D.per.map(p=>{ const lw = p.lost * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
   const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
-  const top = basisPick(pp), rAsk = top.pct, ik = SPC.intense || 0, INT = spcIntensity(R);
+  const top = basisPick(pp), rAsk = top.pct, ik = SPC.intense || 0, INT = spcIntensity(R), lc = HGA.lossComp || 0;
   const anon = {}; R.people.forEach((n,i)=> anon[n] = '기사' + String(i+1).padStart(2,'0'));
   const part = (k, t)=> [t, H1(T(k)), W(T(k)*rate*y)];
   const s1 = {name:'1.검토개요', rows:[
@@ -6162,8 +6197,9 @@ function alcReport(){
     ['기사별 필요 인상률', `최소 ${P(pcts[0]||0)} · 중간 ${P(med)} · 최대 ${P(pcts[pcts.length-1]||0)}`, ''],
     [`연봉 보전 인상률 (${basisLabel()})`, P(rAsk), basisNote()],
     ['근로강도 보상률', P(ik), INT ? `근무 1회당 1인 운전시간 ${INT.all.now.drive.toFixed(1)}h → ${INT.all.after.drive.toFixed(1)}h (+${INT.up.toFixed(2)}%)` : '지원이 없어져 근무 1회당 노동 밀도가 높아지는 데 대한 보상'],
-    ['최종 요구 시급 인상률', P(rAsk + ik), '연봉 보전 + 근로강도 보상'],
-    [`지원근로와 지원·휴일 보장을 함께 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어들고, 같은 근무시간에 크레인에 타는 시간이 늘어남. 연봉 보전 ${rAsk.toFixed(2)}%와 근로강도 보상 ${ik.toFixed(2)}%를 더해 시급 ${(rAsk + ik).toFixed(2)}% 인상을 요구함.`], [],
+    ['보장 상실 보상률', P(lc), '보장(지원·휴일) 없이 변동 위험을 떠안는 데 대한 보상 (휴일보전 6.보장 상실 참고)'],
+    ['최종 요구 시급 인상률', P(rAsk + ik + lc), '연봉 보전 + 근로강도 보상 + 보장 상실 보상'],
+    [`지원근로와 지원·휴일 보장을 함께 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어들고, 같은 근무시간에 크레인에 타는 시간이 늘어남. 연봉 보전 ${rAsk.toFixed(2)}%, 근로강도 보상 ${ik.toFixed(2)}%, 보장 상실 보상 ${lc.toFixed(2)}%를 더해 시급 ${(rAsk + ik + lc).toFixed(2)}% 인상을 요구함.`], [],
     ['4. 산정 관점'],
     [`줄어드는 몫 = 평일 지원 OT + 지원 ${G}h 보전 + 휴일 지원 OT + 휴일 ${HGR}h 보전 − SC 회복 OT. 휴일 지원과 휴일 보장이 겹치는 몫은 한 번만 셈. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
     ['5. 자료 구성'],
@@ -6195,9 +6231,10 @@ function alcReport(){
     [`연봉 보전 인상률 (${basisLabel()})`, '', P(rAsk), `${basisWho()}: 연 ${W(top.lw)}원 감소`], [],
     ['[5단계] 근로강도 보상'],
     ['근로강도 보상률', '', P(ik), INT ? `근무 1회당 운전시간 +${INT.up.toFixed(2)}% (6.근로강도)` : ''],
-    ['최종 요구 시급 인상률', '', P(rAsk + ik), '연봉 보전 + 근로강도 보상'], [],
+    ['보장 상실 보상률', '', P(lc), '휴일보전 6.보장 상실 참고'],
+    ['최종 요구 시급 인상률', '', P(rAsk + ik + lc), '연봉 보전 + 근로강도 보상 + 보장 상실 보상'], [],
     ['[결론]'],
-    [`지원근로와 지원·휴일 보장을 함께 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어들고 근무 1회당 노동 밀도가 높아짐. 연봉 보전 ${rAsk.toFixed(2)}% + 근로강도 보상 ${ik.toFixed(2)}% = 시급 ${(rAsk + ik).toFixed(2)}% 인상이 필요함.`]
+    [`지원근로와 지원·휴일 보장을 함께 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어들고 근무 1회당 노동 밀도가 높아짐. 연봉 보전 ${rAsk.toFixed(2)}% + 근로강도 보상 ${ik.toFixed(2)}% + 보장 상실 보상 ${lc.toFixed(2)}% = 시급 ${(rAsk + ik + lc).toFixed(2)}% 인상이 필요함.`]
   ]};
   const s4 = {name:'4.검증데이터', rows:[['검증 데이터 — 기사별 연간(환산) 감소액·필요 인상률 (익명 처리)'], [`1인 연봉은 ${W(FCA.annual)}원으로 같다고 보고 계산`], [],
     ['구분', '조', '평일 지원(h)', `${G}h 보전(h)`, '휴일 지원(h)', `${HGR}h 보전(h)`, 'SC 회복(h)', '연 감소액(원)', '필요 인상률'],
@@ -6206,7 +6243,7 @@ function alcReport(){
     ['급여월', '평일 지원(h)', `${G}h 보전(h)`, '휴일 지원(h)', `${HGR}h 보전(h)`, 'SC 회복(h)', '줄어드는 몫(h)', '감소액(원)'],
     ...D.mon.map(m=> [m.key, H1(m.sp), H1(m.spFill), H1(m.hsup), H1(m.hoFill), H1(m.scBack), H1(m.lost), W(m.lost*rate)]),
     ['합계', H1(T('sp')), H1(T('spFill')), H1(T('hsup')), H1(T('hoFill')), H1(T('scBack')), H1(T('lost')), W(T('lost')*rate)]]};
-  return {sheets:[s1,s2,s3,s4,s5, spcIntenseSheet(R, 6, rAsk)]};
+  return {sheets:[s1,s2,s3,s4,s5, spcIntenseSheet(R, 6, rAsk, lc)]};
 }
 function pageAllCut(){
   payBaseCalc(ALC.fromM, ALC.toM);   // 통상시급·연 인건비 자동값(장비 시급·장비 급여 관리)
@@ -6223,6 +6260,7 @@ function pageAllCut(){
       ${spcRatioRadios('alc')}
       ${basisRadios('alc')}
       ${spcIntInput('alc')}
+      ${lossCompInput('alc')}
       <button class="btn sm" data-act="alc-run">다시 계산</button>
       ${spcBerthBtn('alc', ALC.from, ALC.to)}
     </div>
@@ -6237,14 +6275,14 @@ function bindAllCut(el){
     const num = id=> Number(String(el.querySelector(id).value).replace(/[^0-9]/g,''));
     ymRead(el, 'alc', ALC);
     payBaseInput(num('#alcRate'), num('#alcAnnual'));
-    SPC.scBack = true; spcIntRead(el, 'alc');
+    SPC.scBack = true; spcIntRead(el, 'alc'); lossCompRead(el, 'alc');
     const rp = el.querySelector('input[name="alcRatio"]:checked'); if(rp) SPC.ratio = Number(rp.value);
     ALC.result = spcAnalyze(ALC.from, ALC.to); SPC.result = null; render();
   };
   el.querySelectorAll('[data-ratio-pick="alc"]').forEach(x=> x.onchange = ()=>{ run.onclick(); });
   const bb = el.querySelector('[data-act="alc-berth"]'); if(bb) bb.onclick = ()=>{ ymRead(el, 'alc', ALC); fcaLoadBerth(ALC.from, ALC.to, ()=>{ ALC.result = spcAnalyze(ALC.from, ALC.to); SPC.result = null; }); };
   el.querySelectorAll('[data-int-pick="alc"]').forEach(x=> x.onchange = ()=>{ spcIntRead(el, 'alc'); render(); });
-  basisBind(el, 'alc');
+  basisBind(el, 'alc'); lossCompBind(el, 'alc');
   el.querySelectorAll('[data-act="alc-tab"]').forEach(x=> x.onclick = ()=>{ ALC.tab = Number(x.dataset.tab); render(); });
   const xb = el.querySelector('[data-act="alc-xls"]'); if(xb) xb.onclick = ()=> repXls(alcReport(), `보전폐지_시급보전검토_${ALC.from}_${ALC.to}.xls`);
 }
@@ -7532,13 +7570,26 @@ function pageDispatch(){
     </tr>`;
   }).join('');
 
-  // 지원 인력 - 이름을 직접 입력하는 빈 행 10개
+  // 지원 인력 - 이름 칸 10개. 직접 쓴 이름은 그대로 두고, 빈 칸에는 그날 지원 코드(DN·ND·DS·NS)인 사람을 자동으로 채움
+  //   이 근무를 지원하는 사람만: 주간 = DS·ND, 야간 = NS·DN (일요일은 전부)
+  //   순서: DN·ND(연장 지원 — 먼저 퇴근) → DS·NS, 같은 묶음 안에서는 지원 순번(근태관리 지원 일수가 적은 순)
   const SUP_COUNT = 10;
+  const supRankOf = {}; cd.perEmp.forEach((r,i)=>{ supRankOf[r.emp.id] = cd.rankSup[i]; });
+  const supFor = dispatchShift==='day' ? new Set(['DS','ND']) : dispatchShift==='night' ? new Set(['NS','DN']) : DP_SUPX_CODES;
+  const early = c=> (c==='DN' || c==='ND') ? 0 : 1;
+  const autoSup = allSorted.map(e=>{ const rec = attendance[ds+'_'+e.id] || {}; return {e, c: gridCode(rec && rec.date ? rec : null, ds, String(e.name||'').trim())}; })
+    .filter(x=> supFor.has(x.c))
+    .sort((a,b)=> (early(a.c) - early(b.c)) || ((supRankOf[a.e.id] ?? 999) - (supRankOf[b.e.id] ?? 999)) || ((a.e.teamOrder||999) - (b.e.teamOrder||999)));
+  const storedSup = Array.from({length:SUP_COUNT}, (_,i)=>{ const d = dispatch[`${ds}_${dispatchShift}_sup${pad2(i+1)}`]; return d && d.name ? String(d.name).trim() : ''; });
+  const autoQueue = autoSup.filter(x=> !storedSup.includes(String(x.e.name||'').trim()));
+  window._dpAutoSup = {};
   const supRows = Array.from({length:SUP_COUNT}, (_,i)=>{
     const supId = 'sup'+pad2(i+1);
     const id = `${ds}_${dispatchShift}_${supId}`;
     const drec = dispatch[id];
-    const supName = drec && drec.name ? drec.name : '';
+    const auto = storedSup[i] ? null : autoQueue.shift() || null;   // 빈 칸이면 지원 코드인 사람을 순서대로
+    if(auto) window._dpAutoSup[supId] = String(auto.e.name||'').trim();
+    const supName = storedSup[i] || (auto ? String(auto.e.name||'').trim() : '');
     let supPainted = 0;
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
@@ -7550,8 +7601,8 @@ function pageDispatch(){
     const supLabel = i===0 ? `<td class="dpI dpI1" rowspan="${SUP_COUNT}" style="vertical-align:middle;">지원</td>` : '';
     return `<tr>
       ${supLabel}
-      <td class="dpI dpI2"><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름" style="width:66px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:var(--text);"></td>
-      <td class="dpI dpI3"></td><td class="dpI dpI4"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
+      <td class="dpI dpI2"><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름"${auto ? ` data-auto="1" title="근태 ${esc(auto.c)} · 지원 순번 ${supRankOf[auto.e.id] ?? '-'} (자동)"` : ''} style="width:66px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:${auto ? '#0f766e' : 'var(--text)'};"></td>
+      <td class="dpI dpI3">${auto ? codeBadge(auto.c) : ''}</td><td class="dpI dpI4"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
       ${cells}
     </tr>`;
   }).join('');
@@ -8308,7 +8359,7 @@ function afterRender(){
     x.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); x.blur(); } };
   });
   el.querySelectorAll('[data-dispatch-sup]').forEach(x=>{
-    x.onblur = ()=> saveDispatchSupportName(dispatchDate, dispatchShift, x.dataset.dispatchSup, x.value.trim());
+    x.onblur = ()=>{ if(x.dataset.auto && x.value.trim()===String(x.defaultValue||'').trim()) return; saveDispatchSupportName(dispatchDate, dispatchShift, x.dataset.dispatchSup, x.value.trim()); }; // 자동 이름을 그대로 두면 저장 안 함
   });
 
   // 지원계획표
