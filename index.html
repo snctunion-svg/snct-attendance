@@ -3735,6 +3735,10 @@ async function inputReopen(){
   const lc = isInputClosed(date, team);
   if(lc && !(leaderMode && isLeaderUser())){ showToast('조장이 마감한 날이에요. 고치려면 조장에게 말씀하세요.'); return; }
   if(!requireEdit()) return;
+  if(!lc && !dayUserClosed(date, team)){   // 마감 전이면 칸이 이미 열려 있음 → 바로 고치면 됨
+    const c = document.querySelector('.inTbl input.inCell'); if(c){ c.focus(); }
+    showToast('마감 전이라 바로 고칠 수 있어요. 고친 뒤 [저장], 다 끝나면 [마감]을 누르세요.'); return;
+  }
   if(lc) delete inputClose[id];
   setInputHold(date, team, true, {dayClosed:false});
   render();
@@ -3762,7 +3766,7 @@ function pageInput(){
   const dirtyN = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|')).length;
   const leaderClosed = isInputClosed(date, inputTeam), userClosed = !leaderClosed && dayUserClosed(date, inputTeam);
   const closedNow = leaderClosed || userClosed, locked = closedNow, leader = isLeaderUser(), leaderMode = VIEW==='input2';
-  const canReopen = closedNow && (!leaderClosed || (leaderMode && leader));
+  const canReopen = !leaderClosed || (leaderMode && leader);   // 배포용: 조장 마감만 아니면 항상 누를 수 있음
   const canClose = leaderMode ? (leader && !leaderClosed) : !closedNow;
   // 이미 저장된 기록이 있는 날은 보기만 → [수정]을 눌러야 고칠 수 있음. 저장하면 다시 보기 상태(저장해야 월별 OT에 반영)
   const held = list.some(e=>{ const b = attStore[date+'_'+e.id]; return b && b.otHold; });   // 저장만 하고 아직 마감 안 한 기록(월별 OT에 안 들어감)
