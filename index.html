@@ -678,20 +678,24 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .ctbl.gtbl td.daycell.sunN{background:#d1d5db;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .ctbl.gtbl td.daycell.sunN{background:#3a4150;} }
 :root[data-theme="dark"] .ctbl.gtbl td.daycell.sunN{background:#3a4150;}
-/* 휴대폰 가로 화면(안드로이드·아이폰): PC처럼 근태 집계와 월별 근태를 한 줄로 나란히, 좌우 높이를 맞춤 */
+/* 휴대폰 가로 화면(안드로이드·아이폰): 근태 집계와 월별 근태를 한 줄로 나란히 — 줄이지 않고 원래 크기로, 좌우로 밀어서 봄
+   (표 줄이기(zoom)는 브라우저마다 계산이 달라 좌우가 어긋나므로 쓰지 않음) · 두 표의 줄 높이를 같게, 첫 줄 위치를 맞춤 */
 @media (orientation:landscape) and (max-height:500px) and (pointer:coarse){
-  .cmbWrap{flex-wrap:nowrap !important;gap:8px !important;align-items:stretch;}
-  .cmbWrap .panel{padding:8px !important;}
-  .cmbLeft{flex:0 0 calc(44% - 4px) !important;max-width:calc(44% - 4px) !important;min-width:0 !important;}
-  .cmbRight{flex:1 1 0 !important;min-width:0 !important;}
-  .cmbLeft .scrollx,.cmbRight .scrollx{overflow:hidden !important;max-height:none !important;}
-  .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){width:32px !important;min-width:32px !important;max-width:32px !important;}
-  .cmbLeft .ctbl tbody td:not(.namecell):not(:first-child){min-width:0 !important;}
-  .cmbLeft .ctbl th.otCol{width:50px;min-width:50px;max-width:50px;}
-  .cmbRight .ctbl.gtbl td.daycell{width:auto !important;min-width:0 !important;}
-  .cmbRight .ctbl.gtbl thead th{min-width:0 !important;}
-  .cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{width:58px !important;min-width:58px !important;max-width:58px !important;white-space:nowrap;}
-  .cmbRight .ctbl.gtbl tbody td{height:auto !important;}
+  .cmbWrap{flex-wrap:nowrap !important;gap:10px !important;align-items:flex-start !important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;}
+  .cmbWrap .panel{padding:8px !important;flex:0 0 auto !important;max-width:none !important;min-width:0 !important;width:auto !important;}
+  .cmbLeft .scrollx,.cmbRight .scrollx{overflow:visible !important;max-height:none !important;}
+  .cmbWrap table.ctbl{zoom:1 !important;width:auto !important;}
+  .cmbWrap .ctbl tbody td,.cmbWrap .cmbRight .ctbl.gtbl tbody td{height:30px !important;padding-top:0 !important;padding-bottom:0 !important;font-size:12.5px !important;}
+  .cmbWrap .ctbl thead th{font-size:12px !important;}
+  .cmbCtrl{height:40px !important;min-height:40px !important;margin-bottom:8px !important;flex-wrap:nowrap !important;overflow:hidden;}
+  .cmbCtrl input[type=date]{height:32px !important;font-size:13px !important;padding:2px 6px !important;width:auto;}
+  .cmbCtrl h3{font-size:15px;}
+  .cmbLeft .ctbl td.stNo,.cmbLeft .ctbl thead tr:first-child th:first-child{width:30px !important;min-width:30px !important;max-width:30px !important;padding:0 !important;}
+  .cmbLeft .ctbl td.stName,.cmbLeft .ctbl thead tr:first-child th:nth-child(2),.cmbRight .ctbl td.namecell,.cmbRight .ctbl th.namehead{width:62px !important;min-width:62px !important;max-width:62px !important;white-space:nowrap;padding-left:2px !important;padding-right:2px !important;}
+  .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){width:38px !important;min-width:38px !important;max-width:38px !important;}
+  .cmbLeft .ctbl th.otCol{width:52px !important;min-width:52px !important;max-width:52px !important;}
+  .cmbRight .ctbl.gtbl td.daycell{width:34px !important;min-width:34px !important;}
+  .cmbRight .ctbl.gtbl thead th:not(.namehead){min-width:34px !important;}
 }
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
 .cmbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
@@ -1389,6 +1393,13 @@ function startDpInlineEdit(td, firstChar){
 function isSundayDs(ds){ const [y,m,d] = String(ds).split('-').map(Number); return new Date(y, m-1, d).getDay()===0; }
 // 배차표의 '오늘': 야간 배차표만 다음날 08시까지 전날로 봄(주간은 그대로 자정에 넘어감)
 //  00~08시에 보고 있는 조가 전날 야간 근무였으면(전체 보기 포함) 전날 야간, 주간 조면 오늘
+// 지금 근무 중인 조: 08~18시는 오늘 주간 조, 그 밖에는 야간 조(00~08시는 어제 야간 조)
+function dpNowTeam(){
+  try{ const n = new Date(), h = n.getHours(), t = todayStr();
+    if(h >= 8 && h < 18) return scheduledShift(t,'1')==='D' ? '1' : '2';
+    const d = h < 8 ? addDays(t, -1) : t; return scheduledShift(d,'1')==='N' ? '1' : '2';
+  }catch(e){ return '1'; }
+}
 function dpWorkDate(){
   const n = new Date(), today = todayStr();
   if(n.getHours() >= 8) return today;
@@ -4517,36 +4528,23 @@ function fitCombined(){
     }
   }
 }
-// 휴대폰 가로: 두 표를 각자 칸 너비에 맞춰 줄이고(zoom), 머리줄·줄 높이를 화면에 보이는 크기 기준으로 똑같이 맞춰 좌우 대칭
+// 휴대폰 가로: 표는 원래 크기(줄이지 않음). 두 표의 첫 줄이 화면에서 같은 높이에 오도록 위쪽 여백만 맞춤 → 좌우 줄이 나란히
+//   (zoom이 없으니 안드로이드·아이폰 모두 같은 계산). 옆으로 민 위치는 기억해서 화면이 새로 그려져도 그대로
 function fitCombinedLand(wrap){
   const L = wrap.querySelector('.cmbLeft table.ctbl'), Rt = wrap.querySelector('.cmbRight table.ctbl');
-  [L, Rt].forEach(t=>{ if(!t) return; mFreeze(t); t.style.zoom = ''; t.style.width = ''; t.querySelectorAll('tr').forEach(tr=> tr.style.height = ''); t.style.removeProperty('--sepW'); });
-  const fitW = t=>{ if(!t) return 1; const w = t.parentElement.clientWidth - 2; t.style.width = '100%'; const sw = t.scrollWidth; let z = 1; if(sw > w + 2){ z = Math.max(0.3, Math.floor(w / sw * 1000)/1000 - 0.005); t.style.zoom = z; } if(z < 1) t.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); return z; };
-  const zL = fitW(L), zR = fitW(Rt);
-  if(!L || !Rt) return;
-  const info = (t, z)=>{ const hr = [...t.querySelectorAll('thead tr')], br = [...t.querySelectorAll('tbody tr')];
-    return {z, hr, br, top: t.getBoundingClientRect().top, head: hr.reduce((a,r)=> a + r.getBoundingClientRect().height, 0), row: br.reduce((a,r)=> Math.max(a, r.getBoundingClientRect().height), 0)}; };
-  const a = info(L, zL), b = info(Rt, zR);
-  // 머리줄 아래 끝(= 첫 줄 시작)을 화면에서 같은 높이로, 줄 높이도 같게 → 좌우 줄이 나란히
-  const headEnd = Math.max(a.top + a.head, b.top + b.head), row = Math.max(a.row, b.row);
-  [a, b].forEach(o=>{
-    const k = o.head ? (headEnd - o.top) / o.head : 1;
-    const hs = o.hr.map(r=> r.getBoundingClientRect().height);
-    o.hr.forEach((r,i)=> r.style.height = (hs[i] * k / o.z) + 'px');
-    o.br.forEach(r=> r.style.height = (row / o.z) + 'px');
-  });
-  // 줄 높이를 맞춘 뒤 표가 칸보다 넓어졌으면(글자 줄바꿈 변화 등) 조금 더 줄여서 한 번 더 맞춤
-  const over = [L, Rt].some(t=> t.getBoundingClientRect().width > t.parentElement.clientWidth + 1);
-  if(over && !wrap._landRetry){
-    wrap._landRetry = 1;
-    [L, Rt].forEach(t=>{ const w = t.parentElement.clientWidth - 2, tw = t.getBoundingClientRect().width; if(tw > w){ const z = (parseFloat(t.style.zoom)||1) * w / tw - 0.004; t.style.zoom = Math.max(0.3, z); t.style.setProperty('--sepW', (1/Math.max(0.3, z)).toFixed(2)+'px'); } });
-    const a2 = info(L, parseFloat(L.style.zoom)||1), b2 = info(Rt, parseFloat(Rt.style.zoom)||1);
-    [a2, b2].forEach(o=>{ o.hr.forEach(r=> r.style.height = ''); o.br.forEach(r=> r.style.height = ''); });
-    const a3 = info(L, a2.z), b3 = info(Rt, b2.z);
-    const he = Math.max(a3.top + a3.head, b3.top + b3.head), rw = Math.max(a3.row, b3.row);
-    [a3, b3].forEach(o=>{ const k = o.head ? (he - o.top) / o.head : 1; const hs = o.hr.map(r=> r.getBoundingClientRect().height); o.hr.forEach((r,i)=> r.style.height = (hs[i] * k / o.z) + 'px'); o.br.forEach(r=> r.style.height = (rw / o.z) + 'px'); });
+  [L, Rt].forEach(t=>{ if(!t) return; mFreeze(t); t.style.zoom = ''; t.style.width = ''; t.querySelectorAll('tr').forEach(tr=> tr.style.height = ''); t.style.removeProperty('--sepW'); const bx = t.closest('.scrollx'); if(bx) bx.style.paddingTop = ''; });
+  if(L && Rt){
+    const fr = t=> { const r = t.querySelector('tbody tr'); return r ? r.getBoundingClientRect().top : t.getBoundingClientRect().top; };
+    const d = fr(Rt) - fr(L);
+    if(Math.abs(d) >= 1){ const bx = (d > 0 ? L : Rt).closest('.scrollx'); if(bx) bx.style.paddingTop = Math.round(Math.abs(d)) + 'px'; }
+    // 줄 높이: 두 표 중 큰 쪽에 맞춤(글자가 커서 늘어난 줄이 있어도 같이)
+    const rows = t=> [...t.querySelectorAll('tbody tr')];
+    const rL = rows(L), rR = rows(Rt), n = Math.min(rL.length, rR.length);
+    for(let i = 0; i < n; i++){ const h = Math.max(rL[i].getBoundingClientRect().height, rR[i].getBoundingClientRect().height); rL[i].style.height = h + 'px'; rR[i].style.height = h + 'px'; }
   }
-  wrap._landRetry = 0;
+  const st = window._cmbLand || (window._cmbLand = {x:0});
+  wrap.scrollLeft = st.x || 0;
+  if(!wrap._landHook){ wrap._landHook = 1; wrap.addEventListener('scroll', ()=>{ st.x = wrap.scrollLeft; }, {passive:true}); }
 }
 // 자정이 지나면 화면을 다시 그려서 '오늘' 표시가 다음 날로 옮겨지게
 // 08시가 되면 배차표를 다음 날로(자동 날짜일 때만)
@@ -7515,6 +7513,7 @@ function pageCodes(){
 /* ========================= 배차표 ========================= */
 function pageDispatch(){
   if(!dispatchDate || (dispatchAuto && dispatchDate !== dpWorkDate())){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); }
+  if(dispatchTeamFilter!=='1' && dispatchTeamFilter!=='2') dispatchTeamFilter = dpNowTeam();   // '전체' 없앰 → 지금 근무 중인 조로
   const ds = dispatchDate;
   if(isSundayDs(ds)) dispatchShift = 'full'; else if(dispatchShift==='full') autoDispatchShift();
   const fullAll = FULL_SLOTS_FN(), cut = fullAll.indexOf('19:00');
@@ -7693,7 +7692,6 @@ function pageDispatch(){
   <h2 class="pgttl">배차표</h2>
   <div class="row" style="margin-bottom:12px;align-items:center;">
     <input type="date" id="dpDate" value="${esc(ds)}" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--bg);color:var(--text);font:inherit;">
-    <button class="btn ${dispatchTeamFilter===''?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="">전체</button>
     <button class="btn ${dispatchTeamFilter==='1'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="1">1조</button>
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
     ${dispatchShift==='full' ? `<span style="width:10px;"></span>
