@@ -3708,6 +3708,15 @@ function inputLocked(){ const d = inputViewDate || todayStr(); return isInputClo
 // 마감 두 가지
 //  · 배포용(출퇴근 입력) [마감] = 그날 그 조 기록에 '마감' 표시(dayClosed) → 월별 OT 반영·칸 잠금. 배포용 [수정]으로 다시 열 수 있음
 //  · 조장 근태관리 [마감] = 조장 마감(inputClose) → 월별 OT 반영 + 배포용에서는 [수정]도 못 함. 조장 근태관리 [수정]으로만 풂
+// 월별 OT 반영 기준: OT_CLOSE_FROM 날부터는 [마감](배포용 마감 또는 조장 마감)한 날만 들어감.
+//   그 전 날짜는 예전처럼 들어감(단, [수정]으로 다시 연 기록(otHold)은 마감 전까지 뺌)
+const OT_CLOSE_FROM = '2026-10-13';
+function otExcluded(rec, ds, e){
+  if(!rec) return false;
+  if(rec.otHold) return true;
+  if(ds >= OT_CLOSE_FROM && !rec.dayClosed && !isInputClosed(ds, (e && e.team) || rec.team || '')) return true;
+  return false;
+}
 function dayUserClosed(date, team){
   const recs = employees.filter(e=> (e.team||'')===team).map(e=> attStore[date+'_'+e.id]).filter(Boolean);
   return recs.length > 0 && recs.every(r=> r.dayClosed);
@@ -3715,7 +3724,7 @@ function dayUserClosed(date, team){
 async function inputCloseDay(){
   const date = inputViewDate || todayStr(), team = inputTeam, id = date+'_'+team, leaderMode = VIEW==='input2';
   if(leaderMode && !isLeaderUser()){ showToast('조장 마감은 조장관리·UNION에서 할 수 있어요.'); return; }
-  if(!leaderMode && isInputClosed(date, team)){ showToast('조장이 마감한 날이에요.'); return; }
+  if(!leaderMode){ showToast('마감은 조장 근태관리에서 할 수 있어요.'); return; }   // 출퇴근 입력(배포용)에는 마감 없음
   if(!requireEdit()) return;
   const pending = Object.keys(inputDraft).filter(k=> k.startsWith(date+'|')).length;
   appConfirm(`${date} ${team}조를 ${leaderMode ? '조장 마감' : '마감'}할까요?${pending ? ` 저장 안 한 ${pending}명 내용도 같이 저장돼요.` : ''} 마감하면 월별 OT에 반영돼요.${leaderMode ? ' 조장 마감한 날은 배포용 출퇴근 입력에서 고칠 수 없어요.' : ' 고치려면 [수정]을 누르세요.'}`, async ()=>{
@@ -3737,7 +3746,7 @@ async function inputReopen(){
   if(!requireEdit()) return;
   if(!lc && !dayUserClosed(date, team)){   // 마감 전이면 칸이 이미 열려 있음 → 바로 고치면 됨
     const c = document.querySelector('.inTbl input.inCell'); if(c){ c.focus(); }
-    showToast('마감 전이라 바로 고칠 수 있어요. 고친 뒤 [저장], 다 끝나면 [마감]을 누르세요.'); return;
+    showToast(leaderMode ? '마감 전이라 바로 고칠 수 있어요. 고친 뒤 [저장], 다 끝나면 [조장 마감]을 누르세요.' : '마감 전이라 바로 고칠 수 있어요. 고친 뒤 [저장]을 누르세요.'); return;
   }
   if(lc) delete inputClose[id];
   setInputHold(date, team, true, {dayClosed:false});
@@ -3809,10 +3818,10 @@ function pageInput(){
     <div class="row" style="margin-top:12px;align-items:center;">
       <button class="btn" id="inSave"${locked ? ' disabled' : ''}>저장${dirtyN && !locked ? ` (${dirtyN}명 변경)` : ''}</button>
       <button class="btn ghost" id="inEdit"${canReopen ? '' : ' disabled'} title="마감을 풀고 고칠 수 있게 함(월별 OT에서 다시 빠짐)">✏️ 수정</button>
-      ${leaderMode && !leader ? '' : `<button class="btn ${closedNow ? '' : 'ghost'} inCloseBtn${closedNow ? ' on' : ''}" id="inCloseBtn"${canClose ? '' : ' disabled'} title="${leaderMode ? '조장 마감: 월별 OT 반영 + 배포용에서 수정 못 함' : '월별 OT에 반영하고 잠금'}">${leaderMode ? (leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감') : (closedNow ? '🔒 마감됨' : '🔒 마감')}</button>`}
+      ${!leaderMode || !leader ? '' : `<button class="btn ${closedNow ? '' : 'ghost'} inCloseBtn${closedNow ? ' on' : ''}" id="inCloseBtn"${canClose ? '' : ' disabled'} title="${leaderMode ? '조장 마감: 월별 OT 반영 + 배포용에서 수정 못 함' : '월별 OT에 반영하고 잠금'}">${leaderMode ? (leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감') : (closedNow ? '🔒 마감됨' : '🔒 마감')}</button>`}
       ${leaderClosed ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>조장 마감</b>돼 월별 OT에 반영됐어요.${leaderMode ? ' 고치려면 [수정]을 누르세요(마감이 풀리고 월별 OT에서 빠져요).' : ' 고치려면 조장에게 말씀하세요.'}</span>`
         : userClosed ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>마감</b>돼 월별 OT에 반영됐어요. 고치려면 [수정]을 누르세요(월별 OT에서 다시 빠져요).${leaderMode ? ' [조장 마감]을 누르면 배포용에서 못 고치게 잠겨요.' : ''}</span>`
-        : (held || dirtyN) ? `<span class="hint" style="margin:0;">저장한 내용은 <b>[마감]</b>을 눌러야 월별 OT에 반영돼요.</span>` : ''}
+        : (held || dirtyN) ? `<span class="hint" style="margin:0;">저장한 내용은 ${leaderMode ? '<b>[조장 마감]</b>을 눌러야' : '조장이 <b>마감</b>해야'} 월별 OT에 반영돼요.</span>` : ''}
     </div>
   </div>`;
 }
@@ -4243,7 +4252,7 @@ function pageOT(){
     let wkTotal=0, hoTotal=0, spTotal=0, mealTotal=0;
     const daily = {}, damDays = {};
     days.forEach(ds=>{
-      const rec0 = otMatrixAttendance[ds+'_'+e.id], rec = rec0 && rec0.otHold ? null : rec0;   // 출퇴근 입력에서 [수정] 중인 기록은 [저장] 전까지 월별 OT에서 뺌
+      const rec0 = otMatrixAttendance[ds+'_'+e.id], rec = otExcluded(rec0, ds, e) ? null : rec0;   // 마감 안 한 날은 월별 OT에서 뺌
       const c = computeDaily(rec, ds);
       const s = computeSupportDaily(rec, ds);
       const meal = computeMealAllowance(rec) + computeDamdang(rec); // 담당은 식사연장과 같은 OT(월별 OT현황에만)
@@ -4310,10 +4319,10 @@ function pageOT(){
     ${days.map(()=>'<td></td>').join('')}
   </tr>`;
 
-  const holdList = (()=>{ const m = {}; Object.keys(otMatrixAttendance).forEach(k=>{ const r = otMatrixAttendance[k]; if(!r || !r.otHold) return; const ds = k.slice(0,10); if(ds < otMatrixStart || ds > otMatrixEnd) return; const e = employees.find(x=> x.id===r.employeeId); const t = (e && e.team) || r.team || ''; m[ds+'|'+t] = 1; }); return Object.keys(m).sort().map(x=>{ const [d,t] = x.split('|'); return `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}${t ? ' '+t+'조' : ''}`; }); })();
+  const holdList = (()=>{ const m = {}; Object.keys(otMatrixAttendance).forEach(k=>{ const r = otMatrixAttendance[k]; if(!r) return; const ds = k.slice(0,10); if(ds < otMatrixStart || ds > otMatrixEnd || ds > todayStr()) return; const e = employees.find(x=> x.id===r.employeeId); if(!otExcluded(r, ds, e)) return; if(!(r.checkIn || r.checkOut || r.supportIn || r.supportOut || r.honjoComp || r.tajoComp)) return; const t = (e && e.team) || r.team || ''; m[ds+'|'+t] = 1; }); return Object.keys(m).sort().map(x=>{ const [d,t] = x.split('|'); return `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}${t ? ' '+t+'조' : ''}`; }); })();
   return `
   <h2 class="pgttl">월별 OT현황</h2>
-  ${holdList.length ? `<div class="note" style="margin:0 0 10px;">✏️ 출퇴근 입력에서 아직 마감 안 해서 OT에서 빠진 날: <b>${esc(holdList.join(', '))}</b> — [마감]을 누르면 들어가요.</div>` : ''}
+  ${holdList.length ? `<div class="note" style="margin:0 0 10px;">✏️ 아직 마감 안 해서 OT에서 빠진 날: <b>${esc(holdList.join(', '))}</b> — 조장 근태관리에서 [조장 마감]을 누르면 들어가요.</div>` : ''}
   <div class="otTopBar">
   <div class="otMonRow">
     <button class="btn ghost sm" id="prevPayMonth">◀ 이전달</button>
@@ -7303,7 +7312,7 @@ function pageTeamOT(){
     let jochul=0, seokchul=0, jungsik=0, yasik=0;
     for(let ds=otMatrixStart; ds<=otMatrixEnd; ds=addDays(ds,1)){
       const rec = otMatrixAttendance[ds+'_'+e.id];
-      if(!rec || rec.otHold) continue;   // [수정] 중인 기록은 [저장] 전까지 뺌
+      if(!rec || otExcluded(rec, ds, e)) continue;   // 마감 안 한 날은 뺌
       const c = computeDaily(rec, ds);
       if(c.valid){
         if(c.category==='평일') wkWeekday += c.premium;
