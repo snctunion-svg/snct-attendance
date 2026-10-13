@@ -6010,7 +6010,7 @@ function hgaReport(){
   const lostWon = R.fill * rate * y, lostPP = lostWon / ppl, raise = total > lostWon ? lostWon / (total - lostWon) * 100 : 0;
   const pp = R.perPerson.map(p=>{ const lw = p.fill * rate * y; return Object.assign({}, p, {lw, pct: FCA.annual > lw ? lw / (FCA.annual - lw) * 100 : 0}); });
   const pcts = pp.map(p=> p.pct).sort((a,b)=> a-b), med = pcts.length ? pcts[Math.floor(pcts.length/2)] : 0;
-  // 요구 인상률: 기사별 최대(아무도 손해 보지 않게) / 휴일 OT 단가 기준(보전 못 받는 시간을 실제 휴일 근무 단가로 메우는 인상률)
+  // 요구 인상률: 기사별 최대(아무도 손해 보지 않게)
   const top = basisPick(pp);
   const r1 = top.pct, rAsk = r1;
   const otAll = R.ho ? R.fill / R.ho * 100 : 0;
@@ -6029,8 +6029,7 @@ function hgaReport(){
     ['같은 연봉 유지에 필요한 시급 인상률', P(raise), `총인건비 ${(total/1e8).toFixed(1)}억원 기준`],
     ['기사별 필요 인상률', `최소 ${P(pcts[0]||0)} · 중간 ${P(med)} · 최대 ${P(pcts[pcts.length-1]||0)}`, '휴일 근무가 적던 기사일수록 큼'],
     [`요구 시급 인상률 (${basisLabel()})`, P(rAsk), basisNote()],
-    ['보전 못 받는 시간에 대한 휴일 OT 단가 인상률', P(otAll), '보전시간 ÷ 실제 휴일 OT시간'],
-    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상을 요구함. 보전 못 받는 시간을 휴일 OT 단가로 메우려면 휴일 OT 단가 ${otAll.toFixed(1)}% 인상이 필요함.`], [],
+    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)}(1인 평균 ${wonMan(lostPP)}) 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상을 요구함.`], [],
     ['4. 산정 관점'],
     [`지금은 기사마다 그달 휴일 OT(휴일 본근무 + 휴일 지원, 가산 반영 시간)가 보장 ${G}h(실근로·가산 전) × 1.5 = ${GP}h보다 적으면 ${GP}h까지 채워 지급함. 보장이 없어지면 그 차이(${GP}h − 실제)만큼 줄어듦. 시급을 올리면 기본급과 OT 단가가 같이 오르므로, 줄어든 연봉 ÷ 남은 연봉 = 필요 인상률로 봄.`], [],
     ['5. 자료 구성'],
@@ -6057,13 +6056,10 @@ function hgaReport(){
     ['줄어드는 몫 = 보전', H1(R.fill), W(lostWon)], ['1인 평균', '', W(lostPP)], [],
     ['[3단계] 같은 연봉 유지에 필요한 시급 인상률'],
     ['장비직 총인건비(원)', '', W(total)], ['보장 폐지 후 총인건비(원)', '', W(total - lostWon)], ['필요 시급 인상률 (전체 평균)', '', P(raise), '줄어든 연봉 ÷ 남은 연봉'], [],
-    ['[4단계] 휴일 OT 단가 기준 (보전 못 받는 시간에 대한 인상률)'],
-    ['보전시간 ÷ 실제 휴일 OT시간 (전체)', `${H1(R.fill)} ÷ ${H1(R.ho)}`, P(otAll), '휴일 OT 단가를 이만큼 올려야 지금과 같은 휴일 OT를 받음'],
-    [],
-    ['[5단계] 요구 시급 인상률'],
+    ['[4단계] 요구 시급 인상률'],
     [basisLabel(), '', P(rAsk), `${basisWho()}: 연 ${W(top.lw)}원 감소`], [],
     ['[결론]'],
-    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상이 필요함. 보전 못 받는 시간을 휴일 OT 단가로 메우려면 ${otAll.toFixed(1)}% 인상이 필요함.`]
+    [`휴일 OT ${G}h 보장을 폐지하면 조합원 연봉이 연 약 ${wonMan(lostWon)} 줄어듦. ${basisWhy()} 시급 ${rAsk.toFixed(2)}% 인상이 필요함.`]
   ]};
   const s4 = {name:'4.검증데이터', rows:[['검증 데이터 — 기사별 연간(환산) 휴일 OT·보전·필요 인상률 (익명 처리)'], [`1인 연봉은 ${W(FCA.annual)}원으로 같다고 보고 계산`], [],
     ['구분', '조', '휴일 OT 합(h)', `${G}h 미만 달`, '보전(h)', '연 감소액(원)', '필요 인상률'],
