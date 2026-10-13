@@ -1414,8 +1414,9 @@ function autoDispatchShift(){
   if(c) dispatchShift = c==='N' ? 'night' : 'day';
 }
 const DP_WORK_CODES = new Set(['D','N','DN','ND','DS','NS']); // 배차표에서 '근무'로 보는 코드
-// 지원 코드(DS·NS·DN·ND): 상대 조 배차표에 이름을 직접 써서 지원하므로, 자기 조 배차표에서는 흐리게·칠하기 막음·순번/인원에서 뺌
-const DP_SUPX_CODES = new Set(['DS','NS','DN','ND']);
+// 선지원 코드(DS·NS): 그날은 상대 조 배차표 지원란에서만 일하므로, 자기 조 배차표에서는 흐리게·칠하기 막음·순번/인원에서 뺌
+// DN·ND는 그날 자기 조 근무(DN = 주간 후 상대 조 야간 연장, ND = 야간 후 다음 날 상대 조 주간 연장)를 하므로 자기 조 배차표에서 막지 않음 — 선지원 DS·NS만 막음
+const DP_SUPX_CODES = new Set(['DS','NS']);
 // ===== 본선작업 현황: 선석별 작업현황 · STS별 작업현황만 표시(1분마다 새로고침) =====
 // 회사 홈페이지를 구글 Apps Script(무료)가 대신 읽어 두 표만 JSON으로 넘겨줌 → 앱이 표로 그림
 let vslApi = '';             // Apps Script 웹 앱 주소(UNION이 설정, 클라우드 meta/config에 저장)
