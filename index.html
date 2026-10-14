@@ -1433,7 +1433,7 @@ function autoDispatchShift(){
   const c = scheduledShift(dispatchDate || todayStr(), team);
   if(c) dispatchShift = c==='N' ? 'night' : 'day';
 }
-const DP_WORK_CODES = new Set(['D','N','DN','ND','DS','NS']); // 배차표에서 '근무'로 보는 코드
+const DP_WORK_CODES = new Set(['D','N','DN','ND','DS','NS','SP']); // 배차표에서 '근무'로 보는 코드 (SP 지원패스 = 지원만 빠지고 본근무는 함)
 // 선지원 코드(DS·NS): 그날은 상대 조 배차표 지원란에서만 일하므로, 자기 조 배차표에서는 흐리게·칠하기 막음·순번/인원에서 뺌
 // DN·ND는 그날 자기 조 근무(DN = 주간 후 상대 조 야간 연장, ND = 야간 후 다음 날 상대 조 주간 연장)를 하므로 자기 조 배차표에서 막지 않음 — 선지원 DS·NS만 막음
 const DP_SUPX_CODES = new Set(['DS','NS']);
@@ -3807,7 +3807,10 @@ function pageInput(){
     const base = attStore[date+'_'+e.id] || {};
     const dr = inputDraft[date+'|'+e.id] || {};
     const dc0 = gridCode(base, date, String(e.name||'').trim()) || scheduledShift(date, e.team||'');
-    const off0 = !!dc0 && !DP_WORK_CODES.has(dc0);   // 근무 코드(D·N·DN·ND·DS·NS)가 아닌 사람(FC·AV 등)은 입력 막음
+    // 근무 코드(D·N·DN·ND·DS·NS·SP)가 아닌 사람(FC·AV 등)은 입력 막음
+    //   단, 전날 ND(야간 끝나고 오늘 주간 연장 지원)인 사람은 오늘 코드가 SC 등이어도 지원근무를 입력해야 하니 열어 둠
+    const prevD = addDays(date, -1), prevNd = gridCode(attStore[prevD+'_'+e.id] || {}, prevD, String(e.name||'').trim())==='ND';
+    const off0 = !!dc0 && !DP_WORK_CODES.has(dc0) && !prevNd;
     const val = f => dr[f]!==undefined ? dr[f] : (IN_TIME.includes(f) ? hmToExcel(base[f]) : (base[f]||''));
     const chk = f => (dr[f]!==undefined ? dr[f] : base[f]) ? 'checked' : '';
     const bad = f => IN_TIME.includes(f) && dr[f]!==undefined && excelToHm(dr[f])===null ? ' bad' : '';
@@ -3815,7 +3818,7 @@ function pageInput(){
     const suwu = ['day','night','full'].reduce((a,sh)=>{ const dd = dispatch[`${date}_${sh}_${e.id}`]; return a + (dd && dd.slots ? Object.values(dd.slots).filter(x=> x && x!=='당직').length*0.5 : 0); }, 0); // 당직은 승무 시간에서 뺌
     const dc = gridCode(base, date, String(e.name||'').trim()) || scheduledShift(date, e.team||'');
     const tot = inputRowTotal(date, e);
-    const off = !!dc && !DP_WORK_CODES.has(dc); // 배차표와 같은 기준: D·N 계열이 아니면 근무자 아님
+    const off = !!dc && !DP_WORK_CODES.has(dc) && !prevNd; // 배차표와 같은 기준: D·N 계열이 아니면 근무자 아님(전날 ND는 지원근무라 회색 아님)
     return `<tr class="${dr && Object.keys(dr).length ? 'inDirty' : ''}${off ? ' inOff' : ''}">
       <td class="namecell inName">${esc(e.name)} ${(()=>{ // 토요일 만근이면 코드 대신 분홍 '만근'(배차표와 같은 기준)
         const mg = !off && !!dc && new Date(date+'T00:00:00').getDay()===6 && recManguen(Object.assign({}, base||{}, {employeeId:e.id, date}), date);
@@ -7766,7 +7769,7 @@ function pageDispatch(){
     return `<tr class="${offDay ? 'dpOff' : ''}${grp ? ' dpGrp' : ''}${lastEmp ? ' dpLast' : ''}">
       <td class="dpI dpI1">${idx+1}</td>
       <td class="dpI dpI2" style="text-align:center;">${esc(e.name)}</td>
-      <td class="dpI dpI3">${supX ? codeBadge(mcode) : mgOn ? `<span class="dpMg" title="토요일 만근(특근)">만근</span>` : mcode ? (DP_WORK_CODES.has(mcode) ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
+      <td class="dpI dpI3">${supX ? codeBadge(mcode) : mgOn ? `<span class="dpMg" title="토요일 만근(특근)">만근</span>` : mcode ? (DP_WORK_CODES.has(mcode) && mcode!=='SP' ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
       <td class="dpI dpI4 dpRk g-${dayIsHol?'yel':'pur'}">${otRankCell(e.id)}</td>
       <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(x=> x && x!=='당직').length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
       ${cells}
