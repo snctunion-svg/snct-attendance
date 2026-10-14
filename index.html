@@ -1092,7 +1092,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 
 <script>
 /* ========================= 상태 ========================= */
-let VIEW = 'input';
+let VIEW = 'dispatch'; // 처음 열면 배차표
 let db = null, userCap = null, dbReady = false;
 let employees = [];        // [{id,name,part,order,active}]
 let holidays = {};         // dateStr -> name
@@ -3382,16 +3382,19 @@ function ensureForView(){
   else if(VIEW==='mail'){ const mr = mailRangeNow(); ensureAttendanceRange(mr.start, mr.end); }
   else if(VIEW==='eqpay') eqPayEnsure();
   else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
-  else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }
+  else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); ensureAttendanceRange(addDays(d, -1), addDays(d, -1)); subscribeDispatchDay(d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }   // 처음 화면이 배차표라 여기서 그 날 배차를 받음(전날 ND 지원자 확인용으로 전날 근태도)
 }
 // 기존 호출부 호환용
 function subscribeAttendanceMonth(y,m){ const d = dstr(y,m,1); ensureAttendanceRange(d, d); }
 function subscribeCodeStatsRange(start,end){ ensureAttendanceRange(start, end); }
 function subscribeOtMatrixRange(start,end){ ensureAttendanceRange(start, end); }
 
+let dispatchSubDate = null;
 function subscribeDispatchDay(dateStr){
   if(!db) return;
+  if(unsub.dispatch && dispatchSubDate === dateStr) return;   // 이미 그 날을 받고 있으면 그대로
   if(unsub.dispatch) unsub.dispatch();
+  dispatchSubDate = dateStr;
   unsub.dispatch = db.collection('dispatch').where('date','==',dateStr).onSnapshot(snap=>{
     dispatch = {};
     snap.docs.forEach(d=>{ dispatch[d.id]=d.data(); });
@@ -9008,7 +9011,7 @@ document.getElementById('scrim').addEventListener('click', ()=>{
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
 });
-document.querySelector('nav#nav a[data-view="input"]').classList.add('on');
+document.querySelector('nav#nav a[data-view="dispatch"]').classList.add('on');
 updateNavForRole();
 
 /* ========================= 시작 ========================= */
