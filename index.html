@@ -505,7 +505,8 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .otSum thead th.namehead:not(.noStick)+th.namehead:not(.noStick){box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111, 1px 0 0 #111, 4px 0 0 var(--bg) !important;}
 .otSum tbody tr:first-child td.stNo,.otSum tbody tr:first-child td.namecell.stName{border-top:1px solid #111 !important;}
 /* 성명: 가운데 정렬, 글자 수(3·4자)와 상관없이 같은 폭·같은 높이 */
-.otSum td.namecell.noStick,.otSum thead th.namehead.noStick{border-left:calc(var(--sepW,1px)*3) solid #111 !important;} /* OT 보전 | 성명 경계: 굵은 검은 선 */
+.otSum td.namecell.noStick,.otSum thead th.namehead.noStick{border-left-style:hidden !important;box-shadow:inset calc(var(--sepW,1px)*3) 0 0 #111 !important;} /* OT 보전 | 성명 경계: 굵은 검은 선 — 고정 머리글은 테두리가 안 칠해져 빈틈이 생기므로 칸 안쪽에 칠함 */
+.otSum thead th.namehead.noStick{box-shadow:inset calc(var(--sepW,1px)*3) 0 0 #111 !important;} /* 머리글 칸은 위에 붙어 있어(sticky) 테두리가 안 그려짐 → 안쪽 그림자로 같은 굵은 선 */
 .otSum td.namecell{text-align:center !important;white-space:nowrap;padding:4px 6px !important;min-width:64px;vertical-align:middle;}
 .otSum td.payName{text-decoration:none;}
 .otSum td.payName span.pn{text-decoration:underline dotted;text-underline-offset:3px;}
