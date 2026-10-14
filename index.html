@@ -730,11 +730,14 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* PC: 엑셀처럼 근태 집계와 월별 근태를 한 장으로 붙여서(사이 간격 없이, 줄 높이·머리글 높이 같게) */
 .cmbWrap.cmbJoin{gap:0 !important;flex-wrap:nowrap !important;}
 .cmbJoin .cmbLeft{flex:0 0 auto !important;max-width:none !important;border-right:0;border-top-right-radius:0;border-bottom-right-radius:0;padding-right:0 !important;}
-.cmbJoin .cmbRight{flex:1 1 0 !important;min-width:0;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;padding-left:0 !important;}
+.cmbJoin .cmbRight{flex:1 0 auto !important;min-width:auto;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;padding-left:0 !important;}
 .cmbJoin .cmbLeft .gridwrap{border-right:0;border-top-right-radius:0;border-bottom-right-radius:0;}
 .cmbJoin .cmbRight .gridwrap{border-top-left-radius:0;border-bottom-left-radius:0;}
 .cmbJoin .cmbRight .cmbCtrl{padding-left:14px;}
-.cmbJoin .cmbLeft .scrollx{overflow:visible !important;}
+.cmbJoin .cmbLeft .scrollx,.cmbJoin .cmbRight .scrollx{overflow:visible !important;}
+/* 월별 OT현황처럼 스크롤 하나로: 두 표를 한 상자 안에서 같이 옆으로 밀고(아래 스크롤 막대 하나), No·성명은 왼쪽에 고정 */
+.cmbWrap.cmbJoin{overflow-x:auto;overflow-y:hidden;align-items:stretch !important;background:var(--surface);border:1px solid var(--border);border-radius:12px;}
+.cmbJoin > .panel{border:0 !important;border-radius:0 !important;background:transparent;}
 .cmbWrap .panel{margin-bottom:0;padding:14px;}
 .cmbLeft{flex:0 0 auto;max-width:100%;}
 .cmbRight{flex:1 1 360px;min-width:0;}
