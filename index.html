@@ -711,6 +711,13 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
 .cmbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
 /* 휴대폰 세로: 시트 두 개(근태 집계 / 월별 근태) — 단추로 하나씩 */
+.cmbPhTop{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;margin:0 0 8px;}
+.cmbPhTop .phT{font-size:14px;white-space:nowrap;margin-right:1px;}
+.cmbPhTop input[type=date]{min-width:0;flex:1 1 0;max-width:118px;height:30px;padding:2px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);box-sizing:border-box;}
+.cmbPhTop .phNav{padding:4px 9px !important;}
+.cmbPhTop .phYm{font-size:14px;white-space:nowrap;}
+.cmbPhTop .phTeam{margin-left:auto;display:flex;gap:4px;flex:0 0 auto;}
+.cmbPhTop .phTeam .btn.sm{padding:4px 8px;font-size:12px;}
 .cmbTabs{display:none;}
 @media (max-width:700px){
   .cmbTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid var(--btn);border-radius:10px;overflow:hidden;}
@@ -4153,8 +4160,12 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
 }
 // 휴대폰(세로): 근태 집계·월별 근태를 시트 두 개로 나눠서 위 단추로 바꿔 봄
 let cmbPhoneTab = 'stat';
+function cmbPhone(){ return window.innerWidth <= 700 && !landPhone(); }
+// 휴대폰 가로·세로를 바꾸면 근태관리 위쪽 모양이 달라지므로 다시 그림
+window.addEventListener('resize', ()=>{ const p = cmbPhone(); if(window._cmbPh !== undefined && window._cmbPh !== p && VIEW==='combined'){ window._cmbPh = p; render(); } window._cmbPh = p; });
 try{ const v = localStorage.getItem('snct_cmb_tab'); if(v==='stat' || v==='month') cmbPhoneTab = v; }catch(e){}
 function pageCombined(){
+  if(cmbPhone() && combinedTeamFilter!=='1' && combinedTeamFilter!=='2') combinedTeamFilter = dpNowTeam();   // 휴대폰은 '전체' 없이 1조·2조만(표를 만들기 전에 정함)
   // ① 근태 집계: 시작일~종료일 기간 기준
   if(!codeStatsStart || !codeStatsEnd){
     const t = new Date();
@@ -4248,7 +4259,14 @@ function pageCombined(){
   }).join('');
 
   const modal = gridEdit ? renderGridEditModal() : '';
-  const teamBtns = `<div class="row cmbTeamRow" style="margin-bottom:14px;">
+  // 휴대폰(세로): 맨 위 한 줄 = [제목 + 날짜(또는 달) + 1조·2조], 그 아래 [근태 집계|월별 근태] 단추, 그 아래 표
+  const ph = cmbPhone();
+  const teamPh = ['1','2'].map(t=>`<button class="btn ${combinedTeamFilter===t?'':'ghost'} sm" data-act="team-filter" data-team="${t}">${t}조</button>`).join('');
+  const phTop = !ph ? '' : `<div class="cmbPhTop">${cmbPhoneTab==='stat'
+      ? `<b class="phT">근태 집계</b><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}">`
+      : `<b class="phT">월별 근태</b><button class="btn ghost sm phNav" id="cmbPrevMonth">◀</button><b class="phYm">${cy}.${pad2(cm)}</b><button class="btn ghost sm phNav" id="cmbNextMonth">▶</button>`}
+    <span class="phTeam">${teamPh}</span></div>`;
+  const teamBtns = ph ? phTop : `<div class="row cmbTeamRow" style="margin-bottom:14px;">
     <button class="btn ${combinedTeamFilter===''?'':'ghost'} sm" data-act="team-filter" data-team="">전체</button>
     <button class="btn ${combinedTeamFilter==='1'?'':'ghost'} sm" data-act="team-filter" data-team="1">1조</button>
     <button class="btn ${combinedTeamFilter==='2'?'':'ghost'} sm" data-act="team-filter" data-team="2">2조</button>
@@ -4263,7 +4281,7 @@ function pageCombined(){
   </div>
   <div class="cmbWrap cmbShow-${cmbPhoneTab}">
     <div class="panel cmbLeft">
-      <div class="cmbCtrl">
+      ${ph ? '' : `<div class="cmbCtrl">
         <h3>근태 집계 <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(${esc(rangeStart)} ~ ${esc(rangeEnd)})</span></h3>
         ${true ? `
         <div class="row" style="align-items:flex-end;flex-wrap:nowrap;">
@@ -4271,19 +4289,19 @@ function pageCombined(){
           <div class="field" style="min-width:auto;"><label>종료일</label><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></div>
         </div>
         ` : ''}
-      </div>
+      </div>`}
       ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead>${statHead}</thead><tbody>${statRows}</tbody></table></div>`
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
     <div class="panel cmbRight">
-      <div class="cmbCtrl">
+      ${ph ? '' : `<div class="cmbCtrl">
         <h3>월별 근태</h3>
         <div class="row" style="align-items:center;flex-wrap:nowrap;height:58px;">
           <button class="btn ghost sm" id="cmbPrevMonth">◀ 이전달</button>
           <b style="font-size:15px;white-space:nowrap;">${cy}년 ${cm}월</b>
           <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
         </div>
-      </div>
+      </div>`}
       ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
