@@ -708,6 +708,24 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 }
 /* 근태관리: 집계(왼쪽)와 월별 근태코드(오른쪽)를 나란히, 행 높이를 맞춤 */
 .cmbWrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+/* 휴대폰 세로: 시트 두 개(근태 집계 / 월별 근태) — 단추로 하나씩 */
+.cmbTabs{display:none;}
+@media (max-width:700px){
+  .cmbTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid var(--btn);border-radius:10px;overflow:hidden;}
+  .cmbTab{flex:1 1 0;border:0;background:var(--surface);color:var(--btn);font:inherit;font-weight:700;font-size:14px;padding:9px 0;cursor:pointer;}
+  .cmbTab + .cmbTab{border-left:1.5px solid var(--btn);}
+  .cmbTab.on{background:var(--btn);color:#fff;}
+  .cmbWrap.cmbShow-stat .cmbRight{display:none !important;}
+  .cmbWrap.cmbShow-month .cmbLeft{display:none !important;}
+}
+/* PC: 엑셀처럼 근태 집계와 월별 근태를 한 장으로 붙여서(사이 간격 없이, 줄 높이·머리글 높이 같게) */
+.cmbWrap.cmbJoin{gap:0 !important;flex-wrap:nowrap !important;}
+.cmbJoin .cmbLeft{flex:0 0 auto !important;max-width:none !important;border-right:0;border-top-right-radius:0;border-bottom-right-radius:0;padding-right:0 !important;}
+.cmbJoin .cmbRight{flex:1 1 0 !important;min-width:0;border-left:0;border-top-left-radius:0;border-bottom-left-radius:0;padding-left:0 !important;}
+.cmbJoin .cmbLeft .gridwrap{border-right:0;border-top-right-radius:0;border-bottom-right-radius:0;}
+.cmbJoin .cmbRight .gridwrap{border-top-left-radius:0;border-bottom-left-radius:0;}
+.cmbJoin .cmbRight .cmbCtrl{padding-left:14px;}
+.cmbJoin .cmbLeft .scrollx{overflow:visible !important;}
 .cmbWrap .panel{margin-bottom:0;padding:14px;}
 .cmbLeft{flex:0 0 auto;max-width:100%;}
 .cmbRight{flex:1 1 360px;min-width:0;}
@@ -4124,6 +4142,9 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
   const nAllT = cntBy(inAll), nOtT = cntBy(inOt);
   return {perEmp, rankSup, rankGyeHol, rankMCS, rankGyeWk, rankOtHol, rankOtWk, rankOtExt, nAllT, nOtT, teamOf};
 }
+// 휴대폰(세로): 근태 집계·월별 근태를 시트 두 개로 나눠서 위 단추로 바꿔 봄
+let cmbPhoneTab = 'stat';
+try{ const v = localStorage.getItem('snct_cmb_tab'); if(v==='stat' || v==='month') cmbPhoneTab = v; }catch(e){}
 function pageCombined(){
   // ① 근태 집계: 시작일~종료일 기간 기준
   if(!codeStatsStart || !codeStatsEnd){
@@ -4227,7 +4248,11 @@ function pageCombined(){
   return `
   <h2 class="pgttl">근태관리</h2>
   ${teamBtns}
-  <div class="cmbWrap">
+  <div class="cmbTabs">
+    <button class="cmbTab${cmbPhoneTab==='stat'?' on':''}" data-tab="stat">근태 집계</button>
+    <button class="cmbTab${cmbPhoneTab==='month'?' on':''}" data-tab="month">월별 근태</button>
+  </div>
+  <div class="cmbWrap cmbShow-${cmbPhoneTab}">
     <div class="panel cmbLeft">
       <div class="cmbCtrl">
         <h3>근태 집계 <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(${esc(rangeStart)} ~ ${esc(rangeEnd)})</span></h3>
@@ -4633,14 +4658,18 @@ function fitCombined(){
   if(VIEW!=='combined') return;
   const wrap = document.querySelector('.cmbWrap'); if(!wrap) return;
   wrap.style.zoom = '';
+  wrap.classList.remove('cmbJoin');
+  wrap.querySelectorAll('.cmbCtrl').forEach(c=> c.style.height = '');
+  wrap.querySelectorAll('thead tr').forEach(tr=> tr.style.height = '');
   if(landPhone()){ fitCombinedLand(wrap); return; }
+  if(window.innerWidth > 860){ fitCombinedJoin(wrap); return; }
   wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70, ratio:0.85})); // 세로 85%
   wrap.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t));
   // 휴대폰 월별 근태: 처음 열 때 어제·오늘 날짜가 성명 칸 바로 옆에 오도록 옆으로 밀어 둠.
   //  그 뒤에는 손으로 민 위치를 기억해서, 화면이 새로 그려져도(자료 갱신 등) 그 자리 그대로
   if(window.innerWidth <= 700 && !landPhone()){
     const mt = wrap.querySelector('.cmbRight table.ctbl'), box = mt && mt.closest('.scrollx');
-    if(mt && box){
+    if(mt && box && box.offsetParent){   // 월별 근태 시트가 보일 때만(숨겨진 동안 재면 0이 됨)
       const key = (mt.querySelector('thead th.dayHead') ? mt.querySelector('thead th.dayHead').dataset.date || '' : '').slice(0,7);
       const st = window._mgScroll || (window._mgScroll = {key:'', x:null});
       if(st.key !== key || st.x == null){
@@ -4656,6 +4685,46 @@ function fitCombined(){
       box.scrollLeft = st.x;
       if(!box._mgHook){ box._mgHook = 1; box.addEventListener('scroll', ()=>{ st.x = box.scrollLeft; }, {passive:true}); }
     }
+  }
+}
+// PC: 두 표를 한 장처럼 붙임 — 같은 배율(zoom), 같은 머리글 높이, 같은 줄 높이 → 왼쪽·오른쪽 줄이 정확히 이어짐
+function fitCombinedJoin(wrap){
+  const L = wrap.querySelector('.cmbLeft table.ctbl'), Rt = wrap.querySelector('.cmbRight table.ctbl');
+  if(!L || !Rt) return;
+  wrap.classList.add('cmbJoin');
+  [L, Rt].forEach(t=>{ t.style.zoom = ''; t.style.width = ''; t.querySelectorAll('tr').forEach(tr=> tr.style.height = ''); t.style.removeProperty('--sepW'); const bx = t.closest('.scrollx'); if(bx){ bx.classList.remove('mFreeze'); bx.style.maxHeight = ''; bx.style.paddingTop = ''; } });
+  // 위쪽 제목줄(날짜 칸·이전달 단추) 높이를 같게
+  const cs = [...wrap.querySelectorAll('.cmbCtrl')];
+  const ch = Math.max(...cs.map(c=> c.getBoundingClientRect().height)); cs.forEach(c=> c.style.height = ch + 'px');
+  // 머리글: 줄마다 두 표 중 높은 쪽에 맞춤
+  const hL = [...L.tHead.rows], hR = [...Rt.tHead.rows];
+  for(let i = 0; i < Math.min(hL.length, hR.length); i++){ const h = Math.max(hL[i].getBoundingClientRect().height, hR[i].getBoundingClientRect().height); hL[i].style.height = h + 'px'; hR[i].style.height = h + 'px'; }
+  // 폭: 두 표를 원래 폭으로 붙였을 때 화면보다 넓으면 둘 다 같은 배율로 줄임, 남으면 오른쪽 표를 늘림
+  const lp = wrap.querySelector('.cmbLeft'), rp = wrap.querySelector('.cmbRight');
+  const pad = el=>{ const c = getComputedStyle(el); return parseFloat(c.paddingLeft) + parseFloat(c.paddingRight) + parseFloat(c.borderLeftWidth) + parseFloat(c.borderRightWidth); };
+  const lbx = L.closest('.scrollx'), rbx = Rt.closest('.scrollx');
+  const bw = el=>{ const c = getComputedStyle(el); return parseFloat(c.borderLeftWidth) + parseFloat(c.borderRightWidth); };
+  const need = L.scrollWidth + Rt.scrollWidth + pad(lp) + pad(rp) + bw(lbx) + bw(rbx) + 4;
+  let z = Math.min(1, wrap.clientWidth / need);
+  if(z < 1){ z = Math.max(PC_FIT_FLOOR, Math.floor(z*1000)/1000 - 0.005); L.style.zoom = z; Rt.style.zoom = z; }   // PC 최소 75%(applyUiZoom과 같은 기준)
+  else Rt.style.width = '100%';
+  // 높이: 화면 아래 85%까지 줄 높이를 같게 늘림(20~70px)
+  const rL = [...L.tBodies[0].rows], rR = [...Rt.tBodies[0].rows], n = Math.min(rL.length, rR.length);
+  if(n){
+    const top = L.getBoundingClientRect().top;
+    const availH = (window.innerHeight - Math.max(0, top) - 30) * 0.85;
+    const headH = L.tHead.getBoundingClientRect().height;
+    const rowH = Math.max(20, Math.min(70, (availH - headH) / n / z));
+    for(let i = 0; i < n; i++){ rL[i].style.height = rowH + 'px'; rR[i].style.height = rowH + 'px'; }
+    for(let i = 0; i < n; i++){ const h = Math.max(rL[i].getBoundingClientRect().height, rR[i].getBoundingClientRect().height) / z; rL[i].style.height = h + 'px'; rR[i].style.height = h + 'px'; }
+    const nowH = L.getBoundingClientRect().height;
+    if(availH >= 120 && nowH > availH + 2){ z = Math.max(PC_FIT_FLOOR, z * availH / nowH); L.style.zoom = z; Rt.style.zoom = z; }
+  }
+  if(z < 1){ L.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); Rt.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); }
+  // 테두리 굵기 차이로 생기는 1~2px 어긋남: 첫 줄 위치를 재서 낮은 쪽에 맞춰 머리글 첫 줄을 늘림
+  if(n){
+    const d = rR[0].getBoundingClientRect().top - rL[0].getBoundingClientRect().top;
+    if(Math.abs(d) >= 0.3){ const row = (d > 0 ? hL : hR)[0]; if(row) row.style.height = (row.getBoundingClientRect().height + Math.abs(d)) / z + 'px'; }
   }
 }
 // 휴대폰 가로: 표는 원래 크기(줄이지 않음). 두 표의 첫 줄이 화면에서 같은 높이에 오도록 위쪽 여백만 맞춤 → 좌우 줄이 나란히
@@ -8083,6 +8152,7 @@ function afterRender(){
   const el = document.getElementById('content');
 
   el.querySelectorAll('[data-act="goto-grid"]').forEach(x=>x.onclick=(e)=>{ e.preventDefault(); setView('grid'); });
+  el.querySelectorAll('.cmbTab').forEach(x=>x.onclick=()=>{ cmbPhoneTab = x.dataset.tab; try{ localStorage.setItem('snct_cmb_tab', cmbPhoneTab); }catch(e){} render(); });
   el.querySelectorAll('[data-act="team-filter"]').forEach(x=>x.onclick=()=>{ combinedTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_cmb', combinedTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="teamot-filter"]').forEach(x=>x.onclick=()=>{ teamOtFilter = x.dataset.team; render(); });
 
