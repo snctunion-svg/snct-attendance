@@ -877,6 +877,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .inCtl #inDate{width:128px;padding:5px 6px;font-size:13px;}
   .inCtl .btn.sm{padding:5px 8px;font-size:12px;}
   .inCtl > b{font-size:13px !important;margin-left:2px !important;}
+  #content table.gtbl.mFit tbody td{height:var(--mRowH) !important;font-size:var(--mFs) !important;line-height:1 !important;padding-top:0 !important;padding-bottom:0 !important;}
+  #content table.gtbl.mFit tbody td .mini,#content table.gtbl.mFit tbody td .rkPlain,#content table.gtbl.mFit tbody td a{font-size:var(--mFs) !important;line-height:1 !important;}
+  #content table.gtbl.mFit tbody tr{height:var(--mRowH) !important;}
   .inTbl.inFit tbody td{height:var(--inRowH) !important;font-size:var(--inFs);line-height:1;}
   .inTbl.inFit tbody td.inName{padding:0 5px !important;}
   .inTbl.inFit .inCell{height:calc(var(--inRowH) - 2px);font-size:var(--inFs);}
@@ -4451,6 +4454,7 @@ function mFreeze(t){
   if(!t) return;
   const wrap = t.closest('.scrollx'); if(!wrap) return;
   const ths = t.querySelectorAll('thead th');
+  t.classList.remove('mFit'); t.style.removeProperty('--mRowH'); t.style.removeProperty('--mFs');
   if(window.innerWidth > 700 || (VIEW==='combined' && landPhone())){ wrap.classList.remove('mFreeze'); wrap.style.maxHeight = ''; ths.forEach(th=> th.style.top = ''); return; }
   wrap.classList.add('mFreeze');
   // 표 상자 아래 끝이 휴대폰 화면 아래에 딱 맞게(아이폰 사파리 아래 도구막대 몫 제외) — 표 안에서 위아래·옆으로 밀어서 봄
@@ -4465,7 +4469,15 @@ function mFreeze(t){
   // 줄이 적어서 표가 상자보다 짧으면(예: 1조만 볼 때) 줄 높이를 늘려 화면 아래까지 꽉 채움(최대 60px)
   const rows = t.tBodies[0] ? Array.from(t.tBodies[0].rows) : [];
   rows.forEach(tr=> tr.style.height = '');
-  if(topIn < visH * 0.6 && rows.length){
+  // 휴대폰 근태관리·월별 OT현황: 출퇴근 입력과 같은 방식으로 줄 높이·글씨를 화면에 맞춤(마지막 사람까지 한 화면에)
+  //   줄 높이 = (표 상자 높이 - 머리글) ÷ 사람 수 (16~40px), 글씨 = 줄 높이 × 0.46 (10~14px) — 네 화면이 같은 기준
+  if((VIEW==='ot' || VIEW==='combined') && topIn < visH * 0.6 && rows.length){
+    const headH = t.tHead ? t.tHead.getBoundingClientRect().height : 0;
+    const per = Math.max(16, Math.min(40, Math.floor((boxH - 4 - headH) / rows.length)));
+    t.style.setProperty('--mRowH', per + 'px');
+    t.style.setProperty('--mFs', Math.max(10, Math.min(14, Math.round(per * 0.46 * 10) / 10)) + 'px');
+    t.classList.add('mFit');
+  } else if(topIn < visH * 0.6 && rows.length){
     const headH = t.tHead ? t.tHead.getBoundingClientRect().height : 0;
     const need = t.getBoundingClientRect().height;
     if(need < boxH - 4){
