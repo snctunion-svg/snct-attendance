@@ -505,6 +505,7 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .otSum thead th.namehead:not(.noStick)+th.namehead:not(.noStick){box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111, 1px 0 0 #111, 4px 0 0 var(--bg) !important;}
 .otSum tbody tr:first-child td.stNo,.otSum tbody tr:first-child td.namecell.stName{border-top:1px solid #111 !important;}
 /* 성명: 가운데 정렬, 글자 수(3·4자)와 상관없이 같은 폭·같은 높이 */
+.otSum td.namecell.noStick,.otSum thead th.namehead.noStick{border-left:calc(var(--sepW,1px)*3) solid #111 !important;} /* OT 보전 | 성명 경계: 굵은 검은 선 */
 .otSum td.namecell{text-align:center !important;white-space:nowrap;padding:4px 6px !important;min-width:64px;vertical-align:middle;}
 .otSum td.payName{text-decoration:none;}
 .otSum td.payName span.pn{text-decoration:underline dotted;text-underline-offset:3px;}
@@ -2497,7 +2498,8 @@ function computeDaily(rec, dateStr){
   if(!wc){
     // 월별 근태에서 코드를 지우면 OFF로 남는데, 출퇴근 시간을 실제로 입력한 날은 근무한 것으로 계산.
     // (휴가 등 근태코드가 있는 OFF 날만 계산하지 않음)
-    if(rec.attManual && rec.workCode==='OFF' && rec.statusCode) return zero;
+    // SP(지원패스)·DS 등 근무 코드가 근태코드로 들어간 날은 본근무를 했으니 계산함
+    if(rec.attManual && rec.workCode==='OFF' && rec.statusCode && !DP_WORK_CODES.has(rec.statusCode)) return zero;
     wc = sched || (toDec(rec.checkIn) <= 14 ? 'D' : 'N');
   }
 
