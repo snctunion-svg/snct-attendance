@@ -128,11 +128,8 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
 .inCloseBtn.on{background:#111 !important;border-color:#111 !important;color:#fff !important;}
 #dpTable td.dpWhoCell{cursor:pointer;}
-#adpTable td.dpWhoCell{cursor:pointer;}
 #dpTable td.dpWhoCell:hover{text-decoration:underline;}
-#adpTable td.dpWhoCell:hover{text-decoration:underline;}
 #dpTable td.dpWhoCell input:disabled{pointer-events:none;}
-#adpTable td.dpWhoCell input:disabled{pointer-events:none;}
 .inLeadBtns{display:inline-flex;gap:8px;flex-wrap:nowrap;align-items:center;}
 .inLockMsg{font-size:13px;font-weight:700;color:#b91c1c;margin-left:6px;}
 .inTbl.inLocked td{background:#f8fafc;}
@@ -771,27 +768,16 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .dpScrollBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px;}
 .dpWrap{overflow:auto;max-height:calc(100vh - 150px);border:2px solid var(--text);border-radius:0 0 10px 10px;background:var(--surface);-webkit-overflow-scrolling:touch;}
 #dpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
-#adpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
 #dpTable th,#dpTable td{height:36px;border-right:1px dotted #111;border-bottom:1px dotted #111;text-align:center;padding:0 4px;white-space:nowrap;}
-#adpTable th,#adpTable td{height:36px;border-right:1px dotted #111;border-bottom:1px dotted #111;text-align:center;padding:0 4px;white-space:nowrap;}
 #dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
-#adpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
 #dpTable td.dpLockCell{min-width:42px;width:42px;background:repeating-linear-gradient(45deg,transparent 0 6px,rgba(0,0,0,.04) 6px 8px);cursor:not-allowed;}
-#adpTable td.dpLockCell{min-width:42px;width:42px;background:repeating-linear-gradient(45deg,transparent 0 6px,rgba(0,0,0,.04) 6px 8px);cursor:not-allowed;}
 #dpTable td.dpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;} /* manipulation = 스크롤+두 손가락 확대·축소 허용 */
-#adpTable td.adpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;} /* manipulation = 스크롤+두 손가락 확대·축소 허용 */
 #dpTable th.dpSlotH{min-width:42px;width:42px;}
-#adpTable th.dpSlotH{min-width:42px;width:42px;}
 #dpTable th.dpHH{text-align:left;padding:0 0 0 1px !important;font-size:15px;font-weight:800;letter-spacing:-.3px;}
-#adpTable th.dpHH{text-align:left;padding:0 0 0 1px !important;font-size:15px;font-weight:800;letter-spacing:-.3px;}
 #dpTable th.dpMM{text-align:left;padding:0 0 0 1px !important;font-size:10px;font-weight:600;}
-#adpTable th.dpMM{text-align:left;padding:0 0 0 1px !important;font-size:10px;font-weight:600;}
 #dpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;}
-#adpTable td.dpMeal{min-width:42px;width:42px;padding:0 !important;}
 #dpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:16px;text-align:center;padding:0;box-sizing:border-box;} /* 16px 미만이면 아이폰이 입력할 때 화면을 자동 확대함 */
-#adpTable .dpInline{width:100%;height:30px;border:0;outline:2px solid #1d4ed8;background:#fff;color:#111;font-weight:800;font-size:16px;text-align:center;padding:0;box-sizing:border-box;} /* 16px 미만이면 아이폰이 입력할 때 화면을 자동 확대함 */
 #dpTable tr.dpOff td:not(.dpPainted){background:#e5e7eb !important;color:#6b7280;}
-#adpTable tr.dpOff td:not(.dpPainted){background:#e5e7eb !important;color:#6b7280;}
 /* 출퇴근 입력: 근무자가 아닌 사람(휴무·휴가 등) 줄은 배차표처럼 흐린 회색 */
 .inTbl tr.inOff td{background:#e5e7eb !important;color:#6b7280;}
 .inTbl tr.inOff input.inCell{color:#6b7280;}
@@ -824,85 +810,46 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .dpBox{width:fit-content;max-width:100%;}
 #splanTable th,#splanTable td{border:1px solid #111 !important;}
 #dpTable tr.dpOff .dpNote{color:#9ca3af;}
-#adpTable tr.dpOff .dpNote{color:#9ca3af;}
 #dpTable tr.dpGrp > td{border-bottom:1px solid #111 !important;}
-#adpTable tr.dpGrp > td{border-bottom:1px solid #111 !important;}
 #dpTable tr.dpLast > td{border-bottom:1px solid #111 !important;} /* 조원(No·성명) 끝나는 곳: 지원 줄과 구분 */
-#adpTable tr.dpLast > td{border-bottom:1px solid #111 !important;} /* 조원(No·성명) 끝나는 곳: 지원 줄과 구분 */
 #dpTable td.dpRk{background:var(--g-soft) !important;}
-#adpTable td.dpRk{background:var(--g-soft) !important;}
 #dpTable td.dpRk .rkPlain{color:#111;font-weight:800;font-size:12px;}
-#adpTable td.dpRk .rkPlain{color:#111;font-weight:800;font-size:12px;}
 #dpTable tr.dpOff td.dpRk{background:#e5e7eb !important;}
-#adpTable tr.dpOff td.dpRk{background:#e5e7eb !important;}
 #dpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
-#adpTable .dpTxt{font-size:10px;font-weight:800;line-height:1.1;display:block;overflow:hidden;white-space:nowrap;}
 #dpTable th.dpMealH{border-top:2px solid #E03131 !important;}
-#adpTable th.dpMealH{border-top:2px solid #E03131 !important;}
 #dpTable td.dpMealF{border-bottom:2px solid #E03131 !important;}
-#adpTable td.dpMealF{border-bottom:2px solid #E03131 !important;}
 #dpTable .mL{border-left:2px solid #E03131 !important;}
-#adpTable .mL{border-left:2px solid #E03131 !important;}
 #dpTable .mR{border-right:2px solid #E03131 !important;}
-#adpTable .mR{border-right:2px solid #E03131 !important;}
 #dpTable .dpNote{width:100%;height:100%;min-height:34px;border:0;background:transparent;color:#E03131;font-weight:800;font-size:12px;text-align:center;padding:0 2px;font-family:inherit;}
-#adpTable .dpNote{width:100%;height:100%;min-height:34px;border:0;background:transparent;color:#E03131;font-weight:800;font-size:12px;text-align:center;padding:0 2px;font-family:inherit;}
 #dpTable .dpNote:focus{outline:2px solid #E03131;outline-offset:-2px;background:#fff5f5;}
-#adpTable .dpNote:focus{outline:2px solid #E03131;outline-offset:-2px;background:#fff5f5;}
 #dpTable .dpNote:disabled{color:#E03131;opacity:1;-webkit-text-fill-color:#E03131;}
-#adpTable .dpNote:disabled{color:#E03131;opacity:1;-webkit-text-fill-color:#E03131;}
 #dpTable .dpI{position:sticky;background:var(--surface);z-index:2;}
-#adpTable .dpI{position:sticky;background:var(--surface);z-index:2;}
 #dpTable thead .dpI{z-index:4;background:var(--bg);}
-#adpTable thead .dpI{z-index:4;background:var(--bg);}
 #dpTable .dpI1{left:0;min-width:40px;width:40px;}
-#adpTable .dpI1{left:0;min-width:40px;width:40px;}
 #dpTable .dpI2{left:40px;min-width:88px;width:88px;font-weight:700;text-align:center !important;white-space:nowrap;}
-#adpTable .dpI2{left:40px;min-width:88px;width:88px;font-weight:700;text-align:center !important;white-space:nowrap;}
 #dpTable .dpI2 input{text-align:center;}
-#adpTable .dpI2 input{text-align:center;}
 #dpTable .dpI3{left:128px;min-width:48px;width:48px;font-weight:700;}
-#adpTable .dpI3{left:128px;min-width:48px;width:48px;font-weight:700;}
 #dpTable .dpI4{left:176px;min-width:50px;width:50px;}
-#adpTable .dpI4{left:176px;min-width:50px;width:50px;}
 #dpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:1px solid #111;}
-#adpTable .dpI5{left:226px;min-width:46px;width:46px;border-right:1px solid #111;}
 #dpTable td.dpI1[colspan]{min-width:272px;border-right:1px solid #111;}
-#adpTable td.dpI1[colspan]{min-width:272px;border-right:1px solid #111;}
 @media (min-width:701px){
   /* PC: 배차표를 작게 — 행·열이 한 화면에 들어오도록 칸 크기·글씨를 줄임 */
   #dpTable{font-size:11px;}
-  #adpTable{font-size:11px;}
   #dpTable th,#dpTable td{height:24px;padding:0 2px;}
-  #adpTable th,#adpTable td{height:24px;padding:0 2px;}
   #dpTable td.dpCell,#dpTable td.dpLockCell,#dpTable th.dpSlotH,#dpTable td.dpMeal{min-width:37px;width:37px;}
-  #adpTable td.adpCell,#adpTable td.dpLockCell,#adpTable th.dpSlotH,#adpTable td.dpMeal{min-width:37px;width:37px;}
   #dpTable th.dpHH{font-size:14px;}
-  #adpTable th.dpHH{font-size:14px;}
   #dpTable th.dpMM{font-size:10px;}
-  #adpTable th.dpMM{font-size:10px;}
   #dpTable .dpTxt{font-size:9px;}
-  #adpTable .dpTxt{font-size:9px;}
   #dpTable .dpInline{height:22px;font-size:12px;}
-  #adpTable .dpInline{height:22px;font-size:12px;}
   #dpTable .dpNote{min-height:22px;font-size:11px;}
-  #adpTable .dpNote{min-height:22px;font-size:11px;}
   #dpTable .dpI1{min-width:30px;width:30px;}
-  #adpTable .dpI1{min-width:30px;width:30px;}
   #dpTable .dpI2{left:30px;min-width:70px;width:70px;}
-  #adpTable .dpI2{left:30px;min-width:70px;width:70px;}
   #dpTable .dpI2 input{width:62px !important;font-size:11px;padding:2px 4px !important;}
-  #adpTable .dpI2 input{width:62px !important;font-size:11px;padding:2px 4px !important;}
   #dpTable .dpI3{left:100px;min-width:40px;width:40px;}
-  #adpTable .dpI3{left:100px;min-width:40px;width:40px;}
   #dpTable .dpI4{left:140px;min-width:42px;width:42px;}
-  #adpTable .dpI4{left:140px;min-width:42px;width:42px;}
   #dpTable .dpI5{left:182px;min-width:38px;width:38px;}
-  #adpTable .dpI5{left:182px;min-width:38px;width:38px;}
   #dpTable td.dpI1[colspan]{min-width:220px;}
-  #adpTable td.dpI1[colspan]{min-width:220px;}
   #dpTable .badge,#dpTable .rk{transform:scale(.85);}
-  #adpTable .badge,#adpTable .rk{transform:scale(.85);}
 }
 @media (max-width:700px){
   /* 폰 배차표: 수정·초반·후반·당직·정비·기타 버튼을 한 줄로 */
@@ -915,29 +862,18 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   /* 폰: 줄 높이를 낮춰 조원이 한 화면에 더 많이 들어오게 */
   .dpBox > div:first-child{padding:5px 10px !important;font-size:13px !important;}
   #dpTable{font-size:12px;}
-  #adpTable{font-size:12px;}
   #dpTable th,#dpTable td{height:28px;}
-  #adpTable th,#adpTable td{height:28px;}
   #dpTable .badge{padding:1px 5px;}
-  #adpTable .badge{padding:1px 5px;}
   /* 폰: No·성명·근태·순번·승무까지 고정(좁게) → 옆으로 밀어도 그대로 */
   #dpTable .dpI1{min-width:26px;width:26px;padding:0 1px;}
-  #adpTable .dpI1{min-width:26px;width:26px;padding:0 1px;}
   #dpTable .dpI2{left:26px;min-width:58px;width:58px;padding:0 2px;}
-  #adpTable .dpI2{left:26px;min-width:58px;width:58px;padding:0 2px;}
   #dpTable .dpI2 input{width:52px !important;}
-  #adpTable .dpI2 input{width:52px !important;}
   #dpTable .dpI3{left:84px;min-width:36px;width:36px;padding:0 1px;}
-  #adpTable .dpI3{left:84px;min-width:36px;width:36px;padding:0 1px;}
   #dpTable .dpI4{left:120px;min-width:34px;width:34px;padding:0 1px;}
-  #adpTable .dpI4{left:120px;min-width:34px;width:34px;padding:0 1px;}
   #dpTable .dpI5{left:154px;min-width:34px;width:34px;padding:0 1px;border-right:1px solid #111;}
-  #adpTable .dpI5{left:154px;min-width:34px;width:34px;padding:0 1px;border-right:1px solid #111;}
   #dpTable td.dpI1[colspan]{min-width:188px;}
-  #adpTable td.dpI1[colspan]{min-width:188px;}
   .dpScrollBar .hint{display:none;}
   #dpTable td.dpCell,#dpTable td.dpLockCell,#dpTable th.dpSlotH{min-width:38px;width:38px;}
-  #adpTable td.adpCell,#adpTable td.dpLockCell,#adpTable th.dpSlotH{min-width:38px;width:38px;}
 }
 
 @media (max-width:700px){
@@ -1023,7 +959,6 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 @media print{ .svSignIn::placeholder,.svBossIn::placeholder{color:transparent !important;} .svBossIn{border-bottom:0 !important;} }
 /* 배차표·출퇴근 입력(조장 근태관리 포함): 칸 선은 검은 점선, 머리글 아래는 검은 실선 */
 #dpTable thead th{border-bottom:1px solid #111 !important;}
-#adpTable thead th{border-bottom:1px solid #111 !important;}
 .inTbl th,.inTbl td{border:1px dotted #111 !important;}
 .inTbl thead th{border-bottom-style:hidden !important;box-shadow:inset 0 -1px 0 #111;} /* 머리글 아래 선: 겹쳐 두꺼워지지 않게 한 줄(1px)만 */
 .inTbl thead th.namehead{box-shadow:inset 0 -1px 0 #111, 2px 0 0 var(--bg) !important;} /* 머리글이 위에 고정돼도 선이 보이게 */
@@ -1040,10 +975,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 }
 /* 배차표 근태 칸: 토요일 만근 표시(분홍 글씨) */
 #dpTable .dpMg{color:#db2777;font-weight:800;font-size:12px;white-space:nowrap;}
-#adpTable .dpMg{color:#db2777;font-weight:800;font-size:12px;white-space:nowrap;}
 .inTbl .inMg{margin-left:4px;color:#db2777;font-weight:800;font-size:12.5px;white-space:nowrap;}
 @media (max-width:700px){ #dpTable .dpMg{font-size:11px;} }
-@media (max-width:700px){ #adpTable .dpMg{font-size:11px;} }
 /* 장비 급여 관리 */
 .fcaRep{border-collapse:collapse;font-size:13px;min-width:640px;}
 .fcaRep td{border:1px solid #e2e8f0;padding:5px 8px;vertical-align:top;}
@@ -1126,83 +1059,6 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .scrim.show{display:block;}
   main#content{padding:16px 14px 50px;}
 }
-/* ===== 자동배차 ===== */
-.adpBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;}
-.adpBar input[type=date]{border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--bg);color:var(--text);font:inherit;min-width:0;}
-.adpSp{width:6px;}
-.adpDate{background:#fce7f3;color:#9d174d;font-weight:800;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;border:1px solid #fbcfe8;border-bottom:0;}
-.adpMan{color:#b45309;font-weight:700;font-size:11px;}
-.adpSum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px;}
-.adpSum>div{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 8px;text-align:center;}
-.adpSum span{display:block;font-size:11px;color:var(--text-muted);}
-.adpSum b{font-size:16px;}
-.adpSum .bad b{color:#b91c1c;}
-.adpWarn{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:10px;}
-.adpPal{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;padding:12px;}
-.adpPalBtn{border-radius:10px;padding:7px 14px;font-weight:700;font-size:13px;cursor:pointer;}
-.adpPalBtn.on{box-shadow:0 0 0 2px #fff inset;transform:translateY(-1px);}
-.adpPal #adpResetDay{margin-left:auto;}
-#adpTable td.adpCell{min-width:42px;width:42px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;}
-#adpTable td.adpWhoCell{cursor:pointer;}
-#adpTable td.adpWhoCell:hover{text-decoration:underline;}
-.adpRes{display:block;font-size:9.5px;font-weight:800;line-height:1;margin-top:1px;}
-.adpRes-leave{color:#6b7280;} .adpRes-duty{color:#4b5563;} .adpRes-excl{color:#9ca3af;} .adpRes-wait{color:#b45309;}
-.adpResT{font-weight:700;white-space:nowrap;}
-.adpResT.adpRes-leave,.adpResT.adpRes-duty{display:inline-block;padding:1px 7px;border-radius:9px;background:#e5e7eb;}
-.adpResT.adpRes-duty{background:#8C8C8C;color:#fff;}
-.adpTier{display:inline-block;padding:1px 6px;border-radius:9px;font-size:10.5px;font-weight:700;background:var(--bg);border:1px solid var(--border);}
-.adpTier1{background:#ccfbf1;border-color:#99f6e4;color:#0f766e;}
-.adpTier2,.adpTier3{background:#ede9fe;border-color:#ddd6fe;color:#5b21b6;}
-.adpTier4{background:#fef3c7;border-color:#fde68a;color:#92400e;}
-.adpTier9{background:#dbeafe;border-color:#bfdbfe;color:#1e40af;}
-.adpLack{color:#b91c1c;font-weight:800;}
-.adpOff{font-size:11.5px;color:var(--text-muted);margin:8px 0 14px;}
-.adpP{padding:12px;margin-top:0;}
-.adpTtl{font-weight:800;font-size:14px;margin-bottom:8px;}
-.adpTtl small{display:block;font-weight:400;font-size:11px;color:var(--text-muted);margin-top:2px;line-height:1.45;}
-.adpTbl{width:100%;border-collapse:collapse;font-size:12.5px;}
-.adpTbl th,.adpTbl td{border:1px solid var(--border);padding:5px 6px;text-align:center;white-space:nowrap;}
-.adpTbl td.l{text-align:left;white-space:normal;min-width:90px;}
-.adpCr,.adpNmC{font-weight:800;}
-tr.adpGX td{opacity:.55;}
-.adpTbl select{border:1px solid var(--border);border-radius:6px;padding:3px 4px;background:var(--bg);color:var(--text);font-size:12px;max-width:150px;}
-.adpCwEd{white-space:nowrap;}
-.adpCwEd input{width:52px;border:1px solid var(--border);border-radius:6px;padding:4px;background:var(--bg);color:var(--text);font-size:13px;text-align:center;}
-.adpCwEd span{margin:0 3px;}
-.adpVTbl input{width:64px;border:1px solid var(--border);border-radius:6px;padding:5px;background:var(--bg);color:var(--text);font-size:13px;}
-.adpVTbl td:first-child input{width:120px;}
-.adpVTbl td:nth-child(7) input{width:140px;}
-.adpChk{font-size:12px;white-space:nowrap;cursor:pointer;margin-left:6px;}
-.adpChk input{margin:0 2px 0 0;vertical-align:-2px;}
-.adpBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-.adpCfgHd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-.adpCfgBody{margin-top:10px;}
-.adpFld{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
-.adpFld span{font-size:12px;font-weight:700;}
-.adpFld input[type=text]{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--text);font:inherit;font-size:14px;width:100%;box-sizing:border-box;}
-.adpFld2{flex-direction:row;gap:10px;}
-.adpFld2 label{flex:1;display:flex;flex-direction:column;gap:4px;}
-.adpChips{display:flex;flex-wrap:wrap;gap:6px;}
-.adpChip{min-width:40px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-weight:800;cursor:pointer;}
-.adpChip.on{background:var(--btn);border-color:var(--btn);color:#fff;}
-.adpHint{font-size:11.5px;color:var(--text-muted);margin:6px 0 0;}
-.adpScrim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:420;display:flex;align-items:center;justify-content:center;padding:16px;}
-.adpPop{background:var(--surface);color:var(--text);border-radius:12px;max-width:380px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,.25);overflow:hidden;}
-.adpPopHd{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#fce7f3;color:#9d174d;flex-wrap:wrap;}
-.adpPopHd b{font-size:16px;} .adpPopHd span{font-size:12px;flex:1;}
-.adpPopBody{padding:12px 14px;}
-.adpX{border:0;background:transparent;color:#9d174d;font-size:18px;font-weight:800;cursor:pointer;padding:2px 6px;margin-left:auto;}
-.adpPopNow{font-size:13px;margin-bottom:10px;}
-.adpPopRow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
-.adpPopRow select{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);color:var(--text);font-size:14px;}
-@media (max-width:520px){
-  .adpSum{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .adpDate{font-size:13px;padding:7px 10px;}
-  .adpTbl{font-size:12px;}
-  .adpTbl th,.adpTbl td{padding:4px 4px;}
-  .adpPalBtn{padding:6px 10px;font-size:12px;}
-  #adpTable td.adpCell{min-width:37px;width:37px;}
-}
 </style>
 </head>
 <body>
@@ -1224,7 +1080,6 @@ tr.adpGX td{opacity:.55;}
     <a data-view="ot"><span class="ic">🧮</span>월별 OT현황</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
     <div class="navttl" data-role-section="leader" style="margin-top:10px;">조장관리</div>
-    <a data-view="autodp"><span class="ic">🏗️</span>자동배차</a>
     <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
     <a data-view="safety"><span class="ic">🦺</span>관리감독자</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
@@ -1403,11 +1258,11 @@ const SUN_NIGHT_SLOTS_FN = ()=> ['18:00','18:30'].concat(NIGHT_SLOTS.slice(NIGHT
 const NIGHT_SLOTS = ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00','23:30','24:00','00:30','01:00','01:30','02:00','02:30','03:00','03:30','04:00','04:30','05:00','05:30','06:00','06:30','07:00','07:30'];
 const DISPATCH_CATS = [
   {key:'수정', bg:'#FFFFFF', fg:'#333333', border:'#c7cad1'},
-  {key:'초반', bg:'#8CE24C', fg:'#1a3d00', border:'#8CE24C'},
-  {key:'후반', bg:'#FFA654', fg:'#5c2d00', border:'#FFA654'},
-  {key:'당직', bg:'#8C8C8C', fg:'#ffffff', border:'#8C8C8C'},
-  {key:'정비', bg:'#F3B3F3', fg:'#5c005c', border:'#F3B3F3'},
-  {key:'기타', bg:'#7A2FA8', fg:'#ffffff', border:'#7A2FA8'}
+  {key:'초반', label:'근무', bg:'#8CE24C', fg:'#1a3d00', border:'#8CE24C'},   // 이름만 '근무'(저장 값은 예전 그대로 '초반' — 이미 칠한 칸 유지)
+  {key:'후반', hidden:true, bg:'#FFA654', fg:'#5c2d00', border:'#FFA654'},   // 버튼은 없앰(예전에 칠한 칸 표시용)
+  {key:'당직', bg:'#F3B3F3', fg:'#5c005c', border:'#F3B3F3'},
+  {key:'정비', bg:'#8C8C8C', fg:'#ffffff', border:'#8C8C8C'},
+  {key:'기타', hidden:true, bg:'#7A2FA8', fg:'#ffffff', border:'#7A2FA8'}   // 버튼은 없앰(예전에 칠한 칸 표시용)
 ];
 // 배차표의 조출·중식·석출·야식 시간 칸(빨간 시각: 07·12·18·24시) — 칠하기 대신 한글·숫자를 직접 입력
 // 월별 표 주 단위 색 구분(월~일 한 주씩 연한 회색 / 조금 더 진한 회색 번갈아)
@@ -1449,7 +1304,7 @@ function renderDpWho(){
   const part = dispatchShift==='full' ? '일요일(주·야간)' : dispatchShift==='night' ? '야간' : '주간';
   const body = rows.length ? rows.map(r=>{ const c = dispatchCat(r.cat);
       return `<tr><td style="white-space:nowrap;font-weight:700;">${dpHM(r.start)} ~ ${dpHM(r.end)}</td>
-        <td>${c ? `<span style="display:inline-block;background:${c.bg};color:${c.fg};border:1px solid ${c.border};border-radius:6px;padding:2px 8px;font-weight:700;">${esc(r.cat)}</span>` : ''}${r.note ? ` <span style="font-weight:600;">${esc(r.note)}</span>` : ''}</td>
+        <td>${c ? `<span style="display:inline-block;background:${c.bg};color:${c.fg};border:1px solid ${c.border};border-radius:6px;padding:2px 8px;font-weight:700;">${esc(c.label||r.cat)}</span>` : ''}${r.note ? ` <span style="font-weight:600;">${esc(r.note)}</span>` : ''}</td>
         <td style="text-align:right;white-space:nowrap;color:var(--text-muted);">${fmtH((r.end - r.start)/60)}h</td></tr>`; }).join('')
     : `<tr><td colspan="3" class="hint" style="text-align:center;padding:14px 0;">오늘 배차가 없어요.</td></tr>`;
   return `<div id="dpWhoScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
@@ -1473,12 +1328,12 @@ function renderDpPop(){
   const drec = dispatch[id] || {};
   const cur = (drec.slots||{})[dpPop.slot] || '', note = (drec.notes||{})[dpPop.slot] || '';
   const who = dpPop.empId.startsWith('sup') ? (drec.name || '지원') : empName(dpPop.empId);
-  const btns = DISPATCH_CATS.filter(c=>c.key!=='수정').map(c=>`<button type="button" class="dpPopCat" data-cat="${esc(c.key)}" style="background:${c.bg};color:${c.fg};border:2px solid ${cur===c.key?'#111':c.border};border-radius:10px;padding:10px 0;font-weight:800;font-size:14px;cursor:pointer;">${esc(c.key)}</button>`).join('');
+  const btns = DISPATCH_CATS.filter(c=>c.key!=='수정' && !c.hidden).map(c=>`<button type="button" class="dpPopCat" data-cat="${esc(c.key)}" style="background:${c.bg};color:${c.fg};border:2px solid ${cur===c.key?'#111':c.border};border-radius:10px;padding:10px 0;font-weight:800;font-size:14px;cursor:pointer;">${esc(c.label||c.key)}</button>`).join('');
   return `<div id="dpPopScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:360px;width:92%;margin:0;">
       <h3 style="margin:0 0 2px;">${esc(who)} · ${esc(dpPop.slot)}</h3>
       <p class="hint" style="margin:0 0 12px;">항목을 누르면 바로 칠해집니다.</p>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px;">${btns}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">${btns}</div>
       <button type="button" class="btn warn ghost sm" id="dpPopClear" style="width:100%;margin-bottom:10px;">색 지우기</button>
       <p class="hint" style="margin:0 0 8px;">글씨는 칸을 <b>두 번 누르면</b> 칸 안에서 바로 입력할 수 있어요.</p>
       <div class="row" style="justify-content:flex-end;"><button class="btn ghost sm" id="dpPopClose">닫기</button></div>
@@ -1787,7 +1642,7 @@ async function reloadBerth(){
   await fetchBerthSet('');
   if(berthQDate) await fetchBerthSet(berthQDate);
   berthLoading = false;
-  if(VIEW==='berth' || VIEW==='safety' || VIEW==='autodp') render();
+  if(VIEW==='berth' || VIEW==='safety') render();
 }
 // 관리감독자: 오늘 전 날짜 중 저장된 기록도 없고 받아 둔 자료에도 없는 날은 그 날짜로 회사 사이트를 조회해서 채움(조장·UNION)
 let svBerthFillBusy = false;
@@ -1963,7 +1818,7 @@ async function reloadVessel(){
   }catch(err){ vslErr = '본선작업 데이터를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'; }
   vslLoading = false;
   paintVessel();
-  if(VIEW==='vessel' || VIEW==='autodp') render();
+  if(VIEW==='vessel') render();
 }
 function bindVesselPanel(){
   const rl = document.getElementById('vslReload'), tg = document.getElementById('vslToggle');
@@ -3074,7 +2929,7 @@ const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','codes','pwchange']; // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
-const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident','autodp'];
+const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident'];
 const UNION_VIEWS  = ['berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
@@ -3513,7 +3368,7 @@ function subscribeAll(){
   }, dbErr);
   unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
   unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{}); subscribeSlipPw(); subscribeBerthLog(); subscribeInputClose();
-  subscribeDocMailTo(); subscribeAutoDp();
+  subscribeDocMailTo();
   unsub.mailConfig = db.doc('meta/mailConfig').onSnapshot(doc=>{ mailConfig = doc.exists ? doc.data() : {}; scheduleRender(); }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
@@ -3587,7 +3442,6 @@ function ensureForView(){
   else if(VIEW==='mail'){ const mr = mailRangeNow(); ensureAttendanceRange(mr.start, mr.end); }
   else if(VIEW==='eqpay') eqPayEnsure();
   else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
-  else if(VIEW==='autodp'){ adpInit(); ensureAttendanceRange(addDays(adpDate, -1), addDays(adpDate, 1)); adpFetchBerth(); subscribeBerthLog(); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); subscribeAutoDp(); }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); ensureAttendanceRange(addDays(d, -1), addDays(d, -1)); subscribeDispatchDay(d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }   // 처음 화면이 배차표라 여기서 그 날 배차를 받음(전날 ND 지원자 확인용으로 전날 근태도)
 }
 // 기존 호출부 호환용
@@ -3885,7 +3739,6 @@ function render(){
   else if(VIEW==='berth'){ el.innerHTML = pageBerth(); bindBerthPage(); }
   else if(VIEW==='dispatch') el.innerHTML = pageDispatch(); // 본선작업 현황은 '본선작업' 메뉴에서만 보여 줌
   else if(VIEW==='splan') el.innerHTML = pageSupportPlan();
-  else if(VIEW==='autodp'){ el.innerHTML = pageAutoDp(); bindAutoDp(); }
   else if(VIEW==='mail'){ el.innerHTML = pageMail(); bindMailPage(); }
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
@@ -8002,8 +7855,8 @@ function pageDispatch(){
     return (a.teamOrder||999)-(b.teamOrder||999);
   });
 
-  const palette = DISPATCH_CATS.map(c=>`<button type="button" class="dpCatBtn" data-cat="${esc(c.key)}"
-      style="background:${c.bg};color:${c.fg};border:2px solid ${c.border};border-radius:10px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:${false?'':'none'};">${esc(c.key)}</button>`).join('');
+  const palette = DISPATCH_CATS.filter(c=> !c.hidden).map(c=>`<button type="button" class="dpCatBtn" data-cat="${esc(c.key)}"
+      style="background:${c.bg};color:${c.fg};border:2px solid ${c.border};border-radius:10px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:${false?'':'none'};">${esc(c.label||c.key)}</button>`).join('');
 
   // 빨간 시간 묶음(예: 07·30)의 바깥쪽에만 빨간 테두리: 묶음의 왼쪽 끝 mL, 오른쪽 끝 mR
   const mealEdge = s => {
@@ -8254,609 +8107,6 @@ function pageSupportPlan(){
   </div>
   </div>
   `;
-}
-
-/* ========================= 자동배차 (조장관리) ========================= */
-// 배차표와 같은 틀(No·성명·근태·순번·승무 + 30분 칸)로 그날 배차를 자동으로 만듦. 배차표 칸은 건드리지 않음
-// 1) 물량: 본선작업(STS별 잔여량, 지금 근무일 때) → 선석 조회(DIS/LDG/SHT/TTL·QC) → 직접 입력
-// 2) 크레인 가동시간 = 물량 ÷ 시간당 30개 (크레인 여러 대면 나눔). 식사·교대 시간(틀 밖)은 빼고 셈
-// 3) 사람 자리 = 크레인마다 초반조(주간 08~10·13~15:30 / 야간 19~21:30·01~03·06~07) + 후반조(주간 10~12·15:30~18 / 야간 21:30~24·03~06)
-//    — 엑셀 '배차' 258일치에서 가장 많이 쓴 틀
-// 4) 퇴근 순번: ① 지원자 ② 오원일·선종화 ③ 조장 ④ 다음날 FC ⑤ OT 순번(일요일·공휴일은 휴일 OT, 그 밖은 평일 OT — OT 많은 사람 먼저)
-//    자리보다 사람이 많으면 퇴근 순번 앞사람부터 퇴근, 남는 사람은 늦게 끝나는 자리부터 퇴근 순번 뒷사람이 맡음
-// 5) 당직 = 남는 사람 중 퇴근 순번이 가장 앞인 사람(조원) — 인원 수는 설정
-// 6) 끝나는 시간·조가 같은 자리끼리는 조 순번(No) 순서대로 낮은 호기부터 자동
-// 7) 조장이 고칠 수 있음: 사람별(퇴근·잔류·당직·제외·자리 지정), 크레인 가동시간, 물량, 칸 칠하기·글자
-const ADP_DEF = {
-  day:   {A:'08:00-10:00, 13:00-15:30', B:'10:00-12:00, 15:30-18:00'},
-  night: {A:'19:00-21:30, 01:00-03:00, 06:00-07:00', B:'21:30-24:00, 03:00-06:00'},
-  mph: 30, duty: 1
-};
-const ADP_FIXED_LEAVE = ['오원일','선종화'];
-let autoDp = {cfg:{}, days:{}};
-let adpDate = null, adpTeam = null, adpShift = null, adpCfgOpen = false, adpVslOpen = true, adpPaint = '', adpWho = null;
-function subscribeAutoDp(){
-  if(!db || unsub.autoDp) return;
-  try{ unsub.autoDp = db.doc('meta/autoDispatch').onSnapshot(doc=>{
-    const d = doc.exists ? (doc.data()||{}) : {};
-    autoDp = {cfg: d.cfg || {}, days: d.days || {}};
-    if(VIEW==='autodp') scheduleRender();
-  }, ()=>{}); }catch(e){}
-}
-function adpInit(){
-  if(!codeStatsStart || !codeStatsEnd){ const t = new Date(); codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1); codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1)); }
-  if(!adpDate) adpDate = dpWorkDate();
-  if(adpTeam!=='1' && adpTeam!=='2'){ let t = ''; try{ t = localStorage.getItem('snct_adp_team')||''; }catch(e){} adpTeam = (t==='1'||t==='2') ? t : dpNowTeam(); }
-  if(adpShift!=='day' && adpShift!=='night') adpShift = adpAutoShift();
-}
-function adpAutoShift(){ return scheduledShift(adpDate, adpTeam)==='N' ? 'night' : 'day'; }
-function adpKey(){ return `${adpDate}_${adpShift}_${adpTeam}`; }
-function adpDayCfg(){ return (autoDp.days && autoDp.days[adpKey()]) || {}; }
-function adpTpl(shift, grp){ const c = autoDp.cfg && autoDp.cfg[shift]; return (c && c[grp]) || ADP_DEF[shift][grp]; }
-function adpMph(){ const v = Number(autoDp.cfg && autoDp.cfg.mph); return v > 0 ? v : ADP_DEF.mph; }
-function adpDutyN(){ const v = autoDp.cfg && autoDp.cfg.duty; return v===0 || v ? Math.max(0, Math.min(3, Number(v)||0)) : ADP_DEF.duty; }
-// 시각(분): 그날 00:00 기준. 야간 쪽(12시 전)은 다음날로 보고 +24시간 → 01:00 = 1500
-function adpHmToMin(hm, shift){
-  const m = String(hm||'').trim().match(/^(\d{1,2})(?:[:.](\d{1,2}))?$/); if(!m) return null;
-  const h = Number(m[1]); let mi = m[2]==null ? 0 : (m[2].length===1 ? Number(m[2])*10 : Number(m[2]));
-  if(h>32 || mi>59) return null;
-  let v = h*60 + mi; if(shift==='night' && h < 12) v += 1440; return v;
-}
-function adpParse(txt, shift){
-  const out = [];
-  String(txt||'').split(/[,\n]/).map(x=>x.trim()).filter(Boolean).forEach(p=>{
-    const m = p.split(/\s*[-~]\s*/); if(m.length!==2) return;
-    const s = adpHmToMin(m[0], shift); let e = adpHmToMin(m[1], shift);
-    if(s==null || e==null) return;
-    if(!(e > s) || e - s > 12*60) return;
-    out.push({s, e});
-  });
-  return out.sort((a,b)=>a.s-b.s);
-}
-function adpHM(min){ min = Math.round(min); const h = Math.floor(min/60), m = min%60; const hh = h>24 ? h-24 : h; return String(hh).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
-function adpBlockLbl(b){ return `${adpHM(b.s).replace(/:00$/,'')}~${adpHM(b.e).replace(/:00$/,'')}`; }
-function adpDtMin(str, ds){
-  const m = String(str||'').match(/(\d{4})-(\d{2})-(\d{2})[ T]+(\d{1,2}):(\d{2})/); if(!m) return null;
-  const [y,mo,d] = ds.split('-').map(Number);
-  const days = Math.round((Date.UTC(+m[1], +m[2]-1, +m[3]) - Date.UTC(y, mo-1, d)) / 86400000);
-  return days*1440 + Number(m[4])*60 + Number(m[5]);
-}
-function adpMinDt(min, ds){ const d = Math.floor(min/1440), r = ((min % 1440) + 1440) % 1440; return `${addDays(ds, d)} ${String(Math.floor(r/60)).padStart(2,'0')}:${String(r%60).padStart(2,'0')}`; }
-function adpShiftWin(shift){ return shift==='day' ? {s:7*60, e:19*60} : {s:18*60, e:32*60}; }
-function adpSlots(shift){ return shift==='day' ? DAY_SLOTS.filter(x=>x!=='19:00') : NIGHT_SLOTS; }
-function adpSlotMin(s, shift){ let [h,m] = String(s).split(':').map(Number); if(shift==='night' && h < 12) h += 24; return h*60 + (m||0); }
-function adpCraneNo(x){ const m = String(x||'').match(/\d+/); return m ? String(Number(m[0])) : ''; }
-// 선석 조회 배 블록에서 DIS / LDG / SHT / TTL 숫자 읽기('DIS / LDG' = '120 / 80' 처럼 한 칸에 여러 개여도)
-function adpMoves(b){
-  const list = b && b.infoList && b.infoList.length ? b.infoList : Object.entries((b && b.info)||{}).map(([k,v])=>({k,v}));
-  const out = {};
-  list.forEach(x=>{
-    const ks = String(x.k||'').toUpperCase().split(/[\/,]/).map(s=> s.replace(/[^A-Z]/g,''));
-    if(!ks.some(k=> ['DIS','LDG','SHT','TTL'].includes(k))) return;
-    const vs = String(x.v||'').split('/').map(s=> s.replace(/[^\d.]/g,''));
-    ks.forEach((k,i)=>{ if(['DIS','LDG','SHT','TTL'].includes(k) && vs[i]!=='' && vs[i]!=null && !isNaN(Number(vs[i]))) out[k] = Number(vs[i]); });
-  });
-  return out;
-}
-// 그 근무에 부두에 있는 배(선석 조회 자료·쌓아 둔 기록)
-function adpVesselsBerth(ds, shift){
-  const W = adpShiftWin(shift), out = [];
-  const sets = Object.values(berthSets).filter(Boolean).sort((a,b)=> String(a.at||'').localeCompare(String(b.at||'')));
-  if(berthData && !sets.includes(berthData)) sets.unshift(berthData);
-  const blocks = [].concat(...sets.map(d=> d.blocks || []));
-  blocks.forEach(b=>{
-    const name = svInfoGet(b, /Name\s*of\s*Vessel/i); if(!name) return;
-    const bn = (svInfoGet(b, /^Berth\s*No/i).match(/B\s*0?(\d)/i) || [])[1] || '';
-    const arrS = svInfoGet(b, /^Actual\s*Time\s*of\s*Berth/i) || svInfoGet(b, /Time\s*of\s*Berth/i);
-    const depS = svInfoGet(b, /^Actual\s*Time\s*of\s*Depart/i) || svInfoGet(b, /Time\s*of\s*Depart/i);
-    const arr = adpDtMin(arrS, ds), dep = adpDtMin(depS, ds);
-    if(arr==null) return;
-    if(!(arr < W.e && (dep==null || dep > W.s))) return;
-    const mv = adpMoves(b);
-    const qcs = (b.qc||[]).map(q=> ({no: adpCraneNo(q.no), start: adpDtMin(q.start, ds), end: adpDtMin(q.end, ds)})).filter(q=> q.no);
-    const v = {name, berth: bn, arr, dep, dis: mv.DIS||0, ldg: mv.LDG||0, sht: mv.SHT||0, ttl: mv.TTL || ((mv.DIS||0)+(mv.LDG||0)+(mv.SHT||0)), qcs, src:'선석 조회'};
-    const i = out.findIndex(x=> x.name===v.name && x.arr===v.arr); if(i>=0) out[i] = v; else out.push(v);
-  });
-  if(!out.length){ // 회사 사이트에 안 보이는 날: 쌓아 둔 기록(berthLog)
-    const log = berthLog[ds] || {}, saved = Array.isArray(log.allv) ? log.allv : (log.vessels ? Object.values(log.vessels) : []);
-    saved.forEach(s=>{
-      if(!s || !s.name) return;
-      const arr = adpDtMin(s.arr, ds), dep = adpDtMin(s.dep, ds); if(arr==null) return;
-      if(!(arr < W.e && (dep==null || dep > W.s))) return;
-      const dis = Number(String(s.dis||'').replace(/[^\d.]/g,''))||0, ldg = Number(String(s.ldg||'').replace(/[^\d.]/g,''))||0;
-      out.push({name:s.name, berth:'', arr, dep, dis, ldg, sht:0, ttl: dis+ldg, qcs: (s.qc||[]).map(t=> ({no:'', start: adpDtMin(t, ds), end:null})), src:'선석 기록'});
-    });
-  }
-  return out;
-}
-// 본선작업(STS별 잔여량) — 지금 근무 중인 날·근무일 때만 씀(실시간 잔여량이라)
-function adpStsRows(){
-  const rows = (vslData && vslData.sts) || []; if(!rows.length) return [];
-  const carry = [], out = [];
-  rows.forEach(r=>{
-    const line = []; let ri = 0;
-    for(let col=0; col<9; col++){
-      if(carry[col] && carry[col].n > 0){ line[col] = carry[col].t; carry[col].n--; continue; }
-      const c = r[ri++]; if(!c){ line[col] = ''; continue; }
-      line[col] = String(c.t||''); if(c.rs > 1) carry[col] = {t: line[col], n: c.rs - 1};
-    }
-    out.push(line);
-  });
-  return out.map(l=> ({berth: adpCraneNo(l[0]), vessel: l[1], no: adpCraneNo(l[2]), dis: Number(String(l[4]).replace(/[^\d.]/g,''))||0, ldg: Number(String(l[5]).replace(/[^\d.]/g,''))||0, ttl: Number(String(l[6]).replace(/[^\d.]/g,''))||0, rate: Number(String(l[7]).replace(/[^\d.]/g,''))||0, eta: l[8]})).filter(x=> x.no);
-}
-function adpIsNowShift(ds, shift, team){
-  const h = new Date().getHours(), t = todayStr();
-  const nowDs = h < 8 ? addDays(t, -1) : t, nowShift = (h >= 8 && h < 19) ? 'day' : 'night';
-  return ds===nowDs && shift===nowShift && team===dpNowTeam();
-}
-// 크레인 작업(호기별): 직접 입력 → 본선작업 → 선석 조회
-function adpCraneJobs(r){
-  const dcfg = adpDayCfg(), mph = adpMph(), W = adpShiftWin(r.shift), jobs = [];
-  if(Array.isArray(dcfg.mc) && dcfg.mc.length)   // 조장이 호기를 직접 지정: 그 호기는 근무 내내
-    return {src:'호기 직접 지정', list: dcfg.mc.map(String).sort((a,b)=> a-b).map(no=> ({no, vessels:[], segs: r.workSegs.map(w=> ({s:w.s, e:w.e})), moves:0, basis:[]}))};
-  let src = '';
-  if(Array.isArray(dcfg.vessels)){
-    src = '직접 입력';
-    dcfg.vessels.forEach(v=>{
-      const ttl = Number(v.ttl) || (Number(v.dis)||0)+(Number(v.ldg)||0)+(Number(v.sht)||0);
-      const nos = String(v.qc||'').split(/[,\s]+/).map(adpCraneNo).filter(Boolean);
-      const st = adpDtMin(v.start, r.ds);
-      const n = Math.max(1, nos.length || Number(v.n) || 1);
-      for(let i=0;i<n;i++) jobs.push({no: nos[i]||'', vessel: v.name||'', moves: ttl/n, start: st, dep: adpDtMin(v.dep, r.ds), basis:`${ttl}개 ÷ ${n}대`});
-    });
-  } else {
-    const sts = adpIsNowShift(r.ds, r.shift, r.team) ? adpStsRows() : [];
-    if(sts.length){
-      src = '본선작업(잔여량)';
-      sts.forEach(x=>{ if(x.ttl > 0) jobs.push({no: x.no, vessel: x.vessel, moves: x.ttl, start: null, nowStart: true, dep: null, basis:`잔여 ${x.ttl}개`}); });
-    } else {
-      const vs = adpVesselsBerth(r.ds, r.shift);
-      if(vs.length) src = vs[0].src;
-      vs.forEach(v=>{
-        const qcs = v.qcs.length ? v.qcs : [{no:'', start: v.arr}, {no:'', start: v.arr}];
-        const n = qcs.length;
-        qcs.forEach(q=> jobs.push({no: q.no, vessel: v.name, moves: v.ttl / n, start: q.start!=null ? q.start : v.arr, dep: v.dep, basis:`TTL ${v.ttl}개 ÷ ${n}대`}));
-      });
-    }
-  }
-  // 호기 번호가 없으면 1호기부터 빈 번호로
-  const used = new Set(jobs.map(j=> j.no).filter(Boolean));
-  let k = 1; jobs.forEach(j=>{ if(!j.no){ while(used.has(String(k))) k++; j.no = String(k); used.add(j.no); } });
-  // 같은 호기가 두 번이면(한 크레인이 두 배) 하나로 합침: 먼저 끝나는 배 다음에 이어서
-  const work = r.workSegs;
-  const nowMin = (()=>{ const t = new Date(); const base = adpDtMin(`${todayStr()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`, r.ds); return base; })();
-  const cranes = {};
-  jobs.forEach(j=>{
-    const need = j.moves / mph * 60;   // 분
-    let begin = j.nowStart ? Math.max(W.s, nowMin) : (j.start!=null ? j.start : W.s);
-    let rem = need;
-    if(begin < W.s){ rem -= (W.s - begin); begin = W.s; }   // 근무 전부터 하던 배: 그만큼 이미 한 것으로
-    const c = cranes[j.no] = cranes[j.no] || {no: j.no, vessels: [], segs: [], moves: 0, basis: []};
-    if(c.segs.length) begin = Math.max(begin, c.segs[c.segs.length-1].e);
-    c.vessels.push(j.vessel); c.moves += j.moves; c.basis.push(j.basis);
-    if(rem <= 0) return;
-    begin = Math.floor(begin/30)*30;
-    for(const w of work){
-      if(rem <= 0) break;
-      const s = Math.max(w.s, begin); if(s >= w.e) continue;
-      let e = Math.min(w.e, s + Math.ceil(rem/30)*30);
-      if(j.dep!=null) e = Math.min(e, Math.ceil(j.dep/30)*30);
-      if(e <= s) continue;
-      c.segs.push({s, e}); rem -= (e - s);
-    }
-  });
-  // 조장이 고친 가동시간(호기별)
-  const cw = dcfg.cw || {};
-  Object.entries(cw).forEach(([no, o])=>{
-    if(!o) return;
-    if(o.off){ if(cranes[no]) cranes[no].off = true; return; }
-    const s = adpHmToMin(o.s, r.shift), e = adpHmToMin(o.e, r.shift);
-    if(s==null || e==null || e<=s) return;
-    const c = cranes[no] = cranes[no] || {no, vessels: [], segs: [], moves: 0, basis: []};
-    c.segs = work.map(w=> ({s: Math.max(w.s, s), e: Math.min(w.e, e)})).filter(x=> x.e > x.s);
-    c.manual = true;
-  });
-  const list = Object.values(cranes).sort((a,b)=> Number(a.no)-Number(b.no));
-  return {src, list};
-}
-function adpIntersect(blocks, segs){
-  const out = [];
-  blocks.forEach(b=> segs.forEach(s=>{ const x = Math.max(b.s, s.s), y = Math.min(b.e, s.e); if(y > x) out.push({s:x, e:y}); }));
-  return out.sort((a,b)=> a.s-b.s);
-}
-function adpCompute(){
-  const ds = adpDate, team = adpTeam, shift = adpShift;
-  const dcfg = adpDayCfg();
-  const dayIsHol = ['SU','H'].includes(dayCategory(ds, false));
-  const blocksA = adpParse(adpTpl(shift,'A'), shift), blocksB = adpParse(adpTpl(shift,'B'), shift);
-  const workSegs = blocksA.concat(blocksB).sort((a,b)=> a.s-b.s);
-  const r = {ds, team, shift, dayIsHol, blocksA, blocksB, workSegs};
-  // ----- 사람 -----
-  const allSorted = employees.slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
-  const cd = combinedData(allSorted, codeStatsStart, codeStatsEnd);
-  const otRaw = {}, supRank = {};
-  cd.perEmp.forEach((x,i)=>{ otRaw[x.emp.id] = dayIsHol ? cd.rankOtHol[i] : cd.rankOtWk[i]; supRank[x.emp.id] = cd.rankSup[i]; });
-  const codeOn = (e, d)=>{ const rec = attendance[d+'_'+e.id] || {}; return gridCode(rec && rec.date ? rec : null, d, String(e.name||'').trim()); };
-  const nextDs = addDays(ds, 1), prevDs = addDays(ds, -1);
-  const people = [], off = [];
-  allSorted.filter(e=> (e.team||'')===team && e.active!==false).forEach(e=>{
-    const mc = codeOn(e, ds), dc = mc || scheduledShift(ds, e.team||'');
-    const ok = (!dc || DP_WORK_CODES.has(dc)) && !DP_SUPX_CODES.has(mc);
-    if(!ok){ off.push({e, code: dc}); return; }
-    people.push({e, code: dc, mc, sup:false});
-  });
-  const supToday = shift==='day' ? new Set(['DS']) : new Set(['NS','DN']);
-  const early = c=> (c==='DN' || c==='ND') ? 0 : 1;
-  allSorted.filter(e=> (e.team||'') && (e.team||'')!==team && e.active!==false).map(e=>{
-    const c = codeOn(e, ds);
-    if(supToday.has(c)) return {e, code:c, sup:true};
-    if(shift==='day' && codeOn(e, prevDs)==='ND') return {e, code:'ND', sup:true};
-    return null;
-  }).filter(Boolean).sort((a,b)=> (early(a.code)-early(b.code)) || ((supRank[a.e.id] ?? 999) - (supRank[b.e.id] ?? 999))).forEach(x=> people.push(x));
-  // OT 순번(그날 근무 조원끼리 1번부터 — OT 많은 사람이 1번)
-  const rk = people.filter(x=> !x.sup && otRaw[x.e.id]!=null).sort((a,b)=> otRaw[a.e.id]-otRaw[b.e.id] || (a.e.teamOrder||999)-(b.e.teamOrder||999));
-  let rank = 0, prev = null; rk.forEach((x,i)=>{ const v = otRaw[x.e.id]; if(v!==prev){ rank = i+1; prev = v; } x.ot = rank; });
-  const force = dcfg.force || {};
-  const TIER_LBL = {1:'지원', 2:'고정', 3:'조장', 4:'FC전날', 5:'OT', 9:'잔류'};
-  people.forEach(x=>{
-    const nm = String(x.e.name||'').trim();
-    x.fcNext = /^FC/.test(codeOn(x.e, nextDs) || '');
-    x.tier = x.sup ? 1 : ADP_FIXED_LEAVE.includes(nm) ? 2 : (x.e.teamRole==='조장') ? 3 : x.fcNext ? 4 : 5;
-    x.f = force[x.e.id] || '';
-    if(x.f==='stay') x.tier = 9;
-    x.tierLbl = TIER_LBL[x.tier];
-  });
-  const supIdx = new Map(people.filter(x=>x.sup).map((x,i)=>[x, i]));
-  people.sort((a,b)=> (a.tier-b.tier) || (a.sup ? supIdx.get(a)-supIdx.get(b) : 0) || ((b.ot ?? 999) - (a.ot ?? 999)) || ((b.e.teamOrder||999)-(a.e.teamOrder||999)));
-  people.forEach((x,i)=> x.lv = i+1);   // 퇴근 순번
-  // ----- 크레인 → 자리 -----
-  const cj = adpCraneJobs(r);
-  r.src = cj.src; r.cranes = cj.list;
-  const seats = [];
-  cj.list.forEach(c=>{
-    if(c.off) return;
-    [['A', blocksA], ['B', blocksB]].forEach(([g, bl])=>{
-      const segs = adpIntersect(bl, c.segs);
-      if(segs.length) seats.push({key: c.no+g, crane: c.no, grp: g, segs, end: segs[segs.length-1].e, min: segs.reduce((t,s)=> t+s.e-s.s, 0), sig: g + segs.map(s=> s.s+'-'+s.e).join(',')});
-    });
-  });
-  r.seats = seats;
-  // ----- 배정 -----
-  const pin = dcfg.pin || {};
-  const live = people.filter(x=> x.f!=='excl');
-  live.forEach(x=>{ x.res = ''; x.seat = null; });
-  people.filter(x=> x.f==='excl').forEach(x=>{ x.res = 'excl'; x.seat = null; });
-  const freeSeats = seats.slice();
-  live.forEach(x=>{ const k = pin[x.e.id]; const i = k ? freeSeats.findIndex(s=> s.key===k) : -1; if(i>=0){ x.seat = freeSeats[i]; x.res = 'seat'; x.pinned = true; freeSeats.splice(i,1); } });
-  live.forEach(x=>{ if(!x.res && x.f==='leave') x.res = 'leave'; });
-  let avail = live.filter(x=> !x.res);   // 퇴근 순번 순서
-  const k = Math.max(0, avail.length - freeSeats.length);   // 자리보다 많으면 퇴근 순번 앞사람부터 퇴근
-  avail.slice(0, k).forEach(x=> x.res = 'leave');
-  avail = avail.slice(k);
-  const stayers = avail.filter(x=> !x.res).reverse();   // 퇴근 순번 뒷사람부터 늦게 끝나는 자리
-  freeSeats.sort((a,b)=> (b.end-a.end) || (b.min-a.min) || (a.grp<b.grp?-1:a.grp>b.grp?1:0) || (Number(a.crane)-Number(b.crane)));
-  stayers.forEach((x,i)=>{ if(freeSeats[i]){ x.seat = freeSeats[i]; x.res = 'seat'; } else x.res = 'wait'; });
-  r.lack = freeSeats.slice(stayers.length);
-  // 같은 조건(조·시간이 같은 자리)끼리는 조 순번(No) 순서대로 낮은 호기부터
-  const bySig = {};
-  live.filter(x=> x.res==='seat' && !x.pinned).forEach(x=> (bySig[x.seat.sig] = bySig[x.seat.sig] || []).push(x));
-  Object.values(bySig).forEach(list=>{
-    const ss = list.map(x=> x.seat).sort((a,b)=> Number(a.crane)-Number(b.crane));
-    list.sort((a,b)=> (a.sup-b.sup) || ((a.e.teamOrder||999)-(b.e.teamOrder||999))).forEach((x,i)=> x.seat = ss[i]);
-  });
-  const lastEnd = seats.length ? Math.max(...seats.map(s=> s.end)) : (workSegs.length ? workSegs[workSegs.length-1].e : 0);
-  const firstSt = workSegs.length ? workSegs[0].s : 0;
-  // 당직(30분): 작업 덩어리의 시작·끝 칸(주간 08:00·11:30·13:00·17:30, 야간 19:00·23:30·01:00·06:30)에 그때 쉬는 사람이 섬
-  //   중간 당직 = 당직 횟수가 적은 사람 → 같으면 퇴근 순번 앞사람 / 마지막 당직 = 일이 먼저 끝난 사람 중 퇴근 순번 앞사람(OT에 근거)
-  const periods = [];
-  workSegs.forEach(w=>{ const l = periods[periods.length-1]; if(l && w.s <= l.e) l.e = Math.max(l.e, w.e); else periods.push({s:w.s, e:w.e}); });
-  const usedP = periods.filter(pd=> seats.some(st=> st.segs.some(g=> g.s < pd.e && g.e > pd.s)));
-  const dutySlots = [];
-  usedP.forEach(pd=>{
-    const segs = seats.flatMap(st=> st.segs).filter(g=> g.s < pd.e && g.e > pd.s);
-    const a = Math.max(pd.s, Math.min(...segs.map(g=> g.s))), b = Math.min(pd.e, Math.max(...segs.map(g=> g.e)));
-    dutySlots.push({t:a}); if(b - 30 > a) dutySlots.push({t:b-30});
-  });
-  if(dutySlots.length) dutySlots[dutySlots.length-1].last = true;
-  const stay = people.filter(x=> x.res==='seat');
-  stay.forEach(x=>{ x.duty = []; });
-  const busy = (x, t)=> x.seat.segs.some(g=> t >= g.s && t < g.e);
-  dutySlots.forEach(d=>{
-    let c = stay.filter(x=> !busy(x, d.t) && !x.duty.includes(d.t));
-    if(d.last) c = c.filter(x=> x.seat.end <= d.t);
-    if(!c.length) return;
-    c.sort((a,b)=> d.last ? (a.lv-b.lv) : ((a.duty.length-b.duty.length) || (a.lv-b.lv)));
-    c[0].duty.push(d.t);
-  });
-  people.forEach(x=>{
-    x.out = x.res==='seat' ? Math.max(x.seat.end, ...(x.duty||[]).map(t=> t+30)) : x.res==='leave' ? firstSt : null;
-  });
-  // ----- 칸 칠하기(자동) + 조장이 고친 칸 -----
-  const slots = adpSlots(shift);
-  const paintOf = x=>{
-    const p = {}, n = {};
-    if(x.res==='seat'){
-      x.seat.segs.forEach(sg=>{ slots.forEach(s=>{ const m = adpSlotMin(s, shift); if(m >= sg.s && m < sg.e) p[s] = '초반'; if(m===sg.e) n[s] = x.seat.crane; }); });
-      Object.keys(n).forEach(s=>{ if(p[s]) delete n[s]; });   // 바로 이어서 또 일하면 번호는 안 씀
-      (x.duty||[]).forEach(t=> slots.forEach(s=>{ if(adpSlotMin(s, shift)===t){ p[s] = '당직'; delete n[s]; } }));
-    }
-    const po = (dcfg.paint||{})[x.e.id] || {}, no = (dcfg.note||{})[x.e.id] || {};
-    Object.keys(po).forEach(s=>{ if(po[s]) p[s] = po[s]; else delete p[s]; });
-    Object.keys(no).forEach(s=>{ if(no[s]) n[s] = no[s]; else delete n[s]; });
-    return {p, n};
-  };
-  people.forEach(x=>{ const q = paintOf(x); x.paint = q.p; x.note = q.n; x.hrs = Object.values(q.p).filter(v=> v && v!=='당직').length * 0.5; });
-  r.people = people; r.off = off; r.slots = slots; r.lastEnd = lastEnd; r.firstSt = firstSt;
-  r.edited = !!(Object.keys(dcfg.force||{}).length || Object.keys(dcfg.pin||{}).length || Object.keys(dcfg.paint||{}).length || Object.keys(dcfg.note||{}).length || Object.keys(dcfg.cw||{}).length);
-  return r;
-}
-function pageAutoDp(){
-  adpInit();
-  const r = adpCompute();
-  const ds = r.ds, [dy,dm,dd] = ds.split('-').map(Number);
-  const shiftLbl = r.shift==='day' ? '주간' : '야간';
-  const slots = r.slots;
-  const nm = x=> esc(String(x.e.name||'').trim());
-  const mealEdge = s => { const i = slots.indexOf(s); if(i<0 || !isMealSlot(s)) return ''; return (i===0 || !isMealSlot(slots[i-1]) ? ' mL' : '') + (i===slots.length-1 || !isMealSlot(slots[i+1]) ? ' mR' : ''); };
-  // ----- 배차표 틀 -----
-  const counts = slots.map(()=>0);
-  const cellsOf = x=> slots.map((s,si)=>{
-    const v = x.paint[s] || '', note = x.note[s] || '';
-    if(v && v!=='당직') counts[si]++;
-    const cat = dispatchCat(v);
-    return `<td class="adpCell${cat?' dpPainted':''}${isMealSlot(s) ? ' dpMeal'+mealEdge(s) : ''}" data-adp-emp="${esc(x.e.id)}" data-adp-slot="${esc(s)}" style="background:${cat?cat.bg:'transparent'};color:${cat?cat.fg:'var(--text)'};">${note?`<span class="dpTxt">${esc(note)}</span>`:''}</td>`;
-  }).join('');
-  const resTag = x=> x.res==='leave' ? '퇴근' : x.res==='excl' ? '제외' : x.res==='wait' ? '대기' : '';
-  const team = r.people.filter(x=> !x.sup).sort((a,b)=> (a.e.teamOrder||999)-(b.e.teamOrder||999));
-  const sups = r.people.filter(x=> x.sup);
-  const row = (x, idx, firstCell, cls)=> `<tr class="${x.res==='leave' || x.res==='excl' ? 'dpOff' : ''}${cls||''}${(idx % 3 === 2) ? ' dpGrp' : ''}">
-      ${firstCell}
-      <td class="dpI dpI2 adpWhoCell" data-adp-who="${esc(x.e.id)}" title="누르면 이 사람 배차 고치기">${nm(x)}${resTag(x) ? `<span class="adpRes adpRes-${x.res}">${resTag(x)}</span>` : ''}</td>
-      <td class="dpI dpI3">${x.code ? (DP_WORK_CODES.has(x.code) && x.code!=='SP' && !x.sup ? `<b>${esc(x.code)}</b>` : codeBadge(x.code)) : ''}</td>
-      <td class="dpI dpI4 dpRk g-${r.dayIsHol?'yel':'pur'}" title="OT 순번 · 퇴근 순번 ${x.lv}(${esc(x.tierLbl)})">${x.ot!=null ? `<span class="rkPlain">${x.ot}</span>` : ''}</td>
-      <td class="dpI dpI5">${x.hrs ? fmtH(x.hrs) : ''}</td>
-      ${cellsOf(x)}
-    </tr>`;
-  const teamRows = team.map((x,i)=> row(x, i, `<td class="dpI dpI1">${i+1}</td>`, i===team.length-1 ? ' dpLast' : '')).join('');
-  const supRows = sups.map((x,i)=> row(x, i, i===0 ? `<td class="dpI dpI1" rowspan="${sups.length}" style="vertical-align:middle;">지원</td>` : '', i===sups.length-1 && r.lack.length ? ' dpLast' : '')).join('');
-  const emptySup = (!sups.length && !r.lack.length) ? `<tr><td class="dpI dpI1">지원</td><td class="dpI dpI2"></td><td class="dpI dpI3"></td><td class="dpI dpI4"></td><td class="dpI dpI5"></td>${slots.map(sl=> `<td class="adpCell${isMealSlot(sl)?' dpMeal'+mealEdge(sl):''}"></td>`).join('')}</tr>` : '';
-  const lackRows = r.lack.map((s,i)=> `<tr>${i===0 ? `<td class="dpI dpI1" rowspan="${r.lack.length}" style="vertical-align:middle;color:#b91c1c;font-weight:800;">부족</td>` : ''}
-      <td class="dpI dpI2"><span class="adpLack">부족</span></td><td class="dpI dpI3"></td><td class="dpI dpI4"></td><td class="dpI dpI5"></td>
-      ${slots.map(sl=>{ const m = adpSlotMin(sl, r.shift); const on = s.segs.some(g=> m >= g.s && m < g.e); const first = on && s.segs.some(g=> g.s===m); return `<td class="adpCell${isMealSlot(sl)?' dpMeal'+mealEdge(sl):''}" style="${on?'background:repeating-linear-gradient(45deg,#fecaca 0 5px,#fff 5px 9px);':''}">${first?`<span class="dpTxt">${esc(s.crane)}</span>`:''}</td>`; }).join('')}</tr>`).join('');
-  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${r.dayIsHol?'yel':'pur'}" title="${r.dayIsHol?'휴일':'평일'} OT 순번">순번</th><th class="dpI dpI5">승무</th>` +
-    slots.map(s=>{ const mm = s.split(':')[1], hh = slotHourLabel(s), red = isMealSlot(s), cls = 'dpSlotH' + (red ? ' dpMealH' + mealEdge(s) : ''), color = red ? '#E03131' : '#000';
-      return mm==='00' ? `<th class="${cls} dpHH" style="color:${color};">${esc(hh)}</th>` : `<th class="${cls} dpMM" style="color:${color};">${esc(mm)}</th>`; }).join('');
-  const countRow = `<tr style="background:var(--bg);"><td class="dpI dpI1" colspan="5" style="font-weight:800;">시간대별 인원</td>${slots.map((s,si)=>`<td${isMealSlot(s)?` class="dpMealF${mealEdge(s)}"`:''} style="text-align:center;font-weight:800;color:${counts[si]>0?'var(--accent)':'var(--text-muted)'};">${counts[si]||''}</td>`).join('')}</tr>`;
-  const dateBanner = `${dy}년 ${dm}월 ${dd}일 ${weekdayKr(dy,dm,dd)}요일 · ${shiftLbl}(${r.shift==='day' ? '07~19시' : '18~08시'})`;
-  const palette = ['초반','후반','당직','정비','기타','수정'].map(k=>{ const c = dispatchCat(k); return `<button type="button" class="adpPalBtn${adpPaint===k?' on':''}" data-adp-pal="${k}" style="background:${c.bg};color:${c.fg};border:2px solid ${adpPaint===k?'#111':c.border};">${k}</button>`; }).join('')
-    + `<button type="button" class="adpPalBtn${adpPaint==='글자'?' on':''}" data-adp-pal="글자" style="background:#fff;color:#E03131;border:2px solid ${adpPaint==='글자'?'#111':'#E03131'};">호기·글자</button>`;
-  // ----- 요약 -----
-  const nSeat = r.seats.length, nLeave = r.people.filter(x=> x.res==='leave').length, nDuty = r.people.filter(x=> x.res==='duty').length;
-  const craneRows = r.cranes.map(c=>{
-    const o = (adpDayCfg().cw||{})[c.no] || {};
-    const span = c.segs.length ? `${adpHM(c.segs[0].s)}~${adpHM(c.segs[c.segs.length-1].e)}` : '작업 없음';
-    const hrs = c.segs.reduce((t,s)=> t+s.e-s.s, 0)/60;
-    return `<tr class="${c.off?'adpGX':''}"><td class="adpCr">${esc(c.no)}호기</td><td class="l">${esc(c.vessels.filter(Boolean).join(', ')||'-')}</td><td>${c.moves ? Math.round(c.moves) : '-'}</td><td>${c.off ? '끔' : esc(span)}${c.manual?' <span class="adpMan">수정</span>':''}</td><td>${c.off?'':fmtH(hrs)}</td>
-      <td class="editor-only adpCwEd"><input type="text" inputmode="decimal" data-adp-cw="${esc(c.no)}" data-f="s" value="${esc(o.s||'')}" placeholder="시작"><span>~</span><input type="text" inputmode="decimal" data-adp-cw="${esc(c.no)}" data-f="e" value="${esc(o.e||'')}" placeholder="끝"><label class="adpChk"><input type="checkbox" data-adp-cwoff="${esc(c.no)}"${c.off?' checked':''}>끔</label></td></tr>`;
-  }).join('');
-  const resTxt = x=> x.res==='seat' ? `${esc(x.seat.crane)}호기 ${x.seat.segs.map(adpBlockLbl).join('·')}${x.duty && x.duty.length ? ' · 당직 '+x.duty.map(adpHM).join('·') : ''}${x.pinned?' (지정)':''}` : x.res==='leave' ? '퇴근' : x.res==='excl' ? '제외' : x.res==='wait' ? '대기' : '';
-  const seatOpts = x=> `<option value="">자리 자동</option>` + r.seats.map(s=> `<option value="${esc(s.key)}"${(adpDayCfg().pin||{})[x.e.id]===s.key?' selected':''}>${s.grp==='A'?'초반':'후반'} ${esc(s.crane)}호기 ~${adpHM(s.end)}</option>`).join('');
-  const lvRows = r.people.map(x=> `<tr class="${x.res==='leave'||x.res==='excl'?'adpGX':''}">
-      <td>${x.lv}</td><td class="adpNmC">${nm(x)}</td><td><span class="adpTier adpTier${x.tier}">${esc(x.tierLbl)}</span></td><td>${x.sup ? '-' : (x.ot ?? '-')}</td>
-      <td><span class="adpResT adpRes-${x.res}">${resTxt(x)}</span></td><td>${x.out!=null ? adpHM(x.out) : ''}</td>
-      <td class="editor-only"><select data-adp-force="${esc(x.e.id)}"><option value="">자동</option><option value="leave"${x.f==='leave'?' selected':''}>퇴근</option><option value="stay"${x.f==='stay'?' selected':''}>잔류</option><option value="excl"${x.f==='excl'?' selected':''}>제외</option></select>
-        <select data-adp-pin="${esc(x.e.id)}">${seatOpts(x)}</select></td></tr>`).join('');
-  // ----- 물량(직접 입력) -----
-  const dcfg = adpDayCfg();
-  const vsl = Array.isArray(dcfg.vessels) ? dcfg.vessels : adpVesselsBerth(r.ds, r.shift).map(v=> ({name: v.name, dis: v.dis||'', ldg: v.ldg||'', sht: v.sht||'', ttl: v.ttl||'', qc: v.qcs.map(q=> q.no).filter(Boolean).join(','), start: v.qcs.length && v.qcs[0].start!=null ? adpMinDt(Math.min(...v.qcs.map(q=> q.start==null ? Infinity : q.start)), r.ds) : (v.arr!=null ? adpMinDt(v.arr, r.ds) : ''), dep: v.dep!=null ? adpMinDt(v.dep, r.ds) : ''}));
-  const vIn = (i, f, v, ph, mode)=> `<input type="text" data-adp-v="${i}" data-f="${f}" value="${esc(v==null?'':v)}" placeholder="${ph||''}"${mode?` inputmode="${mode}"`:''}>`;
-  const vRows = vsl.map((v,i)=> `<tr><td>${vIn(i,'name',v.name,'선박')}</td><td>${vIn(i,'dis',v.dis,'0','numeric')}</td><td>${vIn(i,'ldg',v.ldg,'0','numeric')}</td><td>${vIn(i,'sht',v.sht,'0','numeric')}</td><td>${vIn(i,'ttl',v.ttl,'합계','numeric')}</td><td>${vIn(i,'qc',v.qc,'예: 1,2,3')}</td><td>${vIn(i,'start',String(v.start||'').replace('T',' '),'YYYY-MM-DD HH:MM')}</td><td><button type="button" class="btn ghost sm" data-adp-vdel="${i}">삭제</button></td></tr>`).join('');
-  const srcTxt = r.src || (vslApi ? '자료 없음' : '선석 조회 주소 없음');
-  const vslPanel = `<div class="panel adpP">
-    <div class="adpCfgHd"><div class="adpTtl" style="margin:0;">본선작업 물량 <small>근거: ${esc(srcTxt)} · 시간당 ${adpMph()}개(DIS·LDG·SHT 합 = TTL) · 크레인 가동시간 = TTL ÷ ${adpMph()} ÷ 크레인 수</small></div><button type="button" class="btn ghost sm" id="adpVslToggle">${adpVslOpen ? '접기' : '펼치기'}</button></div>
-    ${adpVslOpen ? `<div class="scrollx" style="margin-top:8px;"><table class="tbl adpTbl"><thead><tr><th>호기</th><th>선박</th><th>물량</th><th>가동</th><th>시간</th><th class="editor-only">가동시간 고치기</th></tr></thead><tbody>${craneRows || `<tr><td colspan="6" class="empty">이 근무에 잡힌 본선작업이 없어요. 아래에 물량을 넣어 주세요.</td></tr>`}</tbody></table></div>
-    <div class="editor-only" style="margin-top:12px;">
-      <div class="adpTtl" style="font-size:13px;">물량 직접 입력 ${Array.isArray(dcfg.vessels) ? '<span class="adpMan">(직접 입력 사용 중)</span>' : '<small>지금은 선석 조회 값이 들어 있어요. 고친 뒤 [물량 저장]을 누르면 이 근무는 입력값으로 계산해요.</small>'}</div>
-      <div class="scrollx"><table class="tbl adpTbl adpVTbl"><thead><tr><th>선박</th><th>DIS</th><th>LDG</th><th>SHT</th><th>TTL</th><th>호기</th><th>작업 시작</th><th></th></tr></thead><tbody>${vRows}</tbody></table></div>
-      <div class="adpBtns"><button type="button" class="btn sm" id="adpVSave">물량 저장</button><button type="button" class="btn ghost sm" id="adpVAdd">+ 선박 추가</button>${Array.isArray(dcfg.vessels) ? '<button type="button" class="btn ghost sm" id="adpVReset">선석 조회 값으로</button>' : ''}</div>
-    </div>` : ''}
-  </div>`;
-  const cfgPanel = `<div class="panel adpP adpCfg editor-only">
-    <div class="adpCfgHd"><b>배차 틀 설정</b><button type="button" class="btn ghost sm" id="adpCfgToggle">${adpCfgOpen ? '접기' : '펼치기'}</button></div>
-    ${adpCfgOpen ? `<div class="adpCfgBody">
-      <div class="adpFld"><span>이 근무 호기 (지금 근거: ${esc(r.src || '자료 없음')}${r.cranes.length ? ' · '+esc(r.cranes.filter(c=> c.segs.length).map(c=> c.no).join('·'))+'호기' : ''})</span>
-        <div class="adpChips">${Array.from({length:8},(_,i)=> String(i+1)).map(n=> `<button type="button" class="adpChip${(adpDayCfg().mc||[]).map(String).includes(n)?' on':''}" data-adp-mc="${n}">${n}</button>`).join('')}</div>
-        <p class="adpHint" style="margin:2px 0 0;">호기를 누르면 선석 자료 대신 고른 호기로 근무 내내 배차해요. 모두 끄면 다시 선석 조회 물량으로 계산해요.</p></div>
-      <div class="adpFld"><span>${shiftLbl} 초반조 시간</span><input type="text" id="adpTplA" value="${esc(adpTpl(r.shift,'A'))}"></div>
-      <div class="adpFld"><span>${shiftLbl} 후반조 시간</span><input type="text" id="adpTplB" value="${esc(adpTpl(r.shift,'B'))}"></div>
-      <div class="adpFld adpFld2"><label><span>시간당 물량(개)</span><input type="text" inputmode="numeric" id="adpMph" value="${adpMph()}"></label></div>
-      <div class="adpBtns"><button type="button" class="btn sm" id="adpTplSave">설정 저장</button><button type="button" class="btn ghost sm" id="adpTplReset">기본값으로</button></div>
-      <p class="adpHint">시간은 <b>08:00-10:00, 13:00-15:30</b>처럼 쉼표로 구분. 기본값은 엑셀 배차(258일치)에서 가장 많이 쓴 틀이에요.</p>
-    </div>` : ''}
-  </div>`;
-  const who = adpWho ? r.people.find(x=> x.e.id===adpWho) : null;
-  const whoPop = who ? `<div class="adpScrim" id="adpWhoScrim"><div class="adpPop">
-      <div class="adpPopHd"><b>${nm(who)}</b> <span>${esc(who.tierLbl)} · 퇴근 순번 ${who.lv}${who.ot!=null ? ' · OT 순번 '+who.ot : ''}</span><button type="button" class="adpX" id="adpWhoClose" aria-label="닫기">✕</button></div>
-      <div class="adpPopBody">
-        <div class="adpPopNow">지금: <b>${resTxt(who) || '-'}</b>${who.out!=null ? ` · ${adpHM(who.out)} ${who.res==='leave' ? '퇴근' : '까지'}` : ''}</div>
-        ${canEdit ? `<div class="adpPopRow">${[['','자동'],['leave','퇴근'],['stay','잔류'],['excl','제외']].map(([v,l])=> `<button type="button" class="btn ${who.f===v?'':'ghost'} sm" data-adp-wf="${v}">${l}</button>`).join('')}</div>
-        <div class="adpPopRow"><select id="adpWhoPin">${seatOpts(who)}</select></div>
-        <div class="adpPopRow"><button type="button" class="btn ghost sm" id="adpWhoClr">이 사람 칸 고친 것 지우기</button></div>` : ''}
-      </div></div></div>` : '';
-  return `
-  <h2 class="pgttl">자동배차</h2>
-  <div class="adpBar">
-    <button type="button" class="btn ghost sm" id="adpPrev" aria-label="전날">◀</button>
-    <input type="date" id="adpDateIn" value="${esc(ds)}">
-    <button type="button" class="btn ghost sm" id="adpNext" aria-label="다음날">▶</button>
-    <span class="adpSp"></span>
-    <button type="button" class="btn ${r.team==='1'?'':'ghost'} sm" data-adp-team="1">1조</button>
-    <button type="button" class="btn ${r.team==='2'?'':'ghost'} sm" data-adp-team="2">2조</button>
-    <span class="adpSp"></span>
-    <button type="button" class="btn ${r.shift==='day'?'':'ghost'} sm" data-adp-shift="day">주간</button>
-    <button type="button" class="btn ${r.shift==='night'?'':'ghost'} sm" data-adp-shift="night">야간</button>
-  </div>
-  <div class="adpSum">
-    <div><span>가동 크레인</span><b>${r.cranes.filter(c=> !c.off && c.segs.length).length}대</b></div>
-    <div><span>필요 인원</span><b>${nSeat}명</b></div>
-    <div><span>호기</span><b style="font-size:14px;">${esc(r.cranes.filter(c=> !c.off && c.segs.length).map(c=> c.no).join('·') || '-')}</b></div>
-    <div class="${r.lack.length ? 'bad' : ''}"><span>${r.lack.length ? '부족' : '퇴근'}</span><b>${r.lack.length || nLeave}명</b></div>
-  </div>
-  ${r.lack.length ? `<div class="adpWarn">자리가 ${r.lack.length}개 비어요(빗금 칸). 지원 인력을 근태에 넣거나 크레인 가동시간을 고쳐 주세요.</div>` : ''}
-  ${canEdit ? `<div class="panel dpPal adpPal">${palette}<span class="adpHint" style="margin:0 0 0 4px;">${adpPaint ? `<b>${esc(adpPaint)}</b>: 칸을 누르면 바로 적용${adpPaint!=='글자' ? '(PC는 끌어서 여러 칸)' : ''}` : '색을 고른 뒤 칸을 누르면 고쳐져요. 이름을 누르면 퇴근·당직·자리 지정.'}</span>${r.edited ? '<button type="button" class="btn warn ghost sm" id="adpResetDay">자동으로 되돌리기</button>' : ''}</div>` : ''}
-  <div class="dpBox"><div class="adpDate">${esc(dateBanner)}</div>
-    <div class="dpWrap" id="adpWrap"><table class="gtbl" id="adpTable"><thead><tr>${head}</tr></thead><tbody>${teamRows}${supRows}${emptySup}${lackRows}${countRow}</tbody></table></div>
-  </div>
-  <div class="adpOff">근무 아님: ${r.off.length ? r.off.map(x=> `${esc(String(x.e.name||'').trim())}${x.code?`(${esc(x.code)})`:''}`).join(', ') : '없음'}</div>
-  <div class="panel adpP">
-    <div class="adpTtl">퇴근 순번 <small>① 지원자 → ② 오원일·선종화 → ③ 조장 → ④ 다음날 FC → ⑤ ${r.dayIsHol ? '휴일' : '평일'} OT 순번(순번 숫자 큰 사람 먼저). 늦게 끝나는 자리는 퇴근 순번 뒷사람(OT 순번 1번)부터. 당직은 작업 시작·끝 30분에 그때 쉬는 사람이 서고, 마지막 당직은 일이 먼저 끝난 사람 중 퇴근 순번 앞사람.</small></div>
-    <div class="scrollx"><table class="tbl adpTbl adpOrd"><thead><tr><th>순번</th><th>성명</th><th>구분</th><th>OT</th><th>배차</th><th>퇴근</th><th class="editor-only">고치기</th></tr></thead><tbody>${lvRows || `<tr><td colspan="7" class="empty">이 날 ${r.team}조 ${shiftLbl} 근무자가 없어요.</td></tr>`}</tbody></table></div>
-  </div>
-  ${cfgPanel}
-  ${whoPop}
-  `;
-}
-async function adpPersist(){
-  const cut = addDays(todayStr(), -120);
-  Object.keys(autoDp.days||{}).forEach(k=>{ if(k.slice(0,10) < cut) delete autoDp.days[k]; });
-  render();
-  if(!db) return;
-  try{ await db.doc('meta/autoDispatch').set({cfg: autoDp.cfg||{}, days: autoDp.days||{}, updatedAt: Date.now()}); }
-  catch(err){ showToast(saveErrMsg('자동배차 저장에 실패했습니다.', err)); }
-}
-function adpSetDay(fn){
-  if(!requireEdit()) return;
-  const k = adpKey();
-  const cur = JSON.parse(JSON.stringify((autoDp.days||{})[k] || {}));
-  fn(cur);
-  ['force','pin','paint','note','cw'].forEach(f=>{ if(cur[f] && typeof cur[f]==='object' && !Array.isArray(cur[f])){ Object.keys(cur[f]).forEach(x=>{ const v = cur[f][x]; if(v==null || v==='' || (typeof v==='object' && !Object.keys(v).length)) delete cur[f][x]; }); if(!Object.keys(cur[f]).length) delete cur[f]; } });
-  autoDp.days = Object.assign({}, autoDp.days||{});
-  if(!Object.keys(cur).length) delete autoDp.days[k]; else autoDp.days[k] = cur;
-  adpPersist();
-}
-function adpPaintCells(cells){   // cells: [{emp, slot}]
-  if(!cells.length) return;
-  const val = adpPaint==='수정' ? '' : adpPaint;
-  const r = adpCompute(), auto = {};
-  r.people.forEach(x=> auto[x.e.id] = x);
-  adpSetDay(c=>{
-    c.paint = c.paint || {}; c.note = c.note || {};
-    cells.forEach(({emp, slot})=>{
-      const p = c.paint[emp] = c.paint[emp] || {};
-      p[slot] = val;   // '' = 지움(자동 칠한 것도 지움)
-      if(adpPaint==='수정'){ const n = c.note[emp] = c.note[emp] || {}; n[slot] = ''; }
-    });
-    // 빈 값으로 지웠는데 자동에도 없던 칸은 기록할 필요 없음
-    cells.forEach(({emp, slot})=>{ const x = auto[emp]; if(!val && c.paint[emp] && x && !x.paint[slot]) delete c.paint[emp][slot]; });
-  });
-}
-function bindAutoDp(){
-  const el = document.getElementById('content');
-  const go = d=>{ if(!d) return; adpDate = d; adpShift = adpAutoShift(); ensureForView(); adpFetchBerth(); render(); };
-  const di = document.getElementById('adpDateIn');
-  if(di) di.onchange = ()=> go(di.value);
-  const pv = document.getElementById('adpPrev'), nx = document.getElementById('adpNext');
-  if(pv) pv.onclick = ()=> go(addDays(adpDate, -1));
-  if(nx) nx.onclick = ()=> go(addDays(adpDate, 1));
-  el.querySelectorAll('[data-adp-team]').forEach(b=> b.onclick = ()=>{ adpTeam = b.dataset.adpTeam; try{ localStorage.setItem('snct_adp_team', adpTeam); }catch(e){} adpShift = adpAutoShift(); render(); });
-  el.querySelectorAll('[data-adp-shift]').forEach(b=> b.onclick = ()=>{ adpShift = b.dataset.adpShift; render(); });
-  // 칠하기 팔레트
-  el.querySelectorAll('[data-adp-pal]').forEach(b=> b.onclick = ()=>{ adpPaint = adpPaint===b.dataset.adpPal ? '' : b.dataset.adpPal; render(); });
-  const wrap = document.getElementById('adpWrap');
-  if(wrap){ if(window._adpScrollLeft) wrap.scrollLeft = window._adpScrollLeft; wrap.onscroll = ()=>{ window._adpScrollLeft = wrap.scrollLeft; }; }
-  const table = document.getElementById('adpTable');
-  if(table && canEdit){
-    let drag = null;
-    const cellOf = t=> t && t.closest ? t.closest('td.adpCell[data-adp-emp]') : null;
-    table.onpointerdown = e=>{
-      const td = cellOf(e.target); if(!td || !adpPaint) return;
-      if(adpPaint==='글자'){
-        const emp = td.dataset.adpEmp, slot = td.dataset.adpSlot;
-        const cur = (td.textContent||'').trim();
-        const v = prompt('칸에 쓸 호기·글자 (비우면 지움)', cur); if(v===null) return;
-        adpSetDay(c=>{ c.note = c.note || {}; const n = c.note[emp] = c.note[emp] || {}; n[slot] = v.trim(); if(!v.trim() && !cur) delete n[slot]; });
-        return;
-      }
-      if(e.pointerType==='mouse'){ e.preventDefault(); drag = {emp: td.dataset.adpEmp, tds: new Set([td])}; td.style.outline = '2px solid #1d4ed8'; try{ table.setPointerCapture(e.pointerId); }catch(err){} }
-      else drag = {emp: td.dataset.adpEmp, tds: new Set([td]), touch: true, x: e.clientX, y: e.clientY};
-    };
-    table.onpointermove = e=>{
-      if(!drag) return;
-      if(drag.touch){ if(Math.hypot(e.clientX-drag.x, e.clientY-drag.y) > 8) drag = null; return; }
-      const el2 = document.elementFromPoint(e.clientX, e.clientY), td = cellOf(el2);
-      if(!td || td.dataset.adpEmp!==drag.emp) return;
-      const row = Array.from(td.parentNode.querySelectorAll('td.adpCell[data-adp-emp]'));
-      const first = Array.from(drag.tds)[0], a = row.indexOf(first), b = row.indexOf(td);
-      drag.tds.forEach(x=> x.style.outline = '');
-      drag.tds = new Set([first].concat(row.slice(Math.min(a,b), Math.max(a,b)+1)));
-      drag.tds.forEach(x=> x.style.outline = '2px solid #1d4ed8');
-    };
-    table.onpointerup = ()=>{ if(!drag) return; const d = drag; drag = null; adpPaintCells(Array.from(d.tds).map(td=> ({emp: td.dataset.adpEmp, slot: td.dataset.adpSlot}))); };
-    table.onpointercancel = ()=>{ if(drag) drag.tds.forEach(x=> x.style.outline = ''); drag = null; };
-  }
-  el.querySelectorAll('[data-adp-who]').forEach(td=> td.onclick = ()=>{ adpWho = td.dataset.adpWho; render(); });
-  const closeW = ()=>{ adpWho = null; render(); };
-  const wc = document.getElementById('adpWhoClose'); if(wc) wc.onclick = closeW;
-  const ws = document.getElementById('adpWhoScrim'); if(ws) ws.onclick = e=>{ if(e.target.id==='adpWhoScrim') closeW(); };
-  el.querySelectorAll('[data-adp-wf]').forEach(b=> b.onclick = ()=>{ const id = adpWho, v = b.dataset.adpWf; adpSetDay(c=>{ c.force = c.force || {}; c.force[id] = v; if(v){ c.pin = c.pin || {}; delete c.pin[id]; } }); });
-  const wp = document.getElementById('adpWhoPin'); if(wp) wp.onchange = ()=>{ const id = adpWho; adpSetDay(c=>{ c.pin = c.pin || {}; c.pin[id] = wp.value; if(wp.value){ c.force = c.force || {}; delete c.force[id]; } }); };
-  const wclr = document.getElementById('adpWhoClr'); if(wclr) wclr.onclick = ()=>{ const id = adpWho; adpSetDay(c=>{ if(c.paint) delete c.paint[id]; if(c.note) delete c.note[id]; }); };
-  el.querySelectorAll('[data-adp-force]').forEach(s=> s.onchange = ()=>{ const id = s.dataset.adpForce; adpSetDay(c=>{ c.force = c.force || {}; c.force[id] = s.value; if(s.value){ c.pin = c.pin || {}; delete c.pin[id]; } }); });
-  el.querySelectorAll('[data-adp-pin]').forEach(s=> s.onchange = ()=>{ const id = s.dataset.adpPin; adpSetDay(c=>{ c.pin = c.pin || {}; c.pin[id] = s.value; if(s.value){ c.force = c.force || {}; delete c.force[id]; } }); });
-  const rd = document.getElementById('adpResetDay');
-  if(rd) rd.onclick = ()=> appConfirm('이 근무에서 조장이 고친 것(퇴근·당직·자리·칸·가동시간)을 모두 지우고 자동으로 되돌릴까요? 직접 넣은 물량은 그대로예요.', ()=> adpSetDay(c=>{ ['force','pin','paint','note','cw'].forEach(f=> delete c[f]); }));
-  // 크레인 가동시간 고치기
-  el.querySelectorAll('[data-adp-cw]').forEach(inp=> inp.onchange = ()=>{
-    const no = inp.dataset.adpCw;
-    const s = (el.querySelector(`[data-adp-cw="${no}"][data-f="s"]`)||{}).value || '', e2 = (el.querySelector(`[data-adp-cw="${no}"][data-f="e"]`)||{}).value || '';
-    if((s && adpHmToMin(s, adpShift)==null) || (e2 && adpHmToMin(e2, adpShift)==null)){ showToast('시간은 13:30 또는 13.3 처럼 적어 주세요.'); return; }
-    if(!s && !e2){ adpSetDay(c=>{ c.cw = c.cw || {}; delete c.cw[no]; }); return; }
-    if(!s || !e2) return;   // 둘 다 넣으면 적용
-    adpSetDay(c=>{ c.cw = c.cw || {}; c.cw[no] = {s, e:e2}; });
-  });
-  el.querySelectorAll('[data-adp-cwoff]').forEach(cb=> cb.onchange = ()=>{ const no = cb.dataset.adpCwoff; adpSetDay(c=>{ c.cw = c.cw || {}; if(cb.checked) c.cw[no] = {off:1}; else delete c.cw[no]; }); });
-  // 물량 직접 입력
-  const vt = document.getElementById('adpVslToggle'); if(vt) vt.onclick = ()=>{ adpVslOpen = !adpVslOpen; render(); };
-  const readV = ()=>{
-    const rows = {};
-    el.querySelectorAll('[data-adp-v]').forEach(inp=>{ const i = inp.dataset.adpV; (rows[i] = rows[i] || {})[inp.dataset.f] = inp.value.trim(); });
-    return Object.keys(rows).sort((a,b)=> a-b).map(i=> rows[i]);
-  };
-  const vs = document.getElementById('adpVSave');
-  if(vs) vs.onclick = ()=>{
-    const list = readV().filter(v=> v.name || v.ttl || v.dis || v.ldg || v.sht);
-    for(const v of list){ if(v.start && adpDtMin(v.start, adpDate)==null){ showToast('작업 시작은 2026-10-18 08:00 처럼 적어 주세요.'); return; } }
-    adpSetDay(c=>{ c.vessels = list.map(v=> ({name:v.name||'', dis:v.dis||'', ldg:v.ldg||'', sht:v.sht||'', ttl:v.ttl||'', qc:v.qc||'', start:v.start||''})); });
-    showToast('물량을 저장했어요.');
-  };
-  const va = document.getElementById('adpVAdd');
-  if(va) va.onclick = ()=>{ const list = readV(); list.push({name:'', dis:'', ldg:'', sht:'', ttl:'', qc:'', start: `${adpDate} ${adpShift==='day' ? '08:00' : '19:00'}`}); adpSetDay(c=>{ c.vessels = list; }); };
-  el.querySelectorAll('[data-adp-vdel]').forEach(b=> b.onclick = ()=>{ const list = readV(); list.splice(Number(b.dataset.adpVdel), 1); adpSetDay(c=>{ c.vessels = list; }); });
-  const vr = document.getElementById('adpVReset'); if(vr) vr.onclick = ()=> adpSetDay(c=>{ delete c.vessels; });
-  // 설정
-  el.querySelectorAll('[data-adp-mc]').forEach(b=> b.onclick = ()=>{ const n = b.dataset.adpMc; adpSetDay(c=>{ const set = new Set((c.mc||[]).map(String)); if(set.has(n)) set.delete(n); else set.add(n); c.mc = Array.from(set).sort((a,b)=> a-b); if(!c.mc.length) delete c.mc; }); });
-  const tg = document.getElementById('adpCfgToggle'); if(tg) tg.onclick = ()=>{ adpCfgOpen = !adpCfgOpen; render(); };
-  const ts = document.getElementById('adpTplSave');
-  if(ts) ts.onclick = ()=>{
-    if(!requireEdit()) return;
-    const a = document.getElementById('adpTplA').value.trim(), b = document.getElementById('adpTplB').value.trim();
-    if(!adpParse(a, adpShift).length || !adpParse(b, adpShift).length){ showToast('시간을 08:00-10:00, 13:00-15:30 처럼 적어 주세요.'); return; }
-    const mph = Number(document.getElementById('adpMph').value);
-    if(!(mph > 0)){ showToast('시간당 물량은 1 이상 숫자로 적어 주세요.'); return; }
-    autoDp.cfg = Object.assign({}, autoDp.cfg||{}, {[adpShift]: {A:a, B:b}, mph});
-    showToast('설정을 저장했어요.'); adpPersist();
-  };
-  const tr = document.getElementById('adpTplReset');
-  if(tr) tr.onclick = ()=>{ if(!requireEdit()) return; const c = Object.assign({}, autoDp.cfg||{}); delete c[adpShift]; delete c.mph; delete c.duty; autoDp.cfg = c; showToast('기본값으로 되돌렸어요.'); adpPersist(); };
-}
-// 자동배차 화면을 열면 선석 조회(그 날짜)·본선작업 자료를 받아 둠
-let adpBerthAsked = {};
-function adpFetchBerth(){
-  if(!vslApi) return;
-  if(!berthData && !berthLoading && Date.now()-berthLoadedAt > 60000) reloadBerth();
-  const ds = adpDate, covered = new Set(); Object.values(berthSets).forEach(d=> berthSetDates(d).forEach(x=> covered.add(x)));
-  if(ds && !covered.has(ds) && !adpBerthAsked[ds] && !berthSetLoading[ds]){ adpBerthAsked[ds] = 1; fetchBerthSet(ds).then(()=>{ if(VIEW==='autodp') render(); }); }
-  if(!vslLoading && Date.now()-(vslLoadedAt||0) > 55000) reloadVessel();
 }
 
 /* ========================= 조편성 관리 ========================= */
