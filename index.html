@@ -1318,24 +1318,27 @@ function renderDpWho(){
         <td>${c ? `<span style="display:inline-block;background:${c.bg};color:${c.fg};border:1px solid ${c.border};border-radius:6px;padding:2px 8px;font-weight:700;">${esc(c.label||r.cat)}</span>` : ''}${r.note ? ` <span style="font-weight:600;">${esc(r.note)}</span>` : ''}</td>
         <td style="text-align:right;white-space:nowrap;color:var(--text-muted);">${fmtH((r.end - r.start)/60)}h</td></tr>`; }).join('')
     : `<tr><td colspan="3" class="hint" style="text-align:center;padding:14px 0;">오늘 배차가 없어요.</td></tr>`;
-  // 음성으로 읽을 문장 — 지금 시각이 든 구간의 배차만 읽음
-  //   주간 07:00~12:30 · 12:30~18:30 / 야간 18:30~00:30 · 00:30~07:00 (일요일도 같은 방식)
-  const sayT = min=>{ const h = Math.floor(min/60) % 24, mi = min % 60; return `${min >= 1440 && h >= 1 && h < 7 ? '새벽 ' : ''}${h}시${mi ? ' '+mi+'분' : ''}`; };
-  const win = dpVoiceWindow();
+  // 음성으로 읽을 문장: "김의섭, 10월 18일 주간 배차입니다. 8시부터 10시까지 근무. … 승무 4.5시간."
+  const sayT = min=>{ const h = Math.floor(min/60) % 24, mi = min % 60; return `${(dispatchShift==='night' || (dispatchShift==='full' && (sunPartNow(dispatchDate) || dispatchSunPart)==='night')) && h < 7 ? '새벽 ' : ''}${h}시${mi ? ' '+mi+'분' : ''}`; };
+  // 일요일(주·야간 한 장)은 지금 보고 있는 쪽(주간 또는 야간)만 읽음
+  // 일요일: 지금 그 일요일의 주간(07~19시)이면 주간만, 야간이면 야간만 읽음(다른 날을 보고 있으면 화면에서 고른 쪽)
+  const sunPart = dispatchShift==='full' ? (sunPartNow(dispatchDate) || dispatchSunPart) : '';
+  const sayPart = dispatchShift==='full' ? (sunPart==='night' ? '야간' : '주간') : part;
   let sRows = [], sWork = 0, sDuty = 0;
-  dpSlotOrder().forEach(sl=>{
-    const cat = slots[sl] || ''; if(!cat) return;
-    const st = dpSlotMin(sl); if(win && (st < win.s || st >= win.e)) return;
-    if(cat!=='당직') sWork += 0.5; else sDuty += 0.5;
-    const last = sRows[sRows.length-1];
-    if(last && last.cat===cat && last.end===st) last.end = st + 30; else sRows.push({cat, start: st, end: st + 30});
-  });
-  const sayPart = win ? win.part : (dispatchShift==='full' ? '주·야간' : part);
-  const winTxt = win ? ` ${sayT(win.s)}부터 ${sayT(win.e)}까지` : '';
+  if(dispatchShift==='full'){
+    const fa = FULL_SLOTS_FN(), partSlots = new Set(sunPart==='night' ? SUN_NIGHT_SLOTS_FN() : fa.slice(0, fa.indexOf('19:00')));
+    dpSlotOrder().forEach(sl=>{
+      if(!partSlots.has(sl)) return;
+      const cat = slots[sl] || ''; if(!cat) return;
+      if(cat!=='당직') sWork += 0.5; else sDuty += 0.5;
+      const st = dpSlotMin(sl), last = sRows[sRows.length-1];
+      if(last && last.cat===cat && last.end===st) last.end = st + 30; else sRows.push({cat, start: st, end: st + 30});
+    });
+  } else { sRows = rows; sWork = work; sDuty = duty; }
   const hrs = n=> fmtH(n).replace(/\.0$/,'');
-  window._dpWhoSpeech = `${who}, ${m}월 ${d}일 ${sayPart}${winTxt} 배차입니다. ` + (sRows.length
+  window._dpWhoSpeech = `${who}, ${m}월 ${d}일 ${sayPart} 배차입니다. ` + (sRows.length
     ? sRows.map(r=>{ const c = dispatchCat(r.cat); return `${sayT(r.start)}부터 ${sayT(r.end)}까지 ${c ? (c.label||r.cat) : r.cat}.`; }).join(' ') + ` 승무 ${hrs(sWork)}시간${sDuty ? ', 당직 '+hrs(sDuty)+'시간' : ''}입니다.`
-    : '이 시간 배차가 없습니다.');
+    : `${sayPart} 배차가 없습니다.`);
   const ttsOk = dpTtsSupported();
   return `<div id="dpWhoScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:380px;width:92%;margin:0;max-height:86vh;overflow:auto;">
@@ -1351,17 +1354,6 @@ function renderDpWho(){
     </div></div>`;
 }
 // ===== 배차 음성 읽기(브라우저 내장 음성 — 아이폰·안드로이드·PC, 인터넷 연결 없이도 됨) =====
-// 배차 음성: 지금 시각이 든 구간(분 단위, 그날 00:00 기준 — 자정 넘으면 +24시간)
-//   주간 07:00~12:30 · 12:30~18:30 / 야간 18:30~24:30 · 24:30~31:00(다음날 07:00)
-const DP_VOICE_WINDOWS = [{s:420, e:750, part:'주간'}, {s:750, e:1110, part:'주간'}, {s:1110, e:1470, part:'야간'}, {s:1470, e:1860, part:'야간'}];
-function dpVoiceWindow(){
-  const n = new Date(); let t = n.getHours()*60 + n.getMinutes(); if(t < 420) t += 1440;   // 07시 전은 전날 야간
-  const w = DP_VOICE_WINDOWS.find(x=> t >= x.s && t < x.e); if(!w) return null;
-  // 보고 있는 근무에 그 구간이 있을 때만(주간 화면에 야간 시각이면 전체를 읽음)
-  if(dispatchShift==='day' && w.part!=='주간') return null;
-  if(dispatchShift==='night' && w.part!=='야간') return null;
-  return w;
-}
 function dpTtsSupported(){ return typeof window!=='undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance!=='undefined'; }
 function dpTtsAuto(){ try{ return localStorage.getItem('snct_dp_tts')!=='0'; }catch(e){ return true; } }
 function dpSpeak(text){
