@@ -1319,10 +1319,24 @@ function renderDpWho(){
         <td style="text-align:right;white-space:nowrap;color:var(--text-muted);">${fmtH((r.end - r.start)/60)}h</td></tr>`; }).join('')
     : `<tr><td colspan="3" class="hint" style="text-align:center;padding:14px 0;">오늘 배차가 없어요.</td></tr>`;
   // 음성으로 읽을 문장: "김의섭, 10월 18일 주간 배차입니다. 8시부터 10시까지 근무. … 승무 4.5시간."
-  const sayT = min=>{ const h = Math.floor(min/60) % 24, mi = min % 60; return `${dispatchShift!=='day' && h < 7 ? '새벽 ' : ''}${h}시${mi ? ' '+mi+'분' : ''}`; };
-  window._dpWhoSpeech = `${who}, ${m}월 ${d}일 ${dispatchShift==='full' ? '일요일' : part} 배차입니다. ` + (rows.length
-    ? rows.map(r=>{ const c = dispatchCat(r.cat); return `${sayT(r.start)}부터 ${sayT(r.end)}까지 ${c ? (c.label||r.cat) : r.cat}.`; }).join(' ') + ` 승무 ${fmtH(work).replace(/\.0$/,'')}시간${duty ? ', 당직 '+fmtH(duty).replace(/\.0$/,'')+'시간' : ''}입니다.`
-    : '오늘 배차가 없습니다.');
+  const sayT = min=>{ const h = Math.floor(min/60) % 24, mi = min % 60; return `${(dispatchShift==='night' || (dispatchShift==='full' && dispatchSunPart==='night')) && h < 7 ? '새벽 ' : ''}${h}시${mi ? ' '+mi+'분' : ''}`; };
+  // 일요일(주·야간 한 장)은 지금 보고 있는 쪽(주간 또는 야간)만 읽음
+  const sayPart = dispatchShift==='full' ? (dispatchSunPart==='night' ? '야간' : '주간') : part;
+  let sRows = [], sWork = 0, sDuty = 0;
+  if(dispatchShift==='full'){
+    const fa = FULL_SLOTS_FN(), partSlots = new Set(dispatchSunPart==='night' ? SUN_NIGHT_SLOTS_FN() : fa.slice(0, fa.indexOf('19:00')));
+    dpSlotOrder().forEach(sl=>{
+      if(!partSlots.has(sl)) return;
+      const cat = slots[sl] || ''; if(!cat) return;
+      if(cat!=='당직') sWork += 0.5; else sDuty += 0.5;
+      const st = dpSlotMin(sl), last = sRows[sRows.length-1];
+      if(last && last.cat===cat && last.end===st) last.end = st + 30; else sRows.push({cat, start: st, end: st + 30});
+    });
+  } else { sRows = rows; sWork = work; sDuty = duty; }
+  const hrs = n=> fmtH(n).replace(/\.0$/,'');
+  window._dpWhoSpeech = `${who}, ${m}월 ${d}일 ${sayPart} 배차입니다. ` + (sRows.length
+    ? sRows.map(r=>{ const c = dispatchCat(r.cat); return `${sayT(r.start)}부터 ${sayT(r.end)}까지 ${c ? (c.label||r.cat) : r.cat}.`; }).join(' ') + ` 승무 ${hrs(sWork)}시간${sDuty ? ', 당직 '+hrs(sDuty)+'시간' : ''}입니다.`
+    : `${sayPart} 배차가 없습니다.`);
   const ttsOk = dpTtsSupported();
   return `<div id="dpWhoScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:380px;width:92%;margin:0;max-height:86vh;overflow:auto;">
@@ -1345,10 +1359,26 @@ function dpSpeak(text){
   try{
     const ss = window.speechSynthesis; ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ko-KR'; u.rate = 1; u.pitch = 1;
-    const v = (ss.getVoices()||[]).find(x=> /^ko/i.test(x.lang||'')); if(v) u.voice = v;
+    u.lang = 'ko-KR'; u.rate = 1.03; u.pitch = 1.12;   // 살짝 높고 또렷하게(젊은 여성 목소리 느낌)
+    const v = dpPickVoice(ss.getVoices()||[]); if(v) u.voice = v;
     ss.speak(u);
   }catch(e){}
+}
+// 기기에 있는 한국어 목소리 중 여성 목소리를 먼저 고름(자연스러운 '온라인/Natural' 목소리 우선)
+//   PC 엣지: SunHi(Natural) · 윈도우: Heami · 아이폰/맥: Yuna·Sora·유나 · 안드로이드 구글: 기본 여성 목소리
+function dpPickVoice(list){
+  const ko = list.filter(x=> /^ko/i.test(x.lang||'') || /korean|한국/i.test(x.name||''));
+  if(!ko.length) return null;
+  const male = /injoon|hyunsu|minsang|gookmin|bongjin|male(?!.*female)|남성|남자|ko-kr-x-kod|ko-kr-x-koc/i;
+  const score = x=>{ const n = String(x.name||''); let sc = 0;
+    if(/sunhi|sun-hi|선희/i.test(n)) sc += 60;
+    if(/yuna|유나|sora|소라|jimin|지민|seoyeon|서연|yujin|유진|heami|해미/i.test(n)) sc += 50;
+    if(/female|여성|여자|ko-kr-x-ism|ko-kr-x-kob/i.test(n)) sc += 40;
+    if(/natural|online|neural|premium|enhanced|고품질/i.test(n)) sc += 20;
+    if(/google/i.test(n)) sc += 10;
+    if(male.test(n)) sc -= 100;
+    return sc; };
+  return ko.slice().sort((a,b)=> score(b)-score(a))[0];
 }
 function dpSpeakStop(){ try{ if(dpTtsSupported()) window.speechSynthesis.cancel(); }catch(e){} }
 try{ if(dpTtsSupported()){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = ()=>{}; } }catch(e){}
