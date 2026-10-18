@@ -1361,7 +1361,7 @@ function dpSpeak(text){
   try{
     const ss = window.speechSynthesis; ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ko-KR'; u.rate = 1.05; u.pitch = 1.18;   // 높고 또렷하게 — 젊고 청량한 여성 목소리 느낌
+    u.lang = 'ko-KR'; u.rate = 0.95; u.pitch = 0.92;   // 차분하고 또렷하게 — 아나운서처럼 낮고 안정된 여성 목소리 느낌
     const v = dpPickVoice(ss.getVoices()||[]); if(v) u.voice = v;
     ss.speak(u);
   }catch(e){}
