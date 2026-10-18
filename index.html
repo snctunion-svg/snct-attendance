@@ -1308,7 +1308,8 @@ function renderDpWho(){
     : `<tr><td colspan="3" class="hint" style="text-align:center;padding:14px 0;">오늘 배차가 없어요.</td></tr>`;
   return `<div id="dpWhoScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:380px;width:92%;margin:0;max-height:86vh;overflow:auto;">
-      <h3 style="margin:0 0 2px;">${esc(who)} ${code ? codeBadge(code) : ''}</h3>
+      <h3 style="margin:0 0 2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${esc(who)} ${code ? codeBadge(code) : ''}${(()=>{ const n = isSup ? (e && window._dpSupRank ? window._dpSupRank[e.id] : null) : (window._dpRank ? window._dpRank[empId] : null);
+        return n!=null ? `<span style="font-size:13px;font-weight:700;background:#ede9fe;color:#5b21b6;border-radius:6px;padding:2px 8px;">${isSup ? '지원 순번' : '순번'} ${n}</span>` : ''; })()}</h3>
       <p class="hint" style="margin:0 0 10px;">${m}/${d}(${weekdayKr(y,m,d)}) ${part} 배차</p>
       <table class="tbl" style="width:100%;font-size:13px;"><tbody>${body}</tbody></table>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;">
@@ -4261,8 +4262,8 @@ function pageCombined(){
     <th colspan="6" class="gh g-wk sepL">평일,주야간</th>
   </tr><tr>
     <th class="gc g-blk sepL">합계</th><th class="gc g-blk">순번</th>
-    <th class="gc g-blue sepL">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">합계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel otCol">OT</th><th class="gc g-yel">순번</th>
-    <th class="gc g-wk sepL">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">합계</th><th class="gc g-wk">순번</th><th class="gc g-pur otCol">OT</th><th class="gc g-pur">순번</th>
+    <th class="gc g-blue sepL">FCH</th><th class="gc g-blue">MCH</th><th class="gc g-blue">합계</th><th class="gc g-blue">순번</th><th class="gc g-red">MCS</th><th class="gc g-red">순번</th><th class="gc g-yel otCol">OT</th><th class="gc g-yel">퇴근</th>
+    <th class="gc g-wk sepL">FC</th><th class="gc g-wk">MC</th><th class="gc g-wk">합계</th><th class="gc g-wk">순번</th><th class="gc g-pur otCol">OT</th><th class="gc g-pur">퇴근</th>
   </tr>`;
   const c0 = v => v||'';
   const nEmp = perEmp.length;
@@ -7886,6 +7887,7 @@ function pageDispatch(){
       list.forEach((o,i)=>{ if(o.n!==prev){ rank = i+1; prev = o.n; } o.n = rank; o.tot = list.length; });
     });
   }
+  window._dpRank = {}; Object.keys(otRankOf).forEach(id=>{ if(otRankOf[id] && otRankOf[id].n!=null) window._dpRank[id] = otRankOf[id].n; });   // 이름 팝업에 순번 표시용
   const otRankCell = empId => { // 순번: 근태관리처럼 칸 전체를 색으로, 숫자는 검은색
     const o = otRankOf[empId]; if(!o || o.n==null) return '';
     return `<span class="rkPlain">${o.n}</span>`;
@@ -7951,6 +7953,7 @@ function pageDispatch(){
   //   순서: DN·ND(연장 지원 — 먼저 퇴근) → DS·NS, 같은 묶음 안에서는 지원 순번(근태관리 지원 일수가 적은 순)
   const SUP_COUNT = 10;
   const supRankOf = {}; cd.perEmp.forEach((r,i)=>{ supRankOf[r.emp.id] = cd.rankSup[i]; });
+  window._dpSupRank = supRankOf;
   const supToday = dispatchShift==='day' ? new Set(['DS']) : dispatchShift==='night' ? new Set(['NS','DN']) : new Set(['DS','NS','DN']);
   const ndPrev = dispatchShift!=='night';   // 주간(일요일 포함): 전날 ND인 사람이 이 주간을 연장 지원
   const early = c=> (c==='DN' || c==='ND') ? 0 : 1;
