@@ -1064,6 +1064,16 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   main#content{padding:16px 14px 50px;}
 }
 
+/* 조장관리·UNION 시트 고르기 팝업 */
+.sheetPopScrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px;}
+.sheetPop{background:var(--surface);color:var(--text);border-radius:14px;width:100%;max-width:340px;max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 12px 36px rgba(0,0,0,.28);}
+.sheetPopHd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#fce7f3;color:#9d174d;font-size:16px;position:sticky;top:0;}
+.sheetPopX{border:0;background:transparent;color:#9d174d;font-size:18px;font-weight:800;cursor:pointer;padding:2px 6px;}
+.sheetPopList{display:flex;flex-direction:column;padding:8px;gap:4px;}
+.sheetPopItem{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;color:var(--text);font:inherit;font-size:15px;padding:12px 12px;border-radius:10px;cursor:pointer;}
+.sheetPopItem:hover{background:#fce7f3;color:#be185d;}
+.sheetPopItem.on{background:#ec4899;color:#fff;font-weight:700;}
+.sheetPopIc{width:24px;text-align:center;font-size:18px;}
 /* UNION 시트 고르기 */
 .unionBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 14px;padding:10px 12px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;}
 .unionBarT{color:#4c1d95;font-size:13px;margin-right:4px;}
@@ -3667,6 +3677,13 @@ async function deleteSupportPlanWeek(startStr){
 
 /* ========================= 렌더 라우터 ========================= */
 function setView(v){
+  if(v==='leaderhub' || v==='unionhub'){   // 조장관리·UNION 제목: 화면을 바꾸지 않고 시트 고르기 팝업
+    if(authResolved && !roleCanSee(v)) return;
+    document.getElementById('nav').classList.remove('open');
+    document.getElementById('scrim').classList.remove('show');
+    openSheetPop(v==='unionhub' ? UNION_SHEETS : LEADER_SHEETS, v==='unionhub' ? 'UNION' : '조장관리');
+    return;
+  }
   if(v==='input2') v = 'input';   // 조장 근태관리 없앰 → 출퇴근 입력에 [조장 마감]·[조장 수정]
   if(v==='pay') v = 'combined'; // 급여 명세서는 잠시 숨김(나중에 다시 사용)
   if(authResolved && !roleCanSee(v)) v = 'combined';
@@ -3732,6 +3749,21 @@ function isLeaderSheet(v){ return LEADER_SHEETS.some(x=> x[0]===v); }
 function sheetBar(list, title){
   return `<div class="unionBar"><b class="unionBarT">${esc(title)}</b>${list.filter(([v])=> roleCanSee(v)).map(([v,ic,l])=> `<button type="button" class="unionChip${VIEW===v?' on':''}" data-union-go="${v}"><span>${ic}</span>${esc(l)}</button>`).join('')}</div>`;
 }
+function openSheetPop(list, title){
+  closeSheetPop();
+  const items = list.filter(([v])=> roleCanSee(v));
+  const wrap = document.createElement('div');
+  wrap.id = 'sheetPop'; wrap.className = 'sheetPopScrim';
+  wrap.innerHTML = `<div class="sheetPop" role="dialog" aria-label="${esc(title)} 시트 고르기">
+      <div class="sheetPopHd"><b>${esc(title)}</b><button type="button" class="sheetPopX" aria-label="닫기">✕</button></div>
+      <div class="sheetPopList">${items.map(([v,ic,l])=> `<button type="button" class="sheetPopItem${VIEW===v?' on':''}" data-sheet-go="${v}"><span class="sheetPopIc">${ic}</span>${esc(l)}</button>`).join('')}</div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.onclick = e=>{ if(e.target===wrap || e.target.closest('.sheetPopX')) closeSheetPop(); };
+  wrap.querySelectorAll('[data-sheet-go]').forEach(b=> b.onclick = ()=>{ closeSheetPop(); setView(b.dataset.sheetGo); });
+}
+function closeSheetPop(){ const x = document.getElementById('sheetPop'); if(x) x.remove(); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSheetPop(); });
 function pageHub(list){
   return `<div class="unionHub"><p class="hint" style="margin:0 0 10px;">볼 시트를 골라 주세요.</p>
     <div class="unionGrid">${list.filter(([v])=> roleCanSee(v)).map(([v,ic,l])=> `<button type="button" class="unionCard" data-union-go="${v}"><span class="unionIc">${ic}</span><b>${esc(l)}</b></button>`).join('')}</div></div>`;
