@@ -1561,10 +1561,12 @@ function dpNowTeam(){
     return scheduledShift(d,'1')==='N' ? '1' : '2';
   }catch(e){ return '1'; }
 }
-function dpWorkDate(){
+function dpWorkDate(){ return dpWorkDateFor(dispatchTeamFilter); }
+// 그 조의 '지금 근무일': 08시 전이면 전날 야간(일요일이면 일요일 24시간 조)인 조는 전날, 아니면 오늘 — 배차표·출퇴근 입력 공통
+function dpWorkDateFor(t){
   const n = new Date(), today = todayStr();
   if(n.getHours() >= 8) return today;
-  const y = addDays(today, -1), t = dispatchTeamFilter;
+  const y = addDays(today, -1);
   if(t!=='1' && t!=='2') return y;
   if(isSundayDs(y)) return sundayTeam(y)===t ? y : today;   // 월요일 08시 전: 일요일 24시간 조는 아직 일요일(야간)
   return scheduledShift(y, t)==='N' ? y : today;
@@ -3509,7 +3511,7 @@ function ensureMonth(ym){
 }
 function ensureForView(){
   if(!dbReady) return;
-  if(VIEW==='input' || VIEW==='input2'){ const d = (prefill && prefill.date) || inputViewDate || todayStr(); ensureAttendanceRange(d, d); }
+  if(VIEW==='input' || VIEW==='input2'){ const d = (prefill && prefill.date) || (inputAuto ? dpWorkDateFor(inputTeam) : inputViewDate) || todayStr(); ensureAttendanceRange(d, d); }
   else if(VIEW==='grid'){ const d = dstr(curYear,curMonth,1); ensureAttendanceRange(d, d); }
   else if(VIEW==='combined' || VIEW==='codestats'){
     if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd);
@@ -3760,7 +3762,13 @@ function setView(v){
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
   if(v==='dispatch'){ if(!dispatchDate || dispatchAuto) dpApplyAutoDate(); else autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); }
-  if(v==='input' || v==='input2'){ if(dbReady) subscribeDispatchDay(inputViewDate || todayStr()); }
+  if(v==='input' || v==='input2'){
+    if(inputAuto && !(prefill && prefill.date)){   // 배차표와 같은 조·근무일로 열기
+      inputTeam = (dispatchTeamFilter==='1' || dispatchTeamFilter==='2') ? dispatchTeamFilter : dpNowTeam();
+      inputViewDate = dpWorkDateFor(inputTeam);
+    }
+    if(dbReady) subscribeDispatchDay(inputViewDate || todayStr());
+  }
   if(v==='splan'){ if(!weekStart) weekStart = mondayOf(todayStr()); if(dbReady) loadSupportPlanAll(); }
   if(v==='codestats' || v==='combined'){
     if(!codeStatsStart || !codeStatsEnd){
@@ -4009,8 +4017,10 @@ async function toggleInputClose(){
     catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
   });
 }
+let inputAuto = true; // 날짜를 직접 고르지 않았으면 배차표와 같은 근무일(08시 전엔 전날 야간)로 자동
 function pageInput(){
-  const date = (prefill && prefill.date) || inputViewDate || todayStr();
+  if(prefill && prefill.date) inputAuto = false;
+  const date = (prefill && prefill.date) || (inputAuto ? dpWorkDateFor(inputTeam) : inputViewDate) || todayStr();
   prefill = null; inputViewDate = date;
   const [y,m,d] = date.split('-').map(Number);
   const list = employees.filter(e=> (e.team||'')===inputTeam).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
@@ -4097,11 +4107,11 @@ function setInputHold(date, team, on, extra){
 }
 function bindInputTable(el){
   const dEl = document.getElementById('inDate'); if(!dEl) return;
-  const go = ds=>{ inputViewDate = ds; if(dbReady) subscribeDispatchDay(ds); render(); };
+  const go = ds=>{ inputViewDate = ds; inputAuto = (ds === dpWorkDateFor(inputTeam)); if(dbReady) subscribeDispatchDay(ds); render(); };
   dEl.onchange = ()=>{ if(dEl.value) go(dEl.value); };
   document.getElementById('inPrev').onclick = ()=> go(addDays(inputViewDate, -1));
   document.getElementById('inNext').onclick = ()=> go(addDays(inputViewDate, 1));
-  el.querySelectorAll('[data-act="in-team"]').forEach(b=> b.onclick = ()=>{ inputTeam = b.dataset.team; try{ localStorage.setItem('snct_input_team', inputTeam); }catch(e){} render(); });
+  el.querySelectorAll('[data-act="in-team"]').forEach(b=> b.onclick = ()=>{ inputTeam = b.dataset.team; dispatchTeamFilter = inputTeam; try{ localStorage.setItem('snct_input_team', inputTeam); localStorage.setItem('snct_dp_team', inputTeam); }catch(e){} render(); });   // 배차표와 같은 조로 맞춤
   const setDraft = (empId, f, v)=>{ const k = inputViewDate+'|'+empId; inputDraft[k] = Object.assign({}, inputDraft[k]||{}, {[f]: v}); };
   const refreshRow = (empId, inp)=>{
     const e = employees.find(x=>x.id===empId); const tr = inp.closest('tr'); if(!e || !tr) return;
@@ -8492,7 +8502,7 @@ function afterRender(){
     render();
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
-  el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
+  el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; inputTeam = dispatchTeamFilter; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); localStorage.setItem('snct_input_team', inputTeam); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
   bindPayroll(el);
   bindEqPay(el);
   bindFcAna(el);
