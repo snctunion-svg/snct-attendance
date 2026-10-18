@@ -1059,6 +1059,17 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .scrim.show{display:block;}
   main#content{padding:16px 14px 50px;}
 }
+
+/* UNION 시트 고르기 */
+.unionBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 14px;padding:10px 12px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;}
+.unionBarT{color:#4c1d95;font-size:13px;margin-right:4px;}
+.unionChip{display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd6fe;background:#fff;color:#4c1d95;border-radius:999px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.unionChip.on{background:#6d28d9;border-color:#6d28d9;color:#fff;}
+.unionGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.unionCard{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;cursor:pointer;}
+.unionCard:hover{border-color:#a78bfa;background:#f5f3ff;}
+.unionIc{font-size:26px;}
+@media (max-width:520px){ .unionBar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;} .unionGrid{grid-template-columns:repeat(2,minmax(0,1fr));} }
 </style>
 </head>
 <body>
@@ -1079,23 +1090,17 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="combined"><span class="ic">📋</span>근태관리</a>
     <a data-view="ot"><span class="ic">🧮</span>월별 OT현황</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
-    <div class="navttl" data-role-section="leader" style="margin-top:10px;">조장관리</div>
     <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
+    <div class="navttl" data-role-section="leader" style="margin-top:10px;">조장관리</div>
     <a data-view="safety"><span class="ic">🦺</span>관리감독자</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
-    <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
     <a data-view="berth"><span class="ic">⚓</span>선석 조회</a>
     <a data-view="vessel"><span class="ic">🚢</span>본선작업</a>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
     <a data-view="holidays"><span class="ic">📅</span>공휴일 관리</a>
-    <a data-view="payroll"><span class="ic">💰</span>장비 시급</a>
-    <a data-view="eqpay"><span class="ic">🧾</span>장비 급여 관리</a>
-    <a data-view="fcana"><span class="ic">📊</span>휴무 2명 분석</a>
-    <a data-view="supcut"><span class="ic">✂️</span>지원 폐지</a>
-    <a data-view="holguar"><span class="ic">🗓️</span>휴일보전</a>
-    <a data-view="allcut"><span class="ic">🧮</span>보전 폐지</a>
-    <a data-view="backup"><span class="ic">💾</span>백업·복원</a>
+    <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
+    <a data-view="unionhub" data-role-section="union"><span class="ic">🗂️</span>UNION 시트</a>
   </nav>
   <main id="content"></main>
 </div>
@@ -2928,9 +2933,9 @@ const FIREBASE_CONFIG = {
 const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
-const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','codes','pwchange']; // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
-const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident'];
-const UNION_VIEWS  = ['berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
+const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','pwchange','accident']; // 근태관리 구역 = 배포용(누구나). 근태코드는 조장관리 구역이라 조장·UNION만 // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
+const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident','berth','vessel','team','holidays'];
+const UNION_VIEWS  = ['unionhub','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
@@ -3127,6 +3132,7 @@ function isEditorOnlyView(v){ return EDITOR_ONLY_VIEWS.includes(v); }
 function updateNavForRole(){
   document.querySelectorAll('nav#nav a[data-view]').forEach(a=>{ a.style.display = roleCanSee(a.dataset.view) ? '' : 'none'; });
   document.querySelectorAll('nav#nav [data-role-section="union"]').forEach(x=> x.style.display = (userRole==='union' || userRole==='all') ? '' : 'none');
+  document.querySelectorAll('nav#nav [data-role-section="leader"]').forEach(x=> x.style.display = (userRole==='leader' || userRole==='union' || userRole==='all') ? '' : 'none');
 }
 // 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
 function applyReadonly(el){
@@ -3671,7 +3677,7 @@ function setView(v){
   canEdit = roleCanEdit(v);
   if(window._mgScroll) window._mgScroll.x = null; // 화면을 다시 열면 월별 근태는 오늘 날짜 위치부터
   VIEW = v;
-  document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v));
+  document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v || (a.dataset.view==='unionhub' && isUnionSheet(v))));
   document.getElementById('nav').classList.remove('open');
   document.getElementById('scrim').classList.remove('show');
   if(v==='dispatch'){ if(!dispatchDate || dispatchAuto) dpApplyAutoDate(); else autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); }
@@ -3722,6 +3728,16 @@ document.addEventListener('focusout', ()=>{
   if(!renderDeferred) return;
   setTimeout(()=>{ if(renderDeferred && !isEditingField()){ renderDeferred = false; render(); } }, 0);
 });
+// ===== UNION 시트 =====
+const UNION_SHEETS = [['payroll','💰','장비 시급'],['eqpay','🧾','장비 급여 관리'],['fcana','📊','휴무 2명 분석'],['supcut','✂️','지원 폐지'],['holguar','🗓️','휴일보전'],['allcut','🧮','보전 폐지'],['backup','💾','백업·복원']];
+function isUnionSheet(v){ return UNION_SHEETS.some(x=> x[0]===v); }
+function unionSheetBar(){
+  return `<div class="unionBar"><b class="unionBarT">UNION</b>${UNION_SHEETS.map(([v,ic,l])=> `<button type="button" class="unionChip${VIEW===v?' on':''}" data-union-go="${v}"><span>${ic}</span>${esc(l)}</button>`).join('')}</div>`;
+}
+function pageUnionHub(){
+  return `<div class="unionHub"><p class="hint" style="margin:0 0 10px;">볼 시트를 골라 주세요.</p>
+    <div class="unionGrid">${UNION_SHEETS.map(([v,ic,l])=> `<button type="button" class="unionCard" data-union-go="${v}"><span class="unionIc">${ic}</span><b>${esc(l)}</b></button>`).join('')}</div></div>`;
+}
 function render(){
   renderDeferred = false;
   ensureForView();
@@ -3751,6 +3767,10 @@ function render(){
   else if(VIEW==='accident') el.innerHTML = pageAccident();
   else if(VIEW==='safety') el.innerHTML = pageSafety();
   else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
+  else if(VIEW==='unionhub') el.innerHTML = pageUnionHub();
+  if(isUnionSheet(VIEW)){ el.insertAdjacentHTML('afterbegin', unionSheetBar());   // UNION 시트 고르기 줄(맨 위) — 휴대폰에서 고른 시트가 보이게 옆으로 맞춤
+    const bar = el.querySelector('.unionBar'), on = bar && bar.querySelector('.unionChip.on'); if(on) bar.scrollLeft = Math.max(0, on.offsetLeft - (bar.clientWidth - on.offsetWidth)/2); }
+  if(VIEW==='unionhub' || isUnionSheet(VIEW)) el.querySelectorAll('[data-union-go]').forEach(b=> b.onclick = ()=> setView(b.dataset.unionGo));
 
   afterRender();
   if(!canEdit && VIEW!=='accident' && VIEW!=='safety' && VIEW!=='pwchange') applyReadonly(el); // 사고경위서는 누구나 작성·출력(저장 안 함)
