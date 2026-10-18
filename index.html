@@ -1292,9 +1292,9 @@ function renderDpWho(){
   // 같은 내용(색+글씨)이 이어지는 칸을 한 줄로 묶음
   const rows = []; let work = 0, duty = 0;
   dpSlotOrder().forEach(s=>{
-    const cat = slots[s] || '', note = notes[s] || '';
+    const cat = slots[s] || '', note = '';   // 칸에 직접 쓴 숫자·글씨는 팝업에 안 보임(색칠한 배차만)
     if(cat && cat!=='당직') work += 0.5; else if(cat==='당직') duty += 0.5;
-    if(!cat && !note) return;
+    if(!cat) return;
     const st = dpSlotMin(s), last = rows[rows.length-1];
     if(last && last.cat===cat && last.note===note && last.end===st) last.end = st + 30;
     else rows.push({cat, note, start: st, end: st + 30});
