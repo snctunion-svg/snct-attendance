@@ -1319,12 +1319,14 @@ function renderDpWho(){
         <td style="text-align:right;white-space:nowrap;color:var(--text-muted);">${fmtH((r.end - r.start)/60)}h</td></tr>`; }).join('')
     : `<tr><td colspan="3" class="hint" style="text-align:center;padding:14px 0;">오늘 배차가 없어요.</td></tr>`;
   // 음성으로 읽을 문장: "김의섭, 10월 18일 주간 배차입니다. 8시부터 10시까지 근무. … 승무 4.5시간."
-  const sayT = min=>{ const h = Math.floor(min/60) % 24, mi = min % 60; return `${(dispatchShift==='night' || (dispatchShift==='full' && dispatchSunPart==='night')) && h < 7 ? '새벽 ' : ''}${h}시${mi ? ' '+mi+'분' : ''}`; };
+  const sayT = min=>{ const h = Math.floor(min/60) % 24, mi = min % 60; return `${(dispatchShift==='night' || (dispatchShift==='full' && (sunPartNow(dispatchDate) || dispatchSunPart)==='night')) && h < 7 ? '새벽 ' : ''}${h}시${mi ? ' '+mi+'분' : ''}`; };
   // 일요일(주·야간 한 장)은 지금 보고 있는 쪽(주간 또는 야간)만 읽음
-  const sayPart = dispatchShift==='full' ? (dispatchSunPart==='night' ? '야간' : '주간') : part;
+  // 일요일: 지금 그 일요일의 주간(07~19시)이면 주간만, 야간이면 야간만 읽음(다른 날을 보고 있으면 화면에서 고른 쪽)
+  const sunPart = dispatchShift==='full' ? (sunPartNow(dispatchDate) || dispatchSunPart) : '';
+  const sayPart = dispatchShift==='full' ? (sunPart==='night' ? '야간' : '주간') : part;
   let sRows = [], sWork = 0, sDuty = 0;
   if(dispatchShift==='full'){
-    const fa = FULL_SLOTS_FN(), partSlots = new Set(dispatchSunPart==='night' ? SUN_NIGHT_SLOTS_FN() : fa.slice(0, fa.indexOf('19:00')));
+    const fa = FULL_SLOTS_FN(), partSlots = new Set(sunPart==='night' ? SUN_NIGHT_SLOTS_FN() : fa.slice(0, fa.indexOf('19:00')));
     dpSlotOrder().forEach(sl=>{
       if(!partSlots.has(sl)) return;
       const cat = slots[sl] || ''; if(!cat) return;
@@ -1359,7 +1361,7 @@ function dpSpeak(text){
   try{
     const ss = window.speechSynthesis; ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ko-KR'; u.rate = 1.03; u.pitch = 1.12;   // 살짝 높고 또렷하게(젊은 여성 목소리 느낌)
+    u.lang = 'ko-KR'; u.rate = 1.05; u.pitch = 1.18;   // 높고 또렷하게 — 젊고 청량한 여성 목소리 느낌
     const v = dpPickVoice(ss.getVoices()||[]); if(v) u.voice = v;
     ss.speak(u);
   }catch(e){}
@@ -1568,11 +1570,18 @@ function dpApplyAutoDate(){
   dispatchDate = dpWorkDate(); autoDispatchShift();
   if(dispatchDate !== todayStr()){ if(isSundayDs(dispatchDate)) dispatchSunPart = 'night'; else dispatchShift = 'night'; } // 전날 야간
 }
+// 일요일 배차가 지금 시각으로 주간(07~19시)인지 야간(19~다음날 07시)인지 — 지금 그 일요일이 아니면 null
+function sunPartNow(ds){
+  const n = new Date(), h = n.getHours(), t = todayStr();
+  if(ds===t) return (h >= 7 && h < 19) ? 'day' : (h >= 19 ? 'night' : null);
+  if(ds===addDays(t, -1) && h < 7) return 'night';
+  return null;
+}
 function autoDispatchShift(){
-  if(isSundayDs(dispatchDate || todayStr())){ // 일요일: 하루치 한 장, 처음엔 고른 조의 근무(D/N)에 맞춰 주간·야간
+  if(isSundayDs(dispatchDate || todayStr())){ // 일요일: 하루치 한 장 — 지금이 그 일요일이면 시각(07~19시 주간, 그 밖 야간), 아니면 고른 조의 근무(D/N)
     dispatchShift = 'full';
     const t = (dispatchTeamFilter==='1' || dispatchTeamFilter==='2') ? dispatchTeamFilter : '1';
-    dispatchSunPart = scheduledShift(dispatchDate || todayStr(), t)==='N' ? 'night' : 'day';
+    dispatchSunPart = sunPartNow(dispatchDate || todayStr()) || (scheduledShift(dispatchDate || todayStr(), t)==='N' ? 'night' : 'day');
     return;
   }
   const team = (dispatchTeamFilter==='1' || dispatchTeamFilter==='2') ? dispatchTeamFilter : '1';
