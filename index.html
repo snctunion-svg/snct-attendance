@@ -1551,10 +1551,14 @@ function isSundayDs(ds){ const [y,m,d] = String(ds).split('-').map(Number); retu
 // 배차표의 '오늘': 야간 배차표만 다음날 08시까지 전날로 봄(주간은 그대로 자정에 넘어감)
 //  00~08시에 보고 있는 조가 전날 야간 근무였으면(전체 보기 포함) 전날 야간, 주간 조면 오늘
 // 지금 근무 중인 조: 08~18시는 오늘 주간 조, 그 밖에는 야간 조(00~08시는 어제 야간 조)
+// 일요일 24시간(주간 07시 ~ 월요일 08시) 근무 조 = 그 주에 주간(D)인 조 (원본 엑셀 배차: 일요일 주·야간 모두 D 주 조가 근무)
+function sundayTeam(ds){ return scheduledShift(ds,'1')==='D' ? '1' : '2'; }
 function dpNowTeam(){
   try{ const n = new Date(), h = n.getHours(), t = todayStr();
-    if(h >= 8 && h < 18) return scheduledShift(t,'1')==='D' ? '1' : '2';
-    const d = h < 8 ? addDays(t, -1) : t; return scheduledShift(d,'1')==='N' ? '1' : '2';
+    if(h >= 8 && h < 18) return isSundayDs(t) ? sundayTeam(t) : (scheduledShift(t,'1')==='D' ? '1' : '2');
+    const d = h < 8 ? addDays(t, -1) : t;
+    if(isSundayDs(d)) return sundayTeam(d);   // 일요일 저녁 ~ 월요일 08시: 일요일 24시간 조
+    return scheduledShift(d,'1')==='N' ? '1' : '2';
   }catch(e){ return '1'; }
 }
 function dpWorkDate(){
@@ -1562,6 +1566,7 @@ function dpWorkDate(){
   if(n.getHours() >= 8) return today;
   const y = addDays(today, -1), t = dispatchTeamFilter;
   if(t!=='1' && t!=='2') return y;
+  if(isSundayDs(y)) return sundayTeam(y)===t ? y : today;   // 월요일 08시 전: 일요일 24시간 조는 아직 일요일(야간)
   return scheduledShift(y, t)==='N' ? y : today;
 }
 let dispatchAuto = true; // 날짜를 직접 고르지 않았으면 시간에 따라 자동(08시에 다음 날로)
@@ -1570,18 +1575,18 @@ function dpApplyAutoDate(){
   dispatchDate = dpWorkDate(); autoDispatchShift();
   if(dispatchDate !== todayStr()){ if(isSundayDs(dispatchDate)) dispatchSunPart = 'night'; else dispatchShift = 'night'; } // 전날 야간
 }
-// 일요일 배차가 지금 시각으로 주간(07~19시)인지 야간(19~다음날 07시)인지 — 지금 그 일요일이 아니면 null
+// 일요일 배차를 지금 시각으로: 주간(07~18시) / 야간(18시 ~ 월요일 08시) — 지금 그 일요일이 아니면 null
 function sunPartNow(ds){
   const n = new Date(), h = n.getHours(), t = todayStr();
-  if(ds===t) return (h >= 7 && h < 19) ? 'day' : (h >= 19 ? 'night' : null);
-  if(ds===addDays(t, -1) && h < 7) return 'night';
+  if(ds===t) return (h >= 7 && h < 18) ? 'day' : (h >= 18 ? 'night' : null);
+  if(ds===addDays(t, -1) && h < 8) return 'night';
   return null;
 }
 function autoDispatchShift(){
   if(isSundayDs(dispatchDate || todayStr())){ // 일요일: 하루치 한 장 — 지금이 그 일요일이면 시각(07~19시 주간, 그 밖 야간), 아니면 고른 조의 근무(D/N)
     dispatchShift = 'full';
     const t = (dispatchTeamFilter==='1' || dispatchTeamFilter==='2') ? dispatchTeamFilter : '1';
-    dispatchSunPart = sunPartNow(dispatchDate || todayStr()) || (scheduledShift(dispatchDate || todayStr(), t)==='N' ? 'night' : 'day');
+    dispatchSunPart = sunPartNow(dispatchDate || todayStr()) || 'day';
     return;
   }
   const team = (dispatchTeamFilter==='1' || dispatchTeamFilter==='2') ? dispatchTeamFilter : '1';
