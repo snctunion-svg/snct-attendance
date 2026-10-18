@@ -1059,6 +1059,75 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .scrim.show{display:block;}
   main#content{padding:16px 14px 50px;}
 }
+/* ===== 자동배차 ===== */
+.adpBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px;}
+.adpBar input[type=date]{border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--bg);color:var(--text);font:inherit;min-width:0;}
+.adpSp{width:6px;}
+.adpBanner{background:#e0f2fe;color:#075985;font-weight:800;font-size:14px;padding:9px 14px;border-radius:8px;border:1px solid #bae6fd;margin-bottom:10px;}
+.adpMan{color:#b45309;font-weight:700;font-size:12px;}
+.adpSum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px;}
+.adpSum>div{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;text-align:center;}
+.adpSum span{display:block;font-size:11px;color:var(--text-muted);}
+.adpSum b{font-size:17px;}
+.adpSum .bad b{color:#b91c1c;}
+.adpWarn{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:10px;}
+.adpGrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px;}
+.adpGrid>.panel{margin-bottom:12px;}
+.adpP{padding:12px;}
+.adpTtl{font-weight:800;font-size:14px;margin-bottom:8px;}
+.adpTtl small{display:block;font-weight:400;font-size:11px;color:var(--text-muted);margin-top:2px;}
+.adpTbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+.adpTbl th,.adpTbl td{border:1px solid var(--border);padding:5px 6px;text-align:center;white-space:nowrap;}
+.adpTbl th small{display:block;font-weight:400;font-size:10.5px;opacity:.85;}
+.adpTbl:not(.adpTime):not(.adpOrd) th{white-space:normal;}
+.adpTbl:not(.adpTime):not(.adpOrd) th small{word-break:keep-all;}
+.adpHA{background:#8CE24C !important;color:#1a3d00 !important;}
+.adpHB{background:#FFA654 !important;color:#5c2d00 !important;}
+td.adpA{background:rgba(140,226,76,.18);}
+td.adpB{background:rgba(255,166,84,.18);}
+.adpCr{font-weight:800;}
+.adpNm{font-weight:700;}
+.adpTag{display:inline-block;min-width:16px;margin-left:4px;padding:0 4px;border-radius:8px;background:var(--bg);border:1px solid var(--border);font-size:10px;color:var(--text-muted);line-height:15px;}
+.adpTag.adpSup{background:#ccfbf1;border-color:#99f6e4;color:#0f766e;}
+.adpLack{color:#b91c1c;font-weight:700;}
+.adpCnt td{font-weight:800;color:var(--accent);background:var(--bg);}
+.adpGrp{display:inline-block;padding:1px 7px;border-radius:9px;font-size:11px;font-weight:700;}
+.adpGrpA{background:#8CE24C;color:#1a3d00;}
+.adpGrpB{background:#FFA654;color:#5c2d00;}
+.adpGrpW{background:var(--bg);color:var(--text-muted);border:1px solid var(--border);}
+.adpGrpX{background:#e5e7eb;color:#6b7280;}
+tr.adpGX td{opacity:.55;}
+.adpNmC{font-weight:700;}
+.adpMv{white-space:nowrap;}
+.adpMv .btn{padding:3px 7px;margin:0 1px;}
+.adpMv .adpChk{margin-left:4px;}
+.adpChk input{margin:0 2px 0 0;vertical-align:-2px;}
+.adpChk{font-size:12px;white-space:nowrap;cursor:pointer;}
+.adpOff{font-size:11.5px;color:var(--text-muted);margin-top:8px;}
+.adpBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.adpCfgHd{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.adpCfgBody{margin-top:10px;}
+.adpFld{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.adpFld>span{font-size:12px;font-weight:700;}
+.adpFld input[type=text]{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--text);font:inherit;font-size:14px;width:100%;box-sizing:border-box;}
+.adpChips{display:flex;flex-wrap:wrap;gap:6px;}
+.adpChip{min-width:40px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-weight:800;cursor:pointer;}
+.adpChip.on{background:var(--btn);border-color:var(--btn);color:#fff;}
+.adpHint{font-size:11.5px;color:var(--text-muted);margin:6px 0 0;}
+@media (max-width:860px){ .adpGrid{grid-template-columns:minmax(0,1fr);gap:0;} }
+@media (max-width:520px){
+  .adpSum{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .adpBanner{font-size:13px;padding:8px 10px;}
+  .adpTbl{font-size:12px;}
+  .adpTbl th,.adpTbl td{padding:4px 4px;}
+  .adpTime th{font-size:10.5px;}
+  .adpOrd{font-size:11.5px;}
+  .adpOrd .adpHrs{display:none;}
+  .adpOrd .adpGrp{font-size:10.5px;padding:1px 5px;}
+  .adpMv .btn{padding:2px 6px;}
+  .adpChk{font-size:11px;}
+}
+@media (max-width:380px){ .adpP{padding:10px 8px;} .adpOrd th,.adpOrd td{padding:4px 3px;} .adpMv .btn{padding:2px 5px;} }
 </style>
 </head>
 <body>
@@ -1084,6 +1153,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="safety"><span class="ic">🦺</span>관리감독자</a>
     <a data-view="codes"><span class="ic">🏷️</span>근태코드</a>
     <a data-view="mail"><span class="ic">📧</span>메일 송부</a>
+    <a data-view="autodp"><span class="ic">🏗️</span>자동배차</a>
     <div class="navttl" data-role-section="union" style="margin-top:10px;">UNION</div>
     <a data-view="berth"><span class="ic">⚓</span>선석 조회</a>
     <a data-view="team"><span class="ic">🧩</span>조편성 관리</a>
@@ -2928,7 +2998,7 @@ const LEADER_EMAILS = ['snctunion@gmail.com'];
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','codes','pwchange']; // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
-const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident'];
+const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident','autodp'];
 const UNION_VIEWS  = ['berth','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
@@ -3367,7 +3437,7 @@ function subscribeAll(){
   }, dbErr);
   unsub.config = db.doc('meta/config').onSnapshot(doc=>{ const v = (doc.exists && doc.data().vslApi) || ''; if(v!==vslApi){ vslApi = v; vslData = null; if(VIEW==='vessel'){ vslLoadedAt = 0; reloadVessel(); } if(VIEW==='berth'){ berthData = null; berthLoadedAt = 0; reloadBerth(); } } }, ()=>{});
   unsub.payMgr = db.doc('meta/payroll').onSnapshot(doc=>{ const d = doc.exists ? (doc.data()||{}) : {}; payMgr = d.byEmp||{}; payDedRates = d.dedRates||{}; scheduleRender(); }, ()=>{}); subscribeSlipPw(); subscribeBerthLog(); subscribeInputClose();
-  subscribeDocMailTo();
+  subscribeDocMailTo(); subscribeAutoDp();
   unsub.mailConfig = db.doc('meta/mailConfig').onSnapshot(doc=>{ mailConfig = doc.exists ? doc.data() : {}; scheduleRender(); }, ()=>{});
   unsub.dayMemos = db.doc('meta/dayMemos').onSnapshot(doc=>{ dayMemos = (doc.exists && doc.data().memos) || {}; scheduleRender(); }, ()=>{});
   unsub.rotation = db.doc('meta/rotation').onSnapshot(doc=>{
@@ -3441,6 +3511,7 @@ function ensureForView(){
   else if(VIEW==='mail'){ const mr = mailRangeNow(); ensureAttendanceRange(mr.start, mr.end); }
   else if(VIEW==='eqpay') eqPayEnsure();
   else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
+  else if(VIEW==='autodp'){ adpInit(); ensureAttendanceRange(adpDate, adpDate); ensureAttendanceRange(addDays(adpDate, -1), addDays(adpDate, -1)); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); subscribeAutoDp(); }
   else if(VIEW==='dispatch'){ const d = dispatchDate || todayStr(); ensureAttendanceRange(d, d); ensureAttendanceRange(addDays(d, -1), addDays(d, -1)); subscribeDispatchDay(d); if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd); }   // 처음 화면이 배차표라 여기서 그 날 배차를 받음(전날 ND 지원자 확인용으로 전날 근태도)
 }
 // 기존 호출부 호환용
@@ -3738,6 +3809,7 @@ function render(){
   else if(VIEW==='berth'){ el.innerHTML = pageBerth(); bindBerthPage(); }
   else if(VIEW==='dispatch') el.innerHTML = pageDispatch(); // 본선작업 현황은 '본선작업' 메뉴에서만 보여 줌
   else if(VIEW==='splan') el.innerHTML = pageSupportPlan();
+  else if(VIEW==='autodp'){ el.innerHTML = pageAutoDp(); bindAutoDp(); }
   else if(VIEW==='mail'){ el.innerHTML = pageMail(); bindMailPage(); }
   else if(VIEW==='team') el.innerHTML = pageTeam();
   else if(VIEW==='backup') el.innerHTML = pageBackup();
@@ -8106,6 +8178,276 @@ function pageSupportPlan(){
   </div>
   </div>
   `;
+}
+
+/* ========================= 자동배차 (조장관리) ========================= */
+// 엑셀 '배차' 시트(2025-12-22 ~ 2026-09-20, 258일치)에서 가장 많이 쓴 틀을 기본 규칙으로 씀
+//   주간: 초반조 08~10·13~15:30 / 후반조 10~12·15:30~18 (각 4.5시간)
+//   야간: 초반조 19~21:30·01~03·06~07 / 후반조 21:30~24·03~06 (각 5.5시간)
+//   규칙 순번 = 근태관리 OT 순번(일요일·공휴일은 휴일 OT, 그 밖은 평일 OT) — 그날 근무자끼리 1번부터 다시 매김
+//   순번 앞에서부터 가동 대수만큼 초반조, 그다음 가동 대수만큼 후반조, 남는 사람은 대기
+//   같은 조(초반·후반) 안에서는 엑셀처럼 조 순번(No) 순서대로 1호기부터(지원 인력은 맨 뒤)
+//   배차표와는 따로 씀(배차표 칸은 건드리지 않음). 설정·순서 조정은 meta/autoDispatch 에 저장
+const ADP_DEF = {
+  day:   {A:'08:00-10:00, 13:00-15:30', B:'10:00-12:00, 15:30-18:00'},
+  night: {A:'19:00-21:30, 01:00-03:00, 06:00-07:00', B:'21:30-24:00, 03:00-06:00'},
+  cranes: [1,2,3,4,5,6,7]
+};
+const ADP_CRANE_MAX = 8;
+let autoDp = {cfg:{}, days:{}};
+let adpDate = null, adpTeam = null, adpShift = null, adpCfgOpen = false;
+function subscribeAutoDp(){
+  if(!db || unsub.autoDp) return;
+  try{ unsub.autoDp = db.doc('meta/autoDispatch').onSnapshot(doc=>{
+    const d = doc.exists ? (doc.data()||{}) : {};
+    autoDp = {cfg: d.cfg || {}, days: d.days || {}};
+    if(VIEW==='autodp') scheduleRender();
+  }, ()=>{}); }catch(e){}
+}
+function adpInit(){
+  if(!codeStatsStart || !codeStatsEnd){ const t = new Date(); codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1); codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1)); }
+  if(!adpDate) adpDate = dpWorkDate();
+  if(adpTeam!=='1' && adpTeam!=='2'){ let t = ''; try{ t = localStorage.getItem('snct_adp_team')||''; }catch(e){} adpTeam = (t==='1'||t==='2') ? t : dpNowTeam(); }
+  if(adpShift!=='day' && adpShift!=='night') adpShift = adpAutoShift();
+}
+function adpAutoShift(){
+  return scheduledShift(adpDate, adpTeam)==='N' ? 'night' : 'day';
+}
+function adpKey(){ return `${adpDate}_${adpShift}_${adpTeam}`; }
+function adpDayCfg(){ return (autoDp.days && autoDp.days[adpKey()]) || {}; }
+function adpTpl(shift, grp){ const c = autoDp.cfg && autoDp.cfg[shift]; return (c && c[grp]) || ADP_DEF[shift][grp]; }
+function adpCranes(){
+  const d = adpDayCfg();
+  const list = Array.isArray(d.cranes) ? d.cranes : (Array.isArray(autoDp.cfg.cranes) ? autoDp.cfg.cranes : ADP_DEF.cranes);
+  return list.map(Number).filter(n=> n>=1 && n<=ADP_CRANE_MAX).sort((a,b)=>a-b);
+}
+// '08:00-10:00, 13:00-15:30' → [{s,e,min}] (야간은 자정 넘어 이어지게: 01:00 = 25:00)
+function adpParse(txt, shift){
+  const out = [];
+  String(txt||'').split(/[,\n]/).map(x=>x.trim()).filter(Boolean).forEach(p=>{
+    const m = p.match(/^(\d{1,2})(?:[:.](\d{1,2}))?\s*[-~]\s*(\d{1,2})(?:[:.](\d{1,2}))?$/);
+    if(!m) return;
+    const toMin = (h, mm)=>{ h = Number(h); const ms = String(mm||''); let m2 = ms.length===1 ? Number(ms)*10 : Number(ms||0); if(m2>59) m2 = 0; let v = h*60 + m2; if(shift==='night' && h < 12) v += 1440; return v; };
+    const s = toMin(m[1], m[2]); let e = toMin(m[3], m[4]);
+    if(shift==='night' && Number(m[3])===24) e = 1440;
+    if(!(e > s) || e - s > 12*60) return;
+    out.push({s, e});
+  });
+  return out.sort((a,b)=>a.s-b.s);
+}
+function adpHM(min){ const h = Math.floor(min/60), m = min%60; const hh = h>24 ? h-24 : h; return String(hh).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
+function adpBlockLbl(b){ const s = adpHM(b.s), e = adpHM(b.e); return `${s.replace(/:00$/,'')}~${e.replace(/:00$/,'')}`; }
+function adpHours(blocks){ return blocks.reduce((t,b)=> t + (b.e-b.s), 0) / 60; }
+// 그날 그 근무의 배차 대상과 규칙 순번 계산
+function adpCompute(){
+  const ds = adpDate, team = adpTeam, shift = adpShift;
+  if(!codeStatsStart || !codeStatsEnd){ const t = new Date(); codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1); codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1)); }
+  const dayIsHol = ['SU','H'].includes(dayCategory(ds, false));
+  const allSorted = employees.slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
+  const cd = combinedData(allSorted, codeStatsStart, codeStatsEnd);
+  const otRaw = {}, supRank = {};
+  cd.perEmp.forEach((r,i)=>{ otRaw[r.emp.id] = dayIsHol ? cd.rankOtHol[i] : cd.rankOtWk[i]; supRank[r.emp.id] = cd.rankSup[i]; });
+  const codeOn = (e, d)=>{ const rec = attendance[d+'_'+e.id] || {}; return gridCode(rec && rec.date ? rec : null, d, String(e.name||'').trim()); };
+  const members = allSorted.filter(e=> (e.team||'')===team && e.active!==false);
+  const working = [], off = [];
+  members.forEach(e=>{
+    const mc = codeOn(e, ds), dc = mc || scheduledShift(ds, e.team||'');
+    const ok = (!dc || DP_WORK_CODES.has(dc)) && !DP_SUPX_CODES.has(mc);
+    (ok ? working : off).push({e, code: dc, mc, sup:false});
+  });
+  // OT 순번: 그날 근무자끼리 1번부터(같은 값은 같은 순번) — 배차표 순번 칸과 같은 방식
+  const ranked = working.filter(x=> otRaw[x.e.id]!=null).sort((a,b)=> otRaw[a.e.id]-otRaw[b.e.id] || (a.e.teamOrder||999)-(b.e.teamOrder||999));
+  let rank = 0, prev = null;
+  ranked.forEach((x,i)=>{ const v = otRaw[x.e.id]; if(v!==prev){ rank = i+1; prev = v; } x.rank = rank; });
+  const unranked = working.filter(x=> otRaw[x.e.id]==null);
+  // 지원 인력(상대 조): 주간 = 그날 DS + 전날 ND, 야간 = 그날 NS·DN — 배차표 지원란과 같은 기준
+  const supToday = shift==='day' ? new Set(['DS']) : new Set(['NS','DN']);
+  const prevDs = addDays(ds, -1);
+  const early = c=> (c==='DN' || c==='ND') ? 0 : 1;
+  const sups = allSorted.filter(e=> (e.team||'') && (e.team||'')!==team && e.active!==false).map(e=>{
+    const c = codeOn(e, ds);
+    if(supToday.has(c)) return {e, code:c, sup:true};
+    if(shift==='day' && codeOn(e, prevDs)==='ND') return {e, code:'ND', sup:true};
+    return null;
+  }).filter(Boolean).sort((a,b)=> (early(a.code)-early(b.code)) || ((supRank[a.e.id] ?? 999) - (supRank[b.e.id] ?? 999)) || ((a.e.teamOrder||999)-(b.e.teamOrder||999)));
+  let order = ranked.concat(unranked, sups);
+  const dcfg = adpDayCfg();
+  const manual = Array.isArray(dcfg.order) && dcfg.order.length ? dcfg.order : null;
+  if(manual){
+    const pos = id=>{ const i = manual.indexOf(id); return i<0 ? 9999 : i; };
+    const base = order.map(x=>x.e.id);
+    order = order.slice().sort((a,b)=> (pos(a.e.id)-pos(b.e.id)) || (base.indexOf(a.e.id)-base.indexOf(b.e.id)));
+  }
+  const excl = new Set(Array.isArray(dcfg.excl) ? dcfg.excl : []);
+  const pool = order.filter(x=> !excl.has(x.e.id));
+  const cranes = adpCranes(), N = cranes.length;
+  const A = pool.slice(0, N), B = pool.slice(N, N*2), wait = pool.slice(N*2);
+  // 같은 조 안에서는 조 순번(No) 순서로 1호기부터, 지원 인력은 맨 뒤
+  const byNo = (a,b)=> (a.sup-b.sup) || ((a.e.teamOrder||999)-(b.e.teamOrder||999));
+  const craneOf = {};
+  A.slice().sort(byNo).forEach((x,i)=>{ x.grp='A'; x.crane = cranes[i]; craneOf['A'+cranes[i]] = x; });
+  B.slice().sort(byNo).forEach((x,i)=>{ x.grp='B'; x.crane = cranes[i]; craneOf['B'+cranes[i]] = x; });
+  wait.forEach(x=>{ x.grp='W'; x.crane = null; });
+  order.forEach(x=>{ if(excl.has(x.e.id)){ x.grp='X'; x.crane = null; } });
+  return {ds, team, shift, dayIsHol, order, excl, cranes, N, A, B, wait, craneOf, off, manual: !!manual,
+    blocksA: adpParse(adpTpl(shift,'A'), shift), blocksB: adpParse(adpTpl(shift,'B'), shift)};
+}
+function pageAutoDp(){
+  adpInit();
+  const r = adpCompute();
+  const ds = r.ds, [dy,dm,dd] = ds.split('-').map(Number);
+  const shiftLbl = r.shift==='day' ? '주간' : '야간';
+  const hA = adpHours(r.blocksA), hB = adpHours(r.blocksB);
+  const nm = x=> esc(String(x.e.name||'').trim());
+  const rkTag = x=> x.sup ? `<span class="adpTag adpSup" title="지원(${esc(x.code||'')})">지원</span>` : (x.rank!=null ? `<span class="adpTag" title="OT 순번">${x.rank}</span>` : `<span class="adpTag adpNo" title="OT 순번 제외 대상">-</span>`);
+  const person = x=> x ? `<span class="adpNm">${nm(x)}</span>${rkTag(x)}` : `<span class="adpLack">부족</span>`;
+  const lackA = Math.max(0, r.N - r.A.length), lackB = Math.max(0, r.N - r.B.length);
+  const blkTxt = list=> list.map(adpBlockLbl).join(' · ') || '<span style="color:#b91c1c;">시간 틀을 확인하세요</span>';
+  // 1) 호기별 배차
+  const craneRows = r.cranes.map(c=> `<tr><td class="adpCr">${c}호기</td><td class="adpA">${person(r.craneOf['A'+c])}</td><td class="adpB">${person(r.craneOf['B'+c])}</td></tr>`).join('');
+  // 2) 시간대별(초반·후반 시간을 시간 순으로 한 줄에)
+  const allBlocks = r.blocksA.map(b=>Object.assign({g:'A'}, b)).concat(r.blocksB.map(b=>Object.assign({g:'B'}, b))).sort((a,b)=> a.s-b.s);
+  const tHead = allBlocks.map(b=> `<th class="${b.g==='A'?'adpHA':'adpHB'}">${esc(adpBlockLbl(b))}</th>`).join('');
+  const tRows = r.cranes.map(c=> `<tr><td class="adpCr">${c}</td>${allBlocks.map(b=>{ const x = r.craneOf[b.g+c]; return `<td class="${b.g==='A'?'adpA':'adpB'}">${x ? nm(x) : '<span class="adpLack">-</span>'}</td>`; }).join('')}</tr>`).join('');
+  const tCount = `<tr class="adpCnt"><td>인원</td>${allBlocks.map(b=> `<td>${(b.g==='A'?r.A:r.B).length}</td>`).join('')}</tr>`;
+  // 3) 규칙 순번(개인별)
+  const grpLbl = {A:'초반조', B:'후반조', W:'대기', X:'제외'};
+  const ordRows = r.order.map((x,i)=>{
+    const g = x.grp, h = g==='A' ? hA : g==='B' ? hB : 0;
+    const code = x.code ? (DP_WORK_CODES.has(x.code) && x.code!=='SP' && !x.sup ? `<b>${esc(x.code)}</b>` : codeBadge(x.code)) : '';
+    return `<tr class="adpG${g}">
+      <td class="adpNo1">${i+1}</td>
+      <td class="adpNmC">${nm(x)}</td>
+      <td>${x.sup ? codeBadge(x.code) : code}</td>
+      <td>${x.sup ? '<span class="adpTag adpSup">지원</span>' : (x.rank!=null ? x.rank : '-')}</td>
+      <td><span class="adpGrp adpGrp${g}">${grpLbl[g]}${x.crane!=null ? ' '+x.crane+'호기' : ''}</span></td>
+      <td class="adpHrs">${h ? fmtH(h) : ''}</td>
+      <td class="editor-only adpMv"><button type="button" class="btn ghost sm" data-adp-mv="${esc(x.e.id)}" data-dir="-1" ${i===0?'disabled':''} aria-label="위로">▲</button><button type="button" class="btn ghost sm" data-adp-mv="${esc(x.e.id)}" data-dir="1" ${i===r.order.length-1?'disabled':''} aria-label="아래로">▼</button><label class="adpChk" title="이 날 배차에서 빼기"><input type="checkbox" data-adp-ex="${esc(x.e.id)}"${r.excl.has(x.e.id)?' checked':''}>제외</label></td>
+    </tr>`;
+  }).join('');
+  const offTxt = r.off.length ? r.off.map(x=> `${esc(String(x.e.name||'').trim())}${x.code?`(${esc(x.code)})`:''}`).join(', ') : '없음';
+  // 4) 설정
+  const cr = new Set(r.cranes);
+  const chips = Array.from({length:ADP_CRANE_MAX}, (_,i)=> i+1).map(n=> `<button type="button" class="adpChip${cr.has(n)?' on':''}" data-adp-crane="${n}">${n}</button>`).join('');
+  const cfgPanel = `<div class="panel adpCfg editor-only">
+    <div class="adpCfgHd"><b>배차 틀 설정</b><button type="button" class="btn ghost sm" id="adpCfgToggle">${adpCfgOpen ? '접기' : '펼치기'}</button></div>
+    ${adpCfgOpen ? `<div class="adpCfgBody">
+      <div class="adpFld"><span>가동 호기(이 날 ${shiftLbl})</span><div class="adpChips">${chips}</div></div>
+      <div class="adpFld"><span>${shiftLbl} 초반조 시간</span><input type="text" id="adpTplA" value="${esc(adpTpl(r.shift,'A'))}" placeholder="${esc(ADP_DEF[r.shift].A)}"></div>
+      <div class="adpFld"><span>${shiftLbl} 후반조 시간</span><input type="text" id="adpTplB" value="${esc(adpTpl(r.shift,'B'))}" placeholder="${esc(ADP_DEF[r.shift].B)}"></div>
+      <div class="adpBtns"><button type="button" class="btn sm" id="adpTplSave">시간 틀 저장</button><button type="button" class="btn ghost sm" id="adpTplReset">기본값으로</button><button type="button" class="btn ghost sm" id="adpCraneDef">이 호기를 기본으로</button></div>
+      <p class="adpHint">시간은 <b>08:00-10:00, 13:00-15:30</b>처럼 쉼표로 구분해 적어요. 기본값은 보내주신 엑셀 배차(258일치)에서 가장 많이 쓴 틀이에요.</p>
+    </div>` : ''}
+  </div>`;
+  return `
+  <h2 class="pgttl">자동배차</h2>
+  <div class="adpBar">
+    <button type="button" class="btn ghost sm" id="adpPrev" aria-label="전날">◀</button>
+    <input type="date" id="adpDateIn" value="${esc(ds)}">
+    <button type="button" class="btn ghost sm" id="adpNext" aria-label="다음날">▶</button>
+    <span class="adpSp"></span>
+    <button type="button" class="btn ${r.team==='1'?'':'ghost'} sm" data-adp-team="1">1조</button>
+    <button type="button" class="btn ${r.team==='2'?'':'ghost'} sm" data-adp-team="2">2조</button>
+    <span class="adpSp"></span>
+    <button type="button" class="btn ${r.shift==='day'?'':'ghost'} sm" data-adp-shift="day">주간</button>
+    <button type="button" class="btn ${r.shift==='night'?'':'ghost'} sm" data-adp-shift="night">야간</button>
+  </div>
+  <div class="adpBanner">${dy}년 ${dm}월 ${dd}일 ${weekdayKr(dy,dm,dd)}요일 · ${r.team}조 ${shiftLbl} · 규칙 순번 = ${r.dayIsHol ? '휴일' : '평일'} OT 순번${r.manual ? ' <span class="adpMan">(순서 직접 조정함)</span>' : ''}</div>
+  <div class="adpSum">
+    <div><span>가동</span><b>${r.N}대</b></div>
+    <div><span>필요</span><b>${r.N*2}명</b></div>
+    <div><span>배차 가능</span><b>${r.A.length + r.B.length + r.wait.length}명</b></div>
+    <div class="${lackA+lackB ? 'bad' : ''}"><span>${lackA+lackB ? '부족' : '대기'}</span><b>${lackA+lackB ? (lackA+lackB)+'명' : r.wait.length+'명'}</b></div>
+  </div>
+  ${lackA+lackB ? `<div class="adpWarn">사람이 ${lackA+lackB}명 모자라요${lackA ? ` (초반조 ${lackA}명)` : ''}${lackB ? ` (후반조 ${lackB}명)` : ''}. 지원 인력을 근태에 넣거나 가동 호기를 줄여 주세요.</div>` : ''}
+  <div class="adpGrid">
+    <div class="panel adpP">
+      <div class="adpTtl">호기별 배차</div>
+      <div class="scrollx"><table class="tbl adpTbl"><thead><tr><th>호기</th><th class="adpHA">초반조<small>${blkTxt(r.blocksA)} · ${fmtH(hA)}시간</small></th><th class="adpHB">후반조<small>${blkTxt(r.blocksB)} · ${fmtH(hB)}시간</small></th></tr></thead><tbody>${craneRows || `<tr><td colspan="3" class="empty">가동 호기를 골라 주세요.</td></tr>`}</tbody></table></div>
+    </div>
+    <div class="panel adpP">
+      <div class="adpTtl">시간대별</div>
+      <div class="scrollx"><table class="tbl adpTbl adpTime"><thead><tr><th>호기</th>${tHead}</tr></thead><tbody>${tRows}${tCount}</tbody></table></div>
+    </div>
+  </div>
+  <div class="panel adpP">
+    <div class="adpTtl">규칙 순번 <small>OT 순번 → 근무 중 순번 제외 대상 → 지원(DN·ND 먼저) 순서. 위에서부터 ${r.N}명 초반조, 다음 ${r.N}명 후반조</small></div>
+    <div class="scrollx"><table class="tbl adpTbl adpOrd"><thead><tr><th>#</th><th>성명</th><th>근태</th><th>OT<br>순번</th><th>배정</th><th class="adpHrs">승무</th><th class="editor-only">순서·제외</th></tr></thead><tbody>${ordRows || `<tr><td colspan="7" class="empty">이 날 ${r.team}조 ${shiftLbl} 근무자가 없어요.</td></tr>`}</tbody></table></div>
+    <div class="adpOff">근무 아님: ${offTxt}</div>
+    ${(r.manual || r.excl.size) ? `<div class="adpBtns editor-only"><button type="button" class="btn ghost sm" id="adpResetDay">OT 순번대로 되돌리기</button></div>` : ''}
+  </div>
+  ${cfgPanel}
+  `;
+}
+async function adpPersist(){
+  // 오래된 날(120일 지난 것)은 정리해서 문서가 너무 커지지 않게
+  const cut = addDays(todayStr(), -120);
+  Object.keys(autoDp.days||{}).forEach(k=>{ if(k.slice(0,10) < cut) delete autoDp.days[k]; });
+  render();
+  if(!db) return;
+  try{ await db.doc('meta/autoDispatch').set({cfg: autoDp.cfg||{}, days: autoDp.days||{}, updatedAt: Date.now()}); }
+  catch(err){ showToast(saveErrMsg('자동배차 저장에 실패했습니다.', err)); }
+}
+function adpSetDay(fn){
+  if(!requireEdit()) return;
+  const k = adpKey();
+  const cur = Object.assign({}, (autoDp.days||{})[k] || {});
+  fn(cur);
+  autoDp.days = Object.assign({}, autoDp.days||{});
+  if(!cur.cranes && !(cur.order && cur.order.length) && !(cur.excl && cur.excl.length)) delete autoDp.days[k]; else autoDp.days[k] = cur;
+  adpPersist();
+}
+function bindAutoDp(){
+  const el = document.getElementById('content');
+  const go = d=>{ if(!d) return; adpDate = d; adpShift = adpAutoShift(); ensureForView(); render(); };
+  const di = document.getElementById('adpDateIn');
+  if(di) di.onchange = ()=> go(di.value);
+  const pv = document.getElementById('adpPrev'), nx = document.getElementById('adpNext');
+  if(pv) pv.onclick = ()=> go(addDays(adpDate, -1));
+  if(nx) nx.onclick = ()=> go(addDays(adpDate, 1));
+  el.querySelectorAll('[data-adp-team]').forEach(b=> b.onclick = ()=>{ adpTeam = b.dataset.adpTeam; try{ localStorage.setItem('snct_adp_team', adpTeam); }catch(e){} adpShift = adpAutoShift(); render(); });
+  el.querySelectorAll('[data-adp-shift]').forEach(b=> b.onclick = ()=>{ adpShift = b.dataset.adpShift; render(); });
+  el.querySelectorAll('[data-adp-mv]').forEach(b=> b.onclick = ()=>{
+    const id = b.dataset.adpMv, dir = Number(b.dataset.dir);
+    const ids = adpCompute().order.map(x=>x.e.id);
+    const i = ids.indexOf(id), j = i + dir;
+    if(i<0 || j<0 || j>=ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    adpSetDay(c=>{ c.order = ids; });
+  });
+  el.querySelectorAll('[data-adp-ex]').forEach(cb=> cb.onchange = ()=>{
+    const id = cb.dataset.adpEx;
+    adpSetDay(c=>{ const s = new Set(c.excl||[]); if(cb.checked) s.add(id); else s.delete(id); c.excl = Array.from(s); });
+  });
+  const rd = document.getElementById('adpResetDay');
+  if(rd) rd.onclick = ()=> adpSetDay(c=>{ delete c.order; delete c.excl; });
+  const tg = document.getElementById('adpCfgToggle');
+  if(tg) tg.onclick = ()=>{ adpCfgOpen = !adpCfgOpen; render(); };
+  el.querySelectorAll('[data-adp-crane]').forEach(b=> b.onclick = ()=>{
+    const n = Number(b.dataset.adpCrane), s = new Set(adpCranes());
+    if(s.has(n)) s.delete(n); else s.add(n);
+    adpSetDay(c=>{ c.cranes = Array.from(s).sort((a,b)=>a-b); });
+  });
+  const cdf = document.getElementById('adpCraneDef');
+  if(cdf) cdf.onclick = ()=>{
+    if(!requireEdit()) return;
+    autoDp.cfg = Object.assign({}, autoDp.cfg||{}, {cranes: adpCranes()});
+    showToast(`가동 호기 기본값을 ${adpCranes().join('·')}호기로 저장했어요.`); adpPersist();
+  };
+  const ts = document.getElementById('adpTplSave');
+  if(ts) ts.onclick = ()=>{
+    if(!requireEdit()) return;
+    const a = document.getElementById('adpTplA').value.trim(), b = document.getElementById('adpTplB').value.trim();
+    if(!adpParse(a, adpShift).length || !adpParse(b, adpShift).length){ showToast('시간을 08:00-10:00, 13:00-15:30 처럼 적어 주세요.'); return; }
+    autoDp.cfg = Object.assign({}, autoDp.cfg||{}, {[adpShift]: {A:a, B:b}});
+    showToast((adpShift==='day'?'주간':'야간') + ' 시간 틀을 저장했어요.'); adpPersist();
+  };
+  const tr = document.getElementById('adpTplReset');
+  if(tr) tr.onclick = ()=>{
+    if(!requireEdit()) return;
+    const c = Object.assign({}, autoDp.cfg||{}); delete c[adpShift]; autoDp.cfg = c;
+    showToast('기본 시간 틀로 되돌렸어요.'); adpPersist();
+  };
 }
 
 /* ========================= 조편성 관리 ========================= */
