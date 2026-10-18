@@ -1318,6 +1318,12 @@ function renderDpWho(){
         <td>${c ? `<span style="display:inline-block;background:${c.bg};color:${c.fg};border:1px solid ${c.border};border-radius:6px;padding:2px 8px;font-weight:700;">${esc(c.label||r.cat)}</span>` : ''}${r.note ? ` <span style="font-weight:600;">${esc(r.note)}</span>` : ''}</td>
         <td style="text-align:right;white-space:nowrap;color:var(--text-muted);">${fmtH((r.end - r.start)/60)}h</td></tr>`; }).join('')
     : `<tr><td colspan="3" class="hint" style="text-align:center;padding:14px 0;">오늘 배차가 없어요.</td></tr>`;
+  // 음성으로 읽을 문장: "김의섭, 10월 18일 주간 배차입니다. 8시부터 10시까지 근무. … 승무 4.5시간."
+  const sayT = min=>{ const h = Math.floor(min/60) % 24, mi = min % 60; return `${dispatchShift!=='day' && h < 7 ? '새벽 ' : ''}${h}시${mi ? ' '+mi+'분' : ''}`; };
+  window._dpWhoSpeech = `${who}, ${m}월 ${d}일 ${dispatchShift==='full' ? '일요일' : part} 배차입니다. ` + (rows.length
+    ? rows.map(r=>{ const c = dispatchCat(r.cat); return `${sayT(r.start)}부터 ${sayT(r.end)}까지 ${c ? (c.label||r.cat) : r.cat}.`; }).join(' ') + ` 승무 ${fmtH(work).replace(/\.0$/,'')}시간${duty ? ', 당직 '+fmtH(duty).replace(/\.0$/,'')+'시간' : ''}입니다.`
+    : '오늘 배차가 없습니다.');
+  const ttsOk = dpTtsSupported();
   return `<div id="dpWhoScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:380px;width:92%;margin:0;max-height:86vh;overflow:auto;">
       <h3 style="margin:0 0 2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${esc(who)} ${code ? codeBadge(code) : ''}${(()=>{ const n = isSup ? (e && window._dpSupRank ? window._dpSupRank[e.id] : null) : (window._dpRank ? window._dpRank[empId] : null);
@@ -1326,10 +1332,26 @@ function renderDpWho(){
       <table class="tbl" style="width:100%;font-size:13px;"><tbody>${body}</tbody></table>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;">
         <b style="font-size:14px;">승무 ${fmtH(work)}h${duty ? ` <span style="font-weight:600;color:var(--text-muted);">· 당직 ${fmtH(duty)}h</span>` : ''}</b>
-        <button class="btn ghost sm" id="dpWhoClose">닫기</button>
+        <span style="display:flex;gap:6px;align-items:center;">${ttsOk ? `<button class="btn ghost sm" id="dpWhoSpeak" title="이 사람 배차를 소리로 읽어 줘요">🔊 듣기</button>` : ''}<button class="btn ghost sm" id="dpWhoClose">닫기</button></span>
       </div>
+      ${ttsOk ? `<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="dpWhoAuto"${dpTtsAuto() ? ' checked' : ''}> 이름을 누르면 자동으로 읽기</label>` : ''}
     </div></div>`;
 }
+// ===== 배차 음성 읽기(브라우저 내장 음성 — 아이폰·안드로이드·PC, 인터넷 연결 없이도 됨) =====
+function dpTtsSupported(){ return typeof window!=='undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance!=='undefined'; }
+function dpTtsAuto(){ try{ return localStorage.getItem('snct_dp_tts')!=='0'; }catch(e){ return true; } }
+function dpSpeak(text){
+  if(!dpTtsSupported() || !text) return;
+  try{
+    const ss = window.speechSynthesis; ss.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ko-KR'; u.rate = 1; u.pitch = 1;
+    const v = (ss.getVoices()||[]).find(x=> /^ko/i.test(x.lang||'')); if(v) u.voice = v;
+    ss.speak(u);
+  }catch(e){}
+}
+function dpSpeakStop(){ try{ if(dpTtsSupported()) window.speechSynthesis.cancel(); }catch(e){} }
+try{ if(dpTtsSupported()){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = ()=>{}; } }catch(e){}
 let dpPop = null; // {empId, slot}
 let dpPopOpenedAt = 0;
 function openDpPop(empId, slot){ dpPop = {empId, slot}; dpPopOpenedAt = Date.now(); render(); }
@@ -8817,9 +8839,12 @@ function afterRender(){
   el.querySelectorAll('[data-dp-who]').forEach(td=> td.addEventListener('click', ev=>{
     if(ev.target.tagName==='INPUT' && !ev.target.disabled) return;   // 지원 이름 칸을 고치는 중이면 팝업 안 띄움
     dpWho = td.dataset.dpWho; render();
+    if(dpTtsAuto()) dpSpeak(window._dpWhoSpeech);   // 누른 그 순간에 읽어야 아이폰에서도 소리가 남
   }));
   if(dpWho){
-    const closeW = ()=>{ dpWho = null; render(); };
+    const closeW = ()=>{ dpSpeakStop(); dpWho = null; render(); };
+    const sp = document.getElementById('dpWhoSpeak'); if(sp) sp.onclick = ()=> dpSpeak(window._dpWhoSpeech);
+    const au = document.getElementById('dpWhoAuto'); if(au) au.onchange = ()=>{ try{ localStorage.setItem('snct_dp_tts', au.checked ? '1' : '0'); }catch(e){} if(!au.checked) dpSpeakStop(); };
     const cw = document.getElementById('dpWhoClose'); if(cw) cw.onclick = closeW;
     const sw = document.getElementById('dpWhoScrim'); if(sw) sw.onclick = (ev)=>{ if(ev.target.id==='dpWhoScrim') closeW(); };
   }
