@@ -1267,11 +1267,13 @@ const FULL_SLOTS_FN = ()=> DAY_SLOTS.slice(0, DAY_SLOTS.indexOf('19:00')).concat
 // 일요일 야간 보기: 18~19(교대 겹침) + 19:00~06:30 + 다음날 07~08
 const SUN_NIGHT_SLOTS_FN = ()=> ['18:00','18:30'].concat(NIGHT_SLOTS.slice(NIGHT_SLOTS.indexOf('19:00'), NIGHT_SLOTS.indexOf('07:00')), ['31:00','31:30']);
 const NIGHT_SLOTS = ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00','23:30','24:00','00:30','01:00','01:30','02:00','02:30','03:00','03:30','04:00','04:30','05:00','05:30','06:00','06:30','07:00','07:30'];
+// 승무(크레인 근무)로 세지 않는 칸: 당직(주황, 저장 값 '후반')·셔틀(회색, 저장 값 '당직')
+function dpIsWork(cat){ return !!cat && cat!=='당직' && cat!=='후반'; }
 const DISPATCH_CATS = [
   {key:'수정', bg:'#FFFFFF', fg:'#333333', border:'#c7cad1'},
   {key:'초반', label:'근무', bg:'#8CE24C', fg:'#1a3d00', border:'#8CE24C'},   // 이름만 '근무'(저장 값은 예전 그대로 '초반' — 이미 칠한 칸 유지)
-  {key:'후반', hidden:true, bg:'#FFA654', fg:'#5c2d00', border:'#FFA654'},   // 버튼은 없앰(예전에 칠한 칸 표시용)
-  {key:'당직', bg:'#8C8C8C', fg:'#ffffff', border:'#8C8C8C'},
+  {key:'후반', label:'당직', bg:'#FFA654', fg:'#5c2d00', border:'#FFA654'},   // 주황 = 당직(저장 값은 예전 '후반')
+  {key:'당직', label:'셔틀', bg:'#8C8C8C', fg:'#ffffff', border:'#8C8C8C'},   // 회색 = 셔틀(저장 값은 예전 '당직')
   {key:'정비', bg:'#F3B3F3', fg:'#5c005c', border:'#F3B3F3'},
   {key:'기타', hidden:true, bg:'#7A2FA8', fg:'#ffffff', border:'#7A2FA8'}   // 버튼은 없앰(예전에 칠한 칸 표시용)
 ];
@@ -1302,10 +1304,10 @@ function renderDpWho(){
   const rec = e ? (attendance[dispatchDate+'_'+e.id] || {}) : {};
   const code = e ? (gridCode(rec && rec.date ? rec : null, dispatchDate, String(e.name||'').trim()) || (isSup ? '' : scheduledShift(dispatchDate, e.team||''))) : '';
   // 같은 내용(색+글씨)이 이어지는 칸을 한 줄로 묶음
-  const rows = []; let work = 0, duty = 0;
+  const rows = []; let work = 0, duty = 0, shuttle = 0;
   dpSlotOrder().forEach(s=>{
     const cat = slots[s] || '', note = '';   // 칸에 직접 쓴 숫자·글씨는 팝업에 안 보임(색칠한 배차만)
-    if(cat && cat!=='당직') work += 0.5; else if(cat==='당직') duty += 0.5;
+    if(dpIsWork(cat)) work += 0.5; else if(cat==='후반') duty += 0.5; else if(cat==='당직') shuttle += 0.5;
     if(!cat) return;
     const st = dpSlotMin(s), last = rows[rows.length-1];
     if(last && last.cat===cat && last.note===note && last.end===st) last.end = st + 30;
@@ -1324,20 +1326,20 @@ function renderDpWho(){
   // 일요일: 지금 그 일요일의 주간(07~19시)이면 주간만, 야간이면 야간만 읽음(다른 날을 보고 있으면 화면에서 고른 쪽)
   const sunPart = dispatchShift==='full' ? (sunPartNow(dispatchDate) || dispatchSunPart) : '';
   const sayPart = dispatchShift==='full' ? (sunPart==='night' ? '야간' : '주간') : part;
-  let sRows = [], sWork = 0, sDuty = 0;
+  let sRows = [], sWork = 0, sDuty = 0, sShuttle = 0;
   if(dispatchShift==='full'){
     const fa = FULL_SLOTS_FN(), partSlots = new Set(sunPart==='night' ? SUN_NIGHT_SLOTS_FN() : fa.slice(0, fa.indexOf('19:00')));
     dpSlotOrder().forEach(sl=>{
       if(!partSlots.has(sl)) return;
       const cat = slots[sl] || ''; if(!cat) return;
-      if(cat!=='당직') sWork += 0.5; else sDuty += 0.5;
+      if(dpIsWork(cat)) sWork += 0.5; else if(cat==='후반') sDuty += 0.5; else if(cat==='당직') sShuttle += 0.5;
       const st = dpSlotMin(sl), last = sRows[sRows.length-1];
       if(last && last.cat===cat && last.end===st) last.end = st + 30; else sRows.push({cat, start: st, end: st + 30});
     });
-  } else { sRows = rows; sWork = work; sDuty = duty; }
+  } else { sRows = rows; sWork = work; sDuty = duty; sShuttle = shuttle; }
   const hrs = n=> fmtH(n).replace(/\.0$/,'');
   window._dpWhoSpeech = `${who}, ${m}월 ${d}일 ${sayPart} 배차입니다. ` + (sRows.length
-    ? sRows.map(r=>{ const c = dispatchCat(r.cat); return `${sayT(r.start)}부터 ${sayT(r.end)}까지 ${c ? (c.label||r.cat) : r.cat}.`; }).join(' ') + ` 승무 ${hrs(sWork)}시간${sDuty ? ', 당직 '+hrs(sDuty)+'시간' : ''}입니다.`
+    ? sRows.map(r=>{ const c = dispatchCat(r.cat); return `${sayT(r.start)}부터 ${sayT(r.end)}까지 ${c ? (c.label||r.cat) : r.cat}.`; }).join(' ') + ` 승무 ${hrs(sWork)}시간${sDuty ? ', 당직 '+hrs(sDuty)+'시간' : ''}${sShuttle ? ', 셔틀 '+hrs(sShuttle)+'시간' : ''}입니다.`
     : `${sayPart} 배차가 없습니다.`);
   const ttsOk = dpTtsSupported();
   return `<div id="dpWhoScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
@@ -1347,7 +1349,7 @@ function renderDpWho(){
       <p class="hint" style="margin:0 0 10px;">${m}/${d}(${weekdayKr(y,m,d)}) ${part} 배차</p>
       <table class="tbl" style="width:100%;font-size:13px;"><tbody>${body}</tbody></table>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;">
-        <b style="font-size:14px;">승무 ${fmtH(work)}h${duty ? ` <span style="font-weight:600;color:var(--text-muted);">· 당직 ${fmtH(duty)}h</span>` : ''}</b>
+        <b style="font-size:14px;">승무 ${fmtH(work)}h${duty ? ` <span style="font-weight:600;color:var(--text-muted);">· 당직 ${fmtH(duty)}h</span>` : ''}${shuttle ? ` <span style="font-weight:600;color:var(--text-muted);">· 셔틀 ${fmtH(shuttle)}h</span>` : ''}</b>
         <span style="display:flex;gap:6px;align-items:center;">${ttsOk ? `<button class="btn ghost sm" id="dpWhoSpeak" title="이 사람 배차를 소리로 읽어 줘요">🔊 듣기</button>` : ''}<button class="btn ghost sm" id="dpWhoClose">닫기</button></span>
       </div>
       ${ttsOk ? `<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="dpWhoAuto"${dpTtsAuto() ? ' checked' : ''}> 이름을 누르면 자동으로 읽기</label>` : ''}
@@ -1398,7 +1400,7 @@ function renderDpPop(){
     <div class="panel" style="max-width:360px;width:92%;margin:0;">
       <h3 style="margin:0 0 2px;">${esc(who)} · ${esc(dpPop.slot)}</h3>
       <p class="hint" style="margin:0 0 12px;">항목을 누르면 바로 칠해집니다.</p>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">${btns}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;">${btns}</div>
       <button type="button" class="btn warn ghost sm" id="dpPopClear" style="width:100%;margin-bottom:10px;">색 지우기</button>
       <p class="hint" style="margin:0 0 8px;">글씨는 칸을 <b>두 번 누르면</b> 칸 안에서 바로 입력할 수 있어요.</p>
       <div class="row" style="justify-content:flex-end;"><button class="btn ghost sm" id="dpPopClose">닫기</button></div>
@@ -1941,7 +1943,7 @@ function currentEmpSlots(empId){
 function countPaintedHours(empId){
   const slots = currentEmpSlots(empId);
   let n = 0;
-  for(const k in slots){ if(slots[k] && slots[k]!=='당직') n++; } // 당직은 승무 시간에서 뺌
+  for(const k in slots){ if(dpIsWork(slots[k])) n++; } // 당직·셔틀은 승무 시간에서 뺌
   return n*0.5;
 }
 function applyPaintToCell(td, value){
@@ -1958,7 +1960,7 @@ function updateSuwuLive(empId){
 function updateCountLive(slot){
   const cells = document.querySelectorAll(`.dpCell[data-dispatch-slot="${slot}"]`);
   let cnt = 0;
-  cells.forEach(td=>{ const v = td.dataset.dispatchCur; if(v && v!=='당직') cnt++; }); // 당직은 시간대별 인원에서 뺌
+  cells.forEach(td=>{ const v = td.dataset.dispatchCur; if(dpIsWork(v)) cnt++; }); // 당직·셔틀은 시간대별 인원에서 뺌
   const countCell = document.querySelector(`[data-dispatch-count="${slot}"]`);
   if(countCell){
     countCell.textContent = cnt || '';
@@ -4049,7 +4051,7 @@ function pageInput(){
     const chk = f => (dr[f]!==undefined ? dr[f] : base[f]) ? 'checked' : '';
     const bad = f => IN_TIME.includes(f) && dr[f]!==undefined && excelToHm(dr[f])===null ? ' bad' : '';
     const t = f => `<td><input type="text" inputmode="decimal" class="inCell${bad(f)}" data-emp="${esc(e.id)}" data-f="${f}" value="${esc(val(f))}"${off0 ? ' disabled data-off="1" title="근무 코드가 아니라 입력할 수 없어요"' : ''}></td>`;
-    const suwu = ['day','night','full'].reduce((a,sh)=>{ const dd = dispatch[`${date}_${sh}_${e.id}`]; return a + (dd && dd.slots ? Object.values(dd.slots).filter(x=> x && x!=='당직').length*0.5 : 0); }, 0); // 당직은 승무 시간에서 뺌
+    const suwu = ['day','night','full'].reduce((a,sh)=>{ const dd = dispatch[`${date}_${sh}_${e.id}`]; return a + (dd && dd.slots ? Object.values(dd.slots).filter(dpIsWork).length*0.5 : 0); }, 0); // 당직은 승무 시간에서 뺌
     const dc = gridCode(base, date, String(e.name||'').trim()) || scheduledShift(date, e.team||'');
     const tot = inputRowTotal(date, e);
     const off = !!dc && !DP_WORK_CODES.has(dc) && !prevNd; // 배차표와 같은 기준: D·N 계열이 아니면 근무자 아님(전날 ND는 지원근무라 회색 아님)
@@ -8065,7 +8067,7 @@ function pageDispatch(){
     const cells = supX ? slots.map(s=> `<td class="dpLockCell${isMealSlot(s) ? ' dpMeal'+mealEdge(s) : ''}" title="상대 조 지원(이름 직접 입력) — 여기서는 칠할 수 없어요"></td>`).join('') : slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
-      if(v && v!=='당직'){ paintedSlots++; slotCounts[si]++; } // 당직은 승무·시간대별 인원에서 뺌
+      if(dpIsWork(v)){ paintedSlots++; slotCounts[si]++; } // 당직은 승무·시간대별 인원에서 뺌
       else if(v){} else if(note && isMealSlot(s)) slotCounts[si]++; // 당직은 시간대별 인원에서 뺌
       return slotCell(e.id, s, v, note);
     }).join('');
@@ -8083,7 +8085,7 @@ function pageDispatch(){
       <td class="dpI dpI2 dpWhoCell" data-dp-who="${esc(e.id)}" style="text-align:center;" title="누르면 오늘 배차 보기">${esc(e.name)}</td>
       <td class="dpI dpI3">${supX ? codeBadge(mcode) : mgOn ? `<span class="dpMg" title="토요일 만근(특근)">만근</span>` : mcode ? (DP_WORK_CODES.has(mcode) && mcode!=='SP' ? `<b>${esc(mcode)}</b>` : codeBadge(mcode)) : `<span style="color:var(--text-muted);font-weight:700;" title="교대 순환 근무">${esc(dcode)}</span>`}</td>
       <td class="dpI dpI4 dpRk g-${dayIsHol?'yel':'pur'}">${otRankCell(e.id)}</td>
-      <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(x=> x && x!=='당직').length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
+      <td class="dpI dpI5" data-dispatch-suwu="${esc(e.id)}">${(()=>{ const n = dispatchShift==='full' && drec && drec.slots ? Object.values(drec.slots).filter(dpIsWork).length : paintedSlots; return n ? fmtH(n*0.5) : ''; })()}</td>
       ${cells}
     </tr>`;
   }).join('');
@@ -8142,7 +8144,7 @@ function pageDispatch(){
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
-      if(v && v!=='당직'){ supPainted++; slotCounts[si]++; } // 당직은 승무·시간대별 인원에서 뺌
+      if(dpIsWork(v)){ supPainted++; slotCounts[si]++; } // 당직은 승무·시간대별 인원에서 뺌
       else if(v){} else if(note && isMealSlot(s)) slotCounts[si]++; // 당직은 시간대별 인원에서 뺌
       return slotCell(supId, s, v, note);
     }).join('');
