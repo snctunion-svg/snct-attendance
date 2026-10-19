@@ -3738,10 +3738,11 @@ function dpDoneAnnounce(team, at){
     ['pointerdown','touchend','keydown'].forEach(t=> document.removeEventListener(t, unlock, true)); };
   ['pointerdown','touchend','keydown'].forEach(t=> document.addEventListener(t, unlock, true));
 })();
+function dpDoneCanPress(){ return userRole==='leader' || userRole==='union' || userRole==='all'; }   // 배포용(로그인 안 함)은 보기만
 function dpDoneSpeech(team){ return team + '조 배차 완료되었습니다.'; }
 async function dpDoneToggle(){
   const ds = dispatchDate, team = dispatchTeamFilter, k = dpDoneKey(ds, team);
-  if(!canEdit){ showToast('조장만 배차완료를 누를 수 있어요.'); return; }
+  if(!dpDoneCanPress()){ showToast('조장관리·UNION으로 로그인해야 배차완료를 누를 수 있어요.'); return; }
   if(dpDone[k]){
     appConfirm(`${team}조 배차완료를 취소할까요?`, async ()=>{
       delete dpDone[k]; render();
@@ -8432,7 +8433,7 @@ function pageDispatch(){
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
     ${(()=>{ const dd = dpDone[dpDoneKey(ds, dispatchTeamFilter)];
       const tm = dd && dd.at ? new Date(dd.at).toTimeString().slice(0,5) : '';
-      if(canEdit) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? '누르면 배차완료 취소' : '누르면 배차완료 + 음성 안내'}">${dd ? `✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small>` : `📢 ${esc(dispatchTeamFilter)}조 배차완료`}</button>`;
+      if(dpDoneCanPress()) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? '누르면 배차완료 취소' : '누르면 배차완료 + 음성 안내'}">${dd ? `✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small>` : `📢 ${esc(dispatchTeamFilter)}조 배차완료`}</button>`;
       return dd ? `<span class="dpDoneChip">✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small></span>` : ''; })()}
     <button type="button" class="btn ghost sm dpPushBtn${pushOn() ? ' on' : ''}" id="dpPushBtn" title="${pushOn() ? '누르면 알림 끄기' : '화면이 꺼져 있어도 배차완료 알림 받기'}">${pushOn() ? `🔔 ${esc((pushLocal()||{}).team || dispatchTeamFilter)}조 알림 켜짐` : '🔕 알림 받기'}</button>
     ${dispatchShift==='full' ? `<span style="width:10px;"></span>
