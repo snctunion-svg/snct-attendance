@@ -795,6 +795,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpDoneAlert{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);z-index:1000;background:#16a34a;color:#fff;border-radius:14px;padding:14px 22px;box-shadow:0 10px 30px rgba(0,0,0,.3);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;max-width:92vw;animation:dpDonePop .35s ease-out;}
 #dpDoneAlert b{font-size:20px;} #dpDoneAlert span{font-size:12px;opacity:.9;}
 @keyframes dpDonePop{from{transform:translate(-50%,-20px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
+.dpPushBtn.on{background:#eff6ff !important;color:#1d4ed8 !important;border-color:#93c5fd !important;font-weight:800;}
 .dpDoneChip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:800;}
 .dpDoneBtn small,.dpDoneChip small{font-weight:600;opacity:.85;font-size:11px;}
 .otSum td.otMealC sup.otMealNo{position:absolute;top:1px;right:2px;font-size:7.5px;line-height:1;font-weight:800;color:#b45309;letter-spacing:-.3px;pointer-events:none;}
@@ -3167,7 +3168,7 @@ async function loadFirebase(){
     fs = fsM.initializeFirestore(app, {ignoreUndefinedProperties:true});
   }
   const auth = authM.getAuth(app);
-  fb = {fsM, authM, fs, auth};
+  fb = {fsM, authM, fs, auth, app};
 }
 
 // 기존 코드가 쓰던 db.collection().doc().get/set/onSnapshot 형태를 그대로 유지하는 어댑터
@@ -3644,6 +3645,65 @@ let dispatchSubDate = null;
 let dpDone = {}, dpDoneLoadedAt = 0;   // 배차완료: dpDone/{날짜}_{조}_{주야} → {date, team, part, at}
 function dpDoneKey(ds, team){ return ds + '_' + team + '_' + (dispatchShift==='full' ? (dispatchSunPart==='night' ? 'night' : 'day') : dispatchShift); }
 let dpDoneSeen = null, dpDoneMine = {};
+/* ===== 휴대폰 푸시 알림(화면이 꺼져 있어도 배차완료 알림) ===== */
+const PUSH_VAPID = 'BPqM67tKoOdCI5UWZ7e9n3mDVSon3dJh24S5FZsBO8XkiFVL2VTUgW7RUQG-G63NQ0NuE1fOwt4aEcOoKdMo-Mg';
+const PUSH_FN_URL = 'https://dpdonepush-236880210998.asia-northeast3.run.app';
+function pushLocal(){ try{ return JSON.parse(localStorage.getItem('snct_push') || 'null'); }catch(e){ return null; } }
+function pushSetLocal(v){ try{ if(v) localStorage.setItem('snct_push', JSON.stringify(v)); else localStorage.removeItem('snct_push'); }catch(e){} }
+function pushIsIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints > 1); }
+function pushStandalone(){ return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone===true; }
+function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol==='https:'; }
+function pushOn(){ const l = pushLocal(); return !!(l && l.token) && 'Notification' in window && Notification.permission==='granted'; }
+async function pushGetMessaging(){
+  const mM = await import(FIREBASE_SDK + 'firebase-messaging.js');
+  if(mM.isSupported && !(await mM.isSupported())) throw new Error('unsupported');
+  return {mM, m: mM.getMessaging(fb.app)};
+}
+async function pushEnable(){
+  if(pushIsIOS() && !pushStandalone()){
+    appConfirm('아이폰은 앱을 홈 화면에 추가해야 알림을 받을 수 있어요.\n\n① 사파리 아래쪽 [공유 ⬆️] 버튼\n② [홈 화면에 추가]\n③ 홈 화면의 "장비관리" 아이콘으로 앱을 열고\n④ 배차표에서 [🔔 알림 받기]를 다시 누르세요.', ()=>{});
+    return;
+  }
+  if(!pushSupported() || !fb || !fb.app){ showToast('이 브라우저는 알림을 받을 수 없어요. (크롬·사파리 최신 버전에서 열어 주세요)'); return; }
+  let perm = Notification.permission;
+  if(perm==='default') perm = await Notification.requestPermission();
+  if(perm!=='granted'){ showToast('알림이 차단돼 있어요. 휴대폰 설정 → 알림에서 이 앱(또는 브라우저)의 알림을 허용해 주세요.'); return; }
+  showToast('🔔 알림 연결 중…');
+  try{
+    const reg = await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.ready;
+    const {mM, m} = await pushGetMessaging();
+    const token = await mM.getToken(m, {vapidKey: PUSH_VAPID, serviceWorkerRegistration: reg});
+    if(!token) throw new Error('no token');
+    const team = dispatchTeamFilter || '1';
+    await db.collection('pushTokens').doc(token).set({token, team, at: Date.now(), ua: navigator.userAgent.slice(0, 120)});
+    pushSetLocal({token, team});
+    showToast(`🔔 ${team}조 배차완료 알림을 받아요. (화면이 꺼져 있어도 와요)`);
+    render();
+  }catch(err){ console.error(err); showToast('알림 연결에 실패했어요. 잠시 뒤 다시 눌러 주세요.'); }
+}
+async function pushDisable(){
+  const l = pushLocal();
+  try{ if(l && l.token && db) await db.collection('pushTokens').doc(l.token).delete(); }catch(e){}
+  try{ const {mM, m} = await pushGetMessaging(); await mM.deleteToken(m); }catch(e){}
+  pushSetLocal(null); showToast('🔕 알림을 껐어요.'); render();
+}
+function pushToggle(){ if(pushOn()) appConfirm('배차완료 알림을 끌까요?', pushDisable); else pushEnable(); }
+// 1조/2조를 바꾸면 알림 받는 조도 같이 바뀜
+function pushSyncTeam(){
+  const l = pushLocal(); if(!l || !l.token || !db || l.team===dispatchTeamFilter) return;
+  l.team = dispatchTeamFilter; pushSetLocal(l);
+  db.collection('pushTokens').doc(l.token).set({token: l.token, team: l.team, at: Date.now(), ua: navigator.userAgent.slice(0, 120)}).catch(()=>{});
+}
+async function pushSendDone(team, at){
+  try{
+    const u = fb && fb.auth && fb.auth.currentUser; if(!u) return;
+    const idt = await u.getIdToken();
+    const r = await fetch(PUSH_FN_URL, {method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer ' + idt}, body: JSON.stringify({team, time: new Date(at).toTimeString().slice(0,5)})});
+    const j = await r.json().catch(()=>({}));
+    if(r.ok && j.total) showToast(`📲 ${team}조 휴대폰 ${j.sent}대에 알림을 보냈어요.`);
+  }catch(e){ console.error(e); }
+}
 // 앱이 열려 있으면 어느 화면이든: 다른 기기(PC 등)에서 방금 누른 배차완료를 받아서 음성 + 진동 + 큰 알림
 function subscribeDpDoneLive(){
   if(!db || unsub.dpDoneLive) return;
@@ -3692,7 +3752,7 @@ async function dpDoneToggle(){
   dpSpeak(dpDoneSpeech(team));   // 누른 그 순간에 읽어야 아이폰에서도 소리가 남
   const d = {date: ds, team, part: k.split('_')[2], at: Date.now()};
   dpDone[k] = d; dpDoneMine[k] = d.at; render();
-  try{ if(db) await db.collection('dpDone').doc(k).set(d); showToast(`✅ ${team}조 배차완료`); }catch(err){ showToast(saveErrMsg('배차완료 저장에 실패했습니다.', err)); }
+  try{ if(db) await db.collection('dpDone').doc(k).set(d); showToast(`✅ ${team}조 배차완료`); pushSendDone(team, d.at); }catch(err){ showToast(saveErrMsg('배차완료 저장에 실패했습니다.', err)); }
 }
 function subscribeDispatchDay(dateStr){
   if(!db) return;
@@ -4286,7 +4346,7 @@ function bindInputTable(el){
   dEl.onchange = ()=>{ if(dEl.value) go(dEl.value); };
   document.getElementById('inPrev').onclick = ()=> go(addDays(inputViewDate, -1));
   document.getElementById('inNext').onclick = ()=> go(addDays(inputViewDate, 1));
-  el.querySelectorAll('[data-act="in-team"]').forEach(b=> b.onclick = ()=>{ inputTeam = b.dataset.team; dispatchTeamFilter = inputTeam; try{ localStorage.setItem('snct_input_team', inputTeam); localStorage.setItem('snct_dp_team', inputTeam); }catch(e){} render(); });   // 배차표와 같은 조로 맞춤
+  el.querySelectorAll('[data-act="in-team"]').forEach(b=> b.onclick = ()=>{ inputTeam = b.dataset.team; dispatchTeamFilter = inputTeam; pushSyncTeam(); try{ localStorage.setItem('snct_input_team', inputTeam); localStorage.setItem('snct_dp_team', inputTeam); }catch(e){} render(); });   // 배차표와 같은 조로 맞춤
   const setDraft = (empId, f, v)=>{ const k = inputViewDate+'|'+empId; inputDraft[k] = Object.assign({}, inputDraft[k]||{}, {[f]: v}); };
   const refreshRow = (empId, inp)=>{
     const e = employees.find(x=>x.id===empId); const tr = inp.closest('tr'); if(!e || !tr) return;
@@ -8374,6 +8434,7 @@ function pageDispatch(){
       const tm = dd && dd.at ? new Date(dd.at).toTimeString().slice(0,5) : '';
       if(canEdit) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? '누르면 배차완료 취소' : '누르면 배차완료 + 음성 안내'}">${dd ? `✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small>` : `📢 ${esc(dispatchTeamFilter)}조 배차완료`}</button>`;
       return dd ? `<span class="dpDoneChip">✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small></span>` : ''; })()}
+    <button type="button" class="btn ghost sm dpPushBtn${pushOn() ? ' on' : ''}" id="dpPushBtn" title="${pushOn() ? '누르면 알림 끄기' : '화면이 꺼져 있어도 배차완료 알림 받기'}">${pushOn() ? `🔔 ${esc((pushLocal()||{}).team || dispatchTeamFilter)}조 알림 켜짐` : '🔕 알림 받기'}</button>
     ${dispatchShift==='full' ? `<span style="width:10px;"></span>
     <button class="btn ${dispatchSunPart!=='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="day">주간</button>
     <button class="btn ${dispatchSunPart==='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="night">야간</button>` : ''}
@@ -9189,7 +9250,8 @@ function afterRender(){
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   { const db0 = document.getElementById('dpDoneBtn'); if(db0) db0.onclick = dpDoneToggle; }
-  el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; inputTeam = dispatchTeamFilter; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); localStorage.setItem('snct_input_team', inputTeam); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
+  { const pb = document.getElementById('dpPushBtn'); if(pb) pb.onclick = pushToggle; }
+  el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; inputTeam = dispatchTeamFilter; pushSyncTeam(); try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); localStorage.setItem('snct_input_team', inputTeam); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
   bindPayroll(el);
   bindEqPay(el);
   bindFcAna(el);
