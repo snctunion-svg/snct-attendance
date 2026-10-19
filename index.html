@@ -795,6 +795,16 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #dpDoneAlert{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);z-index:1000;background:#16a34a;color:#fff;border-radius:14px;padding:14px 22px;box-shadow:0 10px 30px rgba(0,0,0,.3);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;max-width:92vw;animation:dpDonePop .35s ease-out;}
 #dpDoneAlert b{font-size:20px;} #dpDoneAlert span{font-size:12px;opacity:.9;}
 @keyframes dpDonePop{from{transform:translate(-50%,-20px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
+@media (max-width:700px){
+  .dpHead{flex-wrap:nowrap !important;gap:4px !important;max-width:100%;}
+  .dpHead > *{flex:0 0 auto;white-space:nowrap;}
+  .dpHead #dpDate{flex:1 1 auto;width:118px;min-width:84px;max-width:124px;padding:6px 3px !important;font-size:12.5px !important;}
+  .dpHead .btn.sm,.dpHead .dpDoneChip{padding:6px 7px;font-size:12.5px;}
+}
+@media (max-width:370px){
+  .dpHead .dpLbl{display:none;}
+  .dpHead .btn.sm,.dpHead .dpDoneChip{padding:6px 6px;font-size:12px;}
+}
 .dpPushBtn.on{background:#eff6ff !important;color:#1d4ed8 !important;border-color:#93c5fd !important;font-weight:800;}
 .dpDoneChip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:800;}
 .dpDoneBtn small,.dpDoneChip small{font-weight:600;opacity:.85;font-size:11px;}
@@ -8450,19 +8460,19 @@ function pageDispatch(){
 
   return `
   <h2 class="pgttl">배차표</h2>
-  <div class="row" style="margin-bottom:12px;align-items:center;">
+  <div class="row dpHead" style="margin-bottom:12px;align-items:center;">
     <input type="date" id="dpDate" value="${esc(ds)}" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--bg);color:var(--text);font:inherit;">
     <button class="btn ${dispatchTeamFilter==='1'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="1">1조</button>
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
     ${(()=>{ const dd = dpDone[dpDoneKey(ds, dispatchTeamFilter)];
       const tm = dd && dd.at ? new Date(dd.at).toTimeString().slice(0,5) : '';
-      if(dpDoneCanPress()) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? '누르면 배차완료 취소' : '누르면 배차완료 + 음성 안내'}">${dd ? `✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small>` : `📢 ${esc(dispatchTeamFilter)}조 배차완료`}</button>`;
-      return dd ? `<span class="dpDoneChip">✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small></span>` : ''; })()}
-    <button type="button" class="btn ghost sm dpPushBtn${pushOn() ? ' on' : ''}" id="dpPushBtn" title="${pushOn() ? '누르면 알림 끄기' : '화면이 꺼져 있어도 배차완료 알림 받기'}">${pushOn() ? `🔔 ${esc((pushLocal()||{}).team || dispatchTeamFilter)}조 알림 켜짐` : '🔕 알림 받기'}</button>
-    ${dispatchShift==='full' ? `<span style="width:10px;"></span>
-    <button class="btn ${dispatchSunPart!=='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="day">주간</button>
-    <button class="btn ${dispatchSunPart==='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="night">야간</button>` : ''}
+      if(dpDoneCanPress()) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? `${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)} · 누르면 취소` : `${esc(dispatchTeamFilter)}조 배차완료 + 음성 안내`}">${dd ? '✅ 배차완료' : '📢 배차완료'}</button>`;
+      return dd ? `<span class="dpDoneChip" title="${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)}">✅ 배차완료</span>` : ''; })()}
+    <button type="button" class="btn ghost sm dpPushBtn${pushOn() ? ' on' : ''}" id="dpPushBtn" title="${pushOn() ? `${esc((pushLocal()||{}).team || dispatchTeamFilter)}조 배차완료 알림 켜짐 · 누르면 끄기` : '화면이 꺼져 있어도 배차완료 알림 받기'}">${pushOn() ? '🔔<span class="dpLbl"> 알림</span>' : '🔕<span class="dpLbl"> 알림</span>'}</button>
   </div>
+  ${dispatchShift==='full' ? `<div class="row" style="margin:-4px 0 12px;align-items:center;">
+    <button class="btn ${dispatchSunPart!=='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="day">주간</button>
+    <button class="btn ${dispatchSunPart==='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="night">야간</button></div>` : ''}
   ${canEdit ? `<div class="panel dpPal" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">${palette}</div>` : ''}
   <div class="dpBox"><div style="background:#fce7f3;color:#9d174d;font-weight:800;font-size:15px;padding:10px 16px;border-radius:8px 8px 0 0;border:1px solid #fbcfe8;border-bottom:0;">${esc(dateBanner)}</div>
   ${(dayEmployees.length || supShow.length)? `<div class="dpWrap" id="dpWrap"><table class="gtbl" id="dpTable"><thead><tr>${head}</tr></thead><tbody>${rows}${supRows}${countRow}</tbody></table></div>`
