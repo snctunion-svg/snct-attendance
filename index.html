@@ -1131,6 +1131,55 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .uwPL1{padding-left:4mm;} .uwPL2{padding-left:9mm;} .uwPL3{padding-left:14mm;}
   .uwPEnd{text-align:center;font-weight:800;font-size:12pt;margin-top:12mm;letter-spacing:2pt;}
 }
+
+/* 조합원 명부 */
+.uwmTabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
+.uwmSum{font-size:12px;color:var(--text-muted);margin-left:4px;}
+.uwmImp{cursor:pointer;}
+.uwmWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.uwmTbl{width:100%;border-collapse:collapse;font-size:13px;}
+.uwmTbl th,.uwmTbl td{border:1px solid var(--border);padding:7px 8px;text-align:center;white-space:nowrap;}
+.uwmTbl td.uwm-name{font-weight:800;}
+.uwmTbl td.uwm-note,.uwmTbl td.uwm-email{white-space:normal;word-break:break-all;}
+.uwmRow{cursor:pointer;} .uwmRow:hover td{background:#faf5ff;}
+.uwmPop{max-width:420px;}
+.uwmForm{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;}
+.uwmForm label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;font-weight:700;color:var(--text-muted);min-width:0;}
+.uwmForm input{border:1px solid var(--border);border-radius:8px;padding:8px;font:inherit;font-size:16px;background:var(--bg);color:var(--text);min-width:0;width:100%;box-sizing:border-box;}
+.uwmBtns{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px;}
+@media (max-width:700px){
+  .uwmTbl thead{display:none;}
+  .uwmTbl, .uwmTbl tbody, .uwmTbl tr, .uwmTbl td{display:block;width:100%;box-sizing:border-box;}
+  .uwmTbl tr{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;padding:6px 10px;background:var(--surface);}
+  .uwmTbl td{border:0;padding:3px 0;text-align:left;white-space:normal;display:flex;gap:8px;}
+  .uwmTbl td::before{content:attr(data-l);flex:none;width:68px;color:var(--text-muted);font-size:11.5px;font-weight:700;}
+  .uwmTbl td:empty{display:none;}
+  .uwmForm{grid-template-columns:1fr;}
+}
+@media print{
+  .uwPMemHd{text-align:center;margin-bottom:5mm;}
+  .uwPMemT{font-size:15pt;font-weight:800;}
+  .uwPMemD{font-size:9.5pt;margin-top:1.5mm;}
+  #uwPrint{width:100% !important;max-width:176mm !important;}
+  .uwPMem{width:100% !important;border-collapse:collapse;font-size:8.5pt;table-layout:fixed;}
+  .uwPMem .uwp-no{width:6%;} .uwPMem .uwp-reg{width:9%;} .uwPMem .uwp-emp{width:11%;} .uwPMem .uwp-part{width:11%;} .uwPMem .uwp-pos{width:12%;} .uwPMem .uwp-name{width:10%;} .uwPMem .uwp-tel{width:16%;white-space:nowrap !important;} .uwPMem .uwp-join,.uwPMem .uwp-leave{width:12%;white-space:nowrap !important;}
+  .uwPMem th,.uwPMem td{border:1px solid #000;padding:1.4mm 1.2mm;text-align:center;white-space:normal !important;word-break:keep-all;overflow-wrap:anywhere;min-width:0 !important;}
+  .uwPMem th{background:#eee !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .uwPMem tr{break-inside:avoid;}
+}
+
+/* 업무규정·취업규칙 */
+.uwPt{margin:22px 0 8px;padding:10px 14px;border-radius:10px;background:#4c1d95;color:#fff;font-size:16px;scroll-margin-top:70px;}
+.uwRg{margin:16px 0 8px;padding:9px 12px;border-radius:8px;background:#ede9fe;color:#4c1d95;font-size:15.5px;border:1px solid #ddd6fe;scroll-margin-top:70px;}
+.uwSec{font-size:14px;border-left-width:2px;margin-left:8px;}
+.uwPre{font-family:ui-monospace,"D2Coding","Nanum Gothic Coding",Consolas,monospace;font-size:12px;line-height:1.55;white-space:pre;overflow-x:auto;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:4px 0 8px;-webkit-overflow-scrolling:touch;}
+@media print{
+  .uwPPt{font-size:17pt;text-align:center;margin:0 0 8mm;padding-top:40mm;break-before:page;page-break-before:always;break-after:avoid;}
+  .uwPRg{font-size:14pt;text-align:center;margin:0 0 5mm;break-before:page;page-break-before:always;break-after:avoid;}
+  .uwPPt + .uwPRg{break-before:page;page-break-before:always;}
+  .uwPCh.sec{font-size:11.5pt;}
+  .uwPPre{font-family:"D2Coding","Nanum Gothic Coding","Courier New",monospace;font-size:8pt;line-height:1.4;white-space:pre-wrap;margin:1mm 0 2mm;border:0;}
+}
 </style>
 </head>
 <body>
@@ -3059,7 +3108,7 @@ const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','pwchange','accident']; // 근태관리 구역 = 배포용(누구나). 근태코드는 조장관리 구역이라 조장·UNION만 // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident','berth','vessel','team','holidays','leaderhub'];
-const UNION_VIEWS  = ['unionhub','workhub','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
+const UNION_VIEWS  = ['unionhub','workhub','uwmem','uwemp','uwwork','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 function roleOfEmail(email){
@@ -3868,7 +3917,7 @@ document.addEventListener('focusout', ()=>{
 // ===== UNION 시트 =====
 const UNION_SHEETS = [['payroll','💰','장비 시급'],['eqpay','🧾','장비 급여 관리'],['fcana','📊','휴무 2명 분석'],['supcut','✂️','지원 폐지'],['holguar','🗓️','휴일보전'],['allcut','🧮','보전 폐지'],['backup','💾','백업·복원']];
 const LEADER_SHEETS = [['safety','🦺','관리감독자'],['codes','🏷️','근태코드'],['mail','📧','메일 송부'],['berth','⚓','선석 조회'],['vessel','🚢','본선작업'],['team','🧩','조편성 관리'],['holidays','📅','공휴일 관리']];
-const WORK_SHEETS = [['uwrule','📘','규약'],['uwelect','🗳️','선거관리규정'],['uwlmc','🤝','노사협의회규정']];   // UNION WORK 시트(UNION만)
+const WORK_SHEETS = [['uwmem','👥','조합원 명부'],['uwemp','📗','취업규칙'],['uwwork','🏢','업무규정'],['uwrule','📘','규약'],['uwelect','🗳️','선거관리규정'],['uwlmc','🤝','노사협의회규정']];   // UNION WORK 시트(UNION만)
 function isWorkSheet(v){ return WORK_SHEETS.some(x=> x[0]===v); }
 function isUnionSheet(v){ return UNION_SHEETS.some(x=> x[0]===v); }
 function isLeaderSheet(v){ return LEADER_SHEETS.some(x=> x[0]===v); }
@@ -3923,7 +3972,8 @@ function render(){
   else if(VIEW==='accident') el.innerHTML = pageAccident();
   else if(VIEW==='safety') el.innerHTML = pageSafety();
   else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
-  else if(UW_DOCS[VIEW]){ el.innerHTML = pageUwDoc(VIEW); bindUwDoc(VIEW); }
+  else if(isUwView(VIEW)){ el.innerHTML = pageUwDoc(VIEW); bindUwDoc(VIEW); }
+  else if(VIEW==='uwmem'){ el.innerHTML = pageUwMem(); bindUwMem(); }
   else if(VIEW==='unionhub') el.innerHTML = pageHub(UNION_SHEETS);
   else if(VIEW==='leaderhub') el.innerHTML = pageHub(LEADER_SHEETS);
   const hubList = isUnionSheet(VIEW) ? UNION_SHEETS : isLeaderSheet(VIEW) ? LEADER_SHEETS : isWorkSheet(VIEW) ? WORK_SHEETS : null;
@@ -8297,7 +8347,36 @@ const UW_DOCS = {"uwrule":{"title":"규약","sub":"선광신컨테이너터미�
 let uwQuery = {};
 let uwOverride = {};   // UNION이 고친 규정(meta/uwDocs) — 있으면 원문 대신 이걸 보여 주고 출력
 let uwEdit = null;     // 지금 고치는 중인 규정 id
-function uwDoc(id){ const o = uwOverride[id]; return (o && Array.isArray(o.b)) ? o : UW_DOCS[id]; }
+// 업무규정·취업규칙: 회사 내부 규정이라 앱 파일(공개)에는 넣지 않고 클라우드 unionPrivate/rules_{id} 에만 저장(UNION만)
+const UW_PRIV = {uwwork:{title:'업무규정'}, uwemp:{title:'취업규칙'}};
+let uwPriv = {}, uwPrivErr = {}, uwPrivLoading = {};
+function isUwView(v){ return !!(UW_DOCS[v] || UW_PRIV[v]); }
+function uwParseStored(o){ if(!o) return null; if(typeof o.json==='string'){ try{ const d = JSON.parse(o.json); d.at = o.at; return d; }catch(e){ return null; } } return Array.isArray(o.b) ? o : null; }
+function uwDoc(id){ if(UW_PRIV[id]) return uwPriv[id] || null; return uwParseStored(uwOverride[id]) || UW_DOCS[id]; }
+function uwStored(id){ return UW_PRIV[id] ? null : uwParseStored(uwOverride[id]); }
+async function uwLoadPriv(id){
+  if(!db || uwPrivLoading[id] || uwPriv[id]) return;
+  uwPrivLoading[id] = true;
+  try{ const doc = await db.collection('unionPrivate').doc('rules_' + id).get(); uwPriv[id] = doc.exists ? uwParseStored(doc.data()) : null; uwPrivErr[id] = doc.exists ? '' : 'none'; }
+  catch(err){ uwPrivErr[id] = '규정을 읽을 권한이 없어요(UNION 로그인 필요).'; }
+  uwPrivLoading[id] = false; if(VIEW===id) render();
+}
+async function uwSavePriv(id, d){
+  uwPriv[id] = d;
+  if(!db) return;
+  await db.collection('unionPrivate').doc('rules_' + id).set({json: JSON.stringify({title:d.title, sub:d.sub, b:d.b}), at: d.at || Date.now()});
+}
+async function uwImportRules(file){
+  if(!requireEdit()) return;
+  let j; try{ j = JSON.parse(await file.text()); }catch(e){ showToast('규정 자료 파일(.json)이 아니에요.'); return; }
+  const ids = Object.keys((j && j.docs) || {}).filter(k=> UW_PRIV[k] && Array.isArray(j.docs[k].b));
+  if(!j || !j.snctRules || !ids.length){ showToast('업무규정·취업규칙 자료 파일이 아니에요.'); return; }
+  appConfirm(`${ids.map(k=> j.docs[k].title).join('·')}을(를) 가져올까요? 지금 저장된 내용은 이 파일로 바뀌어요.`, async ()=>{
+    try{ for(const k of ids){ await uwSavePriv(k, Object.assign({}, j.docs[k], {at: Date.now()})); uwPrivErr[k] = ''; } showToast('규정 자료를 저장했어요.'); }
+    catch(err){ showToast(saveErrMsg('규정 저장에 실패했습니다.', err)); }
+    render();
+  });
+}
 function subscribeUwDocs(){
   if(!db || unsub.uwDocs) return;
   try{ unsub.uwDocs = db.doc('meta/uwDocs').onSnapshot(doc=>{ uwOverride = doc.exists ? (doc.data()||{}) : {}; if(UW_DOCS[VIEW] && uwEdit!==VIEW) scheduleRender(); }, ()=>{}); }catch(e){}
@@ -8311,16 +8390,33 @@ function uwEsc(s, q){
 }
 function uwArtText(b){ return (b.h + ' ' + b.l.map(x=> x[1]).join(' ')).toLowerCase(); }
 function uwArtHtml(b, q){
-  return `${b.h ? `<div class="uwArtH">${uwEsc(b.h, q)}</div>` : ''}${b.l.map(([lv, t])=> `<p class="uwL uwL${lv==='p'?0:lv}">${uwEsc(t, q)}</p>`).join('')}`;
+  let out = b.h ? `<div class="uwArtH">${uwEsc(b.h, q)}</div>` : '', pre = [];
+  const flush = ()=>{ if(pre.length){ out += `<div class="uwPre">${pre.join('\n')}</div>`; pre = []; } };
+  b.l.forEach(([lv, t])=>{ if(lv===9){ pre.push(uwEsc(t, q)); return; } flush(); out += `<p class="uwL uwL${lv==='p'?0:lv}">${uwEsc(t, q)}</p>`; });
+  flush(); return out;
 }
+function uwHeadKind(b){ return b.pt!=null ? 'pt' : b.rg!=null ? 'rg' : b.chh!=null ? 'ch' : ''; }
+const UW_HEAD_RANK = {pt:1, rg:2, ch:3};
 function pageUwDoc(id){
-  if(uwEdit===id) return pageUwEdit(id);
-  const d = uwDoc(id), q = uwQuery[id] || '', changed = !!(uwOverride[id] && Array.isArray(uwOverride[id].b));
-  let html = '', n = 0, toc = '';
+  if(uwEdit===id && uwDoc(id)) return pageUwEdit(id);
+  const d = uwDoc(id), priv = !!UW_PRIV[id];
+  if(!d){   // 업무규정·취업규칙: 아직 클라우드에 없거나 불러오는 중
+    if(priv) uwLoadPriv(id);
+    const err = uwPrivErr[id];
+    return `<h2 class="pgttl">${esc(UW_PRIV[id].title)}</h2>
+      <div class="uwHead"><b>${esc(UW_PRIV[id].title)}</b><span>선광신컨테이너터미널(주)</span></div>
+      ${err && err!=='none' ? `<div class="note">${esc(err)}</div>` : err==='none' ? `<div class="empty">아직 규정 자료가 없어요. [📥 규정 자료 가져오기]로 'SNCT_업무규정_취업규칙_2026.json' 파일을 올려 주세요.</div>` : '<div class="hint">불러오는 중…</div>'}
+      <div class="uwTools"><label class="btn sm editor-only uwmImp">📥 규정 자료 가져오기<input type="file" id="uwRulesFile" accept=".json,application/json" hidden></label></div>`;
+  }
+  const q = uwQuery[id] || '', st = uwStored(id), changed = !!st;
+  const nArt = d.b.filter(b=> b.h!=null && b.l).length, tocArts = nArt <= 120;
+  let html = '', toc = '';
   d.b.forEach((b, i)=>{
-    if(b.chh){ html += `<h3 class="uwCh" data-uw-ch="${i}">${esc(b.chh)}</h3>`; toc += `<option value="uwb${i}">${esc(b.chh)}</option>`; return; }
-    if(b.h) toc += `<option value="uwb${i}">&nbsp;&nbsp;${esc(b.h)}</option>`;
-    n++;
+    const k = uwHeadKind(b);
+    if(k){ const txt = b.pt ?? b.rg ?? b.chh, cls = k==='pt' ? 'uwPt' : k==='rg' ? 'uwRg' : (b.sec ? 'uwCh uwSec' : 'uwCh');
+      html += `<h3 class="${cls} uwHd" data-uw-rank="${UW_HEAD_RANK[k]}" data-uw-ch="${i}" id="uwb${i}">${esc(txt)}</h3>`;
+      toc += `<option value="uwb${i}">${k==='pt' ? '■ ' : k==='rg' ? '\u00a0\u00a0▸ ' : (nArt > 120 ? '\u00a0\u00a0\u00a0\u00a0· ' : '')}${esc(txt)}</option>`; return; }
+    if(b.h && tocArts) toc += `<option value="uwb${i}">&nbsp;&nbsp;${esc(b.h)}</option>`;
     html += `<div class="uwArt" id="uwb${i}" data-uw-i="${i}">${uwArtHtml(b, q)}</div>`;
   });
   return `
@@ -8330,7 +8426,7 @@ function pageUwDoc(id){
     <input type="search" id="uwSearch" value="${esc(q)}" placeholder="조문 검색 (예: 대의원, 임기, 회의)" autocomplete="off">
     <select id="uwToc" aria-label="목차"><option value="">목차로 이동</option>${toc}</select>
   </div>
-  <div class="uwTools"><button type="button" class="btn sm" id="uwPrintBtn">🖨️ PDF 출력</button><button type="button" class="btn ghost sm editor-only" id="uwEditBtn">✏️ 수정</button>${changed ? `<span class="uwChanged">고친 내용으로 보는 중${uwOverride[id].at ? ' · '+esc(new Date(uwOverride[id].at).toLocaleDateString('ko-KR')) : ''}</span>` : ''}</div>
+  <div class="uwTools"><button type="button" class="btn sm" id="uwPrintBtn">🖨️ PDF 출력</button><button type="button" class="btn ghost sm editor-only" id="uwEditBtn">✏️ 수정</button>${priv ? '<label class="btn ghost sm editor-only uwmImp">📥 규정 자료 가져오기<input type="file" id="uwRulesFile" accept=".json,application/json" hidden></label>' : ''}${changed ? `<span class="uwChanged">고친 내용으로 보는 중${st.at ? ' · '+esc(new Date(st.at).toLocaleDateString('ko-KR')) : ''}</span>` : ''}${priv && d.at ? `<span class="uwChanged" style="color:var(--text-muted);">${esc(new Date(d.at).toLocaleDateString('ko-KR'))} 저장</span>` : ''}</div>
   <div class="uwCount" id="uwCount"></div>
   <div class="uwBody" id="uwBody">${html}</div>`;
 }
@@ -8343,15 +8439,18 @@ function uwApplyFilter(id){
     el.style.display = hit ? '' : 'none'; if(hit) shown++;
     el.innerHTML = uwArtHtml(b, q);
   });
-  // 장 제목: 그 장에 보이는 조문이 있을 때만
+  // 편·규정·장 제목: 그 아래(같거나 높은 제목 전까지)에 보이는 조문이 있을 때만
   const kids = Array.from(body.children);
-  kids.forEach((el, i)=>{ if(!el.classList.contains('uwCh')) return;
-    let any = false; for(let j = i+1; j < kids.length && !kids[j].classList.contains('uwCh'); j++){ if(kids[j].style.display!=='none'){ any = true; break; } }
+  kids.forEach((el, i)=>{ if(!el.classList.contains('uwHd')) return;
+    const r = Number(el.dataset.uwRank); let any = false;
+    for(let j = i+1; j < kids.length; j++){ const k = kids[j]; if(k.classList.contains('uwHd') && Number(k.dataset.uwRank) <= r) break; if(k.classList.contains('uwArt') && k.style.display!=='none'){ any = true; break; } }
     el.style.display = any || !ql ? '' : 'none'; });
   const c = document.getElementById('uwCount');
   if(c) c.textContent = ql ? (shown ? `'${q}' 들어간 조문 ${shown}개` : `'${q}' 들어간 조문이 없어요.`) : '';
 }
 function bindUwDoc(id){
+  const rf = document.getElementById('uwRulesFile'); if(rf) rf.onchange = ()=>{ if(rf.files && rf.files[0]) uwImportRules(rf.files[0]); rf.value = ''; };
+  if(!uwDoc(id)) return;
   if(uwEdit===id){ bindUwEdit(id); return; }
   const pb = document.getElementById('uwPrintBtn'); if(pb) pb.onclick = ()=> uwPrint(id);
   const eb = document.getElementById('uwEditBtn'); if(eb) eb.onclick = ()=>{ if(!requireEdit()) return; uwEdit = id; render(); window.scrollTo(0,0); };
@@ -8360,7 +8459,7 @@ function bindUwDoc(id){
   if(toc) toc.onchange = ()=>{
     const v = toc.value; toc.value = ''; if(!v) return;
     if(uwQuery[id]){ uwQuery[id] = ''; if(s) s.value = ''; uwApplyFilter(id); }
-    const el = document.getElementById(v) || document.querySelector(`[data-uw-ch="${v.slice(3)}"]`);
+    const el = document.getElementById(v);
     if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
   };
   if(uwQuery[id]) uwApplyFilter(id);
@@ -8369,10 +8468,11 @@ function bindUwDoc(id){
 // ----- 규정 고치기(UNION) -----
 function pageUwEdit(id){
   const d = (uwDraft && uwDraft.id===id) ? uwDraft.d : uwDoc(id);
-  const blk = (b, i)=> b.chh!=null
-    ? `<div class="uwEB uwEC" data-uw-k="ch"><div class="uwERow"><span class="uwETag">장</span><input class="uwEIn" data-f="chh" value="${esc(b.chh)}"><button type="button" class="btn ghost sm" data-uw-add="${i}">＋ 아래에 조문</button><button type="button" class="btn warn ghost sm" data-uw-del="${i}">삭제</button></div></div>`
+  const blk = (b, i)=> uwHeadKind(b)
+    ? (()=>{ const k = uwHeadKind(b), f = k==='pt' ? 'pt' : k==='rg' ? 'rg' : 'chh', tag = k==='pt' ? '편' : k==='rg' ? '규정' : (b.sec ? '절' : '장');
+        return `<div class="uwEB uwEC" data-uw-k="${k}"${b.sec ? ' data-uw-sec="1"' : ''}><div class="uwERow"><span class="uwETag">${tag}</span><input class="uwEIn" data-f="${f}" value="${esc(b[f])}"><button type="button" class="btn ghost sm" data-uw-add="${i}">＋ 아래에 조문</button><button type="button" class="btn warn ghost sm" data-uw-del="${i}">삭제</button></div></div>`; })()
     : `<div class="uwEB" data-uw-k="art"><div class="uwERow"><span class="uwETag">조</span><input class="uwEIn" data-f="h" value="${esc(b.h)}" placeholder="제 N 조 (제목)"><button type="button" class="btn ghost sm" data-uw-add="${i}">＋ 아래에 조문</button><button type="button" class="btn warn ghost sm" data-uw-del="${i}">삭제</button></div>
-        <textarea class="uwETa" data-f="l" rows="${Math.min(14, Math.max(3, b.l.length + 1))}" placeholder="한 줄에 한 항목 — ①, 1., (1), 가. 로 시작하면 자동으로 들여쓰기">${esc(b.l.map(x=> x[1]).join('\n'))}</textarea></div>`;
+        <textarea class="uwETa" data-f="l" rows="${Math.min(14, Math.max(3, b.l.length + 1))}" placeholder="한 줄에 한 항목 — ①, 1., (1), 가. 로 시작하면 자동으로 들여쓰기 · 표 줄은 | 로 시작">${esc(b.l.map(x=> x[0]===9 ? '| ' + x[1] : x[1]).join('\n'))}</textarea></div>`;
   return `
   <h2 class="pgttl">${esc(d.title)} 수정</h2>
   <div class="uwEditTop">
@@ -8382,14 +8482,16 @@ function pageUwEdit(id){
   </div>
   <div id="uwEList">${d.b.map(blk).join('')}</div>
   <div class="uwTools" style="margin-top:10px;"><button type="button" class="btn ghost sm" id="uwAddCh">＋ 장 추가(맨 끝)</button><button type="button" class="btn ghost sm" id="uwAddArt">＋ 조문 추가(맨 끝)</button></div>
-  <div class="uwSaveBar"><button type="button" class="btn" id="uwSave">저장</button><button type="button" class="btn ghost" id="uwCancel">취소</button>${uwOverride[id] && Array.isArray(uwOverride[id].b) ? '<button type="button" class="btn warn ghost" id="uwReset">원문으로 되돌리기</button>' : ''}</div>`;
+  <div class="uwSaveBar"><button type="button" class="btn" id="uwSave">저장</button><button type="button" class="btn ghost" id="uwCancel">취소</button>${uwStored(id) ? '<button type="button" class="btn warn ghost" id="uwReset">원문으로 되돌리기</button>' : ''}</div>`;
 }
 function uwReadEdit(keepEmpty){   // keepEmpty: 칸 추가·삭제 중엔 빈 칸도 그대로(칸 번호 유지), 저장할 땐 빈 칸 뺌
   const blocks = []; let chapter = '';
   document.querySelectorAll('#uwEList .uwEB').forEach(el=>{
-    if(el.dataset.uwK==='ch'){ chapter = el.querySelector('[data-f="chh"]').value.trim(); if(chapter || keepEmpty) blocks.push({chh: chapter}); return; }
+    const k = el.dataset.uwK;
+    if(k==='pt' || k==='rg'){ const v = el.querySelector(`[data-f="${k}"]`).value.trim(); if(v || keepEmpty) blocks.push({[k]: v}); return; }
+    if(k==='ch'){ chapter = el.querySelector('[data-f="chh"]').value.trim(); if(chapter || keepEmpty) blocks.push(el.dataset.uwSec ? {chh: chapter, sec: 1} : {chh: chapter}); return; }
     const h = el.querySelector('[data-f="h"]').value.trim();
-    const l = el.querySelector('[data-f="l"]').value.split('\n').map(x=> x.trim()).filter(Boolean).map(t=> [uwLevel(t), t]);
+    const l = el.querySelector('[data-f="l"]').value.split('\n').map(x=> x.replace(/\s+$/,'')).filter(x=> x.trim()).map(t=> /^\s*\|/.test(t) ? [9, t.replace(/^\s*\|\s?/, '')] : [uwLevel(t.trim()), t.trim()]);
     if(h || l.length || keepEmpty) blocks.push({ch: chapter, h, l});
   });
   return {title: (document.getElementById('uwETitle').value.trim() || '규정'), sub: document.getElementById('uwESub').value.trim(), b: blocks};
@@ -8406,10 +8508,16 @@ function bindUwEdit(id){
   const sv = document.getElementById('uwSave'); if(sv) sv.onclick = async ()=>{
     if(!requireEdit()) return;
     const d = Object.assign(uwReadEdit(false), {at: Date.now()});
-    uwOverride = Object.assign({}, uwOverride, {[id]: d}); uwDraft = null; uwEdit = null; render();
-    if(!db){ showToast('저장했어요.'); return; }
-    try{ await db.doc('meta/uwDocs').set({[id]: d}, {merge:true}); showToast(demoMode ? '저장했어요. (미리보기)' : '저장했어요.'); }
-    catch(err){ showToast(saveErrMsg('규정 저장에 실패했습니다.', err)); }
+    uwDraft = null; uwEdit = null;
+    try{
+      if(UW_PRIV[id]){ await uwSavePriv(id, d); render(); }
+      else {
+        const rec = {json: JSON.stringify({title:d.title, sub:d.sub, b:d.b}), at: d.at};   // Firestore는 배열 안의 배열을 못 넣어서 글자로 저장
+        uwOverride = Object.assign({}, uwOverride, {[id]: rec}); render();
+        if(db) await db.doc('meta/uwDocs').set({[id]: rec}, {merge:true});
+      }
+      showToast(demoMode ? '저장했어요. (미리보기)' : '저장했어요.');
+    }catch(err){ render(); showToast(saveErrMsg('규정 저장에 실패했습니다.', err)); }
   };
   const rs = document.getElementById('uwReset'); if(rs) rs.onclick = ()=> appConfirm('고친 내용을 지우고 원문으로 되돌릴까요?', async ()=>{
     uwOverride = Object.assign({}, uwOverride, {[id]: null}); uwDraft = null; uwEdit = null; render();
@@ -8423,9 +8531,11 @@ function uwDraftSet(id, d){ uwDraft = {id, d}; render(); }
 // ----- PDF 출력: A4 규정집 모양으로 인쇄(인쇄 창에서 'PDF로 저장') -----
 function uwPrint(id){
   const d = uwDoc(id);
-  const body = d.b.map(b=> b.chh!=null ? `<h2 class="uwPCh">${esc(b.chh)}</h2>`
-    : `<div class="uwPArt">${b.h ? `<div class="uwPH">${esc(b.h)}</div>` : ''}${b.l.map(([lv,t])=> `<p class="uwPL uwPL${lv==='p'?0:lv}">${esc(t)}</p>`).join('')}</div>`).join('');
-  const org = id==='uwlmc' ? '선광신컨테이너터미널(주) 노사협의회' : '선광신컨테이너터미널(주) 노동조합';
+  const art = b=>{ let o = b.h ? `<div class="uwPH">${esc(b.h)}</div>` : '', pre = []; const fl = ()=>{ if(pre.length){ o += `<pre class="uwPPre">${pre.join('\n')}</pre>`; pre = []; } };
+    b.l.forEach(([lv,t])=>{ if(lv===9){ pre.push(esc(t)); return; } fl(); o += `<p class="uwPL uwPL${lv==='p'?0:lv}">${esc(t)}</p>`; }); fl(); return `<div class="uwPArt">${o}</div>`; };
+  let firstRg = true;
+  const body = d.b.map(b=> b.pt!=null ? `<h1 class="uwPPt">${esc(b.pt)}</h1>` : b.rg!=null ? `<h2 class="uwPRg${firstRg ? (firstRg = false, ' first') : ''}">${esc(b.rg)}</h2>` : b.chh!=null ? `<h2 class="uwPCh${b.sec ? ' sec' : ''}">${esc(b.chh)}</h2>` : art(b)).join('');
+  const org = id==='uwlmc' ? '선광신컨테이너터미널(주) 노사협의회' : UW_PRIV[id] ? '선광신컨테이너터미널(주)' : '선광신컨테이너터미널(주) 노동조합';
   let box = document.getElementById('uwPrint'); if(box) box.remove();
   box = document.createElement('div'); box.id = 'uwPrint';
   box.innerHTML = `<div class="uwPCover"><div class="uwPTitle">${esc(d.title)}</div><div class="uwPSub">${esc(d.sub)}</div></div>${body}<div class="uwPEnd">${esc(org)}</div>`;
@@ -8435,6 +8545,154 @@ function uwPrint(id){
   const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
   setTimeout(()=>{ window.print(); setTimeout(()=>{ if(!matchMedia('print').matches) done(); }, 1500); }, 50);
+}
+
+/* ========================= UNION WORK: 조합원 명부 ========================= */
+// 개인정보(전화·이메일·주소)라 앱 파일(공개 주소)에는 넣지 않음 — 엑셀을 앱에서 가져와 클라우드 unionPrivate/members 에만 저장
+// (Firestore 보안 규칙에서 unionPrivate 는 UNION 계정만 읽고 쓰게 해야 함)
+let uwMem = null, uwMemErr = '', uwMemTab = 'cur', uwMemQ = '', uwMemEdit = null;   // uwMemEdit: {tab, i} (i = -1 새로 추가)
+const UWM_COLS = [['no','순번'],['reg','등록번호'],['emp','사번'],['part','파트/직무'],['pos','직위'],['name','성명'],['tel','전화번호'],['addr','주소'],['email','E-MAIL'],['join','가입일'],['leave','탈퇴일'],['note','비고']];
+function subscribeUwMem(){
+  if(!db || unsub.uwMem || !(userRole==='union' || userRole==='all')) return;
+  try{ unsub.uwMem = db.collection('unionPrivate').doc('members').onSnapshot(doc=>{ uwMem = doc.exists ? (doc.data()||{}) : {cur:[], left:[]}; uwMemErr = ''; if(VIEW==='uwmem') scheduleRender(); },
+    err=>{ uwMemErr = '명부를 읽을 권한이 없어요(UNION 로그인 필요).'; if(VIEW==='uwmem') scheduleRender(); }); }catch(e){}
+}
+// ----- 엑셀(.xlsx) 읽기: 라이브러리 없이 브라우저 기본 기능(압축 풀기·XML)으로 -----
+async function uwReadXlsx(file){
+  const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer);
+  let eocd = -1; for(let i = buf.length - 22; i >= Math.max(0, buf.length - 70000); i--){ if(dv.getUint32(i, true)===0x06054b50){ eocd = i; break; } }
+  if(eocd < 0) throw new Error('엑셀(.xlsx) 파일이 아니에요.');
+  const n = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true); const files = {};
+  for(let k = 0; k < n; k++){
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(buf.subarray(p + 46, p + 46 + nl)); files[name] = {method, csize, off}; p += 46 + nl + xl + cl;
+  }
+  const get = async name=>{ const f = files[name]; if(!f) return null;
+    const lnl = dv.getUint16(f.off + 26, true), lxl = dv.getUint16(f.off + 28, true), data = buf.subarray(f.off + 30 + lnl + lxl, f.off + 30 + lnl + lxl + f.csize);
+    if(f.method===0) return new TextDecoder().decode(data);
+    const ds = new DecompressionStream('deflate-raw'); const out = await new Response(new Blob([data]).stream().pipeThrough(ds)).arrayBuffer(); return new TextDecoder().decode(out); };
+  const X = s=> new DOMParser().parseFromString(s, 'application/xml');
+  const ss = []; const sst = await get('xl/sharedStrings.xml');
+  if(sst) X(sst).querySelectorAll('si').forEach(si=> ss.push(Array.from(si.getElementsByTagName('t')).map(t=> t.textContent).join('')));
+  const wb = X(await get('xl/workbook.xml')), rels = X(await get('xl/_rels/workbook.xml.rels'));
+  const relMap = {}; rels.querySelectorAll('Relationship').forEach(r=> relMap[r.getAttribute('Id')] = r.getAttribute('Target'));
+  const sheets = {};
+  for(const sh of Array.from(wb.getElementsByTagName('sheet'))){
+    const rid = sh.getAttribute('r:id') || sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+    let target = relMap[rid] || ''; target = target.replace(/^\/?xl\//, ''); const xml = await get('xl/' + target); if(!xml) continue;
+    const rows = [];
+    X(xml).querySelectorAll('sheetData > row').forEach(r=>{
+      const ri = Number(r.getAttribute('r')) - 1, row = rows[ri] = rows[ri] || [];
+      r.querySelectorAll('c').forEach(c=>{
+        const ref = c.getAttribute('r') || '', col = ref.replace(/\d+/g,'').split('').reduce((a,ch)=> a*26 + ch.charCodeAt(0) - 64, 0) - 1;
+        const t = c.getAttribute('t'), v = c.querySelector('v'), is = c.querySelector('is');
+        let val = v ? v.textContent : (is ? is.textContent : '');
+        if(t==='s') val = ss[Number(val)] || ''; else if(t!=='str' && t!=='inlineStr' && val!=='' && !isNaN(Number(val))) val = Number(val);
+        row[col] = val;
+      });
+    });
+    sheets[sh.getAttribute('name')] = rows;
+  }
+  return sheets;
+}
+function uwXDate(v){ if(typeof v==='number' && v > 20000 && v < 80000){ const d = new Date(Math.round((v - 25569) * 86400000)); return d.toISOString().slice(0,10); } const m = String(v||'').match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/); return m ? `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}` : String(v||'').trim(); }
+function uwParseRoster(rows){   // '성명' 칸이 있는 줄을 머리로 보고 아래 줄을 읽음
+  const hi = rows.findIndex(r=> r && r.some(c=> String(c||'').replace(/\s/g,'')==='성명')); if(hi < 0) return [];
+  const head = rows[hi].map(c=> String(c||'').replace(/\s/g,'').toUpperCase());
+  const idx = k=> head.findIndex(h=> ({no:['순번'],reg:['등록번호'],emp:['사번'],part:['파트/직무','파트','직무'],pos:['직위'],name:['성명'],tel:['전화번호','핸드폰','연락처'],addr:['주소'],email:['E-MAIL','EMAIL','이메일'],join:['가입일'],leave:['탈퇴일'],note:['비고']})[k].includes(h));
+  const ix = {}; UWM_COLS.forEach(([k])=> ix[k] = idx(k));
+  return rows.slice(hi + 1).filter(r=> r && ix.name >= 0 && String(r[ix.name]||'').trim()).map(r=>{
+    const o = {}; UWM_COLS.forEach(([k])=>{ let v = ix[k] >= 0 ? r[ix[k]] : ''; if(k==='join' || k==='leave') v = uwXDate(v); o[k] = v==null ? '' : String(v).trim(); }); return o; });
+}
+async function uwImportXlsx(file){
+  if(!requireEdit()) return;
+  try{
+    const sh = await uwReadXlsx(file);
+    const curName = Object.keys(sh).find(n=> /총원|명부/.test(n) && !/탈퇴/.test(n)) || Object.keys(sh)[0];
+    const leftName = Object.keys(sh).find(n=> /탈퇴/.test(n));
+    const cur = uwParseRoster(sh[curName] || []), left = leftName ? uwParseRoster(sh[leftName]) : [];
+    if(!cur.length){ showToast('명부에서 조합원을 찾지 못했어요. 첫 시트에 \'성명\' 칸이 있는지 확인해 주세요.'); return; }
+    appConfirm(`엑셀에서 조합원 ${cur.length}명${left.length ? `, 탈퇴자 ${left.length}명` : ''}을 읽었어요. 지금 명부를 이 내용으로 바꿀까요?`, ()=> uwMemSave({cur, left, src: file.name}));
+  }catch(err){ console.error(err); showToast('엑셀을 읽지 못했어요: ' + (err.message||err)); }
+}
+async function uwMemSave(data){
+  uwMem = Object.assign({}, uwMem||{}, data, {at: Date.now()}); render();
+  if(!db) return;
+  try{ await db.collection('unionPrivate').doc('members').set(uwMem); showToast('명부를 저장했어요.'); }
+  catch(err){ showToast(saveErrMsg('명부 저장에 실패했습니다.', err)); }
+}
+function uwMemList(tab){ return ((uwMem && uwMem[tab]) || []); }
+function uwMemPartCount(list){ const c = {}; list.forEach(m=>{ const k = String(m.part||'').split('/')[0] || '기타'; c[k] = (c[k]||0) + 1; }); return Object.entries(c).map(([k,v])=> `${esc(k)} ${v}`).join(' · '); }
+function pageUwMem(){
+  subscribeUwMem();
+  const cur = uwMemList('cur'), left = uwMemList('left'), list = uwMemTab==='left' ? left : cur, q = uwMemQ.trim().toLowerCase();
+  const shown = list.map((m,i)=> ({m, i})).filter(({m})=> !q || Object.values(m).join(' ').toLowerCase().includes(q));
+  const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','reg','emp','part','pos','name','tel','email','join','note'];
+  const lbl = Object.fromEntries(UWM_COLS);
+  const cell = (m,k)=> k==='tel' && m.tel ? `<a href="tel:${esc(String(m.tel).replace(/[^\d+]/g,''))}">${esc(m.tel)}</a>` : k==='email' && m.email ? `<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : esc(m[k]||'');
+  const rows = shown.map(({m,i})=> `<tr class="uwmRow" data-uwm-i="${i}">${cols.map(k=> `<td data-l="${esc(lbl[k])}" class="uwm-${k}">${cell(m,k)}</td>`).join('')}</tr>`).join('');
+  const loaded = !!uwMem;
+  const at = uwMem && uwMem.at ? new Date(uwMem.at).toLocaleDateString('ko-KR') : '';
+  const editPop = uwMemEdit ? (()=>{ const e = uwMemEdit, m = e.i >= 0 ? (uwMemList(e.tab)[e.i] || {}) : {}; const ks = e.tab==='left' ? UWM_COLS.map(x=>x[0]) : UWM_COLS.map(x=>x[0]).filter(k=> k!=='leave');
+    return `<div class="sheetPopScrim" id="uwmScrim"><div class="sheetPop uwmPop"><div class="sheetPopHd"><b>${e.i >= 0 ? esc(m.name||'') + ' 수정' : '조합원 추가'}</b><button type="button" class="sheetPopX" id="uwmClose" aria-label="닫기">✕</button></div>
+      <div class="uwmForm">${ks.map(k=> `<label><span>${esc(lbl[k])}</span><input data-uwm-f="${k}" type="${k==='join'||k==='leave' ? 'date' : k==='tel' ? 'tel' : k==='email' ? 'email' : 'text'}" value="${esc(m[k]||'')}"></label>`).join('')}</div>
+      <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 && e.tab==='left' ? '<button type="button" class="btn ghost sm" id="uwmBack">재가입(명부로)</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
+  return `
+  <h2 class="pgttl">조합원 명부</h2>
+  <div class="uwHead"><b>조합원 명부</b><span>선광신컨테이너터미널㈜ 노동조합${at ? ' · ' + esc(at) + ' 저장' : ''}</span></div>
+  ${uwMemErr ? `<div class="note">${esc(uwMemErr)}</div>` : ''}
+  ${!loaded && !uwMemErr ? '<div class="hint">불러오는 중…</div>' : ''}
+  <div class="uwmTabs"><button type="button" class="btn ${uwMemTab==='cur'?'':'ghost'} sm" data-uwm-tab="cur">재적 조합원 ${cur.length}명</button><button type="button" class="btn ${uwMemTab==='left'?'':'ghost'} sm" data-uwm-tab="left">탈퇴자 ${left.length}명</button>${cur.length && uwMemTab==='cur' ? `<span class="uwmSum">${uwMemPartCount(cur)}</span>` : ''}</div>
+  <div class="uwBar"><input type="search" id="uwmSearch" value="${esc(uwMemQ)}" placeholder="이름·직위·파트·전화번호 검색" autocomplete="off"></div>
+  <div class="uwTools"><button type="button" class="btn sm" id="uwmPrint">🖨️ PDF 출력</button><button type="button" class="btn ghost sm" id="uwmCsv">⬇️ 엑셀(CSV) 받기</button><button type="button" class="btn ghost sm editor-only" id="uwmAdd">＋ 조합원 추가</button><label class="btn ghost sm editor-only uwmImp">📥 엑셀 가져오기<input type="file" id="uwmFile" accept=".xlsx" hidden></label></div>
+  ${list.length ? `<div class="uwmWrap"><table class="tbl uwmTbl"><thead><tr>${cols.map(k=> `<th>${esc(lbl[k])}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${cols.length}" class="empty">'${esc(uwMemQ)}' 찾는 사람이 없어요.</td></tr>`}</tbody></table></div>`
+    : (loaded ? `<div class="empty">${uwMemTab==='left' ? '탈퇴자가 없어요.' : '아직 명부가 없어요. [📥 엑셀 가져오기]로 조합원 명부 엑셀(.xlsx)을 올려 주세요.'}</div>` : '')}
+  ${editPop}`;
+}
+function bindUwMem(){
+  const el = document.getElementById('content');
+  el.querySelectorAll('[data-uwm-tab]').forEach(b=> b.onclick = ()=>{ uwMemTab = b.dataset.uwmTab; render(); });
+  const s = document.getElementById('uwmSearch'); if(s){ let t = null; s.oninput = ()=>{ clearTimeout(t); t = setTimeout(()=>{ uwMemQ = s.value; const pos = s.selectionStart; render(); const s2 = document.getElementById('uwmSearch'); if(s2){ s2.focus(); try{ s2.setSelectionRange(pos, pos); }catch(e){} } }, 200); }; }
+  const f = document.getElementById('uwmFile'); if(f) f.onchange = ()=>{ if(f.files && f.files[0]) uwImportXlsx(f.files[0]); f.value = ''; };
+  const ad = document.getElementById('uwmAdd'); if(ad) ad.onclick = ()=>{ if(!requireEdit()) return; uwMemEdit = {tab: uwMemTab, i: -1}; render(); };
+  el.querySelectorAll('.uwmRow').forEach(tr=> tr.onclick = ev=>{ if(ev.target.closest('a')) return; if(!canEdit) return; uwMemEdit = {tab: uwMemTab, i: Number(tr.dataset.uwmI)}; render(); });
+  const pr = document.getElementById('uwmPrint'); if(pr) pr.onclick = uwMemPrint;
+  const cv = document.getElementById('uwmCsv'); if(cv) cv.onclick = uwMemCsv;
+  if(uwMemEdit){
+    const close = ()=>{ uwMemEdit = null; render(); };
+    document.getElementById('uwmClose').onclick = close;
+    document.getElementById('uwmScrim').onclick = e=>{ if(e.target.id==='uwmScrim') close(); };
+    const read = ()=>{ const o = {}; document.querySelectorAll('[data-uwm-f]').forEach(i=> o[i.dataset.uwmF] = i.value.trim()); return o; };
+    const e = uwMemEdit, lists = {cur: uwMemList('cur').slice(), left: uwMemList('left').slice()};
+    document.getElementById('uwmSave').onclick = ()=>{ const o = read(); if(!o.name){ showToast('성명을 넣어 주세요.'); return; }
+      if(e.i >= 0) lists[e.tab][e.i] = Object.assign({}, lists[e.tab][e.i], o); else lists[e.tab].push(Object.assign({no: String(lists[e.tab].length + 1)}, o));
+      uwMemEdit = null; uwMemSave(lists); };
+    const lv = document.getElementById('uwmLeave'); if(lv) lv.onclick = ()=>{ const o = Object.assign({}, lists.cur[e.i], read()); const why = prompt(`${o.name} 탈퇴 사유(비고)`, o.note||''); if(why===null) return;
+      o.leave = o.leave || todayStr(); o.note = why; lists.cur.splice(e.i, 1); lists.left.push(o); lists.cur.forEach((m,k)=> m.no = String(k+1)); lists.left.forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave(lists); };
+    const bk = document.getElementById('uwmBack'); if(bk) bk.onclick = ()=>{ const o = Object.assign({}, lists.left[e.i], read()); delete o.leave; lists.left.splice(e.i, 1); lists.cur.push(o); lists.cur.forEach((m,k)=> m.no = String(k+1)); lists.left.forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave(lists); };
+    const dl = document.getElementById('uwmDel'); if(dl) dl.onclick = ()=> appConfirm(`${lists[e.tab][e.i].name} 을(를) 명부에서 지울까요?`, ()=>{ lists[e.tab].splice(e.i, 1); lists[e.tab].forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave(lists); });
+  }
+}
+function uwMemPrint(){
+  const tab = uwMemTab, list = uwMemList(tab), lbl = Object.fromEntries(UWM_COLS);
+  const cols = tab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','reg','emp','part','pos','name','tel','join','note'];
+  const title = tab==='left' ? '탈퇴자 관리대장' : '조합원 명부';
+  let box = document.getElementById('uwPrint'); if(box) box.remove();
+  box = document.createElement('div'); box.id = 'uwPrint';
+  box.innerHTML = `<div class="uwPMemHd"><div class="uwPMemT">선광신컨테이너터미널㈜ 노동조합 ${title}</div><div class="uwPMemD">${esc(todayStr())} 기준 · ${list.length}명</div></div>
+    <table class="uwPMem"><thead><tr>${cols.map(k=> `<th class="uwp-${k}">${esc(lbl[k])}</th>`).join('')}</tr></thead><tbody>${list.map(m=> `<tr>${cols.map(k=> `<td class="uwp-${k}">${esc(m[k]||'')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  document.body.appendChild(box);
+  const old = document.title; document.title = title;
+  document.body.classList.add('printing-uw');
+  const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(()=>{ window.print(); setTimeout(()=>{ if(!matchMedia('print').matches) done(); }, 1500); }, 50);
+}
+function uwMemCsv(){
+  const tab = uwMemTab, list = uwMemList(tab), cols = UWM_COLS.filter(([k])=> tab==='left' || k!=='leave');
+  const q = v=> `"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const csv = '﻿' + [cols.map(c=> q(c[1])).join(',')].concat(list.map(m=> cols.map(([k])=> q(m[k])).join(','))).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'})); a.download = (tab==='left' ? '탈퇴자' : '조합원명부') + '_' + todayStr() + '.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
 /* ========================= 조편성 관리 ========================= */
