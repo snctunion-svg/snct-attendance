@@ -4675,8 +4675,8 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
 }
 // 휴대폰(세로): 근태 집계·월별 근태를 시트 두 개로 나눠서 위 단추로 바꿔 봄
 let cmbPhoneTab = 'stat';
-// 월별 근태 '순번' 칸: 평일(평일 OT 순번)·휴일(휴일 OT 순번)·평휴(평일 휴무 합계 순번)·지원(지원 순번) — 기기에 기억
-const MG_RANK = { '평일':{k:'rankOtWk', g:'pur', t:'평일 OT 순번'}, '휴일':{k:'rankOtHol', g:'yel', t:'휴일 OT 순번'}, '평휴':{k:'rankGyeWk', g:'wk', t:'평일 휴무(FC+MC) 합계 순번'}, '지원':{k:'rankSup', g:'blk', t:'지원근무 순번'} };
+// 월별 근태 '순번' 칸: 평일(FC·MC 합계 순번)·휴일(MCS 순번)·평휴(FCH·MCH 합계 순번)·지원(지원 순번) — 기기에 기억
+const MG_RANK = { '평일':{k:'rankGyeWk', g:'wk', t:'평일 FC·MC 합계 순번'}, '휴일':{k:'rankMCS', g:'red', t:'휴일 MCS 순번'}, '평휴':{k:'rankGyeHol', g:'blue', t:'평휴 FCH·MCH 합계 순번'}, '지원':{k:'rankSup', g:'blk', t:'지원근무 순번'} };
 let mgRankType = (()=>{ try{ const v = localStorage.getItem('snct_mg_rank'); return MG_RANK[v] ? v : '평일'; }catch(e){ return '평일'; } })();
 function cmbPhone(){ return window.innerWidth <= 700 && !landPhone(); }
 // 휴대폰 가로·세로를 바꾸면 근태관리 위쪽 모양이 달라지므로 다시 그림
@@ -4756,8 +4756,8 @@ function pageCombined(){
     const n = sortedEmployees.filter(e=>{ const dc = gridCode(codeStatsAttendance[ds+'_'+e.id], ds, String(e.name||'').trim()); return !dc || WORK_SET.has(dc); }).length;
     return `<th class="cntHead${ds===TODAY?' todayCol':''}" title="근무 인원(N·D·ND·DN·빈칸)">${n}</th>`;
   }).join('');
-  const mgR = MG_RANK[mgRankType], mgArr = ({rankOtWk, rankOtHol, rankGyeWk, rankSup})[mgR.k] || [];
-  const rankHead = `<th class="mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<br><span class="mgRkType">${esc(mgRankType)}▾</span><select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류">${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankType?' selected':''}>${k}</option>`).join('')}</select></th>`;
+  const mgR = MG_RANK[mgRankType], mgArr = ({rankGyeWk, rankMCS, rankGyeHol, rankSup})[mgR.k] || [];
+  const rankHead = `<th class="mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류">${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankType?' selected':''}>${k}</option>`).join('')}</select></th>`;
   const codeRows = sortedEmployees.map((e,ei)=>{
     const rkN = mgArr[ei];
     const rankCell = `<td class="mgRk rkCol g-${mgR.g}" style="text-align:center;">${rkN==null ? '' : `<span class="rkPlain">${rkN}</span>`}</td>`;
