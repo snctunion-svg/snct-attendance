@@ -682,22 +682,24 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbRight .ctbl.gtbl td.namecell,.cmbRight .ctbl.gtbl th.namehead{font-size:12.5px !important;min-width:64px;white-space:nowrap;}
   .cmbRight .ctbl.gtbl tbody td{height:40px !important;}
 }
-/* 월별 근태 순번 칸(성명 옆): 제목을 누르면 평일·휴일·평휴·지원 선택 */
-.ctbl th.mgRkHead{position:relative;min-width:36px;width:36px;padding:1px 2px !important;line-height:1.15;white-space:nowrap;cursor:pointer;color:#111 !important;}
-.ctbl th.mgRkHead .mgRkType{font-size:10px;font-weight:800;color:var(--g);}
+/* 월별 근태 성명 옆 칸 [지원 | 순번 | 퇴근]: 순번 제목을 누르면 평일·휴일·평휴 선택 */
+.ctbl th.mgFix{min-width:34px;width:34px;padding:1px 2px !important;line-height:1.15;white-space:nowrap;color:#111 !important;}
+.ctbl th.mgRkHead{position:relative;cursor:pointer;}
 .ctbl th.mgRkHead select.mgRkSel{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px;border:0;margin:0;-webkit-appearance:none;appearance:none;}
-.ctbl td.mgRk{min-width:36px;width:36px;padding:0 2px !important;}
-.cmbRight .ctbl th.mgRkHead,.cmbRight .ctbl td.mgRk{border-right:var(--sepW,1px) solid #111 !important;}
-.cmbRight .ctbl th.mgRkHead + th,.cmbRight .ctbl td.mgRk + td{border-left:var(--sepW,1px) solid #111 !important;}
-.cmbRight .ctbl th.namehead + th.mgRkHead,.cmbRight .ctbl td.namecell + td.mgRk{border-left:1px solid #c4cad3 !important;}
+.ctbl td.mgFix{min-width:34px;width:34px;padding:0 2px !important;}
+.cmbRight .ctbl th.mgFixEnd,.cmbRight .ctbl td.mgFixEnd{border-right:var(--sepW,1px) solid #111 !important;}
+.cmbRight .ctbl th.mgFixEnd + th,.cmbRight .ctbl td.mgFixEnd + td{border-left:var(--sepW,1px) solid #111 !important;}
+.cmbRight .ctbl th.namehead + th.mgFix,.cmbRight .ctbl td.namecell + td.mgFix{border-left:1px solid #c4cad3 !important;}
 .cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{border-right-color:#c4cad3 !important;}
 @media (max-width:700px){
-  /* 휴대폰: 성명·순번 둘 다 왼쪽에 고정 → 말일까지 옆으로 밀면 날짜가 순번 바로 옆으로 들어옴 */
-  .scrollx.mFreeze td.mgRk{position:sticky;z-index:2;box-shadow:inset -1px 0 0 #111;}
-  .scrollx.mFreeze thead th.mgRkHead{position:sticky;z-index:7;box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111;}
+  /* 휴대폰: 성명·지원·순번·퇴근을 왼쪽에 고정 → 말일까지 옆으로 밀면 날짜가 퇴근 바로 옆으로 들어옴 */
+  .scrollx.mFreeze td.mgFix{position:sticky;z-index:2;}
+  .scrollx.mFreeze thead th.mgFix{position:sticky;z-index:7;box-shadow:inset 0 -1px 0 #111;}
+  .scrollx.mFreeze td.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
+  .scrollx.mFreeze thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111;}
   .scrollx.mFreeze td.namecell{z-index:3;}
-  .cmbRight .ctbl.gtbl thead th.mgRkHead{min-width:38px;font-size:11.5px !important;}
-  .cmbRight .ctbl.gtbl td.mgRk{min-width:38px;width:38px;}
+  .cmbRight .ctbl.gtbl thead th.mgFix{min-width:34px;width:34px;font-size:11.5px !important;}
+  .cmbRight .ctbl.gtbl td.mgFix{min-width:34px;width:34px;}
 }
 /* 성명 칸 가운데 정렬(근태 집계·월별 근태·월별 OT현황) */
 .ctbl td.namecell,.ctbl th.namehead,.otSum td.namecell,.otSum th.namehead{text-align:center !important;}
@@ -4676,17 +4678,22 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
 }
 // 휴대폰(세로): 근태 집계·월별 근태를 시트 두 개로 나눠서 위 단추로 바꿔 봄
 let cmbPhoneTab = 'stat';
-// 월별 근태 '순번' 칸: 평일(FC·MC 합계 순번)·휴일(MCS 순번)·평휴(FCH·MCH 합계 순번)·지원(지원 순번)
-const MG_RANK = { '평일':{k:'rankGyeWk', g:'wk', t:'평일 FC·MC 합계 순번'}, '휴일':{k:'rankMCS', g:'red', t:'휴일 MCS 순번'}, '평휴':{k:'rankGyeHol', g:'blue', t:'평휴 FCH·MCH 합계 순번'}, '지원':{k:'rankSup', g:'blk', t:'지원근무 순번'} };
-// 기본은 날짜에 맞춰 자동: 일요일 → 휴일(MCS), 일요일 아닌 공휴일 → 평휴(FCH·MCH), 그 외 → 평일(FC·MC)
-//  제목을 눌러 직접 고르면 그 종류로 보임(화면을 다시 열거나 새로고침하면 다시 자동)
+// 월별 근태: 성명 옆 고정 칸 [지원 | 순번 | 퇴근]
+//  지원 = 지원근무 순번(항상)
+//  순번 = 평일(FC·MC 합계 순번)·휴일(FCH·MCH 합계 순번)·평휴(MCS 순번) — 오늘 날짜에 맞춰 자동, 제목을 눌러 직접 고를 수 있음
+//  퇴근 = 평일 OT 순번 / 휴일 OT 순번 — 오늘 날짜에 맞춰 자동(일요일·공휴일 → 휴일)
+const MG_RANK = { '평일':{k:'rankGyeWk', g:'wk', t:'평일 FC·MC 합계 순번'}, '휴일':{k:'rankGyeHol', g:'blue', t:'휴일 FCH·MCH 합계 순번'}, '평휴':{k:'rankMCS', g:'red', t:'평휴 MCS 순번'} };
+// 순번 자동: 일요일 → 평휴(MCS), 일요일 아닌 공휴일 → 휴일(FCH·MCH), 그 외(월~토) → 평일(FC·MC)
+//  직접 고르면 그 종류로 보임(화면을 다시 열거나 새로고침하면 다시 자동)
 let mgRankManual = null;
 function mgRankAuto(ds){
   ds = ds || todayStr();
-  if(new Date(ds+'T00:00:00').getDay()===0) return '휴일';
-  if(holidays[ds]) return '평휴';
+  if(new Date(ds+'T00:00:00').getDay()===0) return '평휴';
+  if(holidays[ds]) return '휴일';
   return '평일';
 }
+// 퇴근 자동: 일요일·공휴일 → 휴일 OT 순번, 그 외 → 평일 OT 순번
+function mgOffIsHol(ds){ ds = ds || todayStr(); return new Date(ds+'T00:00:00').getDay()===0 || !!holidays[ds]; }
 function cmbPhone(){ return window.innerWidth <= 700 && !landPhone(); }
 // 휴대폰 가로·세로를 바꾸면 근태관리 위쪽 모양이 달라지므로 다시 그림
 window.addEventListener('resize', ()=>{ const p = cmbPhone(); if(window._cmbPh !== undefined && window._cmbPh !== p && VIEW==='combined'){ window._cmbPh = p; render(); } window._cmbPh = p; });
@@ -4766,11 +4773,16 @@ function pageCombined(){
     return `<th class="cntHead${ds===TODAY?' todayCol':''}" title="근무 인원(N·D·ND·DN·빈칸)">${n}</th>`;
   }).join('');
   const mgAutoT = mgRankAuto(TODAY), mgRankType = MG_RANK[mgRankManual] ? mgRankManual : mgAutoT;
-  const mgR = MG_RANK[mgRankType], mgArr = ({rankGyeWk, rankMCS, rankGyeHol, rankSup})[mgR.k] || [];
-  const rankHead = `<th class="mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류"><option value="auto"${!mgRankManual?' selected':''}>자동(오늘 ${esc(mgAutoT)})</option>${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankManual?' selected':''}>${k}</option>`).join('')}</select></th>`;
+  const mgR = MG_RANK[mgRankType], mgArr = ({rankGyeWk, rankMCS, rankGyeHol})[mgR.k] || [];
+  const offHol = mgOffIsHol(TODAY), offArr = offHol ? rankOtHol : rankOtWk, offG = offHol ? 'yel' : 'pur';
+  const mgNum = n => n==null ? '' : `<span class="rkPlain">${n}</span>`;
+  const supHead = `<th class="mgFix gc g-blk" rowspan="2" title="지원근무 순번 (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">지원</th>`;
+  const offHead = `<th class="mgFix mgFixEnd gc g-${offG}" rowspan="2" title="${offHol ? '휴일' : '평일'} OT 순번 — 오늘 날짜에 맞춰 자동 (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">퇴근</th>`;
+  const rankHead = `<th class="mgFix mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류"><option value="auto"${!mgRankManual?' selected':''}>자동(오늘 ${esc(mgAutoT)})</option>${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankManual?' selected':''}>${k}</option>`).join('')}</select></th>`;
   const codeRows = sortedEmployees.map((e,ei)=>{
-    const rkN = mgArr[ei];
-    const rankCell = `<td class="mgRk rkCol g-${mgR.g}" style="text-align:center;">${rkN==null ? '' : `<span class="rkPlain">${rkN}</span>`}</td>`;
+    const rankCell = `<td class="mgFix rkCol g-blk" style="text-align:center;">${mgNum(rankSup[ei])}</td>`
+      + `<td class="mgFix rkCol g-${mgR.g}" style="text-align:center;">${mgNum(mgArr[ei])}</td>`
+      + `<td class="mgFix mgFixEnd rkCol g-${offG}" style="text-align:center;">${mgNum(offArr[ei])}</td>`;
     const cells = monthDays.map(ds=>{
       const d = Number(ds.slice(8,10));
       const rec = codeStatsAttendance[ds+'_'+e.id];
@@ -4834,7 +4846,7 @@ function pageCombined(){
           <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
         </div>
       </div>`}
-      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${rankHead}${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
+      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${supHead}${rankHead}${offHead}${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
   </div>
@@ -5245,7 +5257,7 @@ function fitCombined(){
       const key = (mt.querySelector('thead th.dayHead') ? mt.querySelector('thead th.dayHead').dataset.date || '' : '').slice(0,7);
       const st = window._mgScroll || (window._mgScroll = {key:'', x:null});
       if(st.key !== key || st.x == null){
-        const today = mt.querySelector('thead th.dayHead.todayCol'), name = mt.querySelector('thead th.mgRkHead') || mt.querySelector('thead th.namehead');
+        const today = mt.querySelector('thead th.dayHead.todayCol'), name = mt.querySelector('thead th.mgFixEnd') || mt.querySelector('thead th.namehead');
         let x = 0;
         if(today && name){
           const prev = today.previousElementSibling && today.previousElementSibling.classList.contains('dayHead') ? today.previousElementSibling : today;
@@ -5260,15 +5272,18 @@ function fitCombined(){
   }
 }
 // PC: 두 표를 한 장처럼 붙임 — 같은 배율(zoom), 같은 머리글 높이, 같은 줄 높이 → 왼쪽·오른쪽 줄이 정확히 이어짐
-// 월별 근태 순번 칸: 휴대폰에서 성명 바로 옆에 고정 — 성명 칸 폭을 재서 그만큼 오른쪽에 붙임
+// 월별 근태 지원·순번·퇴근 칸: 휴대폰에서 성명 바로 옆에 차례로 고정 — 앞 칸 폭을 재서 그만큼씩 오른쪽에 붙임
 function mgStickRank(wrap){
   const t = wrap && wrap.querySelector('.cmbRight table.ctbl'); if(!t) return;
-  const cells = t.querySelectorAll('.mgRk,.mgRkHead');
   const box = t.closest('.scrollx');
-  if(!box || !box.classList.contains('mFreeze')){ cells.forEach(c=> c.style.left = ''); return; }   // PC·가로 화면은 고정 안 함
-  const nm = t.querySelector('thead th.namehead'); if(!nm) return;
-  const w = nm.getBoundingClientRect().width / (parseFloat(t.style.zoom)||1);
-  cells.forEach(c=> c.style.left = (Math.round(w*10)/10 - 1) + 'px');
+  const rows = [...t.querySelectorAll('tr')].filter(tr=> tr.querySelector('.mgFix'));
+  const clear = ()=> rows.forEach(tr=> tr.querySelectorAll('.mgFix').forEach(c=> c.style.left = ''));
+  if(!box || !box.classList.contains('mFreeze')){ clear(); return; }   // PC·가로 화면은 고정 안 함
+  const nm = t.querySelector('thead th.namehead'), hs = [...t.tHead.rows[0].querySelectorAll('th.mgFix')]; if(!nm || !hs.length) return;
+  const z = parseFloat(t.style.zoom)||1, W = el=> el.getBoundingClientRect().width / z;
+  const lefts = []; let x = W(nm) - 1;
+  hs.forEach(h=>{ lefts.push(Math.round(x*10)/10); x += W(h); });
+  rows.forEach(tr=> tr.querySelectorAll('.mgFix').forEach((c,i)=>{ if(lefts[i]!=null) c.style.left = lefts[i] + 'px'; }));
 }
 function fitCombinedJoin(wrap){
   const L = wrap.querySelector('.cmbLeft table.ctbl'), Rt = wrap.querySelector('.cmbRight table.ctbl');
