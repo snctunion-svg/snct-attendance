@@ -923,7 +923,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 
 @media (max-width:700px){
   /* 휴대폰 틀고정(근태 집계·월별 근태·월별 OT현황): 머리글 줄은 위에, No·성명은 왼쪽에 고정 */
-  .scrollx.mFreeze{overflow:auto;overscroll-behavior:contain;}
+  .scrollx.mFreeze{overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y pinch-zoom;}
   .scrollx.mFreeze thead th{position:sticky;z-index:5;}
   .scrollx.mFreeze thead th.namehead{z-index:7;}
   .scrollx.mFreeze thead th.namehead.noStick{z-index:5;}
@@ -4683,13 +4683,13 @@ let cmbPhoneTab = 'stat';
 //  순번 = 평일(FC·MC 합계 순번)·휴일(FCH·MCH 합계 순번)·평휴(MCS 순번) — 오늘 날짜에 맞춰 자동, 제목을 눌러 직접 고를 수 있음
 //  퇴근 = 평일 OT 순번 / 휴일 OT 순번 — 오늘 날짜에 맞춰 자동(일요일·공휴일 → 휴일)
 const MG_RANK = { '평일':{k:'rankGyeWk', g:'wk', t:'평일 FC·MC 합계 순번'}, '휴일':{k:'rankGyeHol', g:'blue', t:'휴일 FCH·MCH 합계 순번'}, '평휴':{k:'rankMCS', g:'red', t:'평휴 MCS 순번'} };
-// 순번 자동: 일요일 → 평휴(MCS), 일요일 아닌 공휴일 → 휴일(FCH·MCH), 그 외(월~토) → 평일(FC·MC)
+// 순번 자동: 일요일 → 휴일(FCH·MCH), 일요일 아닌 공휴일 → 평휴(MCS), 그 외(월~토) → 평일(FC·MC)
 //  직접 고르면 그 종류로 보임(화면을 다시 열거나 새로고침하면 다시 자동)
 let mgRankManual = null;
 function mgRankAuto(ds){
   ds = ds || todayStr();
-  if(new Date(ds+'T00:00:00').getDay()===0) return '평휴';
-  if(holidays[ds]) return '휴일';
+  if(new Date(ds+'T00:00:00').getDay()===0) return '휴일';
+  if(holidays[ds]) return '평휴';
   return '평일';
 }
 // 퇴근 자동: 일요일·공휴일 → 휴일 OT 순번, 그 외 → 평일 OT 순번
@@ -5171,7 +5171,7 @@ function fitDispatch(){
   if(lb > avail){ const z = (avail - tTop) / (lb - tTop); t.style.zoom = Math.max(0.5, Math.min(1, Math.floor(z*1000)/1000)); }
 }
 // 휴대폰: 화면 높이가 바뀌면(주소창 접힘·펴짐) 배차표 다시 맞춤
-if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ if((window.visualViewport.scale||1) > 1.01) return; clearTimeout(window._dpFitT); window._dpFitT = setTimeout(()=>{ fitDispatch(); fitInputMobile(); fitSplan(); if(window.innerWidth<=700){ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined') document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } applyUiZoom(); }, 150); });
+if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ if((window.visualViewport.scale||1) > 1.01) return; clearTimeout(window._dpFitT); window._dpFitT = setTimeout(()=>{ fitDispatch(); fitInputMobile(); fitSplan(); if(window.innerWidth<=700){ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined' && !cmbSkipRefit()) document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } if(!cmbSkipRefit()) applyUiZoom(); }, 150); });
 // 지원계획표: 세로를 화면 높이의 85%로(줄 높이를 늘림)
 // 휴대폰 지원계획표: 줄 높이를 늘려 표와 [초기화] 버튼이 화면 아래까지 꽉 차게(위아래로 크게)
 function fitSplanMobile(){
@@ -5244,6 +5244,7 @@ function fitCombined(){
   wrap.classList.remove('cmbJoin');
   wrap.querySelectorAll('.cmbCtrl').forEach(c=> c.style.height = '');
   wrap.querySelectorAll('thead tr').forEach(tr=> tr.style.height = '');
+  window._cmbFitW = window.innerWidth;
   if(landPhone()){ fitCombinedLand(wrap); return; }
   if(window.innerWidth > 860){ fitCombinedJoin(wrap); return; }
   wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70, ratio:0.85})); // 세로 85%
@@ -5266,8 +5267,12 @@ function fitCombined(){
         }
         st.key = key; st.x = x;
       }
-      box.scrollLeft = st.x;
-      if(!box._mgHook){ box._mgHook = 1; box.addEventListener('scroll', ()=>{ st.x = box.scrollLeft; }, {passive:true}); }
+      if(!st.touch && Math.abs(box.scrollLeft - st.x) > 1) box.scrollLeft = st.x;   // 손가락으로 밀고 있을 때는 건드리지 않음
+      if(!box._mgHook){ box._mgHook = 1;
+        box.addEventListener('scroll', ()=>{ st.x = box.scrollLeft; }, {passive:true});
+        box.addEventListener('touchstart', ()=>{ st.touch = true; }, {passive:true});
+        const up = ()=>{ setTimeout(()=>{ st.touch = false; }, 800); };   // 손을 뗀 뒤 관성으로 밀리는 동안도 잠깐 기다림
+        box.addEventListener('touchend', up, {passive:true}); box.addEventListener('touchcancel', up, {passive:true}); }
     }
   }
 }
@@ -5400,7 +5405,9 @@ function setUiZoom(v){
     else if(ev.key==='-' || ev.key==='_'){ ev.preventDefault(); setUiZoom(uiZoom - 0.1); }
     else if(ev.key==='0'){ ev.preventDefault(); setUiZoom(1); } });
 })();
-window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(fitAllViews, 120); });
+// 휴대폰 근태관리: 주소창이 숨거나 나타날 때(높이만 바뀜)는 표를 다시 맞추지 않음 — 옆으로 밀던 중에 표가 다시 그려지며 멈추거나 되돌아가지 않게
+function cmbSkipRefit(){ return VIEW==='combined' && window.innerWidth <= 700 && !landPhone() && window._cmbFitW === window.innerWidth; }
+window.addEventListener('resize', ()=>{ clearTimeout(window._otFitT); window._otFitT = setTimeout(()=>{ if(cmbSkipRefit()){ fitOtTable(); fitInputTable(); fitDocs(); fitSafety(); fitDispatch(); fitSplan(); return; } fitAllViews(); }, 120); });
 /* ========================= 급여관리(UNION) · 급여명세서 ========================= */
 // 저장 위치: meta/payroll 문서의 byEmp = { 직원ID: {hourly:시급, ordinary:통상시급, tenure:근속수당, pw:비번} }
 let payMgr = {}, payMgrTeam = '', payDraft = {}, payPw = null, paySlip = null;
