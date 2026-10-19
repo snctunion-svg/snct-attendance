@@ -682,7 +682,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbRight .ctbl.gtbl td.namecell,.cmbRight .ctbl.gtbl th.namehead{font-size:12.5px !important;min-width:64px;white-space:nowrap;}
   .cmbRight .ctbl.gtbl tbody td{height:40px !important;}
 }
-/* 월별 근태 성명 옆 칸 [지원 | 순번 | 퇴근]: 순번 제목을 누르면 평일·휴일·평휴 선택 */
+/* 월별 근태 성명 옆 칸 [지원 | 순번 | 퇴근]: 순번 제목을 누르면 평일·공휴일·일요일 선택 */
 .ctbl th.mgFix{min-width:34px;width:34px;padding:1px 2px !important;line-height:1.15;white-space:nowrap;color:#111 !important;}
 .ctbl th.mgRkHead{position:relative;cursor:pointer;}
 .ctbl th.mgRkHead select.mgRkSel{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px;border:0;margin:0;-webkit-appearance:none;appearance:none;}
@@ -4680,16 +4680,16 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
 let cmbPhoneTab = 'stat';
 // 월별 근태: 성명 옆 고정 칸 [지원 | 순번 | 퇴근]
 //  지원 = 지원근무 순번(항상)
-//  순번 = 평일(FC·MC 합계 순번)·휴일(FCH·MCH 합계 순번)·평휴(MCS 순번) — 오늘 날짜에 맞춰 자동, 제목을 눌러 직접 고를 수 있음
+//  순번 = 평일(FC·MC 합계 순번)·공휴일(MCS 순번)·일요일(FCH·MCH 합계 순번) — 오늘 날짜에 맞춰 자동, 제목을 눌러 직접 고를 수 있음
 //  퇴근 = 평일 OT 순번 / 휴일 OT 순번 — 오늘 날짜에 맞춰 자동(일요일·공휴일 → 휴일)
-const MG_RANK = { '평일':{k:'rankGyeWk', g:'wk', t:'평일 FC·MC 합계 순번'}, '휴일':{k:'rankGyeHol', g:'blue', t:'휴일 FCH·MCH 합계 순번'}, '평휴':{k:'rankMCS', g:'red', t:'평휴 MCS 순번'} };
-// 순번 자동: 일요일 → 휴일(FCH·MCH), 일요일 아닌 공휴일 → 평휴(MCS), 그 외(월~토) → 평일(FC·MC)
+const MG_RANK = { '평일':{k:'rankGyeWk', g:'wk', t:'평일 FC·MC 합계 순번'}, '공휴일':{k:'rankMCS', g:'red', t:'공휴일 MCS 순번'}, '일요일':{k:'rankGyeHol', g:'blue', t:'일요일 FCH·MCH 합계 순번'} };
+// 순번 자동: 일요일 → 일요일(FCH·MCH), 일요일 아닌 공휴일 → 공휴일(MCS), 그 외(월~토) → 평일(FC·MC)
 //  직접 고르면 그 종류로 보임(화면을 다시 열거나 새로고침하면 다시 자동)
 let mgRankManual = null;
 function mgRankAuto(ds){
   ds = ds || todayStr();
-  if(new Date(ds+'T00:00:00').getDay()===0) return '휴일';
-  if(holidays[ds]) return '평휴';
+  if(new Date(ds+'T00:00:00').getDay()===0) return '일요일';
+  if(holidays[ds]) return '공휴일';
   return '평일';
 }
 // 퇴근 자동: 일요일·공휴일 → 휴일 OT 순번, 그 외 → 평일 OT 순번
