@@ -4040,6 +4040,7 @@ function setView(v){
   if(v==='pay') v = 'combined'; // 급여 명세서는 잠시 숨김(나중에 다시 사용)
   if(authResolved && !roleCanSee(v)) v = 'combined';
   canEdit = roleCanEdit(v);
+  mgRankManual = null; // 화면을 다시 열면 순번은 다시 날짜에 맞춰 자동
   if(window._mgScroll) window._mgScroll.x = null; // 화면을 다시 열면 월별 근태는 오늘 날짜 위치부터
   VIEW = v;
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v || (a.dataset.view==='unionhub' && isUnionSheet(v)) || (a.dataset.view==='leaderhub' && isLeaderSheet(v)) || (a.dataset.view==='workhub' && isWorkSheet(v))));
@@ -4675,9 +4676,17 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
 }
 // 휴대폰(세로): 근태 집계·월별 근태를 시트 두 개로 나눠서 위 단추로 바꿔 봄
 let cmbPhoneTab = 'stat';
-// 월별 근태 '순번' 칸: 평일(FC·MC 합계 순번)·휴일(MCS 순번)·평휴(FCH·MCH 합계 순번)·지원(지원 순번) — 기기에 기억
+// 월별 근태 '순번' 칸: 평일(FC·MC 합계 순번)·휴일(MCS 순번)·평휴(FCH·MCH 합계 순번)·지원(지원 순번)
 const MG_RANK = { '평일':{k:'rankGyeWk', g:'wk', t:'평일 FC·MC 합계 순번'}, '휴일':{k:'rankMCS', g:'red', t:'휴일 MCS 순번'}, '평휴':{k:'rankGyeHol', g:'blue', t:'평휴 FCH·MCH 합계 순번'}, '지원':{k:'rankSup', g:'blk', t:'지원근무 순번'} };
-let mgRankType = (()=>{ try{ const v = localStorage.getItem('snct_mg_rank'); return MG_RANK[v] ? v : '평일'; }catch(e){ return '평일'; } })();
+// 기본은 날짜에 맞춰 자동: 일요일 → 휴일(MCS), 일요일 아닌 공휴일 → 평휴(FCH·MCH), 그 외 → 평일(FC·MC)
+//  제목을 눌러 직접 고르면 그 종류로 보임(화면을 다시 열거나 새로고침하면 다시 자동)
+let mgRankManual = null;
+function mgRankAuto(ds){
+  ds = ds || todayStr();
+  if(new Date(ds+'T00:00:00').getDay()===0) return '휴일';
+  if(holidays[ds]) return '평휴';
+  return '평일';
+}
 function cmbPhone(){ return window.innerWidth <= 700 && !landPhone(); }
 // 휴대폰 가로·세로를 바꾸면 근태관리 위쪽 모양이 달라지므로 다시 그림
 window.addEventListener('resize', ()=>{ const p = cmbPhone(); if(window._cmbPh !== undefined && window._cmbPh !== p && VIEW==='combined'){ window._cmbPh = p; render(); } window._cmbPh = p; });
@@ -4756,8 +4765,9 @@ function pageCombined(){
     const n = sortedEmployees.filter(e=>{ const dc = gridCode(codeStatsAttendance[ds+'_'+e.id], ds, String(e.name||'').trim()); return !dc || WORK_SET.has(dc); }).length;
     return `<th class="cntHead${ds===TODAY?' todayCol':''}" title="근무 인원(N·D·ND·DN·빈칸)">${n}</th>`;
   }).join('');
+  const mgAutoT = mgRankAuto(TODAY), mgRankType = MG_RANK[mgRankManual] ? mgRankManual : mgAutoT;
   const mgR = MG_RANK[mgRankType], mgArr = ({rankGyeWk, rankMCS, rankGyeHol, rankSup})[mgR.k] || [];
-  const rankHead = `<th class="mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류">${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankType?' selected':''}>${k}</option>`).join('')}</select></th>`;
+  const rankHead = `<th class="mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류"><option value="auto"${!mgRankManual?' selected':''}>자동(오늘 ${esc(mgAutoT)})</option>${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankManual?' selected':''}>${k}</option>`).join('')}</select></th>`;
   const codeRows = sortedEmployees.map((e,ei)=>{
     const rkN = mgArr[ei];
     const rankCell = `<td class="mgRk rkCol g-${mgR.g}" style="text-align:center;">${rkN==null ? '' : `<span class="rkPlain">${rkN}</span>`}</td>`;
@@ -10056,8 +10066,8 @@ document.addEventListener('click', (e)=>{
 });
 document.addEventListener('change', (e)=>{
   if(e.target && e.target.id==='backupImportFile') importBackupFile(e.target.files && e.target.files[0]);
-  if(e.target && e.target.dataset && e.target.dataset.mgRank && MG_RANK[e.target.value]){   // 월별 근태 순번 종류 바꿈
-    mgRankType = e.target.value; try{ localStorage.setItem('snct_mg_rank', mgRankType); }catch(_){}
+  if(e.target && e.target.dataset && e.target.dataset.mgRank){   // 월별 근태 순번 종류 바꿈(자동 = 날짜에 맞춤)
+    mgRankManual = MG_RANK[e.target.value] ? e.target.value : null;
     render();
   }
 });
