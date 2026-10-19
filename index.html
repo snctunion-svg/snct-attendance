@@ -3009,7 +3009,7 @@ function appConfirm(message, onConfirm){
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);">
-      <p style="margin:0 0 16px;font-size:14px;line-height:1.5;">${esc(message)}</p>
+      <p style="margin:0 0 16px;font-size:14px;line-height:1.5;white-space:pre-line;word-break:break-all;">${esc(message)}</p>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
         <button type="button" id="appConfirmCancel" class="btn ghost sm">취소</button>
         <button type="button" id="appConfirmOk" class="btn warn sm">확인</button>
@@ -8367,13 +8367,135 @@ async function uwSavePriv(id, d){
   if(!db) return;
   await db.collection('unionPrivate').doc('rules_' + id).set({json: JSON.stringify({title:d.title, sub:d.sub, b:d.b}), at: d.at || Date.now()});
 }
-async function uwImportRules(file){
+// ===== PDF → 규정 블록 (브라우저·노드 공용) =====
+async function uwPdfLines(pdf){   // 페이지마다 글자 조각을 줄로 모아, 'pdftotext -layout'처럼 큰 틈은 여러 칸 띄움
+  const lines = [];
+  for(let p = 1; p <= pdf.numPages; p++){
+    const page = await pdf.getPage(p), tc = await page.getTextContent();
+    const items = tc.items.filter(it=> it.str!==undefined && it.str!=='').map(it=> ({s: it.str, x: it.transform[4], y: it.transform[5], w: it.width, f: Math.abs(it.transform[0]) || Math.abs(it.transform[3]) || 10}));
+    items.sort((a,b)=> (b.y - a.y) || (a.x - b.x));
+    const rows = [];
+    items.forEach(it=>{ const r = rows.find(r=> Math.abs(r.y - it.y) <= Math.max(2, it.f * 0.3)); if(r) r.items.push(it); else rows.push({y: it.y, items: [it]}); });
+    rows.sort((a,b)=> b.y - a.y);
+    const minX = Math.min(...items.map(i=> i.x), 1e9);
+    rows.forEach(r=>{
+      r.items.sort((a,b)=> a.x - b.x);
+      let s = '', end = null, f = r.items[0].f;
+      const lead = Math.max(0, Math.round((r.items[0].x - minX) / (f * 0.5)));
+      s = ' '.repeat(lead);
+      r.items.forEach(it=>{
+        if(end!==null){ const gap = it.x - end; if(gap > it.f * 1.2) s += ' '.repeat(Math.max(3, Math.round(gap / (it.f * 0.5)))); else if(gap > it.f * 0.12 && !/\s$/.test(s) && !/^\s/.test(it.s)) s += ' '; }
+        s += it.s; end = it.x + it.w;
+      });
+      lines.push(s.replace(/\s+$/,''));
+    });
+    lines.push('\f');
+  }
+  return lines;
+}
+function uwParseRuleLines(rawLines, kind){
+  const lines = rawLines.filter(l=> l!=='\f' && !/^\s*-\s*\d+\s*-\s*$/.test(l));
+  const toc = {}; const regNames = []; let part = null, bodyStart = 0;
+  if(kind==='work'){
+    for(let i = 0; i < lines.length; i++){
+      const s = lines[i].trim();
+      const m = s.match(/^(?:-?목차-?)?\s*(제\s*\d+\s*장\s*.+규정)\s*$/); if(m) part = m[1].replace(/\s+/g,' ');
+      const m2 = s.match(/^\d+\.\s*(.+?)\s*[.·…]{3,}\s*\d+\s*$/);
+      if(m2 && part){ toc[m2[1].replace(/\s/g,'')] = [part, m2[1].trim()]; regNames.push(m2[1].replace(/\s/g,'')); }
+      if(regNames.length && s.replace(/\s/g,'')===regNames[0] && !/[.·…]{3,}/.test(s)){ bodyStart = i; break; }
+    }
+  }
+  const blocks = []; let cur = null, curPart = null, para = null, started = kind==='work';
+  const art = /^(제\s*\d+\s*조(?:의\s*\d+)?\s*(?:【[^】]*】|\([^)]*\)|\[[^\]]*\]))\s*(.*)$/;
+  const item = /^(\d+\)|\d+\.(?!\d)|[①-⑳]|[가-하]\.|\(\d+\)|[가-하]\))/;
+  const lvl = s=>{
+    if(/^[①-⑳]/.test(s)) return 1;
+    if(/^\d+\.(?!\d)/.test(s)) return (cur && cur.l.some(x=> x[0]===1 && /^[①-⑳]/.test(x[1]))) ? 2 : 1;
+    if(/^(\d+\)|\(\d+\))/.test(s)) return 2;
+    if(/^([가-하]\.|[가-하]\))/.test(s)) return 3;
+    return 0; };
+  const newBlock = h=>{ cur = {h, l: []}; blocks.push(cur); para = null; };
+  const isTable = l=>{ const s = l.trim(), n = (s.match(/\S\s{3,}(?=\S)/g) || []).length; return n >= 2 || (n >= 1 && s.length < 60 && !item.test(s) && !art.test(s)); };
+  for(const l of lines.slice(bodyStart)){
+    const s = l.trim().replace(/[ 　]+/g, ' ');
+    if(!s) continue;
+    if(!started){ if(/^제\s*1\s*장/.test(s)) started = true; else continue; }
+    const key = s.replace(/\s/g,'');
+    if(kind==='work' && toc[key] && !/[.·…]{3,}/.test(s)){
+      const [p, name] = toc[key];
+      if(p!==curPart){ blocks.push({pt: p}); curPart = p; }
+      blocks.push({rg: name}); cur = null; para = null; continue; }
+    if(/^제\s*\d+\s*절/.test(s) && s.length < 30){ blocks.push({chh: s.replace(/^제\s*(\d+)\s*절\s*/, (m,a)=> '제'+a+'절 '), sec: 1}); cur = null; para = null; continue; }
+    if(/^제\s*\d+\s*장/.test(s) && s.length < 40){ blocks.push({chh: s.replace(/^제\s*(\d+)\s*장\s*/, (m,a)=> '제'+a+'장 ')}); cur = null; para = null; continue; }
+    if(/^부\s*칙$/.test(s)){ blocks.push({chh: '부칙'}); cur = null; para = null; continue; }
+    const m = s.match(art);
+    if(m){ newBlock(m[1].replace(/\s+/g,' ').trim()); if(m[2]){ cur.l.push([0, m[2]]); para = cur.l[cur.l.length-1]; } continue; }
+    if(!cur) newBlock('');
+    if(isTable(l)){ cur.l.push([9, l.replace(/\s+$/,'')]); para = null; continue; }
+    if(item.test(s)){ cur.l.push([lvl(s), s]); para = cur.l[cur.l.length-1]; continue; }
+    if(para && para[0]!==9) para[1] += ' ' + s; else { cur.l.push([0, s]); para = cur.l[cur.l.length-1]; }
+  }
+  blocks.forEach(b=>{ if(!b.l) return; const L = b.l;
+    for(let k = 1; k < L.length - 1; k++) if(L[k][0]===0 && L[k][1].length <= 20 && L[k-1][0]===9 && L[k+1][0]===9) L[k] = [9, '  ' + L[k][1]];
+    for(let k = 1; k < L.length; k++) if(L[k][0]===0 && L[k][1].length <= 20 && L[k-1][0]===9 && (k===L.length-1 || L[k+1][0]!==0)) L[k] = [9, '  ' + L[k][1]];
+    const tl = L.filter(x=> x[0]===9); if(tl.length){ const ind = Math.min(...tl.map(x=> x[1].length - x[1].trimStart().length)); tl.forEach(x=> x[1] = x[1].slice(ind)); } });
+  return blocks;
+}
+// 첫 쪽 글자로 어떤 문서인지: 업무규정/취업규칙/개정대비표, 연도
+function uwDetectRuleDoc(lines){
+  const head = lines.slice(0, 60).join(' ').replace(/\s+/g,'');
+  const all = lines.join('').replace(/\s/g,'');
+  const year = Number((head.match(/(20\d\d)년/) || [])[1] || 0);
+  if(all.length < 3000) return {kind:'scan', year};
+  if(/현행.*개정/.test(head.slice(0, 40))) return {kind:'diff', year};
+  if(/^업무규정/.test(head) || head.slice(0, 20).includes('업무규정')) return {kind:'work', year};
+  if(head.slice(0, 20).includes('취업규칙')) return {kind:'emp', year};
+  return {kind:'?', year};
+}
+const UW_PDFJS = ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/', 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/'];
+let uwPdfjsLib = null;
+async function uwLoadPdfjs(){
+  if(uwPdfjsLib) return uwPdfjsLib;
+  let last;
+  for(const base of UW_PDFJS){
+    try{ const lib = await import(base + 'pdf.min.mjs'); lib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.mjs'; uwPdfjsLib = {lib, base}; return uwPdfjsLib; }catch(e){ last = e; }
+  }
+  throw last || new Error('pdf.js');
+}
+async function uwRulesFromPdf(file){
+  const {lib, base} = await uwLoadPdfjs();
+  const cdn = base.includes('jsdelivr') ? base.replace('/build/','/') : base;
+  const pdf = await lib.getDocument({data: new Uint8Array(await file.arrayBuffer()), cMapUrl: cdn + 'cmaps/', cMapPacked: true, standardFontDataUrl: cdn + 'standard_fonts/', verbosity: 0}).promise;
+  const lines = await uwPdfLines(pdf), det = uwDetectRuleDoc(lines);
+  if(det.kind!=='work' && det.kind!=='emp') return {skip: det.kind==='diff' ? '개정 대비표' : det.kind==='scan' ? '스캔본(글자 없음)' : '규정 아님', name: file.name};
+  const b = uwParseRuleLines(lines, det.kind);
+  if(b.filter(x=> x.h).length < 10) return {skip: '조문을 못 읽음·옛 판 또는 스캔본', name: file.name};
+  const id = det.kind==='work' ? 'uwwork' : 'uwemp';
+  return {id, year: det.year, name: file.name, doc: {title: UW_PRIV[id].title, sub: '선광신컨테이너터미널(주)' + (det.year ? ' · ' + det.year + '년 정리본' : '') + ' · PDF에서 가져옴', b}};
+}
+async function uwImportRules(files){
   if(!requireEdit()) return;
-  let j; try{ j = JSON.parse(await file.text()); }catch(e){ showToast('규정 자료 파일(.json)이 아니에요.'); return; }
-  const ids = Object.keys((j && j.docs) || {}).filter(k=> UW_PRIV[k] && Array.isArray(j.docs[k].b));
-  if(!j || !j.snctRules || !ids.length){ showToast('업무규정·취업규칙 자료 파일이 아니에요.'); return; }
-  appConfirm(`${ids.map(k=> j.docs[k].title).join('·')}을(를) 가져올까요? 지금 저장된 내용은 이 파일로 바뀌어요.`, async ()=>{
-    try{ for(const k of ids){ await uwSavePriv(k, Object.assign({}, j.docs[k], {at: Date.now()})); uwPrivErr[k] = ''; } showToast('규정 자료를 저장했어요.'); }
+  files = Array.from(files || []);
+  const found = {}, skipped = [];
+  for(const file of files){
+    if(/\.json$/i.test(file.name) || file.type==='application/json'){
+      let j; try{ j = JSON.parse(await file.text()); }catch(e){ skipped.push(file.name + ' (읽기 실패)'); continue; }
+      Object.keys((j && j.snctRules && j.docs) || {}).filter(k=> UW_PRIV[k] && Array.isArray(j.docs[k].b)).forEach(k=>{ if(!found[k] || 9999 > found[k].year) found[k] = {id: k, year: 9999, doc: j.docs[k], name: file.name}; });
+      continue;
+    }
+    showToast(`📄 ${file.name} 읽는 중… (쪽이 많으면 조금 걸려요)`);
+    try{
+      const r = await uwRulesFromPdf(file);
+      if(r.skip){ skipped.push(file.name + ' (' + r.skip + ')'); continue; }
+      if(!found[r.id] || r.year > found[r.id].year) { if(found[r.id]) skipped.push(found[r.id].name + ' (더 최신 판 사용)'); found[r.id] = r; }
+      else skipped.push(file.name + ' (더 최신 판 사용)');
+    }catch(err){ console.error(err); skipped.push(file.name + (/pdf\.js|import|fetch|module/i.test(String(err && err.message || err)) ? ' (PDF 도구를 못 불러옴 · 인터넷 확인)' : ' (PDF 읽기 실패)')); }
+  }
+  const ids = Object.keys(found);
+  if(!ids.length){ showToast('가져올 업무규정·취업규칙이 없어요.' + (skipped.length ? ' 건너뜀: ' + skipped.join(', ') : '')); return; }
+  const desc = ids.map(k=> `${UW_PRIV[k].title} ← ${found[k].name} (${found[k].doc.b.filter(x=> x.h).length}개 조)`).join('\n');
+  appConfirm(`${desc}\n\n이대로 가져올까요? 지금 저장된 내용은 이 파일로 바뀌어요.${skipped.length ? '\n\n건너뜀: ' + skipped.join(', ') : ''}`, async ()=>{
+    try{ for(const k of ids){ await uwSavePriv(k, Object.assign({}, found[k].doc, {at: Date.now()})); uwPrivErr[k] = ''; } showToast('규정 자료를 저장했어요.'); }
     catch(err){ showToast(saveErrMsg('규정 저장에 실패했습니다.', err)); }
     render();
   });
@@ -8406,8 +8528,8 @@ function pageUwDoc(id){
     const err = uwPrivErr[id];
     return `<h2 class="pgttl">${esc(UW_PRIV[id].title)}</h2>
       <div class="uwHead"><b>${esc(UW_PRIV[id].title)}</b><span>선광신컨테이너터미널(주)</span></div>
-      ${err && err!=='none' ? `<div class="note">${esc(err)}</div>` : err==='none' ? `<div class="empty">아직 규정 자료가 없어요. [📥 규정 자료 가져오기]로 'SNCT_업무규정_취업규칙_2026.json' 파일을 올려 주세요.</div>` : '<div class="hint">불러오는 중…</div>'}
-      <div class="uwTools"><label class="btn sm editor-only uwmImp">📥 규정 자료 가져오기<input type="file" id="uwRulesFile" accept=".json,application/json" hidden></label></div>`;
+      ${err && err!=='none' ? `<div class="note">${esc(err)}</div>` : err==='none' ? `<div class="empty">아직 규정 자료가 없어요. [📥 PDF로 가져오기]로 업무규정·취업규칙 PDF(2026 정리본)를 올려 주세요. 두 파일을 한꺼번에 골라도 돼요.</div>` : '<div class="hint">불러오는 중…</div>'}
+      <div class="uwTools"><label class="btn sm editor-only uwmImp">📥 PDF로 가져오기<input type="file" id="uwRulesFile" accept=".pdf,application/pdf,.json,application/json" multiple hidden></label></div>`;
   }
   const q = uwQuery[id] || '', st = uwStored(id), changed = !!st;
   const nArt = d.b.filter(b=> b.h!=null && b.l).length, tocArts = nArt <= 120;
@@ -8427,7 +8549,7 @@ function pageUwDoc(id){
     <input type="search" id="uwSearch" value="${esc(q)}" placeholder="조문 검색 (예: 대의원, 임기, 회의)" autocomplete="off">
     <select id="uwToc" aria-label="목차"><option value="">목차로 이동</option>${toc}</select>
   </div>
-  <div class="uwTools"><button type="button" class="btn sm" id="uwPrintBtn">🖨️ PDF 출력</button><button type="button" class="btn ghost sm editor-only" id="uwEditBtn">✏️ 수정</button>${priv ? '<label class="btn ghost sm editor-only uwmImp">📥 규정 자료 가져오기<input type="file" id="uwRulesFile" accept=".json,application/json" hidden></label>' : ''}${changed ? `<span class="uwChanged">고친 내용으로 보는 중${st.at ? ' · '+esc(new Date(st.at).toLocaleDateString('ko-KR')) : ''}</span>` : ''}${priv && d.at ? `<span class="uwChanged" style="color:var(--text-muted);">${esc(new Date(d.at).toLocaleDateString('ko-KR'))} 저장</span>` : ''}</div>
+  <div class="uwTools"><button type="button" class="btn sm" id="uwPrintBtn">🖨️ PDF 출력</button><button type="button" class="btn ghost sm editor-only" id="uwEditBtn">✏️ 수정</button>${priv ? '<label class="btn ghost sm editor-only uwmImp">📥 PDF로 가져오기<input type="file" id="uwRulesFile" accept=".pdf,application/pdf,.json,application/json" multiple hidden></label>' : ''}${changed ? `<span class="uwChanged">고친 내용으로 보는 중${st.at ? ' · '+esc(new Date(st.at).toLocaleDateString('ko-KR')) : ''}</span>` : ''}${priv && d.at ? `<span class="uwChanged" style="color:var(--text-muted);">${esc(new Date(d.at).toLocaleDateString('ko-KR'))} 저장</span>` : ''}</div>
   <div class="uwCount" id="uwCount"></div>
   <div class="uwBody" id="uwBody">${html}</div>`;
 }
@@ -8450,7 +8572,7 @@ function uwApplyFilter(id){
   if(c) c.textContent = ql ? (shown ? `'${q}' 들어간 조문 ${shown}개` : `'${q}' 들어간 조문이 없어요.`) : '';
 }
 function bindUwDoc(id){
-  const rf = document.getElementById('uwRulesFile'); if(rf) rf.onchange = ()=>{ if(rf.files && rf.files[0]) uwImportRules(rf.files[0]); rf.value = ''; };
+  const rf = document.getElementById('uwRulesFile'); if(rf) rf.onchange = ()=>{ const fs = Array.from(rf.files || []); rf.value = ''; if(fs.length) uwImportRules(fs); };
   if(!uwDoc(id)) return;
   if(uwEdit===id){ bindUwEdit(id); return; }
   const pb = document.getElementById('uwPrintBtn'); if(pb) pb.onclick = ()=> uwPrint(id);
