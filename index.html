@@ -682,6 +682,23 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbRight .ctbl.gtbl td.namecell,.cmbRight .ctbl.gtbl th.namehead{font-size:12.5px !important;min-width:64px;white-space:nowrap;}
   .cmbRight .ctbl.gtbl tbody td{height:40px !important;}
 }
+/* 월별 근태 순번 칸(성명 옆): 제목을 누르면 평일·휴일·평휴·지원 선택 */
+.ctbl th.mgRkHead{position:relative;min-width:36px;width:36px;padding:1px 2px !important;line-height:1.15;white-space:nowrap;cursor:pointer;color:#111 !important;}
+.ctbl th.mgRkHead .mgRkType{font-size:10px;font-weight:800;color:var(--g);}
+.ctbl th.mgRkHead select.mgRkSel{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px;border:0;margin:0;-webkit-appearance:none;appearance:none;}
+.ctbl td.mgRk{min-width:36px;width:36px;padding:0 2px !important;}
+.cmbRight .ctbl th.mgRkHead,.cmbRight .ctbl td.mgRk{border-right:var(--sepW,1px) solid #111 !important;}
+.cmbRight .ctbl th.mgRkHead + th,.cmbRight .ctbl td.mgRk + td{border-left:var(--sepW,1px) solid #111 !important;}
+.cmbRight .ctbl th.namehead + th.mgRkHead,.cmbRight .ctbl td.namecell + td.mgRk{border-left:1px solid #c4cad3 !important;}
+.cmbRight .ctbl th.namehead,.cmbRight .ctbl td.namecell{border-right-color:#c4cad3 !important;}
+@media (max-width:700px){
+  /* 휴대폰: 성명·순번 둘 다 왼쪽에 고정 → 말일까지 옆으로 밀면 날짜가 순번 바로 옆으로 들어옴 */
+  .scrollx.mFreeze td.mgRk{position:sticky;z-index:2;box-shadow:inset -1px 0 0 #111;}
+  .scrollx.mFreeze thead th.mgRkHead{position:sticky;z-index:7;box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111;}
+  .scrollx.mFreeze td.namecell{z-index:3;}
+  .cmbRight .ctbl.gtbl thead th.mgRkHead{min-width:38px;font-size:11.5px !important;}
+  .cmbRight .ctbl.gtbl td.mgRk{min-width:38px;width:38px;}
+}
 /* 성명 칸 가운데 정렬(근태 집계·월별 근태·월별 OT현황) */
 .ctbl td.namecell,.ctbl th.namehead,.otSum td.namecell,.otSum th.namehead{text-align:center !important;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
@@ -4658,6 +4675,9 @@ function combinedData(sortedEmployees, rangeStart, rangeEnd){
 }
 // 휴대폰(세로): 근태 집계·월별 근태를 시트 두 개로 나눠서 위 단추로 바꿔 봄
 let cmbPhoneTab = 'stat';
+// 월별 근태 '순번' 칸: 평일(평일 OT 순번)·휴일(휴일 OT 순번)·평휴(평일 휴무 합계 순번)·지원(지원 순번) — 기기에 기억
+const MG_RANK = { '평일':{k:'rankOtWk', g:'pur', t:'평일 OT 순번'}, '휴일':{k:'rankOtHol', g:'yel', t:'휴일 OT 순번'}, '평휴':{k:'rankGyeWk', g:'wk', t:'평일 휴무(FC+MC) 합계 순번'}, '지원':{k:'rankSup', g:'blk', t:'지원근무 순번'} };
+let mgRankType = (()=>{ try{ const v = localStorage.getItem('snct_mg_rank'); return MG_RANK[v] ? v : '평일'; }catch(e){ return '평일'; } })();
 function cmbPhone(){ return window.innerWidth <= 700 && !landPhone(); }
 // 휴대폰 가로·세로를 바꾸면 근태관리 위쪽 모양이 달라지므로 다시 그림
 window.addEventListener('resize', ()=>{ const p = cmbPhone(); if(window._cmbPh !== undefined && window._cmbPh !== p && VIEW==='combined'){ window._cmbPh = p; render(); } window._cmbPh = p; });
@@ -4736,7 +4756,11 @@ function pageCombined(){
     const n = sortedEmployees.filter(e=>{ const dc = gridCode(codeStatsAttendance[ds+'_'+e.id], ds, String(e.name||'').trim()); return !dc || WORK_SET.has(dc); }).length;
     return `<th class="cntHead${ds===TODAY?' todayCol':''}" title="근무 인원(N·D·ND·DN·빈칸)">${n}</th>`;
   }).join('');
-  const codeRows = sortedEmployees.map(e=>{
+  const mgR = MG_RANK[mgRankType], mgArr = ({rankOtWk, rankOtHol, rankGyeWk, rankSup})[mgR.k] || [];
+  const rankHead = `<th class="mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<br><span class="mgRkType">${esc(mgRankType)}▾</span><select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류">${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankType?' selected':''}>${k}</option>`).join('')}</select></th>`;
+  const codeRows = sortedEmployees.map((e,ei)=>{
+    const rkN = mgArr[ei];
+    const rankCell = `<td class="mgRk rkCol g-${mgR.g}" style="text-align:center;">${rkN==null ? '' : `<span class="rkPlain">${rkN}</span>`}</td>`;
     const cells = monthDays.map(ds=>{
       const d = Number(ds.slice(8,10));
       const rec = codeStatsAttendance[ds+'_'+e.id];
@@ -4753,7 +4777,7 @@ function pageCombined(){
       const sunCls = (new Date(ds+'T00:00:00').getDay()===0 && (e.team==='1' || e.team==='2') && scheduledShift(ds, e.team)==='N') ? ' sunN' : ''; // 야간 주의 일요일은 회색(근태코드 색이 있으면 그 색)
       return `<td class="daycell ${cls} ${weekBand(ds)}${sunCls}${fill?' filled':''}${ds===TODAY ? (' todayCol'+(e.id===lastEmpId?' todayBot':'')) : ''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
-    return `<tr><td class="namecell">${esc(e.name)}</td>${cells}</tr>`;
+    return `<tr><td class="namecell">${esc(e.name)}</td>${rankCell}${cells}</tr>`;
   }).join('');
 
   const modal = gridEdit ? renderGridEditModal() : '';
@@ -4800,7 +4824,7 @@ function pageCombined(){
           <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
         </div>
       </div>`}
-      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
+      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${rankHead}${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
   </div>
@@ -5202,6 +5226,7 @@ function fitCombined(){
   if(window.innerWidth > 860){ fitCombinedJoin(wrap); return; }
   wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70, ratio:0.85})); // 세로 85%
   wrap.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t));
+  mgStickRank(wrap);
   // 휴대폰 월별 근태: 처음 열 때 어제·오늘 날짜가 성명 칸 바로 옆에 오도록 옆으로 밀어 둠.
   //  그 뒤에는 손으로 민 위치를 기억해서, 화면이 새로 그려져도(자료 갱신 등) 그 자리 그대로
   if(window.innerWidth <= 700 && !landPhone()){
@@ -5210,7 +5235,7 @@ function fitCombined(){
       const key = (mt.querySelector('thead th.dayHead') ? mt.querySelector('thead th.dayHead').dataset.date || '' : '').slice(0,7);
       const st = window._mgScroll || (window._mgScroll = {key:'', x:null});
       if(st.key !== key || st.x == null){
-        const today = mt.querySelector('thead th.dayHead.todayCol'), name = mt.querySelector('thead th.namehead');
+        const today = mt.querySelector('thead th.dayHead.todayCol'), name = mt.querySelector('thead th.mgRkHead') || mt.querySelector('thead th.namehead');
         let x = 0;
         if(today && name){
           const prev = today.previousElementSibling && today.previousElementSibling.classList.contains('dayHead') ? today.previousElementSibling : today;
@@ -5225,6 +5250,16 @@ function fitCombined(){
   }
 }
 // PC: 두 표를 한 장처럼 붙임 — 같은 배율(zoom), 같은 머리글 높이, 같은 줄 높이 → 왼쪽·오른쪽 줄이 정확히 이어짐
+// 월별 근태 순번 칸: 휴대폰에서 성명 바로 옆에 고정 — 성명 칸 폭을 재서 그만큼 오른쪽에 붙임
+function mgStickRank(wrap){
+  const t = wrap && wrap.querySelector('.cmbRight table.ctbl'); if(!t) return;
+  const cells = t.querySelectorAll('.mgRk,.mgRkHead');
+  const box = t.closest('.scrollx');
+  if(!box || !box.classList.contains('mFreeze')){ cells.forEach(c=> c.style.left = ''); return; }   // PC·가로 화면은 고정 안 함
+  const nm = t.querySelector('thead th.namehead'); if(!nm) return;
+  const w = nm.getBoundingClientRect().width / (parseFloat(t.style.zoom)||1);
+  cells.forEach(c=> c.style.left = (Math.round(w*10)/10 - 1) + 'px');
+}
 function fitCombinedJoin(wrap){
   const L = wrap.querySelector('.cmbLeft table.ctbl'), Rt = wrap.querySelector('.cmbRight table.ctbl');
   if(!L || !Rt) return;
@@ -10021,6 +10056,10 @@ document.addEventListener('click', (e)=>{
 });
 document.addEventListener('change', (e)=>{
   if(e.target && e.target.id==='backupImportFile') importBackupFile(e.target.files && e.target.files[0]);
+  if(e.target && e.target.dataset && e.target.dataset.mgRank && MG_RANK[e.target.value]){   // 월별 근태 순번 종류 바꿈
+    mgRankType = e.target.value; try{ localStorage.setItem('snct_mg_rank', mgRankType); }catch(_){}
+    render();
+  }
 });
 
 /* ========================= 내비게이션/모바일 ========================= */
