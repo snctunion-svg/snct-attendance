@@ -523,6 +523,8 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .dayHead{cursor:pointer;} @media (hover:hover){ .dayHead:hover{outline:2px solid var(--accent);outline-offset:-2px;} }
 .cellMemo{display:block;font-size:8px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:clip;max-width:28px;margin:0 auto;}
 .inTbl td{padding:0 !important;height:34px;} .inTbl td.inName{padding:0 8px !important;white-space:nowrap;}
+.inTbl .inCell:focus{outline:2px solid #16a34a;outline-offset:-2px;background:#f0fdf4 !important;}
+.inTbl .inChk:focus-visible{outline:2px solid #16a34a;outline-offset:2px;}
 .inTbl .inCell{width:58px;height:32px;border:0;background:transparent;text-align:center;font:inherit;font-size:13px;color:var(--text);}
 .inTbl .inCell:focus{outline:2px solid var(--accent);outline-offset:-2px;background:#fffde8;} .inTbl .inCell.bad{background:#fee2e2;color:#b91c1c;}
 .inTbl td.inRO{text-align:center;color:var(--text-muted);min-width:52px;padding:0 6px !important;} .inTbl td.inTot{font-weight:800;color:var(--accent);}
@@ -787,6 +789,12 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .inTbl tr.inOff input.inCell{color:#6b7280;}
 /* 월별 OT현황: 담당 체크한 날은 아주 연한 분홍 */
 .otSum td.otDam,.otSum td.otDam.wkA,.otSum td.otDam.wkB{background:#ffe4ef !important;}
+.otSum td.otMealC{position:relative;}
+.dpDoneBtn{background:#fff !important;color:#15803d !important;border:1.5px solid #22c55e !important;font-weight:800;}
+.dpDoneBtn.on,.dpDoneChip{background:#16a34a !important;color:#fff !important;border:1.5px solid #16a34a !important;}
+.dpDoneChip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:800;}
+.dpDoneBtn small,.dpDoneChip small{font-weight:600;opacity:.85;font-size:11px;}
+.otSum td.otMealC sup.otMealNo{position:absolute;top:1px;right:2px;font-size:7.5px;line-height:1;font-weight:800;color:#b45309;letter-spacing:-.3px;pointer-events:none;}
 /* 근태관리(집계·월별 근태)·월별 OT현황: 3명마다 검은 구분선 */
 .ctbl tbody tr:nth-child(3n):not(:last-child) > td,.otSum tbody tr:nth-child(3n):not(:last-child) > td{border-bottom:var(--sepW,1px) solid #111 !important;}
 .ctbl tbody tr:nth-child(3n+1):not(:first-child) > td,.otSum tbody tr:nth-child(3n+1):not(:first-child) > td{border-top:var(--sepW,1px) solid #111 !important;}
@@ -3630,6 +3638,24 @@ function subscribeCodeStatsRange(start,end){ ensureAttendanceRange(start, end); 
 function subscribeOtMatrixRange(start,end){ ensureAttendanceRange(start, end); }
 
 let dispatchSubDate = null;
+let dpDone = {}, dpDoneLoadedAt = 0;   // 배차완료: dpDone/{날짜}_{조}_{주야} → {date, team, part, at}
+function dpDoneKey(ds, team){ return ds + '_' + team + '_' + (dispatchShift==='full' ? (dispatchSunPart==='night' ? 'night' : 'day') : dispatchShift); }
+function dpDoneSpeech(team){ return team + '조 배차 완료되었습니다.'; }
+async function dpDoneToggle(){
+  const ds = dispatchDate, team = dispatchTeamFilter, k = dpDoneKey(ds, team);
+  if(!canEdit){ showToast('조장만 배차완료를 누를 수 있어요.'); return; }
+  if(dpDone[k]){
+    appConfirm(`${team}조 배차완료를 취소할까요?`, async ()=>{
+      delete dpDone[k]; render();
+      try{ if(db) await db.collection('dpDone').doc(k).delete(); }catch(err){ showToast(saveErrMsg('취소 저장에 실패했습니다.', err)); }
+    });
+    return;
+  }
+  dpSpeak(dpDoneSpeech(team));   // 누른 그 순간에 읽어야 아이폰에서도 소리가 남
+  const d = {date: ds, team, part: k.split('_')[2], at: Date.now()};
+  dpDone[k] = d; render();
+  try{ if(db) await db.collection('dpDone').doc(k).set(d); showToast(`✅ ${team}조 배차완료`); }catch(err){ showToast(saveErrMsg('배차완료 저장에 실패했습니다.', err)); }
+}
 function subscribeDispatchDay(dateStr){
   if(!db) return;
   if(unsub.dispatch && dispatchSubDate === dateStr) return;   // 이미 그 날을 받고 있으면 그대로
@@ -3640,6 +3666,17 @@ function subscribeDispatchDay(dateStr){
     snap.docs.forEach(d=>{ dispatch[d.id]=d.data(); });
     scheduleRender();
   }, dbErr);
+  if(unsub.dpDone) unsub.dpDone();
+  dpDoneLoadedAt = Date.now();
+  try{ unsub.dpDone = db.collection('dpDone').where('date','==',dateStr).onSnapshot(snap=>{
+    const old = dpDone; dpDone = {};
+    snap.docs.forEach(d=>{ dpDone[d.id] = d.data(); });
+    // 다른 기기(조장)가 방금 배차완료를 누르면, 배차표를 보고 있고 자동 읽기가 켜진 기기에서도 알려 줌
+    if(VIEW==='dispatch' && dpTtsAuto() && Date.now() - dpDoneLoadedAt > 1500){
+      Object.entries(dpDone).forEach(([k, v])=>{ if(!old[k] && v && v.at && Date.now() - v.at < 120000 && v.team===dispatchTeamFilter) dpSpeak(dpDoneSpeech(v.team)); });
+    }
+    scheduleRender();
+  }, ()=>{}); }catch(e){}
 }
 // 지원계획표: 보고 있는 주(7일)만 실시간 구독
 let splanSubWeek = null;
@@ -4225,9 +4262,35 @@ function bindInputTable(el){
   };
   el.querySelectorAll('.inCell').forEach(x=>{
     x.oninput = ()=>{ setDraft(x.dataset.emp, x.dataset.f, x.value); if(IN_TIME.includes(x.dataset.f)) x.classList.toggle('bad', excelToHm(x.value)===null); refreshRow(x.dataset.emp, x); };
-    x.onkeydown = (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); const all = [...el.querySelectorAll('.inCell')]; const i = all.indexOf(x); const cols = 6; const nx = all[i+cols] || all[i+1]; if(nx){ nx.focus(); nx.select(); } } };
+    x.onfocus = ()=>{ try{ x.select(); }catch(e){} };   // 엑셀처럼 칸에 들어가면 전체 선택 → 바로 덮어쓰기
   });
   el.querySelectorAll('.inChk').forEach(x=> x.onchange = ()=>{ setDraft(x.dataset.emp, x.dataset.f, x.checked); refreshRow(x.dataset.emp, x); });
+  // 엑셀처럼 키보드로 이동: ↑↓ Enter(아래)·Shift+Enter(위) / ←→(글자 맨 앞·끝이면 옆 칸) / Tab / 체크칸은 Space로 체크, Delete로 지움
+  const tb = el.querySelector('.inTbl tbody');
+  if(tb) tb.addEventListener('keydown', ev=>{
+    const x = ev.target; if(!x || !x.matches || !x.matches('input.inCell, input.inChk')) return;
+    if(ev.isComposing || ev.keyCode===229) return;   // 한글 입력 중엔 건드리지 않음
+    const grid = [...tb.querySelectorAll('tr')].map(tr=> [...tr.querySelectorAll('input.inCell, input.inChk')]).filter(r=> r.length);
+    let r = -1, c = -1; grid.some((row, ri)=>{ const ci = row.indexOf(x); if(ci>=0){ r = ri; c = ci; return true; } return false; });
+    if(r<0) return;
+    const isText = x.classList.contains('inCell');
+    const ss = isText ? x.selectionStart : 0, se = isText ? x.selectionEnd : 0, len = isText ? x.value.length : 0;
+    const allSel = isText && ss===0 && se===len;
+    let dr = 0, dc = 0;
+    if(ev.key==='ArrowDown' || (ev.key==='Enter' && !ev.shiftKey)) dr = 1;
+    else if(ev.key==='ArrowUp' || (ev.key==='Enter' && ev.shiftKey)) dr = -1;
+    else if(ev.key==='ArrowRight' && (!isText || allSel || (ss===len && se===len))) dc = 1;
+    else if(ev.key==='ArrowLeft' && (!isText || allSel || (ss===0 && se===0))) dc = -1;
+    else if((ev.key==='Delete' || ev.key==='Backspace') && !isText){ ev.preventDefault(); if(x.checked && !x.disabled){ x.checked = false; x.onchange(); } return; }
+    else return;
+    ev.preventDefault();
+    const go = (rr, cc)=>{ for(let k = 0; k < 400; k++){
+        if(dc){ cc += dc; if(cc < 0){ rr--; if(rr < 0) return; cc = grid[rr].length - 1; } else if(cc >= grid[rr].length){ rr++; if(rr >= grid.length) return; cc = 0; } }
+        else { rr += dr; if(rr < 0 || rr >= grid.length) return; cc = Math.min(cc, grid[rr].length - 1); }
+        const t = grid[rr][cc]; if(t && !t.disabled){ t.focus(); if(t.classList.contains('inCell')) try{ t.select(); }catch(e){} t.scrollIntoView({block:'nearest', inline:'nearest'}); return; }
+      } };
+    go(r, c);
+  });
   const eb = document.getElementById('inEdit'); if(eb) eb.onclick = inputReopen;
   if(inputLocked() || el.querySelector('.inTbl.inView')) el.querySelectorAll('.inTbl input').forEach(x=> x.disabled = true);
   const cb = document.getElementById('inCloseBtn'); if(cb) cb.onclick = inputLeaderLock;
@@ -4636,13 +4699,14 @@ function pageOT(){
 
   const perEmp = sortedEmployees.map(e=>{
     let wkTotal=0, hoTotal=0, spTotal=0, mealTotal=0;
-    const daily = {}, damDays = {};
+    const daily = {}, damDays = {}, mealNo = {};
     days.forEach(ds=>{
       const rec0 = otMatrixAttendance[ds+'_'+e.id], rec = otExcluded(rec0, ds, e) ? null : rec0;   // 마감 안 한 날은 월별 OT에서 뺌
       const c = computeDaily(rec, ds);
       const s = computeSupportDaily(rec, ds);
       const meal = computeMealAllowance(rec) + computeDamdang(rec); // 담당은 식사연장과 같은 OT(월별 OT현황에만)
       if(rec && rec.damdang) damDays[ds] = true;
+      if(rec){ const mn = [['jochul',1],['seokchul',2],['jungsik',3],['yasik',4]].filter(([f])=> rec[f]).map(([,n])=> n).join(''); if(mn) mealNo[ds] = mn; }   // 조출1·석출2·중식3·야식4
       if(c.valid){ if(c.category==='평일'||c.category==='토요일') wkTotal+=c.premium; else hoTotal+=c.premium; }
       if(s.valid){
         const cat = dayCategory(ds, recManguen(rec, ds), rec && rec.employeeId);
@@ -4655,7 +4719,7 @@ function pageOT(){
     const hoGuar = Math.max(hoTotal, 60); // 휴일 보전: 월 60시간 최소 보장
     const spGuar = Math.max(spTotal, 30); // 지원 보전: 월 30시간 최소 보장
     const otGuar = wkTotal + hoGuar + spGuar + mealTotal;
-    return {emp:e, wkTotal, hoTotal, hoGuar, spTotal, spGuar, mealTotal, grand, otGuar, otDiff: otGuar-grand, daily, damDays};
+    return {emp:e, wkTotal, hoTotal, hoGuar, spTotal, spGuar, mealTotal, grand, otGuar, otDiff: otGuar-grand, daily, damDays, mealNo};
   });
 
   const dayHead = days.map(ds=>{
@@ -4671,7 +4735,9 @@ function pageOT(){
       const [y,m,d] = ds.split('-').map(Number);
       const cls = dayCellClass(ds, y, m, d);
       const v = r.daily[ds];
-      return `<td class="${cls}${r.damDays[ds]?' otDam':''}" data-act="ot-cell-detail" data-date="${esc(ds)}" data-emp="${esc(r.emp.id)}" style="text-align:center;cursor:pointer;"${r.damDays[ds]?' title="담당"':''}>${v?fmtH(v):''}</td>`;
+      const mn = r.mealNo[ds] || '';
+      const tip = [r.damDays[ds] ? '담당' : '', mn ? String(mn).split('').map(n=> ['','조출','석출','중식','야식'][n]).join('·') : ''].filter(Boolean).join(' · ');
+      return `<td class="${cls}${r.damDays[ds]?' otDam':''}${mn?' otMealC':''}" data-act="ot-cell-detail" data-date="${esc(ds)}" data-emp="${esc(r.emp.id)}" style="text-align:center;cursor:pointer;"${tip?` title="${esc(tip)}"`:''}>${v?fmtH(v):''}${mn?`<sup class="otMealNo">${mn}</sup>`:''}</td>`;
     }).join('');
     return `<tr>
       <td class="stNo" style="text-align:center;">${esc(noCell)}</td>
@@ -8270,6 +8336,10 @@ function pageDispatch(){
     <input type="date" id="dpDate" value="${esc(ds)}" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--bg);color:var(--text);font:inherit;">
     <button class="btn ${dispatchTeamFilter==='1'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="1">1조</button>
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
+    ${(()=>{ const dd = dpDone[dpDoneKey(ds, dispatchTeamFilter)];
+      const tm = dd && dd.at ? new Date(dd.at).toTimeString().slice(0,5) : '';
+      if(canEdit) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? '누르면 배차완료 취소' : '누르면 배차완료 + 음성 안내'}">${dd ? `✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small>` : `📢 ${esc(dispatchTeamFilter)}조 배차완료`}</button>`;
+      return dd ? `<span class="dpDoneChip">✅ ${esc(dispatchTeamFilter)}조 배차완료 <small>${esc(tm)}</small></span>` : ''; })()}
     ${dispatchShift==='full' ? `<span style="width:10px;"></span>
     <button class="btn ${dispatchSunPart!=='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="day">주간</button>
     <button class="btn ${dispatchSunPart==='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="night">야간</button>` : ''}
@@ -9084,6 +9154,7 @@ function afterRender(){
     render();
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
+  { const db0 = document.getElementById('dpDoneBtn'); if(db0) db0.onclick = dpDoneToggle; }
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; inputTeam = dispatchTeamFilter; try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); localStorage.setItem('snct_input_team', inputTeam); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
   bindPayroll(el);
   bindEqPay(el);
