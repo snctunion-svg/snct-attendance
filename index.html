@@ -4706,7 +4706,7 @@ function pageOT(){
       const s = computeSupportDaily(rec, ds);
       const meal = computeMealAllowance(rec) + computeDamdang(rec); // 담당은 식사연장과 같은 OT(월별 OT현황에만)
       if(rec && rec.damdang) damDays[ds] = true;
-      if(rec){ const mn = [['jochul',1],['seokchul',2],['jungsik',3],['yasik',4]].filter(([f])=> rec[f]).map(([,n])=> n).join(''); if(mn) mealNo[ds] = mn; }   // 조출1·석출2·중식3·야식4
+      if(rec){ const mn = [['jochul','조출'],['jungsik','중식'],['seokchul','석출'],['yasik','야식']].filter(([f])=> rec[f]).map(([,n])=> n); if(mn.length) mealNo[ds] = mn; }   // 조출·중식·석출·야식 중 체크한 개수(1~4)
       if(c.valid){ if(c.category==='평일'||c.category==='토요일') wkTotal+=c.premium; else hoTotal+=c.premium; }
       if(s.valid){
         const cat = dayCategory(ds, recManguen(rec, ds), rec && rec.employeeId);
@@ -4735,8 +4735,8 @@ function pageOT(){
       const [y,m,d] = ds.split('-').map(Number);
       const cls = dayCellClass(ds, y, m, d);
       const v = r.daily[ds];
-      const mn = r.mealNo[ds] || '';
-      const tip = [r.damDays[ds] ? '담당' : '', mn ? String(mn).split('').map(n=> ['','조출','석출','중식','야식'][n]).join('·') : ''].filter(Boolean).join(' · ');
+      const mnL = r.mealNo[ds] || [], mn = mnL.length || '';
+      const tip = [r.damDays[ds] ? '담당' : '', mnL.join('·')].filter(Boolean).join(' · ');
       return `<td class="${cls}${r.damDays[ds]?' otDam':''}${mn?' otMealC':''}" data-act="ot-cell-detail" data-date="${esc(ds)}" data-emp="${esc(r.emp.id)}" style="text-align:center;cursor:pointer;"${tip?` title="${esc(tip)}"`:''}>${v?fmtH(v):''}${mn?`<sup class="otMealNo">${mn}</sup>`:''}</td>`;
     }).join('');
     return `<tr>
