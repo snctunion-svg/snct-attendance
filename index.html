@@ -4103,7 +4103,7 @@ document.addEventListener('focusout', ()=>{
 // ===== UNION 시트 =====
 const UNION_SHEETS = [['payroll','💰','장비 시급'],['eqpay','🧾','장비 급여 관리'],['fcana','📊','휴무 2명 분석'],['supcut','✂️','지원 폐지'],['holguar','🗓️','휴일보전'],['allcut','🧮','보전 폐지'],['backup','💾','백업·복원']];
 const LEADER_SHEETS = [['safety','🦺','관리감독자'],['codes','🏷️','근태코드'],['mail','📧','메일 송부'],['berth','⚓','선석 조회'],['vessel','🚢','본선작업'],['team','🧩','조편성 관리'],['holidays','📅','공휴일 관리']];
-const WORK_SHEETS = [['uwmem','👥','조합원 명부'],['uwemp','📗','취업규칙'],['uwwork','🏢','업무규정'],['uwrule','📘','규약'],['uwelect','🗳️','선거관리규정'],['uwlmc','🤝','노사협의회규정']];   // UNION WORK 시트(UNION만)
+const WORK_SHEETS = [['uwmem','👥','조합원 명부'],['uwrule','📘','규약'],['uwlmc','🤝','노사협의회규정'],['uwelect','🗳️','선거관리규정'],['uwemp','📗','취업규칙'],['uwwork','🏢','업무규정']];   // UNION WORK 시트(UNION만)
 function isWorkSheet(v){ return WORK_SHEETS.some(x=> x[0]===v); }
 function isUnionSheet(v){ return UNION_SHEETS.some(x=> x[0]===v); }
 function isLeaderSheet(v){ return LEADER_SHEETS.some(x=> x[0]===v); }
