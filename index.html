@@ -1471,11 +1471,15 @@ function dpTtsAuto(){ try{ return localStorage.getItem('snct_dp_tts')!=='0'; }ca
 function dpSpeak(text){
   if(!dpTtsSupported() || !text) return;
   try{
-    const ss = window.speechSynthesis; ss.cancel();
+    const ss = window.speechSynthesis;
+    const busy = ss.speaking || ss.pending;
+    if(busy) ss.cancel();
+    try{ ss.resume(); }catch(e){}
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ko-KR'; u.rate = 0.95; u.pitch = 0.92;   // 차분하고 또렷하게 — 아나운서처럼 낮고 안정된 여성 목소리 느낌
     const v = dpPickVoice(ss.getVoices()||[]); if(v) u.voice = v;
-    ss.speak(u);
+    if(busy) setTimeout(()=>{ try{ ss.speak(u); }catch(e){} }, 120);   // 안드로이드 크롬: 취소 직후 바로 읽으면 소리가 안 나는 문제
+    else ss.speak(u);
   }catch(e){}
 }
 // 기기에 있는 한국어 목소리 중 여성 목소리를 먼저 고름(자연스러운 '온라인/Natural' 목소리 우선)
@@ -3723,23 +3727,42 @@ function subscribeDpDoneLive(){
   }, ()=>{}); }catch(e){}
 }
 function dpDoneAnnounce(team, at){
-  if(dpTtsAuto()) dpSpeak(dpDoneSpeech(team));
+  dpDoneSound(team);
   try{ if(navigator.vibrate) navigator.vibrate([300, 150, 300]); }catch(e){}
   const old = document.getElementById('dpDoneAlert'); if(old) old.remove();
   const el = document.createElement('div'); el.id = 'dpDoneAlert';
   el.innerHTML = `<b>✅ ${esc(team)}조 배차완료</b><span>${esc(new Date(at||Date.now()).toTimeString().slice(0,5))} · 눌러서 닫기${dpTtsAuto() ? ' · 🔊 다시 듣기' : ''}</span>`;
-  el.onclick = ()=>{ if(dpTtsAuto()) dpSpeak(dpDoneSpeech(team)); el.remove(); };
+  el.onclick = ()=>{ dpDoneSound(team); el.remove(); };
   document.body.appendChild(el);
   setTimeout(()=>{ if(el.isConnected) el.remove(); }, 15000);
 }
-// 휴대폰은 화면을 한 번이라도 눌러야 소리를 낼 수 있음 → 첫 터치 때 소리 없는 음성으로 미리 열어 둠
+// 띵동 소리(음성이 안 나오는 휴대폰에서도 소리로 알 수 있게)
+let dpAudioCtx = null;
+function dpChime(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return;
+    if(!dpAudioCtx) dpAudioCtx = new AC();
+    const ctx = dpAudioCtx; if(ctx.state==='suspended') ctx.resume();
+    [[880, 0], [660, 0.28]].forEach(([f, t0])=>{
+      const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + t0;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.55);
+    });
+  }catch(e){}
+}
+function dpDoneSound(team){ dpChime(); if(dpTtsAuto()) setTimeout(()=> dpSpeak(dpDoneSpeech(team)), 650); }
+// 휴대폰은 화면을 한 번이라도 눌러야 소리를 낼 수 있음 → 화면을 누를 때마다 소리·음성을 미리 열어 둠(앱을 다시 켜도 다시 열리게)
 (function(){
-  const unlock = ()=>{ try{ if('speechSynthesis' in window){ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'ko-KR'; window.speechSynthesis.speak(u); } }catch(e){}
-    ['pointerdown','touchend','keydown'].forEach(t=> document.removeEventListener(t, unlock, true)); };
-  ['pointerdown','touchend','keydown'].forEach(t=> document.addEventListener(t, unlock, true));
+  const unlock = ()=>{
+    try{ const AC = window.AudioContext || window.webkitAudioContext; if(AC){ if(!dpAudioCtx) dpAudioCtx = new AC(); if(dpAudioCtx.state!=='running') dpAudioCtx.resume(); } }catch(e){}
+    try{ if('speechSynthesis' in window && !window._dpSpeechOpen){ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'ko-KR'; window.speechSynthesis.speak(u); window._dpSpeechOpen = true; } }catch(e){}
+  };
+  ['pointerdown','touchend','keydown'].forEach(t=> document.addEventListener(t, unlock, {capture:true, passive:true}));
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{ window.speechSynthesis && window.speechSynthesis.resume(); }catch(e){} } });
 })();
 function dpDoneCanPress(){ return userRole==='leader' || userRole==='union' || userRole==='all'; }   // 배포용(로그인 안 함)은 보기만
-function dpDoneSpeech(team){ return team + '조 배차 완료되었습니다.'; }
+function dpDoneSpeech(team){ return '배차완료'; }
 async function dpDoneToggle(){
   const ds = dispatchDate, team = dispatchTeamFilter, k = dpDoneKey(ds, team);
   if(!dpDoneCanPress()){ showToast('조장관리·UNION으로 로그인해야 배차완료를 누를 수 있어요.'); return; }
@@ -3750,7 +3773,7 @@ async function dpDoneToggle(){
     });
     return;
   }
-  dpSpeak(dpDoneSpeech(team));   // 누른 그 순간에 읽어야 아이폰에서도 소리가 남
+  dpDoneSound(team);   // 누른 그 순간에 울려야 아이폰에서도 소리가 남
   const d = {date: ds, team, part: k.split('_')[2], at: Date.now()};
   dpDone[k] = d; dpDoneMine[k] = d.at; render();
   try{ if(db) await db.collection('dpDone').doc(k).set(d); showToast(`✅ ${team}조 배차완료`); pushSendDone(team, d.at); }catch(err){ showToast(saveErrMsg('배차완료 저장에 실패했습니다.', err)); }
