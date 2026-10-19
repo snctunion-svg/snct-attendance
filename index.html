@@ -1135,6 +1135,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 조합원 명부 */
 .uwmTabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
 .uwmSum{font-size:12px;color:var(--text-muted);margin-left:4px;}
+.uwmCnt{font-size:14px;color:#4c1d95;}
 .uwmImp{cursor:pointer;}
 .uwmWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .uwmTbl{width:100%;border-collapse:collapse;font-size:13px;}
@@ -8355,7 +8356,7 @@ function uwParseStored(o){ if(!o) return null; if(typeof o.json==='string'){ try
 function uwDoc(id){ if(UW_PRIV[id]) return uwPriv[id] || null; return uwParseStored(uwOverride[id]) || UW_DOCS[id]; }
 function uwStored(id){ return UW_PRIV[id] ? null : uwParseStored(uwOverride[id]); }
 async function uwLoadPriv(id){
-  if(!db || uwPrivLoading[id] || uwPriv[id]) return;
+  if(!db || uwPrivLoading[id] || Object.prototype.hasOwnProperty.call(uwPriv, id)) return;   // 한 번 읽었으면(없어도) 다시 안 읽음
   uwPrivLoading[id] = true;
   try{ const doc = await db.collection('unionPrivate').doc('rules_' + id).get(); uwPriv[id] = doc.exists ? uwParseStored(doc.data()) : null; uwPrivErr[id] = doc.exists ? '' : 'none'; }
   catch(err){ uwPrivErr[id] = '규정을 읽을 권한이 없어요(UNION 로그인 필요).'; }
@@ -8610,13 +8611,14 @@ async function uwImportXlsx(file){
     const sh = await uwReadXlsx(file);
     const curName = Object.keys(sh).find(n=> /총원|명부/.test(n) && !/탈퇴/.test(n)) || Object.keys(sh)[0];
     const leftName = Object.keys(sh).find(n=> /탈퇴/.test(n));
-    const cur = uwParseRoster(sh[curName] || []), left = leftName ? uwParseRoster(sh[leftName]) : [];
+    const cur = uwParseRoster(sh[curName] || []), left = [];   // 탈퇴자는 보이지 않게 — 가져오지도 않음
+    void leftName;
     if(!cur.length){ showToast('명부에서 조합원을 찾지 못했어요. 첫 시트에 \'성명\' 칸이 있는지 확인해 주세요.'); return; }
-    appConfirm(`엑셀에서 조합원 ${cur.length}명${left.length ? `, 탈퇴자 ${left.length}명` : ''}을 읽었어요. 지금 명부를 이 내용으로 바꿀까요?`, ()=> uwMemSave({cur, left, src: file.name}));
+    appConfirm(`엑셀에서 조합원 ${cur.length}명을 읽었어요. 지금 명부를 이 내용으로 바꿀까요?`, ()=> uwMemSave({cur, left, src: file.name}));
   }catch(err){ console.error(err); showToast('엑셀을 읽지 못했어요: ' + (err.message||err)); }
 }
 async function uwMemSave(data){
-  uwMem = Object.assign({}, uwMem||{}, data, {at: Date.now()}); render();
+  uwMem = Object.assign({}, uwMem||{}, data, {left: [], at: Date.now()}); render();
   if(!db) return;
   try{ await db.collection('unionPrivate').doc('members').set(uwMem); showToast('명부를 저장했어요.'); }
   catch(err){ showToast(saveErrMsg('명부 저장에 실패했습니다.', err)); }
@@ -8625,7 +8627,8 @@ function uwMemList(tab){ return ((uwMem && uwMem[tab]) || []); }
 function uwMemPartCount(list){ const c = {}; list.forEach(m=>{ const k = String(m.part||'').split('/')[0] || '기타'; c[k] = (c[k]||0) + 1; }); return Object.entries(c).map(([k,v])=> `${esc(k)} ${v}`).join(' · '); }
 function pageUwMem(){
   subscribeUwMem();
-  const cur = uwMemList('cur'), left = uwMemList('left'), list = uwMemTab==='left' ? left : cur, q = uwMemQ.trim().toLowerCase();
+  uwMemTab = 'cur';   // 탈퇴자는 보이지 않게
+  const cur = uwMemList('cur'), list = cur, q = uwMemQ.trim().toLowerCase();
   const shown = list.map((m,i)=> ({m, i})).filter(({m})=> !q || Object.values(m).join(' ').toLowerCase().includes(q));
   const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','reg','emp','part','pos','name','tel','email','join','note'];
   const lbl = Object.fromEntries(UWM_COLS);
@@ -8636,13 +8639,13 @@ function pageUwMem(){
   const editPop = uwMemEdit ? (()=>{ const e = uwMemEdit, m = e.i >= 0 ? (uwMemList(e.tab)[e.i] || {}) : {}; const ks = e.tab==='left' ? UWM_COLS.map(x=>x[0]) : UWM_COLS.map(x=>x[0]).filter(k=> k!=='leave');
     return `<div class="sheetPopScrim" id="uwmScrim"><div class="sheetPop uwmPop"><div class="sheetPopHd"><b>${e.i >= 0 ? esc(m.name||'') + ' 수정' : '조합원 추가'}</b><button type="button" class="sheetPopX" id="uwmClose" aria-label="닫기">✕</button></div>
       <div class="uwmForm">${ks.map(k=> `<label><span>${esc(lbl[k])}</span><input data-uwm-f="${k}" type="${k==='join'||k==='leave' ? 'date' : k==='tel' ? 'tel' : k==='email' ? 'email' : 'text'}" value="${esc(m[k]||'')}"></label>`).join('')}</div>
-      <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 && e.tab==='left' ? '<button type="button" class="btn ghost sm" id="uwmBack">재가입(명부로)</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
+      <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
   return `
   <h2 class="pgttl">조합원 명부</h2>
   <div class="uwHead"><b>조합원 명부</b><span>선광신컨테이너터미널㈜ 노동조합${at ? ' · ' + esc(at) + ' 저장' : ''}</span></div>
   ${uwMemErr ? `<div class="note">${esc(uwMemErr)}</div>` : ''}
   ${!loaded && !uwMemErr ? '<div class="hint">불러오는 중…</div>' : ''}
-  <div class="uwmTabs"><button type="button" class="btn ${uwMemTab==='cur'?'':'ghost'} sm" data-uwm-tab="cur">재적 조합원 ${cur.length}명</button><button type="button" class="btn ${uwMemTab==='left'?'':'ghost'} sm" data-uwm-tab="left">탈퇴자 ${left.length}명</button>${cur.length && uwMemTab==='cur' ? `<span class="uwmSum">${uwMemPartCount(cur)}</span>` : ''}</div>
+  <div class="uwmTabs"><b class="uwmCnt">재적 조합원 ${cur.length}명</b>${cur.length ? `<span class="uwmSum">${uwMemPartCount(cur)}</span>` : ''}</div>
   <div class="uwBar"><input type="search" id="uwmSearch" value="${esc(uwMemQ)}" placeholder="이름·직위·파트·전화번호 검색" autocomplete="off"></div>
   <div class="uwTools"><button type="button" class="btn sm" id="uwmPrint">🖨️ PDF 출력</button><button type="button" class="btn ghost sm" id="uwmCsv">⬇️ 엑셀(CSV) 받기</button><button type="button" class="btn ghost sm editor-only" id="uwmAdd">＋ 조합원 추가</button><label class="btn ghost sm editor-only uwmImp">📥 엑셀 가져오기<input type="file" id="uwmFile" accept=".xlsx" hidden></label></div>
   ${list.length ? `<div class="uwmWrap"><table class="tbl uwmTbl"><thead><tr>${cols.map(k=> `<th>${esc(lbl[k])}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${cols.length}" class="empty">'${esc(uwMemQ)}' 찾는 사람이 없어요.</td></tr>`}</tbody></table></div>`
@@ -8667,8 +8670,7 @@ function bindUwMem(){
     document.getElementById('uwmSave').onclick = ()=>{ const o = read(); if(!o.name){ showToast('성명을 넣어 주세요.'); return; }
       if(e.i >= 0) lists[e.tab][e.i] = Object.assign({}, lists[e.tab][e.i], o); else lists[e.tab].push(Object.assign({no: String(lists[e.tab].length + 1)}, o));
       uwMemEdit = null; uwMemSave(lists); };
-    const lv = document.getElementById('uwmLeave'); if(lv) lv.onclick = ()=>{ const o = Object.assign({}, lists.cur[e.i], read()); const why = prompt(`${o.name} 탈퇴 사유(비고)`, o.note||''); if(why===null) return;
-      o.leave = o.leave || todayStr(); o.note = why; lists.cur.splice(e.i, 1); lists.left.push(o); lists.cur.forEach((m,k)=> m.no = String(k+1)); lists.left.forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave(lists); };
+    const lv = document.getElementById('uwmLeave'); if(lv) lv.onclick = ()=> appConfirm(`${lists.cur[e.i].name} 탈퇴 처리할까요? 명부에서 빠지고 따로 남지 않아요.`, ()=>{ lists.cur.splice(e.i, 1); lists.cur.forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave({cur: lists.cur}); });
     const bk = document.getElementById('uwmBack'); if(bk) bk.onclick = ()=>{ const o = Object.assign({}, lists.left[e.i], read()); delete o.leave; lists.left.splice(e.i, 1); lists.cur.push(o); lists.cur.forEach((m,k)=> m.no = String(k+1)); lists.left.forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave(lists); };
     const dl = document.getElementById('uwmDel'); if(dl) dl.onclick = ()=> appConfirm(`${lists[e.tab][e.i].name} 을(를) 명부에서 지울까요?`, ()=>{ lists[e.tab].splice(e.i, 1); lists[e.tab].forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave(lists); });
   }
