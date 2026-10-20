@@ -3193,6 +3193,20 @@ let leaderTeam = null; // 조별 조장으로 로그인했을 때 그 조('1'·'
 // 그 조를 고칠 수 있는지: 조별 조장은 자기 조만, 그 외(UNION·공용 조장·미리보기)는 모두
 function teamAllowed(t){ return !(userRole==='leader' && leaderTeam) || String(t||'')===leaderTeam; }
 function empTeamOf(id){ const e = employees.find(x=> x.id===id); return e ? String(e.team||'') : ''; }
+// 조별 조장이 다른 조 화면(출퇴근 입력·배차표·근태관리·월별 OT현황)을 볼 때는 배포용처럼 '보기만'
+function viewTeamCtx(){
+  if(VIEW==='input' || VIEW==='input2') return {t: inputTeam || ''};
+  if(VIEW==='dispatch') return {t: dispatchTeamFilter || '', all: !dispatchTeamFilter};
+  if(VIEW==='combined') return {t: combinedTeamFilter || ''};
+  if(VIEW==='ot') return {t: otTeamFilter || ''};
+  return null;
+}
+function leaderBlocksView(){
+  if(!(userRole==='leader' && leaderTeam)) return false;
+  const c = viewTeamCtx(); if(!c) return false;
+  if(c.all) return true;                       // 배차표 '전체'는 두 조가 섞여 있어 보기만(자기 조를 고르면 수정)
+  return !!c.t && c.t !== leaderTeam;          // 근태관리·OT '전체'는 칸마다 자기 조만 고칠 수 있게 따로 막음
+}
 function teamDeniedMsg(t){ return `${leaderTeam}조 조장은 ${t ? t+'조' : '다른 조'}를 고칠 수 없어요(보기만).`; }
 function roleOfEmail(email){
   const e = String(email||'').toLowerCase();
@@ -3296,6 +3310,7 @@ function createFirebaseDb(){
 
 function requireEdit(){
   if(canEdit) return true;
+  if(leaderBlocksView()){ const c = viewTeamCtx(); showToast(c && c.all ? `${leaderTeam}조 조장은 배차표에서 ${leaderTeam}조를 골라야 고칠 수 있어요.` : teamDeniedMsg(c && c.t)); return false; }
   showToast(!db ? '서버에 연결되지 않아 저장할 수 없습니다.'
     : userRole ? '이 화면은 ' + (userRole==='leader' ? '조장모드' : 'UNION') + '에서 수정할 수 없습니다.'
     : '보기 전용입니다. 조장관리 또는 UNION으로 로그인하세요.');
@@ -4245,7 +4260,7 @@ function render(){
   renderDeferred = false;
   ensureForView();
   const el = document.getElementById('content');
-  if(authResolved) canEdit = roleCanEdit(VIEW);
+  if(authResolved){ canEdit = roleCanEdit(VIEW); if(leaderBlocksView()) canEdit = false; }   // 조별 조장: 다른 조는 보기만
   if(VIEW==='input' || VIEW==='input2') el.innerHTML = pageInput();
   else if(VIEW==='grid') el.innerHTML = pageGrid();
   else if(VIEW==='ot') el.innerHTML = pageOT();
@@ -4391,6 +4406,7 @@ async function inputLeaderLock(){
 // [✏️ 수정]: 잠긴 날을 다시 열기 — OT 반영한 날은 월별 OT에서 빠짐(다시 [OT 반영]해야 들어감), 조장 마감은 조장 근태관리에서만 풂
 // [✏️ 수정]: 저장된 날 고치기(칸 열기) · 고치는 중이면 [수정 취소] · 조장 마감된 날은 조장 근태관리에서 마감 풀기
 async function inputReopen(){
+  if(!requireEdit()) return;   // 조별 조장이 다른 조를 볼 때는 [수정] 안 됨
   const date = inputViewDate || todayStr(), team = inputTeam, key = date+'_'+team;
   if(isInputClosed(date, team)){ showToast(isLeaderUser() ? '조장 마감된 날이에요. [조장 수정]을 누르세요.' : '조장 마감된 날이에요. 고치려면 조장에게 말씀하세요.'); return; }
   const dirty = Object.keys(inputDraft).some(k=> k.startsWith(date+'|'));
