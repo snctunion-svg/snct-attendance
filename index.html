@@ -3839,17 +3839,40 @@ async function dpDoneToggle(){
 }
 // ===== 배차완료를 카톡으로: 휴대폰 공유 창(카카오톡 → 대화방 고르기 → 보내기). 문구는 미리 채워 둠 =====
 //  카카오 개발자 등록·비용 없이 아이폰·안드로이드 공유 기능을 씀. 공유 기능이 없는 PC는 문구를 복사해 줌(카톡에 붙여넣기)
-function dpKakaoText(d){
+// 카카오 개발자 앱 'SNCT 근태관리'의 JavaScript 키(웹페이지에 공개되는 키 — 등록한 도메인에서만 동작)
+const KAKAO_JS_KEY = '38623298df13d938b25fa62c9cdf3af1';
+const KAKAO_SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.8.4/kakao.min.js';
+// 카카오 SDK는 앱을 열 때 미리 불러 둠(휴대폰은 버튼을 누른 그 순간에 카톡을 열어야 해서, 누른 뒤에 불러오면 늦음)
+function kakaoReady(){ try{ return !!(window.Kakao && window.Kakao.isInitialized && window.Kakao.isInitialized() && window.Kakao.Share); }catch(e){ return false; } }
+(function loadKakao(){
+  if(!/^https?:/.test(location.href)) return;   // 파일로 연 미리보기에서는 안 씀
+  const go = ()=>{ if(document.getElementById('kakaoSdk')) return;
+    const sc = document.createElement('script'); sc.id = 'kakaoSdk'; sc.src = KAKAO_SDK_URL; sc.async = true; sc.crossOrigin = 'anonymous';
+    sc.onload = ()=>{ try{ if(window.Kakao && !window.Kakao.isInitialized()) window.Kakao.init(KAKAO_JS_KEY); }catch(e){ console.warn('kakao init', e); } };
+    document.head.appendChild(sc); };
+  if(document.readyState === 'complete') setTimeout(go, 800); else window.addEventListener('load', ()=> setTimeout(go, 800));
+})();
+function dpKakaoUrl(){ return /^https?:/.test(location.href) ? location.origin + location.pathname : 'https://snctunion-svg.github.io/snct-attendance/'; }
+function dpKakaoText(d, withUrl){
   d = d || {};
   const ds = d.date || dispatchDate, [y, m, dd] = String(ds).split('-').map(Number);
   const wd = ds ? ['일','월','화','수','목','금','토'][new Date(ds+'T00:00:00').getDay()] : '';
   const part = d.part==='night' ? '야간' : d.part==='day' ? (dispatchShift==='full' ? '일요일 주간' : '주간') : '';
   const tm = d.at ? new Date(d.at).toTimeString().slice(0,5) : '';
-  // 앱 주소를 문구 안에 같이 넣음(누르면 바로 배차표). 카톡이 링크 미리보기를 따로 붙일 수 있음(보내는 쪽에서 끌 수 없음)
-  const url = /^https?:/.test(location.href) ? location.origin + location.pathname : '';
+  // 카카오 카드로 보낼 때는 주소 대신 [배차표 열기] 단추가 들어감. 공유 창으로 보낼 때만 문구 끝에 주소를 붙임
+  const url = withUrl ? dpKakaoUrl() : '';
   return `✅ ${m}/${dd}(${wd}) ${d.team || dispatchTeamFilter}조${part ? ' ' + part : ''} 배차완료${tm ? ' (' + tm + ')' : ''}\n배차표 확인해 주세요.${url ? '\n' + url : ''}`;
 }
-async function dpKakaoShare(text){
+// 카톡 보내기: ① 카카오 카드(문구 + [배차표 열기] 단추, 말풍선 하나) → 안 되면 ② 휴대폰 공유 창 → ③ PC는 문구 복사
+async function dpKakaoShare(d){
+  if(kakaoReady()){
+    try{
+      const url = dpKakaoUrl();
+      window.Kakao.Share.sendDefault({ objectType:'text', text: dpKakaoText(d, false), link:{ mobileWebUrl:url, webUrl:url }, buttonTitle:'배차표 열기' });
+      return;
+    }catch(e){ console.warn('kakao share', e); }
+  }
+  const text = dpKakaoText(d, true);
   if(navigator.share){
     try{ await navigator.share({text}); return; }
     catch(e){ if(e && e.name==='AbortError') return; }   // 공유 창을 닫은 경우는 그냥 끝
@@ -3863,7 +3886,7 @@ function dpKakaoOffer(d){
   const ov = document.createElement('div');
   ov.id = 'dpKakaoOverlay';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
-  const text = dpKakaoText(d);
+  const text = dpKakaoText(d, false);
   ov.innerHTML = `<div style="background:var(--surface);color:var(--text);border-radius:12px;padding:18px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);">
       <p style="margin:0 0 8px;font-size:15px;font-weight:800;">카톡으로도 보낼까요?</p>
       <div style="margin:0 0 14px;font-size:13px;line-height:1.5;white-space:pre-line;word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">${esc(text)}</div>
@@ -3875,7 +3898,7 @@ function dpKakaoOffer(d){
   const close = ()=> ov.remove();
   ov.addEventListener('click', e=>{ if(e.target===ov) close(); });
   document.getElementById('dpKakaoNo').onclick = close;
-  document.getElementById('dpKakaoYes').onclick = ()=>{ close(); dpKakaoShare(text); };
+  document.getElementById('dpKakaoYes').onclick = ()=>{ close(); dpKakaoShare(d); };
 }
 function subscribeDispatchDay(dateStr){
   if(!db) return;
@@ -9494,7 +9517,7 @@ function afterRender(){
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   { const db0 = document.getElementById('dpDoneBtn'); if(db0) db0.onclick = dpDoneToggle; }
-  { const kb = document.getElementById('dpKakaoBtn'); if(kb) kb.onclick = ()=>{ const dd = dpDone[dpDoneKey(dispatchDate, dispatchTeamFilter)]; if(dd) dpKakaoShare(dpKakaoText(dd)); }; }
+  { const kb = document.getElementById('dpKakaoBtn'); if(kb) kb.onclick = ()=>{ const dd = dpDone[dpDoneKey(dispatchDate, dispatchTeamFilter)]; if(dd) dpKakaoShare(dd); }; }
   { const pb = document.getElementById('dpPushBtn'); if(pb) pb.onclick = pushToggle; }
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; inputTeam = dispatchTeamFilter; pushSyncTeam(); try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); localStorage.setItem('snct_input_team', inputTeam); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
   bindPayroll(el);
