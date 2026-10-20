@@ -141,6 +141,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .pwSt{font-size:12px;font-weight:700;color:var(--text-muted);}
 .pwSt.on{color:#047857;}
 .pwHdrBtn{background:#fff !important;color:#be185d !important;border:1px solid #f9a8d4 !important;}
+@media (max-width:700px){ .acctPwBtn .acctLbl{display:none;} } /* 휴대폰: 조장 로그인 비번 단추는 🔑만 */
 .pwDlg{max-width:360px;width:92%;}
 .pwDlg .pwLbl{display:block;font-size:12px;font-weight:700;color:#475569;margin:10px 0 4px;text-align:left;}
 .pwDlg .pwIn{font-size:16px;}
@@ -3344,7 +3345,7 @@ function updateStatusBar(){
   let authHtml = '';
   if(db && authResolved){
     authHtml = userRole
-      ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : leaderTeam ? `✏️ ${leaderTeam}조 조장` : '✏️ 조장모드'}</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+      ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : leaderTeam ? `✏️ ${leaderTeam}조 조장` : '✏️ 조장모드'}</span>${userRole==='leader' ? `<button type="button" class="btn sm pwHdrBtn acctPwBtn" id="acctPwBtn" title="조장 로그인 비밀번호 바꾸기">🔑<span class="acctLbl"> 로그인 비번</span></button>` : ''}<button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
       : (currentUser
           ? `<span style="color:var(--warn);">권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
           : `<span>👁 보기 전용</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">UNION</button>`);
@@ -3353,8 +3354,58 @@ function updateStatusBar(){
   const lb = document.getElementById('loginLeaderBtn'), lu = document.getElementById('loginUnionBtn'), lo = document.getElementById('logoutBtn');
   if(lb) lb.onclick = ()=> openLoginDialog('leader');
   const pb = document.getElementById('pwHdrBtn'); if(pb) pb.onclick = ()=> openPwDialog();
+  const ab = document.getElementById('acctPwBtn'); if(ab) ab.onclick = ()=> openAcctPwDialog();
   if(lu) lu.onclick = ()=> openLoginDialog('union');
   if(lo) lo.onclick = ()=> appConfirm('로그아웃할까요? 로그아웃하면 보기 전용이 됩니다.', ()=> fb.authM.signOut(fb.auth));
+}
+// 조장 로그인 비밀번호 바꾸기(급여 명세서 비번과는 별개): 현재 비번 확인 → 새 비번으로 변경. 바꾼 뒤에도 로그인 상태 유지
+function openAcctPwDialog(){
+  const user = fb && fb.auth && fb.auth.currentUser; if(!user){ showToast('로그인한 뒤에 바꿀 수 있어요.'); return; }
+  const who = leaderTeam ? `${leaderTeam}조 조장` : '조장관리';
+  const old = document.getElementById('acctPwOverlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'acctPwOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML = `
+    <form id="acctPwForm" style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;">
+      <b style="color:#be185d;font-size:15px;">🔑 ${esc(who)} 로그인 비밀번호 변경</b>
+      <input type="hidden" name="email" autocomplete="username" value="${esc(user.email||'')}">
+      <div class="field"><label>현재 비밀번호</label><input type="password" name="cur" inputmode="numeric" autocomplete="current-password" required></div>
+      <div class="field"><label>새 비밀번호 (6자 이상)</label><input type="password" name="pw1" inputmode="numeric" autocomplete="new-password" required minlength="6"></div>
+      <div class="field"><label>새 비밀번호 확인</label><input type="password" name="pw2" inputmode="numeric" autocomplete="new-password" required minlength="6"></div>
+      <div id="acctPwErr" style="color:var(--warn);font-size:12px;min-height:16px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="btn ghost sm" id="acctPwCancel">취소</button>
+        <button type="submit" class="btn sm" id="acctPwOk">변경</button>
+      </div>
+    </form>`;
+  document.body.appendChild(ov);
+  const form = ov.querySelector('#acctPwForm'), errEl = ov.querySelector('#acctPwErr'), btn = ov.querySelector('#acctPwOk');
+  ov.querySelector('#acctPwCancel').onclick = ()=> ov.remove();
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
+  setTimeout(()=>{ const i = form.querySelector('[name=cur]'); if(i) i.focus(); }, 50);
+  form.onsubmit = async (e)=>{
+    e.preventDefault();
+    const f = new FormData(form), cur = String(f.get('cur')||''), p1 = String(f.get('pw1')||''), p2 = String(f.get('pw2')||'');
+    if(p1.length < 6){ errEl.textContent = '새 비밀번호는 6자 이상이어야 해요.'; return; }
+    if(p1 !== p2){ errEl.textContent = '새 비밀번호 두 칸이 서로 달라요.'; return; }
+    if(p1 === cur){ errEl.textContent = '지금 비밀번호와 같아요.'; return; }
+    btn.disabled = true; errEl.textContent = '';
+    try{
+      const cred = fb.authM.EmailAuthProvider.credential(user.email, cur);
+      await fb.authM.reauthenticateWithCredential(user, cred);   // 현재 비번이 맞는지 확인
+      await fb.authM.updatePassword(user, p1);
+      ov.remove(); showToast(`${who} 로그인 비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호를 쓰세요.`);
+    }catch(err){
+      const c = err && err.code || '';
+      errEl.textContent = (c.includes('wrong-password') || c.includes('invalid')) ? '현재 비밀번호가 맞지 않아요.'
+        : c.includes('weak-password') ? '새 비밀번호가 너무 쉬워요(6자 이상).'
+        : c.includes('too-many-requests') ? '시도가 너무 많아요. 잠시 후 다시 해 보세요.'
+        : c.includes('network') ? '인터넷 연결을 확인하세요.'
+        : '변경 실패: ' + c;
+      btn.disabled = false;
+    }
+  };
 }
 function openLoginDialog(role){
   role = role==='union' ? 'union' : 'leader';
