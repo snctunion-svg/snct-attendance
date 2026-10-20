@@ -3179,7 +3179,9 @@ const FIREBASE_CONFIG = {
 // UNION: 조편성 관리·공휴일 관리·근태코드 화면·백업·복원 수정
 // 로그인 안 함(보기 전용): 근태관리·월별 OT현황·배차표·지원계획표 보기만
 // 조장관리 = 기존 계정(snctunion@gmail.com), UNION = 새로 만든 계정(프로젝트 자체 도메인 주소)
-const LEADER_EMAILS = ['snctunion@gmail.com'];
+// 조별 조장 계정: 1조 조장은 1조만, 2조 조장은 2조만 고칠 수 있음(다른 조는 보기만). Firebase 인증에 이 두 계정을 만들어 둬야 함
+const LEADER_TEAM_EMAILS = {'leader1@snct-d40ed.firebaseapp.com':'1', 'leader2@snct-d40ed.firebaseapp.com':'2'};
+const LEADER_EMAILS = ['snctunion@gmail.com', ...Object.keys(LEADER_TEAM_EMAILS)];   // snctunion@gmail.com = 예전 공용 조장 계정(두 조 모두)
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','pwchange','accident']; // 근태관리 구역 = 배포용(누구나). 근태코드는 조장관리 구역이라 조장·UNION만 // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
@@ -3187,6 +3189,11 @@ const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','
 const UNION_VIEWS  = ['unionhub','workhub','uwmem','uwemp','uwwork','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
+let leaderTeam = null; // 조별 조장으로 로그인했을 때 그 조('1'·'2'), 아니면 null(UNION·공용 조장은 두 조 모두)
+// 그 조를 고칠 수 있는지: 조별 조장은 자기 조만, 그 외(UNION·공용 조장·미리보기)는 모두
+function teamAllowed(t){ return !(userRole==='leader' && leaderTeam) || String(t||'')===leaderTeam; }
+function empTeamOf(id){ const e = employees.find(x=> x.id===id); return e ? String(e.team||'') : ''; }
+function teamDeniedMsg(t){ return `${leaderTeam}조 조장은 ${t ? t+'조' : '다른 조'}를 고칠 수 없어요(보기만).`; }
 function roleOfEmail(email){
   const e = String(email||'').toLowerCase();
   if(UNION_EMAILS.some(x=>x.toLowerCase()===e)) return 'union';
@@ -3322,7 +3329,7 @@ function updateStatusBar(){
   let authHtml = '';
   if(db && authResolved){
     authHtml = userRole
-      ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : '✏️ 조장모드'}</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+      ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : leaderTeam ? `✏️ ${leaderTeam}조 조장` : '✏️ 조장모드'}</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
       : (currentUser
           ? `<span style="color:var(--warn);">권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
           : `<span>👁 보기 전용</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">UNION</button>`);
@@ -3342,7 +3349,8 @@ function openLoginDialog(role){
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
   ov.innerHTML = `
     <form id="loginForm" style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;">
-      <input type="hidden" name="email" autocomplete="username" value="${esc((role==='union' ? UNION_EMAILS : LEADER_EMAILS)[0]||'')}">
+      <input type="hidden" name="email" autocomplete="username" value="${esc(role==='union' ? (UNION_EMAILS[0]||'') : Object.keys(LEADER_TEAM_EMAILS)[0])}">
+      ${role==='union' ? '' : `<div class="field"><label style="color:#be185d;font-weight:800;">조 선택</label><div style="display:flex;gap:6px;">${Object.entries(LEADER_TEAM_EMAILS).map(([em,t],i)=>`<button type="button" class="btn sm ${i===0?'':'ghost'} loginTeamBtn" data-email="${esc(em)}" style="flex:1;">${t}조 조장</button>`).join('')}</div></div>`}
       <div class="field"><label style="color:${role==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${role==='union' ? 'UNION' : '조장관리'} 비밀번호</label><input type="password" name="pw" inputmode="numeric" autocomplete="current-password" required placeholder="비밀번호"></div>
       <div id="loginErr" style="color:var(--warn);font-size:12px;min-height:16px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
@@ -3355,6 +3363,11 @@ function openLoginDialog(role){
   ov.querySelector('#loginCancel').onclick = ()=> ov.remove();
   ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
   setTimeout(()=>{ const pw = form.querySelector('[name=pw]'); if(pw) pw.focus(); }, 50);
+  form.querySelectorAll('.loginTeamBtn').forEach(b=> b.onclick = ()=>{   // 1조·2조 고르기 → 그 조 조장 계정으로 로그인
+    form.querySelector('[name=email]').value = b.dataset.email;
+    form.querySelectorAll('.loginTeamBtn').forEach(x=> x.classList.toggle('ghost', x!==b));
+    const pw = form.querySelector('[name=pw]'); if(pw){ pw.value = ''; pw.focus(); }
+  });
   form.onsubmit = async (e)=>{
     e.preventDefault();
     const f = new FormData(form), btn = form.querySelector('#loginSubmit'), errEl = form.querySelector('#loginErr');
@@ -3363,11 +3376,12 @@ function openLoginDialog(role){
       await fb.authM.signInWithEmailAndPassword(fb.auth, String(f.get('email')).trim(), String(f.get('pw')));
       ov.remove();
       const r = roleOfEmail(String(f.get('email')).trim());
-      showToast(r==='union' ? 'UNION으로 로그인되었습니다.' : r==='leader' ? '조장모드로 로그인되었습니다.' : '로그인되었지만 권한이 없는 계정입니다.');
+      const lt = LEADER_TEAM_EMAILS[String(f.get('email')).trim().toLowerCase()];
+      showToast(r==='union' ? 'UNION으로 로그인되었습니다.' : r==='leader' ? (lt ? `${lt}조 조장으로 로그인되었습니다. ${lt}조만 고칠 수 있어요.` : '조장모드로 로그인되었습니다.') : '로그인되었지만 권한이 없는 계정입니다.');
     }catch(err){
       const c = err && err.code || '';
       errEl.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found'))
-          ? (role==='union' ? '로그인 실패: 비밀번호가 틀렸거나, Firebase에 UNION 계정(union@snct-d40ed.firebaseapp.com)이 아직 없습니다.' : '비밀번호가 맞지 않습니다.')
+          ? (role==='union' ? '로그인 실패: 비밀번호가 틀렸거나, Firebase에 UNION 계정(union@snct-d40ed.firebaseapp.com)이 아직 없습니다.' : '비밀번호가 맞지 않거나, 이 조의 조장 계정이 Firebase에 아직 없습니다.')
         : c.includes('too-many-requests') ? '시도가 너무 많습니다. 잠시 후 다시 해 보세요.'
         : c.includes('network') ? '인터넷 연결을 확인하세요.'
         : '로그인 실패: ' + c;
@@ -3499,6 +3513,11 @@ async function initDb(){
   fb.authM.onAuthStateChanged(fb.auth, user=>{
     currentUser = user;
     userRole = user ? roleOfEmail(user.email) : null;
+    const lt = user && userRole==='leader' ? (LEADER_TEAM_EMAILS[String(user.email||'').toLowerCase()] || null) : null;
+    if(lt && lt !== leaderTeam){   // 조별 조장으로 들어오면 화면들을 자기 조로 맞춤
+      inputTeam = lt; dispatchTeamFilter = lt; combinedTeamFilter = lt; otTeamFilter = lt;
+    }
+    leaderTeam = lt;
     canEdit = roleCanEdit(VIEW);
     const first = !authResolved;
     authResolved = true;
@@ -3820,7 +3839,7 @@ function dpDoneSound(team){ dpChime(); if(dpTtsAuto()) setTimeout(()=> dpSpeak(d
   ['pointerdown','touchend','keydown'].forEach(t=> document.addEventListener(t, unlock, {capture:true, passive:true}));
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{ window.speechSynthesis && window.speechSynthesis.resume(); }catch(e){} } });
 })();
-function dpDoneCanPress(){ return userRole==='leader' || userRole==='union' || userRole==='all'; }   // 배포용(로그인 안 함)은 보기만
+function dpDoneCanPress(){ return (userRole==='leader' || userRole==='union' || userRole==='all') && teamAllowed(dispatchTeamFilter); }   // 조별 조장은 자기 조만   // 배포용(로그인 안 함)은 보기만
 function dpDoneSpeech(team){ return '배차완료'; }
 async function dpDoneToggle(){
   const ds = dispatchDate, team = dispatchTeamFilter, k = dpDoneKey(ds, team);
@@ -4347,6 +4366,7 @@ async function inputReflectDay(){
 // [🔒 조장 마감](조장 근태관리): 배포용 출퇴근 입력에서 그날 그 조를 못 고치게 잠금만(OT 반영은 그대로)
 async function inputLeaderLock(){
   if(!isLeaderUser()){ showToast('조장 마감은 조장관리로 로그인해야 할 수 있어요.'); return; }
+  if(!teamAllowed(inputTeam)){ showToast(teamDeniedMsg(inputTeam)); return; }
   const date = inputViewDate || todayStr(), team = inputTeam, id = date+'_'+team;
   if(isInputClosed(date, team)){   // 이미 마감 → 마감 풀기
     appConfirm(`${date} ${team}조 조장 마감을 풀까요? 풀면 일반 [수정]·[저장]으로 다시 고칠 수 있어요.`, async ()=>{
@@ -4382,6 +4402,7 @@ async function inputReopen(){
 // [🔓 조장 수정]: 조장 마감된 날을 조장만 고치기(누르면 칸 열림, 다시 누르면 고친 것 버리고 잠금). 저장해도 마감은 그대로
 function inputLeaderEditToggle(){
   if(!isLeaderUser()){ showToast('조장 수정은 조장관리로 로그인해야 할 수 있어요.'); return; }
+  if(!teamAllowed(inputTeam)){ showToast(teamDeniedMsg(inputTeam)); return; }
   const date = inputViewDate || todayStr(), key = date+'_'+inputTeam;
   if(!isInputClosed(date, inputTeam)){ showToast('조장 마감된 날만 [조장 수정]을 써요. 지금은 [수정]으로 고칠 수 있어요.'); return; }
   if(inputLeaderEdit[key]){ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputLeaderEdit[key]; render(); return; }
@@ -4408,7 +4429,7 @@ function pageInput(){
   const list = employees.filter(e=> (e.team||'')===inputTeam).sort((a,b)=>(a.teamOrder||999)-(b.teamOrder||999));
   const dirtyN = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|')).length;
   const leaderClosed = isInputClosed(date, inputTeam), reflected = false, userClosed = false;
-  const leader = isLeaderUser(), leaderMode = leader;   // 조장 버튼은 조장관리 로그인에서만
+  const leader = isLeaderUser() && teamAllowed(inputTeam), leaderMode = leader;   // 조별 조장은 자기 조에서만 [조장 마감]·[조장 수정]   // 조장 버튼은 조장관리 로그인에서만
   const leaderEditing = leaderClosed && leader && !!inputLeaderEdit[date+'_'+inputTeam];
   const closedNow = leaderClosed || reflected, locked = closedNow && !leaderEditing;
   const canReopen = !leaderClosed || (leaderMode && leader);   // 배포용: 조장 마감만 아니면 항상 누를 수 있음
@@ -9540,7 +9561,7 @@ function afterRender(){
   if(window.innerWidth<=700 && (VIEW==='ot' || VIEW==='combined')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined'){ if(cmbPhone()) fitCombined(); else document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } }, ms)); }
   fitSplan();
   applyUiZoom();
-  el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
+  el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ { const t = empTeamOf(x.dataset.emp); if(canEdit && !teamAllowed(t)){ showToast(teamDeniedMsg(t)); return; } } otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
   const otRangeStartInput = document.getElementById('otRangeStartInput'), otRangeEndInput = document.getElementById('otRangeEndInput');
@@ -9621,6 +9642,7 @@ function afterRender(){
   }
   el.querySelectorAll('[data-act="adj"]').forEach(x=>x.onclick=()=>{
     if(!canEdit){ requireEdit(); return; }
+    { const t = empTeamOf(x.dataset.emp); if(!teamAllowed(t)){ showToast(teamDeniedMsg(t)); return; } }
     adjPop = {empId:x.dataset.emp, key:x.dataset.key, label:x.dataset.label, raw:x.dataset.raw, sign:1, val:''}; render();
     setTimeout(()=>{ const i = document.getElementById('adjInput'); if(i){ i.focus(); i.select(); } }, 30);
   });
@@ -9695,6 +9717,7 @@ function afterRender(){
   });
   el.querySelectorAll('[data-act="grid-cell"]').forEach(x=>x.onclick=()=>{
     if(!canEdit){ requireEdit(); return; }
+    { const t = empTeamOf(x.dataset.emp); if(!teamAllowed(t)){ showToast(teamDeniedMsg(t)); return; } }
     gridEdit = {date:x.dataset.date, employeeId:x.dataset.emp};
     render();
   });
