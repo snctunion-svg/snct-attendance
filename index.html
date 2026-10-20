@@ -822,6 +822,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 배차표: 가로로 밀어서 보기 + 왼쪽 정보칸·머리글 고정 + 줄 높이 통일 */
 .dpScrollBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 8px;}
 .dpWrap{overflow:auto;max-height:calc(100vh - 150px);border:2px solid var(--text);border-radius:0 0 10px 10px;background:var(--surface);-webkit-overflow-scrolling:touch;}
+@media (min-width:701px){ .dpWrap{overflow-x:scroll;} } /* PC 배차표: 표가 화면에 다 들어가도(100%) 아래 가로 스크롤 막대를 늘 보이게 */
 #dpTable{border-collapse:separate;border-spacing:0;font-size:12px;}
 #dpTable th,#dpTable td{height:36px;border-right:1px dotted #111;border-bottom:1px dotted #111;text-align:center;padding:0 4px;white-space:nowrap;}
 #dpTable thead th{position:sticky;top:0;z-index:3;background:var(--bg);}
