@@ -754,6 +754,22 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbTab + .cmbTab{border-left:1.5px solid var(--btn);}
   .cmbTab.on{background:var(--btn);color:#fff;}
   .cmbWrap.cmbShow-stat .cmbRight{display:none !important;}
+  /* 휴대폰 세로: 두 표를 옆으로 이어 붙여 한 번에 밀어 봄 */
+  .cmbWrap.cmbPhJoin{flex-wrap:nowrap !important;gap:0 !important;align-items:flex-start !important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pan-y pinch-zoom;}
+  .cmbWrap.cmbPhJoin > .panel{flex:0 0 auto !important;max-width:none !important;min-width:0 !important;width:auto !important;padding:4px !important;}
+  .cmbWrap.cmbPhJoin > .cmbLeft{padding-right:0 !important;border-top-right-radius:0;border-bottom-right-radius:0;border-right:0;}
+  .cmbWrap.cmbPhJoin > .cmbRight{padding-left:0 !important;border-top-left-radius:0;border-bottom-left-radius:0;border-left:0;}
+  .cmbWrap.cmbPhJoin .scrollx{overflow:visible !important;max-height:none !important;}
+  .cmbWrap.cmbPhJoin .cmbLeft .gridwrap{border-right:0;border-top-right-radius:0;border-bottom-right-radius:0;}
+  .cmbWrap.cmbPhJoin .cmbRight .gridwrap{border-top-left-radius:0;border-bottom-left-radius:0;}
+  .cmbWrap.cmbPhJoin td.mgFix{position:sticky;z-index:2;}
+  .cmbWrap.cmbPhJoin td.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
+  .cmbWrap.cmbPhJoin thead th.mgFix{position:sticky;z-index:4;box-shadow:inset 0 -1px 0 #111;}
+  .cmbWrap.cmbPhJoin thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111;}
+  .cmbWrap.cmbPhJoin .cmbRight td.namecell{z-index:3;}
+  .cmbWrap.cmbPhJoin .cmbRight thead th.namehead{z-index:5;}
+  .cmbPhTop .phV{display:none;align-items:center;gap:5px;min-width:0;flex:1 1 auto;}
+  .cmbPhTop[data-on="stat"] .phV-stat,.cmbPhTop[data-on="month"] .phV-month{display:flex;}
   .cmbWrap.cmbShow-month .cmbLeft{display:none !important;}
 }
 /* PC: 엑셀처럼 근태 집계와 월별 근태를 한 장으로 붙여서(사이 간격 없이, 줄 높이·머리글 높이 같게) */
@@ -4806,9 +4822,8 @@ function pageCombined(){
   // 휴대폰(세로): 맨 위 한 줄 = [제목 + 날짜(또는 달) + 1조·2조], 그 아래 [근태 집계|월별 근태] 단추, 그 아래 표
   const ph = cmbPhone();
   const teamPh = ['1','2'].map(t=>`<button class="btn ${combinedTeamFilter===t?'':'ghost'} sm" data-act="team-filter" data-team="${t}">${t}조</button>`).join('');
-  const phTop = !ph ? '' : `<div class="cmbPhTop">${cmbPhoneTab==='stat'
-      ? `<b class="phT">근태 집계</b><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}">`
-      : `<b class="phT">월별 근태</b><button class="btn ghost sm phNav" id="cmbPrevMonth">◀</button><b class="phYm">${cy}.${pad2(cm)}</b><button class="btn ghost sm phNav" id="cmbNextMonth">▶</button>`}
+  //  휴대폰은 두 표를 옆으로 이어 붙여 한 번에 밀어 봄 → 위 줄은 지금 보이는 표에 맞춰 바뀜(두 가지를 다 그려 두고 보이는 것만 표시)
+  const phTop = !ph ? '' : `<div class="cmbPhTop" data-on="${cmbPhoneTab}"><span class="phV phV-stat"><b class="phT">근태 집계</b><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></span><span class="phV phV-month"><b class="phT">월별 근태</b><button class="btn ghost sm phNav" id="cmbPrevMonth">◀</button><b class="phYm">${cy}.${pad2(cm)}</b><button class="btn ghost sm phNav" id="cmbNextMonth">▶</button></span>
     <span class="phTeam">${teamPh}</span></div>`;
   const teamBtns = ph ? phTop : `<div class="row cmbTeamRow" style="margin-bottom:14px;">
     <button class="btn ${combinedTeamFilter===''?'':'ghost'} sm" data-act="team-filter" data-team="">전체</button>
@@ -4823,7 +4838,7 @@ function pageCombined(){
     <button class="cmbTab${cmbPhoneTab==='stat'?' on':''}" data-tab="stat">근태 집계</button>
     <button class="cmbTab${cmbPhoneTab==='month'?' on':''}" data-tab="month">월별 근태</button>
   </div>
-  <div class="cmbWrap cmbShow-${cmbPhoneTab}">
+  <div class="cmbWrap ${ph ? 'cmbPhJoin' : 'cmbShow-'+cmbPhoneTab}">
     <div class="panel cmbLeft">
       ${ph ? '' : `<div class="cmbCtrl">
         <h3>근태 집계 <span style="font-weight:400;color:var(--text-muted);font-size:12px;">(${esc(rangeStart)} ~ ${esc(rangeEnd)})</span></h3>
@@ -5171,7 +5186,7 @@ function fitDispatch(){
   if(lb > avail){ const z = (avail - tTop) / (lb - tTop); t.style.zoom = Math.max(0.5, Math.min(1, Math.floor(z*1000)/1000)); }
 }
 // 휴대폰: 화면 높이가 바뀌면(주소창 접힘·펴짐) 배차표 다시 맞춤
-if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ if((window.visualViewport.scale||1) > 1.01) return; clearTimeout(window._dpFitT); window._dpFitT = setTimeout(()=>{ fitDispatch(); fitInputMobile(); fitSplan(); if(window.innerWidth<=700){ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined' && !cmbSkipRefit()) document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } if(!cmbSkipRefit()) applyUiZoom(); }, 150); });
+if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{ if((window.visualViewport.scale||1) > 1.01) return; clearTimeout(window._dpFitT); window._dpFitT = setTimeout(()=>{ fitDispatch(); fitInputMobile(); fitSplan(); if(window.innerWidth<=700){ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined' && !cmbSkipRefit()){ if(cmbPhone()) fitCombined(); else document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } } if(!cmbSkipRefit()) applyUiZoom(); }, 150); });
 // 지원계획표: 세로를 화면 높이의 85%로(줄 높이를 늘림)
 // 휴대폰 지원계획표: 줄 높이를 늘려 표와 [초기화] 버튼이 화면 아래까지 꽉 차게(위아래로 크게)
 function fitSplanMobile(){
@@ -5246,6 +5261,7 @@ function fitCombined(){
   wrap.querySelectorAll('thead tr').forEach(tr=> tr.style.height = '');
   window._cmbFitW = window.innerWidth;
   if(landPhone()){ fitCombinedLand(wrap); return; }
+  if(cmbPhone() && wrap.classList.contains('cmbPhJoin')){ fitCombinedPhone(wrap); return; }
   if(window.innerWidth > 860){ fitCombinedJoin(wrap); return; }
   wrap.querySelectorAll('table.ctbl').forEach(t=> fitTableToScreen(t, {fitW:true, fitH:true, reserve:30, minRow:20, maxRow:70, ratio:0.85})); // 세로 85%
   wrap.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t));
@@ -5283,12 +5299,83 @@ function mgStickRank(wrap){
   const box = t.closest('.scrollx');
   const rows = [...t.querySelectorAll('tr')].filter(tr=> tr.querySelector('.mgFix'));
   const clear = ()=> rows.forEach(tr=> tr.querySelectorAll('.mgFix').forEach(c=> c.style.left = ''));
-  if(!box || !box.classList.contains('mFreeze')){ clear(); return; }   // PC·가로 화면은 고정 안 함
+  if(!box || !(box.classList.contains('mFreeze') || box.closest('.cmbPhJoin'))){ clear(); return; }   // PC·가로 화면은 고정 안 함
   const nm = t.querySelector('thead th.namehead'), hs = [...t.tHead.rows[0].querySelectorAll('th.mgFix')]; if(!nm || !hs.length) return;
   const z = parseFloat(t.style.zoom)||1, W = el=> el.getBoundingClientRect().width / z;
   const lefts = []; let x = W(nm) - 1;
   hs.forEach(h=>{ lefts.push(Math.round(x*10)/10); x += W(h); });
   rows.forEach(tr=> tr.querySelectorAll('.mgFix').forEach((c,i)=>{ if(lefts[i]!=null) c.style.left = lefts[i] + 'px'; }));
+}
+// 휴대폰 세로: 근태 집계와 월별 근태를 옆으로 이어 붙여 하나로 밀어 봄(단추를 누르지 않아도 계속 밀면 월별 근태가 나옴)
+//  · 두 표의 머리글 높이·줄 높이를 같게 → 왼쪽·오른쪽 줄이 나란히
+//  · 줄 높이는 사람 수에 맞춰 화면 아래까지(16~40px), 글씨는 줄 높이 × 0.46
+//  · 근태 집계를 볼 때는 No·성명, 월별 근태로 넘어가면 성명·지원·순번·퇴근이 왼쪽에 고정
+//  · 위 [근태 집계|월별 근태] 단추는 그 표 위치로 밀어 주는 단추(지금 보이는 표에 불이 켜짐)
+function fitCombinedPhone(wrap){
+  const L = wrap.querySelector('.cmbLeft table.ctbl'), Rt = wrap.querySelector('.cmbRight table.ctbl');
+  const ts = [L, Rt].filter(Boolean); if(!ts.length) return;
+  ts.forEach(t=>{ t.style.zoom = ''; t.style.width = ''; t.classList.remove('mFit'); t.style.removeProperty('--mRowH'); t.style.removeProperty('--mFs'); t.style.removeProperty('--sepW');
+    t.querySelectorAll('tr').forEach(tr=> tr.style.height = ''); t.querySelectorAll('thead th').forEach(th=> th.style.top = '');
+    const bx = t.closest('.scrollx'); if(bx){ bx.classList.remove('mFreeze'); bx.style.maxHeight = ''; bx.style.paddingTop = ''; } });
+  if(L && Rt){   // 머리글 줄 높이를 두 표 중 높은 쪽에 맞춤
+    const hL = [...L.tHead.rows], hR = [...Rt.tHead.rows];
+    for(let i = 0; i < Math.min(hL.length, hR.length); i++){ const h = Math.max(hL[i].getBoundingClientRect().height, hR[i].getBoundingClientRect().height); hL[i].style.height = h + 'px'; hR[i].style.height = h + 'px'; }
+  }
+  const sc = document.getElementById('content');
+  const scTop = sc ? Math.max(0, sc.getBoundingClientRect().top) : 0;
+  const visH = phoneViewH() - scTop;
+  const topIn = wrap.getBoundingClientRect().top - scTop + (sc ? sc.scrollTop : 0);
+  const n = Math.max(...ts.map(t=> t.tBodies[0] ? t.tBodies[0].rows.length : 0));
+  if(n && topIn < visH * 0.6){
+    const headH = Math.max(...ts.map(t=> t.tHead ? t.tHead.getBoundingClientRect().height : 0));
+    const avail = visH - topIn - 34;   // 표 상자 안쪽 여백·아래 여유
+    const per = Math.max(16, Math.min(40, Math.floor((avail - headH) / n)));
+    ts.forEach(t=>{ t.style.setProperty('--mRowH', per + 'px'); t.style.setProperty('--mFs', Math.max(10, Math.min(14, Math.round(per * 0.46 * 10) / 10)) + 'px'); t.classList.add('mFit'); });
+  }
+  if(L && Rt){
+    const rL = [...L.tBodies[0].rows], rR = [...Rt.tBodies[0].rows], m = Math.min(rL.length, rR.length);
+    for(let i = 0; i < m; i++){ const h = Math.max(rL[i].getBoundingClientRect().height, rR[i].getBoundingClientRect().height); rL[i].style.height = h + 'px'; rR[i].style.height = h + 'px'; }
+    const fr = t=> { const r = t.tBodies[0] && t.tBodies[0].rows[0]; return r ? r.getBoundingClientRect().top : t.getBoundingClientRect().top; };
+    const d = fr(Rt) - fr(L);
+    if(Math.abs(d) >= 1){ const bx = (d > 0 ? L : Rt).closest('.scrollx'); if(bx) bx.style.paddingTop = Math.round(Math.abs(d)) + 'px'; }
+  }
+  mgStickRank(wrap);
+  // 민 위치 기억: 처음(또는 달이 바뀌면)은 고른 단추 쪽 — 월별 근태면 어제·오늘 날짜가 퇴근 칸 옆에 오게
+  const key = (Rt && Rt.querySelector('thead th.dayHead') ? Rt.querySelector('thead th.dayHead').dataset.date || '' : '').slice(0,7);
+  const st = window._cmbPh || (window._cmbPh = {key:'', x:null, touch:false});
+  if(st.key !== key || st.x == null){ st.key = key; st.x = cmbPhTarget(wrap, cmbPhoneTab); }
+  if(!st.touch && Math.abs(wrap.scrollLeft - st.x) > 1) wrap.scrollLeft = st.x;
+  cmbPhMark(wrap);
+  if(!wrap._phHook){ wrap._phHook = 1;
+    wrap.addEventListener('scroll', ()=>{ st.x = wrap.scrollLeft; cmbPhMark(wrap); }, {passive:true});
+    wrap.addEventListener('touchstart', ()=>{ st.touch = true; }, {passive:true});
+    const up = ()=>{ setTimeout(()=>{ st.touch = false; }, 800); };
+    wrap.addEventListener('touchend', up, {passive:true}); wrap.addEventListener('touchcancel', up, {passive:true}); }
+}
+// 그 표로 갈 때 밀 위치: 근태 집계 = 맨 앞, 월별 근태 = 월별 표 시작 + 어제 날짜가 퇴근 칸 바로 옆
+function cmbPhTarget(wrap, tab){
+  const rp = wrap.querySelector('.cmbRight'); if(tab!=='month' || !rp) return 0;
+  const save = wrap.scrollLeft;
+  const start = wrap.scrollLeft + rp.getBoundingClientRect().left - wrap.getBoundingClientRect().left;
+  wrap.scrollLeft = start;
+  let x = wrap.scrollLeft;
+  const mt = rp.querySelector('table.ctbl'), today = mt && mt.querySelector('thead th.dayHead.todayCol'), fix = mt && (mt.querySelector('thead th.mgFixEnd') || mt.querySelector('thead th.namehead'));
+  if(today && fix){ const prev = today.previousElementSibling && today.previousElementSibling.classList.contains('dayHead') ? today.previousElementSibling : today; x += Math.max(0, Math.round(prev.getBoundingClientRect().left - fix.getBoundingClientRect().right)); }
+  wrap.scrollLeft = save;
+  return x;
+}
+function cmbPhGo(wrap, tab, smooth){
+  cmbPhoneTab = tab; try{ localStorage.setItem('snct_cmb_tab', tab); }catch(e){}
+  const x = cmbPhTarget(wrap, tab);
+  try{ wrap.scrollTo({left:x, behavior: smooth ? 'smooth' : 'auto'}); }catch(e){ wrap.scrollLeft = x; }
+}
+// 지금 화면에 더 많이 보이는 표의 단추에 불을 켜고, 위 줄(날짜/달)도 그 표에 맞춤
+function cmbPhMark(wrap){
+  const rp = wrap.querySelector('.cmbRight'); if(!rp) return;
+  const on = (rp.getBoundingClientRect().left - wrap.getBoundingClientRect().left) < wrap.clientWidth / 2 ? 'month' : 'stat';
+  if(on !== cmbPhoneTab){ cmbPhoneTab = on; try{ localStorage.setItem('snct_cmb_tab', on); }catch(e){} }
+  document.querySelectorAll('.cmbTab').forEach(b=> b.classList.toggle('on', b.dataset.tab===on));
+  const top = document.querySelector('.cmbPhTop'); if(top && top.dataset.on !== on) top.dataset.on = on;
 }
 function fitCombinedJoin(wrap){
   const L = wrap.querySelector('.cmbLeft table.ctbl'), Rt = wrap.querySelector('.cmbRight table.ctbl');
@@ -9247,7 +9334,10 @@ function afterRender(){
   const el = document.getElementById('content');
 
   el.querySelectorAll('[data-act="goto-grid"]').forEach(x=>x.onclick=(e)=>{ e.preventDefault(); setView('grid'); });
-  el.querySelectorAll('.cmbTab').forEach(x=>x.onclick=()=>{ cmbPhoneTab = x.dataset.tab; try{ localStorage.setItem('snct_cmb_tab', cmbPhoneTab); }catch(e){} render(); });
+  el.querySelectorAll('.cmbTab').forEach(x=>x.onclick=()=>{
+    const w = document.querySelector('.cmbWrap.cmbPhJoin');
+    if(w){ cmbPhGo(w, x.dataset.tab, true); return; }   // 휴대폰: 다시 그리지 않고 그 표 위치로 밀어 줌
+    cmbPhoneTab = x.dataset.tab; try{ localStorage.setItem('snct_cmb_tab', cmbPhoneTab); }catch(e){} render(); });
   el.querySelectorAll('[data-act="team-filter"]').forEach(x=>x.onclick=()=>{ combinedTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_cmb', combinedTeamFilter); }catch(e){} render(); });
   el.querySelectorAll('[data-act="teamot-filter"]').forEach(x=>x.onclick=()=>{ teamOtFilter = x.dataset.team; render(); });
 
@@ -9372,7 +9462,7 @@ function afterRender(){
   fitSafety();
   fitDispatch();
   if(window.innerWidth<=700 && (VIEW==='dispatch' || VIEW==='input' || VIEW==='input2' || VIEW==='splan')){ [300, 1000].forEach(ms=> setTimeout(()=>{ fitDispatch(); fitInputMobile(); fitSplan(); applyUiZoom(); }, ms)); }
-  if(window.innerWidth<=700 && (VIEW==='ot' || VIEW==='combined')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined') document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); }, ms)); }
+  if(window.innerWidth<=700 && (VIEW==='ot' || VIEW==='combined')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined'){ if(cmbPhone()) fitCombined(); else document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } }, ms)); }
   fitSplan();
   applyUiZoom();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
