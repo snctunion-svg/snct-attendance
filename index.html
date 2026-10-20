@@ -702,6 +702,12 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbRight .ctbl.gtbl thead th.mgFix{min-width:34px;width:34px;font-size:11.5px !important;}
   .cmbRight .ctbl.gtbl td.mgFix{min-width:34px;width:34px;}
 }
+/* PC 근태관리(두 표를 붙여 옆으로 밂): 월별 근태로 넘어가면 성명·지원·순번이 왼쪽에 고정 */
+.cmbWrap.cmbJoin .cmbRight td.mgFix{position:sticky;z-index:2;}
+.cmbWrap.cmbJoin .cmbRight td.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
+.cmbWrap.cmbJoin .cmbRight thead th.mgFix{position:sticky;z-index:4;box-shadow:inset 0 -1px 0 #111;}
+.cmbWrap.cmbJoin .cmbRight thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111;}
+.cmbWrap.cmbJoin .cmbRight td.namecell{z-index:3;}
 /* 성명 칸 가운데 정렬(근태 집계·월별 근태·월별 OT현황) */
 .ctbl td.namecell,.ctbl th.namehead,.otSum td.namecell,.otSum th.namehead{text-align:center !important;}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .gtbl th.wkA{background:#1b2332 !important;} :root:not([data-theme="light"]) .gtbl th.wkB{background:#253044 !important;}
@@ -5173,11 +5179,8 @@ function fitOtTable(){
   t.style.zoom = ''; rows.forEach(tr=> tr.style.height = '');
   if(VIEW==='ot') mFreeze(t);
   if(VIEW!=='ot' || window.innerWidth <= 700) return;
-  // 가로: 표 전체 폭이 화면에 들어오게 축소
-  const availW = wrap.clientWidth - 2;
-  let z = Math.min(1, availW / t.scrollWidth);
-  z = Math.max(0.45, Math.floor(z*100)/100);
-  if(z < 1) t.style.zoom = z;
+  // 가로: PC 100%는 표를 줄이지 않고 원래 크기 그대로 — 화면보다 넓으면 옆으로 밀어서 봄(No·성명은 왼쪽에 고정)
+  const z = 1;
   t.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); // 줄여도 구분선이 화면에서 1px로 보이게
   // 세로: 남는 아래 공간만큼 줄 높이를 늘려서 화면 아래까지 크게(글씨는 그대로, 칸만 높아짐)
   const top = wrap.getBoundingClientRect().top;
@@ -5459,7 +5462,7 @@ function mgStickRank(wrap){
   const box = t.closest('.scrollx');
   const rows = [...t.querySelectorAll('tr')].filter(tr=> tr.querySelector('.mgFix'));
   const clear = ()=> rows.forEach(tr=> tr.querySelectorAll('.mgFix').forEach(c=> c.style.left = ''));
-  if(!box || !(box.classList.contains('mFreeze') || box.closest('.cmbPhJoin'))){ clear(); return; }   // PC·가로 화면은 고정 안 함
+  if(!box || !(box.classList.contains('mFreeze') || box.closest('.cmbPhJoin') || box.closest('.cmbJoin'))){ clear(); return; }   // PC·가로 화면은 고정 안 함
   const nm = t.querySelector('thead th.namehead'), hs = [...t.tHead.rows[0].querySelectorAll('th.mgFix')]; if(!nm || !hs.length) return;
   const z = parseFloat(t.style.zoom)||1, W = el=> el.getBoundingClientRect().width / z;
   const lefts = []; let x = W(nm) - 1;
@@ -5557,9 +5560,9 @@ function fitCombinedJoin(wrap){
   const lbx = L.closest('.scrollx'), rbx = Rt.closest('.scrollx');
   const bw = el=>{ const c = getComputedStyle(el); return parseFloat(c.borderLeftWidth) + parseFloat(c.borderRightWidth); };
   const need = L.scrollWidth + Rt.scrollWidth + pad(lp) + pad(rp) + bw(lbx) + bw(rbx) + 4;
-  let z = Math.min(1, wrap.clientWidth / need);
-  if(z < 1){ z = Math.max(PC_FIT_FLOOR, Math.floor(z*1000)/1000 - 0.005); L.style.zoom = z; Rt.style.zoom = z; }   // PC 최소 75%(applyUiZoom과 같은 기준)
-  else Rt.style.width = '100%';
+  //  PC 100%: 표를 줄이지 않고 원래 크기 그대로 — 화면보다 넓으면 옆으로 밀어서 봄(이름 칸은 왼쪽에 고정). 남으면 오른쪽 표를 늘림
+  let z = 1;
+  if(need <= wrap.clientWidth) Rt.style.width = '100%';
   // 높이: 화면 아래 85%까지 줄 높이를 같게 늘림(20~70px)
   const rL = [...L.tBodies[0].rows], rR = [...Rt.tBodies[0].rows], n = Math.min(rL.length, rR.length);
   if(n){
@@ -5570,7 +5573,7 @@ function fitCombinedJoin(wrap){
     for(let i = 0; i < n; i++){ rL[i].style.height = rowH + 'px'; rR[i].style.height = rowH + 'px'; }
     for(let i = 0; i < n; i++){ const h = Math.max(rL[i].getBoundingClientRect().height, rR[i].getBoundingClientRect().height) / z; rL[i].style.height = h + 'px'; rR[i].style.height = h + 'px'; }
     const nowH = L.getBoundingClientRect().height;
-    if(availH >= 120 && nowH > availH + 2){ z = Math.max(PC_FIT_FLOOR, z * availH / nowH); L.style.zoom = z; Rt.style.zoom = z; }
+    // (예전: 화면보다 길면 표 전체를 줄였음 → 이제 줄이지 않고 위아래로 밀어서 봄)
   }
   if(z < 1){ L.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); Rt.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); }
   // 테두리 굵기 차이로 생기는 1~2px 어긋남: 첫 줄 위치를 재서 낮은 쪽에 맞춰 머리글 첫 줄을 늘림
@@ -5578,6 +5581,7 @@ function fitCombinedJoin(wrap){
     const d = rR[0].getBoundingClientRect().top - rL[0].getBoundingClientRect().top;
     if(Math.abs(d) >= 0.3){ const row = (d > 0 ? hL : hR)[0]; if(row) row.style.height = (row.getBoundingClientRect().height + Math.abs(d)) / z + 'px'; }
   }
+  mgStickRank(wrap);   // 월별 근태 성명·지원·순번 고정 위치
 }
 // 휴대폰 가로: 표는 원래 크기(줄이지 않음). 두 표의 첫 줄이 화면에서 같은 높이에 오도록 위쪽 여백만 맞춤 → 좌우 줄이 나란히
 //   (zoom이 없으니 안드로이드·아이폰 모두 같은 계산). 옆으로 민 위치는 기억해서 화면이 새로 그려져도 그대로
@@ -5628,16 +5632,37 @@ const UI_ZOOM_KEY = 'snct_ui_zoom', UI_ZOOM_MIN = 0.7, UI_ZOOM_MAX = 1.6, PC_FIT
 let uiZoom = 1;
 try{ const v = parseFloat(localStorage.getItem(UI_ZOOM_KEY)); if(v >= UI_ZOOM_MIN && v <= UI_ZOOM_MAX) uiZoom = v; }catch(e){}
 const UI_ZOOM_TARGETS = '#content table.otSum, #content table.ctbl, #content table.inTbl, #content #splanTable, #content #dpTable, #content .docGrid, #content .svPages';
+// PC 배차표: 100%일 때도 칸을 크게(130%) 보여 주고 옆으로 밀어서 봄
+const DP_PC_BASE = 1.3;
 function applyUiZoom(){
   const pct = document.getElementById('zoomPct'); if(pct) pct.textContent = Math.round(uiZoom*100) + '%';
   const fp = document.getElementById('zoomFabPct'); if(fp) fp.textContent = Math.round(uiZoom*100) + '%';
   const phone = window.innerWidth <= 700 || (VIEW==='combined' && landPhone()); // 휴대폰 가로 근태관리도 최소 75% 없이 칸에 맞춤
   document.querySelectorAll(UI_ZOOM_TARGETS).forEach(el=>{
     const cur = parseFloat(el.style.zoom) || 1;
-    const z = (phone ? cur : Math.max(cur, Math.min(1, PC_FIT_FLOOR))) * uiZoom;
+    const base = (!phone && el.id==='dpTable') ? DP_PC_BASE : 1;
+    const z = (phone ? cur : Math.max(cur, Math.min(1, PC_FIT_FLOOR))) * uiZoom * base;
     if(Math.abs(z - 1) < 0.001) el.style.zoom = ''; else el.style.zoom = Math.round(z*1000)/1000;
     if(z > cur + 0.001){ const sc = el.closest('.scrollx, .dpWrap'); if(sc) sc.classList.add('zoomScroll'); }
   });
+  viewScrollKeep();
+}
+// 배차표·근태관리·월별 OT현황: 옆·위아래로 민 위치를 기억 → 다시 그려지거나 다른 화면에 갔다 와도 그 자리(PC·휴대폰)
+//  표 크기를 다 맞춘 뒤(applyUiZoom 끝)에 되돌려야 중간에 표가 잠깐 작아져도 위치가 앞으로 밀리지 않음
+const _vs = {};
+function viewScrollBox(){
+  if(VIEW==='dispatch') return document.getElementById('dpWrap');
+  if(VIEW==='ot'){ const t = document.querySelector('table.otSum'); return t && t.closest('.scrollx'); }
+  if(VIEW==='combined'){ const w = document.querySelector('.cmbWrap'); return w && w.classList.contains('cmbJoin') ? w : null; }   // 휴대폰 근태관리는 따로 기억함(fitCombinedPhone)
+  return null;
+}
+function viewScrollKey(){ return VIEW==='dispatch' ? 'dispatch|' + dispatchShift + (dispatchShift==='full' ? '|' + dispatchSunPart : '') : VIEW; }
+function viewScrollKeep(){
+  const box = viewScrollBox(); if(!box) return;
+  const key = viewScrollKey(), st = _vs[key];
+  if(st){ if(Math.abs(box.scrollLeft - st.l) > 1) box.scrollLeft = st.l; if(Math.abs(box.scrollTop - st.t) > 1) box.scrollTop = st.t; }
+  box._vsKey = key;
+  if(!box._vsHook){ box._vsHook = 1; box.addEventListener('scroll', ()=>{ _vs[box._vsKey] = {l: box.scrollLeft, t: box.scrollTop}; }, {passive:true}); }
 }
 function fitAllViews(){ fitOtTable(); fitInputTable(); fitCombined(); fitDocs(); fitSafety(); fitDispatch(); fitSplan(); applyUiZoom(); }
 function setUiZoom(v){
@@ -9941,12 +9966,7 @@ function afterRender(){
   if(dpShift) dpShift.onchange = ()=>{ dispatchShift = dpShift.value; render(); };
   // 팔레트: 선택한 칸에 바로 적용(선택이 없으면 안내)
   el.querySelectorAll('.dpCatBtn').forEach(x=>{ x.onpointerdown = ev=> ev.preventDefault(); x.onclick = ()=> dpApplyCatToSel(x.dataset.cat); });
-  el.querySelectorAll('[data-act="dp-sun-part"]').forEach(x=>x.onclick=()=>{ dispatchSunPart = x.dataset.part; window._dpScrollLeft = 0; render(); });
-  const dpWrapEl = document.getElementById('dpWrap');
-  if(dpWrapEl){
-    if(window._dpScrollLeft) dpWrapEl.scrollLeft = window._dpScrollLeft; // 다시 그려도 보던 위치 유지
-    dpWrapEl.onscroll = ()=>{ window._dpScrollLeft = dpWrapEl.scrollLeft; };
-  }
+  el.querySelectorAll('[data-act="dp-sun-part"]').forEach(x=>x.onclick=()=>{ dispatchSunPart = x.dataset.part; render(); });   // 보던 위치는 viewScrollKeep이 주간·야간 따로 기억
   el.querySelectorAll('[data-dp-scroll]').forEach(x=>x.onclick=()=>{
     if(dpWrapEl) dpWrapEl.scrollBy({left: Number(x.dataset.dpScroll) * 42 * 6, behavior:'smooth'});
   });
