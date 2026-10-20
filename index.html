@@ -709,6 +709,16 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .pcFreeze thead th.namehead.noStick{z-index:5;}
 .pcFreeze .cmbRight thead th.mgFix{z-index:6;}
 .cmbWrap.cmbJoin.pcFreeze .cmbLeft .scrollx,.cmbWrap.cmbJoin.pcFreeze .cmbRight .scrollx{overflow:visible !important;}
+/* PC 근태관리·월별 OT현황 틀고정(배차표처럼): 요약 칸은 왼쪽에 고정, 날짜 칸만 밂, 끝 여백으로 말일까지 */
+.fzInner{display:flex;align-items:flex-start;width:max-content;}
+.fzInner > table{flex:0 0 auto;}
+.fzTail{flex:0 0 auto;height:1px;align-self:flex-start;}
+.pcFreeze td.fzCol,.pcFreeze th.fzCol{position:sticky !important;}
+.pcFreeze tbody td.fzCol{z-index:3;}
+.pcFreeze thead th.fzCol{z-index:8 !important;}
+.pcFreeze tbody td.fzCol:not(.gc):not(.rkCol):not([style*="background"]){background:var(--surface);}
+.pcFreeze .fzEnd{box-shadow:inset -2px 0 0 #111 !important;}
+.cmbWrap.cmbFzLeft > .cmbLeft{position:sticky;left:0;z-index:9;background:var(--surface);}
 /* PC 근태관리(두 표를 붙여 옆으로 밂): 월별 근태로 넘어가면 성명·지원·순번이 왼쪽에 고정 */
 .cmbWrap.cmbJoin .cmbRight td.mgFix{position:sticky;z-index:2;}
 .cmbWrap.cmbJoin .cmbRight td.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
@@ -5042,6 +5052,7 @@ function pageCombined(){
       ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${supHead}${rankHead}${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
+    ${ph ? '' : '<div class="fzTail" id="cmbTail"></div>'}
   </div>
   ${modal}
   ${leaveEmpId ? renderLeaveModal() : ''}
@@ -5157,7 +5168,7 @@ function pageOT(){
     <button class="btn ${otTeamFilter==='2'?'':'ghost'} sm" data-act="ot-team-filter" data-team="2">2조</button>
   </div>
   </div>
-  ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl otSum"><thead>
+  ${sortedEmployees.length? `<div class="scrollx gridwrap"><div class="fzInner"><table class="gtbl otSum"><thead>
     <tr>
       <th rowspan="2" class="namehead">No</th><th rowspan="2" class="namehead" style="left:34px;">성명</th>
       <th class="gh g-meal">식사</th>
@@ -5176,7 +5187,7 @@ function pageOT(){
       <th class="gc g-ot">실</th><th class="gc g-ot">보전</th>
       ${dayHead}
     </tr>
-  </thead><tbody>${rows}</tbody></table></div>`
+  </thead><tbody>${rows}</tbody></table><div class="fzTail" id="otTail"></div></div></div>`
     : `<div class="empty">등록된 직원이 없습니다.</div>`}
   ${otEdit ? renderOtEdit() : ''}
   ${payPw ? renderPayPw() : ''}
@@ -5186,7 +5197,8 @@ function pageOT(){
 /* 월별 OT현황: PC에서는 표 전체(가로·세로)가 한 화면에 들어오도록 자동으로 축소(휴대폰은 그대로, 손가락으로 확대·축소) */
 function fitOtTable(){
   const t = document.querySelector('table.otSum'); if(!t) return;
-  const wrap = t.parentElement;
+  const wrap = t.closest('.scrollx') || t.parentElement;
+  { const tl = document.getElementById('otTail'); if(tl) tl.style.width = '0px'; }   // 끝 여백은 표를 맞춘 뒤 다시 잼
   const rows = Array.from(t.querySelectorAll('tbody tr'));
   t.style.zoom = ''; rows.forEach(tr=> tr.style.height = '');
   if(VIEW==='ot') mFreeze(t);
@@ -5559,6 +5571,7 @@ function cmbPhMark(wrap){
   const top = document.querySelector('.cmbPhTop'); if(top && top.dataset.on !== on) top.dataset.on = on;
 }
 function fitCombinedJoin(wrap){
+  { const tl = document.getElementById('cmbTail'); if(tl) tl.style.width = '0px'; }
   const L = wrap.querySelector('.cmbLeft table.ctbl'), Rt = wrap.querySelector('.cmbRight table.ctbl');
   if(!L || !Rt) return;
   wrap.classList.add('cmbJoin');
@@ -5677,6 +5690,7 @@ function dpTailFit(){
 //  머리글 줄은 위에, No·성명(근태관리는 월별 근태의 성명·지원·순번까지)은 왼쪽에 고정 → 확대해도 오른쪽 끝(말일)까지 밀어서 봄
 function pcFreezeView(){
   document.querySelectorAll('.pcFreeze').forEach(b=>{ b.classList.remove('pcFreeze'); b.style.maxHeight = ''; });
+  fzClear();
   if(window.innerWidth <= 700 || landPhone()) return;
   let box = null, tables = [];
   if(VIEW==='combined'){ box = document.querySelector('.cmbWrap.cmbJoin'); if(box) tables = [...box.querySelectorAll('table.ctbl')]; }
@@ -5686,6 +5700,42 @@ function pcFreezeView(){
   const top = Math.max(0, box.getBoundingClientRect().top);
   box.style.maxHeight = Math.max(280, Math.floor(window.innerHeight - top - 12)) + 'px';
   tables.forEach(t=>{ const head = t.tHead; if(!head) return; [...head.rows].forEach(tr=>{ const y = tr.offsetTop - head.rows[0].offsetTop; [...tr.cells].forEach(th=> th.style.top = y + 'px'); }); });
+  // 배차표처럼: 요약 칸 전체를 왼쪽에 고정하고 날짜 칸만 옆으로 — 끝까지 밀면 말일 칸이 고정칸 바로 옆에 옴
+  const sl = box.scrollLeft; box.scrollLeft = 0;
+  const bx0 = box.getBoundingClientRect().left + box.clientLeft;
+  let fixRight = 0, lastW = 0, tail = null;
+  if(VIEW==='ot'){
+    const t = tables[0], end = t.querySelector('thead th.namehead.noStick'), dh = t.querySelectorAll('thead tr:last-child th');
+    tail = document.getElementById('otTail');
+    if(end){ fzFreezeCols(t, end.getBoundingClientRect().right, 0, bx0); fixRight = end.getBoundingClientRect().right - bx0; }
+    lastW = dh.length ? dh[dh.length-1].getBoundingClientRect().width : 0;
+  } else {
+    const lp = box.querySelector('.cmbLeft'), Rt = box.querySelector('.cmbRight table.ctbl');
+    tail = document.getElementById('cmbTail');
+    if(lp && Rt){
+      box.classList.add('cmbFzLeft');   // 근태 집계 표 전체를 왼쪽에 고정
+      const lpR = lp.getBoundingClientRect().right - bx0;
+      const end = Rt.querySelector('thead th.mgFixEnd') || Rt.querySelector('thead th.namehead');
+      if(end){ fzFreezeCols(Rt, end.getBoundingClientRect().right, lpR, Rt.getBoundingClientRect().left); fixRight = lpR + (end.getBoundingClientRect().right - Rt.getBoundingClientRect().left); }
+      const dh = Rt.querySelectorAll('thead tr:first-child th.dayHead'); lastW = dh.length ? dh[dh.length-1].getBoundingClientRect().width : 0;
+      const rp = box.querySelector('.cmbRight'); if(rp) lastW += Math.max(0, rp.getBoundingClientRect().right - Rt.getBoundingClientRect().right);   // 표 오른쪽 여백(상자 안쪽 여백·테두리)만큼 끝 여백을 줄임
+    }
+  }
+  if(tail && fixRight){ tail.style.width = Math.max(0, Math.floor(box.clientWidth - fixRight - lastW)) + 'px'; }
+  box.scrollLeft = sl;
+}
+// 표의 왼쪽 칸들 고정: 오른쪽 끝이 fixEnd(화면 좌표) 안에 드는 칸을 모두 sticky로 — 고정 위치 = base + (칸 왼쪽 - org)
+//  (표가 zoom으로 줄어 있으면 칸의 left 값도 그 배율로 그려지므로 배율로 나눔)
+function fzFreezeCols(t, fixEnd, base, org){
+  const z = parseFloat(t.style.zoom) || 1;
+  t.querySelectorAll('.fzCol').forEach(c=>{ c.classList.remove('fzCol','fzEnd'); c.style.removeProperty('left'); c.style.removeProperty('position'); });
+  const cells = [...t.querySelectorAll('thead th, tbody td')];
+  const pos = cells.map(c=> c.getBoundingClientRect());
+  cells.forEach((c,i)=>{ const r = pos[i]; if(r.width && r.right <= fixEnd + 0.6){ c.classList.add('fzCol'); if(Math.abs(r.right - fixEnd) < 1.5) c.classList.add('fzEnd'); c.style.setProperty('position', 'sticky', 'important'); c.style.setProperty('left', ((base + r.left - org) / z) + 'px', 'important'); } });   // 다른 칸 규칙(!important)보다 우선
+}
+function fzClear(){
+  document.querySelectorAll('.fzCol').forEach(c=>{ c.classList.remove('fzCol','fzEnd'); c.style.removeProperty('left'); c.style.removeProperty('position'); });
+  document.querySelectorAll('.cmbFzLeft').forEach(b=> b.classList.remove('cmbFzLeft'));
 }
 // 배차표·근태관리·월별 OT현황: 옆·위아래로 민 위치를 기억 → 다시 그려지거나 다른 화면에 갔다 와도 그 자리(PC·휴대폰)
 //  표 크기를 다 맞춘 뒤(applyUiZoom 끝)에 되돌려야 중간에 표가 잠깐 작아져도 위치가 앞으로 밀리지 않음
