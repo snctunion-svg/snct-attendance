@@ -902,6 +902,10 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable td.spLbl{font-weight:700;white-space:nowrap;padding:2px 10px;}
 #splanTable .spIn{width:52px;border:1px solid #cbd5e1;border-radius:5px;padding:3px 2px;background:#fff;color:#111;text-align:center;font-size:12px;font:inherit;font-size:12px;}
 #splanTable.spTall .spIn{height:var(--spInH);font-size:15px;box-sizing:border-box;}
+/* 지원계획표: 숫자 진하게, 토요일 파란색·일요일·공휴일 빨간색 */
+#splanTable .spIn,#splanTable tbody td:not(.spLbl){font-weight:800 !important;}
+#splanTable th.spSat,#splanTable td.spSat,#splanTable td.spSat .spIn{color:#1d4ed8 !important;}
+#splanTable th.spHol,#splanTable td.spHol,#splanTable td.spHol .spIn{color:#dc2626 !important;}
 #splanTable.spTall td{font-size:14px;}
 @media (max-width:700px){ #prevWeek,#nextWeek{display:none !important;} } /* 휴대폰 지원계획표: 이전주·다음주 버튼 숨김 */
 #splanTable td.sp-avail{color:#1d4ed8 !important;font-weight:800;}
@@ -8941,21 +8945,23 @@ function splanCalc(rec){
 function pageSupportPlan(){
   if(!weekStart) weekStart = mondayOf(todayStr());
   const days = Array.from({length:7}, (_,i)=>addDays(weekStart,i));
+  // 토요일 = 파란 글씨, 일요일·공휴일 = 빨간 글씨 (날짜 머리글과 그 날 칸 숫자 모두)
+  const dayCls = ds=>{ const w = new Date(ds+'T00:00:00').getDay(); return (w===0 || holidays[ds]) ? ' spHol' : w===6 ? ' spSat' : ''; };
   const head = `<th>항목</th>` + days.map(ds=>{
     const [y,m,d]=ds.split('-').map(Number);
-    return `<th colspan="2">${m}/${d}(${weekdayKr(y,m,d)})</th>`;
+    return `<th colspan="2" class="${dayCls(ds).trim()}"${holidays[ds] ? ` title="${esc(holidays[ds])}"` : ''}>${m}/${d}(${weekdayKr(y,m,d)})</th>`;
   }).join('');
-  const subhead = `<th></th>` + days.map(()=>`<th style="font-size:10px;">주</th><th style="font-size:10px;">야</th>`).join('');
+  const subhead = `<th></th>` + days.map(ds=>`<th class="${dayCls(ds).trim()}" style="font-size:10px;">주</th><th class="${dayCls(ds).trim()}" style="font-size:10px;">야</th>`).join('');
   const rows = SPLAN_ROWS.map(rowDef=>{
     const cells = days.map(ds=>[['day','주'],['night','야']].map(([shift,shiftLabel])=>{
       const id = `${ds}_${shift}`;
       const rec = supportPlan[id] || {};
       if(rowDef.editable){
-        return `<td style="padding:2px;"><input type="text" inputmode="numeric" pattern="[0-9]*" data-splan-date="${esc(ds)}" data-splan-shift="${esc(shift)}" data-splan-field="${rowDef.key}" value="${rec[rowDef.key]!=null?esc(rec[rowDef.key]):''}" class="spIn"></td>`;
+        return `<td class="${dayCls(ds).trim()}" style="padding:2px;"><input type="text" inputmode="numeric" pattern="[0-9]*" data-splan-date="${esc(ds)}" data-splan-shift="${esc(shift)}" data-splan-field="${rowDef.key}" value="${rec[rowDef.key]!=null?esc(rec[rowDef.key]):''}" class="spIn"></td>`;
       } else {
         const c = splanCalc(rec);
         const val = rowDef.key==='ratio' ? (c.ratio? c.ratio.toFixed(2) : '-') : (c[rowDef.key]||0);
-        return `<td class="sp-${rowDef.key}">${val}</td>`;
+        return `<td class="sp-${rowDef.key}${dayCls(ds)}">${val}</td>`;
       }
     }).join('')).join('');
     return `<tr class="spRow-${rowDef.key}"><td class="spLbl">${esc(rowDef.label)}</td>${cells}</tr>`;
