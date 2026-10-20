@@ -3905,12 +3905,15 @@ function dpDoneSound(team){ dpChime(); if(dpTtsAuto()) setTimeout(()=> dpSpeak(d
   ['pointerdown','touchend','keydown'].forEach(t=> document.addEventListener(t, unlock, {capture:true, passive:true}));
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{ window.speechSynthesis && window.speechSynthesis.resume(); }catch(e){} } });
 })();
-function dpDoneCanPress(){ return (userRole==='leader' || userRole==='union' || userRole==='all') && teamAllowed(dispatchTeamFilter); }   // 조별 조장은 자기 조만   // 배포용(로그인 안 함)은 보기만
+// 배차완료: 배포용(로그인 안 함)도 누를 수 있음 — 조별 조장은 자기 조만. 취소는 조장·UNION만(dpDoneToggle)
+function dpDoneCanPress(){ return teamAllowed(dispatchTeamFilter); }
+function dpDoneCanCancel(){ return (userRole==='leader' || userRole==='union' || userRole==='all') && teamAllowed(dispatchTeamFilter); }   // 배포용(로그인 안 함)은 보기만
 function dpDoneSpeech(team){ return '배차완료'; }
 async function dpDoneToggle(){
   const ds = dispatchDate, team = dispatchTeamFilter, k = dpDoneKey(ds, team);
-  if(!dpDoneCanPress()){ showToast('조장관리·UNION으로 로그인해야 배차완료를 누를 수 있어요.'); return; }
+  if(!dpDoneCanPress()){ showToast(teamDeniedMsg(team)); return; }
   if(dpDone[k]){
+    if(!dpDoneCanCancel()){ showToast('배차완료 취소는 조장관리·UNION으로 로그인해야 할 수 있어요.'); return; }
     appConfirm(`${team}조 배차완료를 취소할까요?`, async ()=>{
       delete dpDone[k]; render();
       try{ if(db) await db.collection('dpDone').doc(k).delete(); }catch(err){ showToast(saveErrMsg('취소 저장에 실패했습니다.', err)); }
@@ -8785,7 +8788,7 @@ function pageDispatch(){
     ${(()=>{ const dd = dpDone[dpDoneKey(ds, dispatchTeamFilter)];
       const tm = dd && dd.at ? new Date(dd.at).toTimeString().slice(0,5) : '';
       if(dpDoneCanPress()) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? `${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)} · 누르면 취소` : `${esc(dispatchTeamFilter)}조 배차완료 + 음성 안내`}">${dd ? '✅ 배차완료' : '📢 배차완료'}</button>${dd ? `<button type="button" class="btn ghost sm dpKakaoBtn" id="dpKakaoBtn" title="배차완료를 카톡으로 보내기">💬<span class="dpLbl"> 카톡</span></button>` : ''}`;
-      return dd ? `<span class="dpDoneChip" title="${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)}">✅ 배차완료</span>` : ''; })()}
+      return dd ? `<span class="dpDoneChip" title="${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)}">✅ 배차완료</span><button type="button" class="btn ghost sm dpKakaoBtn" id="dpKakaoBtn" title="배차완료를 카톡으로 보내기">💬<span class="dpLbl"> 카톡</span></button>` : ''; /* 배포용(보기 전용)도 배차완료된 날은 카톡으로 보낼 수 있음 */ })()}
     <button type="button" class="btn ghost sm dpPushBtn${pushOn() ? ' on' : ''}" id="dpPushBtn" title="${pushOn() ? `${esc((pushLocal()||{}).team || dispatchTeamFilter)}조 배차완료 알림 켜짐 · 누르면 끄기` : '화면이 꺼져 있어도 배차완료 알림 받기'}">${pushOn() ? '🔔<span class="dpLbl"> 알림</span>' : '🔕<span class="dpLbl"> 알림</span>'}</button>
   </div>
   ${dispatchShift==='full' ? `<div class="row" style="margin:-4px 0 12px;align-items:center;">
