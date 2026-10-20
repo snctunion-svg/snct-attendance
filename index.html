@@ -3374,7 +3374,7 @@ function updateNavForRole(){
 // 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
 function applyReadonly(el){
   const allow = new Set(['payPwInput','codeStatsStartInput','codeStatsEndInput','codeStatsMealChk','otRangeStartInput','otRangeEndInput','dpDate','dpShift','vslReload','vslToggle','fDate','fEmp1','fEmp2']);
-  el.querySelectorAll('input,select,textarea').forEach(x=>{ if(!allow.has(x.id) && x.type!=='file') x.disabled = true; });
+  el.querySelectorAll('input,select,textarea').forEach(x=>{ if(!allow.has(x.id) && x.type!=='file' && !(x.dataset && x.dataset.mgRank)) x.disabled = true; });   // 월별 근태 순번 종류 선택은 보기만 하는 사람도 쓸 수 있음(저장하지 않음)
   el.querySelectorAll('#holForm,#teamAddForm,#showAddCodeBtn,#splanResetBtn,#backupImportBtn,#delRecBtn,#attForm button[type="submit"],[data-act="del-emp"],[data-act="del-hol"],[data-act="delete-code"],[data-act="restore-code"],[data-act="save-code"],.dpCatBtn,.editor-only')
     .forEach(x=> x.style.display = 'none');
   el.querySelectorAll('[data-act="toggle-role"]').forEach(x=> x.disabled = true);
