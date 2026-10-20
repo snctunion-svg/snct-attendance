@@ -8499,7 +8499,9 @@ function pageDispatch(){
   if(!codeStatsStart || !codeStatsEnd){ const t = new Date(); codeStatsStart = dstr(t.getFullYear(), t.getMonth()+1, 1); codeStatsEnd = dstr(t.getFullYear(), t.getMonth()+1, daysInMonth(t.getFullYear(), t.getMonth()+1)); }
   const dayIsHol = ['SU','H'].includes(dayCategory(ds, false));
   const allSorted = employees.slice().sort((a,b)=>{ const ta=a.team||'9', tb=b.team||'9'; if(ta!==tb) return ta<tb?-1:1; return (a.teamOrder||999)-(b.teamOrder||999); });
-  const cd = combinedData(allSorted, codeStatsStart, codeStatsEnd);
+  // 퇴근 순번은 그 근무가 시작되기 전까지의 기록으로만 계산(그날 기록은 빼고 전날까지) — 근무 중에 출퇴근 입력·OT가 들어와도 숫자가 바뀌지 않고, 다음 근무(날짜)로 넘어가면 바뀜
+  const dpRankEnd = (()=>{ const prev = addDays(ds, -1); return prev < codeStatsEnd ? prev : codeStatsEnd; })();
+  const cd = combinedData(allSorted, codeStatsStart, dpRankEnd);
   const otRankOf = {};
   cd.perEmp.forEach((r,i)=>{ otRankOf[r.emp.id] = {n: dayIsHol ? cd.rankOtHol[i] : cd.rankOtWk[i], tot: cd.nOtT[cd.teamOf(r)]||0}; });
   // 근무자(근태가 D·N 계열이거나 비어 있는 사람)만 순번을 매김 — 그날 근무자끼리 조별로 1번부터 다시 번호
@@ -8526,7 +8528,7 @@ function pageDispatch(){
     const o = otRankOf[empId]; if(!o || o.n==null) return '';
     return `<span class="rkPlain">${o.n}</span>`;
   };
-  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${dayIsHol?'yel':'pur'}" title="${dayIsHol?'휴일':'평일'} OT(퇴근) 순번 — 근태관리 집계 기간(${esc(codeStatsStart)}~${esc(codeStatsEnd)}) 기준">퇴근</th><th class="dpI dpI5">승무</th>` +
+  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${dayIsHol?'yel':'pur'}" title="${dayIsHol?'휴일':'평일'} OT(퇴근) 순번 — ${esc(codeStatsStart)}~${esc(dpRankEnd)} 기록 기준(그날 근무 기록은 빼고 계산, 다음 근무부터 반영)">퇴근</th><th class="dpI dpI5">승무</th>` +
     slots.map(s=>{
       const mm = s.split(':')[1], hh = slotHourLabel(s);
       const isRed = isMealSlot(s);
