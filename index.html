@@ -749,8 +749,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .cmbPhTop .phTeam .btn.sm{padding:4px 8px;font-size:12px;}
 .cmbTabs{display:none;}
 @media (max-width:700px){
-  .cmbTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid var(--btn);border-radius:10px;overflow:hidden;}
-  .cmbTab{flex:1 1 0;border:0;background:var(--surface);color:var(--btn);font:inherit;font-weight:700;font-size:14px;padding:9px 0;cursor:pointer;}
+  .cmbTabs{display:flex;gap:0;margin:0 0 6px;border:1.5px solid var(--btn);border-radius:10px;overflow:hidden;}
+  .cmbTab{flex:1 1 0;border:0;background:var(--surface);color:var(--btn);font:inherit;font-weight:700;font-size:13.5px;padding:6px 0;cursor:pointer;}
   .cmbTab + .cmbTab{border-left:1.5px solid var(--btn);}
   .cmbTab.on{background:var(--btn);color:#fff;}
   .cmbWrap.cmbShow-stat .cmbRight{display:none !important;}
@@ -5365,8 +5365,10 @@ function fitCombinedPhone(wrap){
   const n = Math.max(...ts.map(t=> t.tBodies[0] ? t.tBodies[0].rows.length : 0));
   if(n && topIn < visH * 0.6){
     const headH = Math.max(...ts.map(t=> t.tHead ? t.tHead.getBoundingClientRect().height : 0));
-    const fab = document.getElementById('zoomFab'), fabH = fab && getComputedStyle(fab).display !== 'none' ? (phoneViewH() - fab.getBoundingClientRect().top + 6) : 0;   // 고정(fixed) 단추는 offsetParent가 없어서 표시 여부로 판단   // 오른쪽 아래 확대·축소 단추에 마지막 줄이 가리지 않게
-    const avail = visH - topIn - 34 - Math.max(0, fabH);   // 표 상자 안쪽 여백·아래 여유
+    // 월별 OT현황·출퇴근 입력과 같은 기준: 표 상자 아래 끝을 화면 아래(10px 위)에 맞추고, 줄 높이 = (높이 - 머리글) ÷ 사람 수
+    //  [근태 집계|월별 근태] 단추 줄 높이만큼은 빼지 않음 → 글씨·줄 크기가 다른 화면(월별 OT현황 등)과 같게(맨 아래 한두 줄은 살짝 내려서 봄)
+    const tabsEl = document.querySelector('.cmbTabs'), tabsH = tabsEl ? tabsEl.getBoundingClientRect().height + 6 : 0;
+    const avail = visH - topIn - 10 - 8 - 4 + tabsH;   // 화면 아래 여유 10 + 표 둘레 여백(위아래 4px씩) + 테두리
     const per = Math.max(16, Math.min(40, Math.floor((avail - headH) / n)));
     ts.forEach(t=>{ t.style.setProperty('--mRowH', per + 'px'); t.style.setProperty('--mFs', Math.max(10, Math.min(14, Math.round(per * 0.46 * 10) / 10)) + 'px'); t.classList.add('mFit'); });
   }
