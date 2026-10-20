@@ -1506,7 +1506,7 @@ function renderDpWho(){
   return `<div id="dpWhoScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:380px;width:92%;margin:0;max-height:86vh;overflow:auto;">
       <h3 style="margin:0 0 2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${esc(who)} ${code ? codeBadge(code) : ''}${(()=>{ const n = isSup ? (e && window._dpSupRank ? window._dpSupRank[e.id] : null) : (window._dpRank ? window._dpRank[empId] : null);
-        return n!=null ? `<span style="font-size:13px;font-weight:700;background:#ede9fe;color:#5b21b6;border-radius:6px;padding:2px 8px;">${isSup ? '지원 순번' : '순번'} ${n}</span>` : ''; })()}</h3>
+        return n!=null ? `<span style="font-size:13px;font-weight:700;background:#ede9fe;color:#5b21b6;border-radius:6px;padding:2px 8px;">${isSup ? '지원 순번' : '퇴근 순번'} ${n}</span>` : ''; })()}</h3>
       <p class="hint" style="margin:0 0 10px;">${m}/${d}(${weekdayKr(y,m,d)}) ${part} 배차</p>
       <table class="tbl" style="width:100%;font-size:13px;"><tbody>${body}</tbody></table>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;">
@@ -8526,7 +8526,7 @@ function pageDispatch(){
     const o = otRankOf[empId]; if(!o || o.n==null) return '';
     return `<span class="rkPlain">${o.n}</span>`;
   };
-  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${dayIsHol?'yel':'pur'}" title="근태관리 집계 기간(${esc(codeStatsStart)}~${esc(codeStatsEnd)}) 기준">순번</th><th class="dpI dpI5">승무</th>` +
+  const head = `<th class="dpI dpI1">No</th><th class="dpI dpI2">성명</th><th class="dpI dpI3">근태</th><th class="dpI dpI4 gc g-${dayIsHol?'yel':'pur'}" title="${dayIsHol?'휴일':'평일'} OT(퇴근) 순번 — 근태관리 집계 기간(${esc(codeStatsStart)}~${esc(codeStatsEnd)}) 기준">퇴근</th><th class="dpI dpI5">승무</th>` +
     slots.map(s=>{
       const mm = s.split(':')[1], hh = slotHourLabel(s);
       const isRed = isMealSlot(s);
