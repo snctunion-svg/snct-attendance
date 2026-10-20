@@ -837,10 +837,14 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .dpHead .btn.sm,.dpHead .dpDoneChip{padding:6px 7px;font-size:12.5px;}
 }
 @media (max-width:370px){
+  .dpHead #dpDate{min-width:74px;}
+  .dpHead .dpKakaoBtn{padding-left:5px !important;padding-right:5px !important;}
   .dpHead .dpLbl{display:none;}
   .dpHead .btn.sm,.dpHead .dpDoneChip{padding:6px 6px;font-size:12px;}
 }
 .dpPushBtn.on{background:#eff6ff !important;color:#1d4ed8 !important;border-color:#93c5fd !important;font-weight:800;}
+.dpKakaoBtn,.btn.dpKakaoGo{background:#fee500 !important;color:#191919 !important;border-color:#e6cf00 !important;font-weight:800;} /* 배차완료 카톡 보내기(카카오 노란색) */
+@media (max-width:700px){ .dpKakaoBtn .dpLbl{display:none;} .dpKakaoBtn{padding-left:8px !important;padding-right:8px !important;} } /* 휴대폰: 윗줄이 넘치지 않게 카톡 단추는 💬만 */
 .dpDoneChip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:800;}
 .dpDoneBtn small,.dpDoneChip small{font-weight:600;opacity:.85;font-size:11px;}
 .otSum td.otMealC sup.otMealNo{position:absolute;top:1px;right:2px;font-size:7.5px;line-height:1;font-weight:800;color:#b45309;letter-spacing:-.3px;pointer-events:none;}
@@ -3823,7 +3827,46 @@ async function dpDoneToggle(){
   dpDoneSound(team);   // 누른 그 순간에 울려야 아이폰에서도 소리가 남
   const d = {date: ds, team, part: k.split('_')[2], at: Date.now()};
   dpDone[k] = d; dpDoneMine[k] = d.at; render();
-  try{ if(db) await db.collection('dpDone').doc(k).set(d); showToast(`✅ ${team}조 배차완료`); pushSendDone(team, d.at); }catch(err){ showToast(saveErrMsg('배차완료 저장에 실패했습니다.', err)); }
+  try{ if(db) await db.collection('dpDone').doc(k).set(d); showToast(`✅ ${team}조 배차완료`); pushSendDone(team, d.at); dpKakaoOffer(d); }catch(err){ showToast(saveErrMsg('배차완료 저장에 실패했습니다.', err)); }
+}
+// ===== 배차완료를 카톡으로: 휴대폰 공유 창(카카오톡 → 대화방 고르기 → 보내기). 문구는 미리 채워 둠 =====
+//  카카오 개발자 등록·비용 없이 아이폰·안드로이드 공유 기능을 씀. 공유 기능이 없는 PC는 문구를 복사해 줌(카톡에 붙여넣기)
+function dpKakaoText(d){
+  d = d || {};
+  const ds = d.date || dispatchDate, [y, m, dd] = String(ds).split('-').map(Number);
+  const wd = ds ? ['일','월','화','수','목','금','토'][new Date(ds+'T00:00:00').getDay()] : '';
+  const part = d.part==='night' ? '야간' : d.part==='day' ? (dispatchShift==='full' ? '일요일 주간' : '주간') : '';
+  const tm = d.at ? new Date(d.at).toTimeString().slice(0,5) : '';
+  const url = /^https?:/.test(location.href) ? location.origin + location.pathname : '';
+  return `✅ ${m}/${dd}(${wd}) ${d.team || dispatchTeamFilter}조${part ? ' ' + part : ''} 배차완료${tm ? ' (' + tm + ')' : ''}\n배차표 확인해 주세요.${url ? '\n' + url : ''}`;
+}
+async function dpKakaoShare(text){
+  if(navigator.share){
+    try{ await navigator.share({text}); return; }
+    catch(e){ if(e && e.name==='AbortError') return; }   // 공유 창을 닫은 경우는 그냥 끝
+  }
+  try{ await navigator.clipboard.writeText(text); showToast('문구를 복사했어요. 카톡 대화방에 붙여넣기 하세요.'); }
+  catch(e){ window.prompt('아래 문구를 복사해서 카톡에 붙여넣기 하세요.', text); }
+}
+// 배차완료를 누른 뒤: "카톡으로도 보낼까요?" — [보내기]를 눌러야 공유 창이 열림(휴대폰은 버튼을 누른 순간에만 공유 창을 열 수 있음)
+function dpKakaoOffer(d){
+  const old = document.getElementById('dpKakaoOverlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'dpKakaoOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:flex;align-items:center;justify-content:center;';
+  const text = dpKakaoText(d);
+  ov.innerHTML = `<div style="background:var(--surface);color:var(--text);border-radius:12px;padding:18px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);">
+      <p style="margin:0 0 8px;font-size:15px;font-weight:800;">카톡으로도 보낼까요?</p>
+      <div style="margin:0 0 14px;font-size:13px;line-height:1.5;white-space:pre-line;word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">${esc(text)}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" class="btn ghost sm" id="dpKakaoNo">나중에</button>
+        <button type="button" class="btn sm dpKakaoGo" id="dpKakaoYes">💬 카톡 보내기</button>
+      </div></div>`;
+  document.body.appendChild(ov);
+  const close = ()=> ov.remove();
+  ov.addEventListener('click', e=>{ if(e.target===ov) close(); });
+  document.getElementById('dpKakaoNo').onclick = close;
+  document.getElementById('dpKakaoYes').onclick = ()=>{ close(); dpKakaoShare(text); };
 }
 function subscribeDispatchDay(dateStr){
   if(!db) return;
@@ -8617,7 +8660,7 @@ function pageDispatch(){
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
     ${(()=>{ const dd = dpDone[dpDoneKey(ds, dispatchTeamFilter)];
       const tm = dd && dd.at ? new Date(dd.at).toTimeString().slice(0,5) : '';
-      if(dpDoneCanPress()) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? `${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)} · 누르면 취소` : `${esc(dispatchTeamFilter)}조 배차완료 + 음성 안내`}">${dd ? '✅ 배차완료' : '📢 배차완료'}</button>`;
+      if(dpDoneCanPress()) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? `${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)} · 누르면 취소` : `${esc(dispatchTeamFilter)}조 배차완료 + 음성 안내`}">${dd ? '✅ 배차완료' : '📢 배차완료'}</button>${dd ? `<button type="button" class="btn ghost sm dpKakaoBtn" id="dpKakaoBtn" title="배차완료를 카톡으로 보내기">💬<span class="dpLbl"> 카톡</span></button>` : ''}`;
       return dd ? `<span class="dpDoneChip" title="${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)}">✅ 배차완료</span>` : ''; })()}
     <button type="button" class="btn ghost sm dpPushBtn${pushOn() ? ' on' : ''}" id="dpPushBtn" title="${pushOn() ? `${esc((pushLocal()||{}).team || dispatchTeamFilter)}조 배차완료 알림 켜짐 · 누르면 끄기` : '화면이 꺼져 있어도 배차완료 알림 받기'}">${pushOn() ? '🔔<span class="dpLbl"> 알림</span>' : '🔕<span class="dpLbl"> 알림</span>'}</button>
   </div>
@@ -9438,6 +9481,7 @@ function afterRender(){
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   { const db0 = document.getElementById('dpDoneBtn'); if(db0) db0.onclick = dpDoneToggle; }
+  { const kb = document.getElementById('dpKakaoBtn'); if(kb) kb.onclick = ()=>{ const dd = dpDone[dpDoneKey(dispatchDate, dispatchTeamFilter)]; if(dd) dpKakaoShare(dpKakaoText(dd)); }; }
   { const pb = document.getElementById('dpPushBtn'); if(pb) pb.onclick = pushToggle; }
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; inputTeam = dispatchTeamFilter; pushSyncTeam(); try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); localStorage.setItem('snct_input_team', inputTeam); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
   bindPayroll(el);
