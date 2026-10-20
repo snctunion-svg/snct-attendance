@@ -900,17 +900,20 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable th,#splanTable td{color:#111 !important;text-align:center !important;vertical-align:middle;padding:2px 4px;}
 #splanTable thead th{font-weight:800;font-size:12px;background:#f1f5f9;}
 #splanTable td.spLbl{font-weight:700;white-space:nowrap;padding:2px 10px;}
-#splanTable .spIn{width:52px;border:1px solid #cbd5e1;border-radius:5px;padding:3px 2px;background:#fff;color:#111;text-align:center;font-size:12px;font:inherit;font-size:12px;}
+#splanTable .spIn{width:52px;border:0;border-radius:0;padding:3px 2px;background:transparent;color:#111;text-align:center;font:inherit;font-size:12px;outline:none;}
+#splanTable td.spInCell{padding:0 !important;background:#fffbea;}   /* 입력 칸: 네모 없이 칸 자체가 입력창(연한 노란 바탕) */
+#splanTable td.spInCell .spIn{width:100% !important;height:100%;min-height:28px;box-sizing:border-box;}
+#splanTable td.spInCell:focus-within{box-shadow:inset 0 0 0 2px #2563eb;}
 #splanTable.spTall .spIn{height:var(--spInH);font-size:15px;box-sizing:border-box;}
-/* 지원계획표: 숫자 진하게, 토요일 파란색·일요일·공휴일 빨간색 */
-#splanTable .spIn,#splanTable tbody td:not(.spLbl){font-weight:800 !important;}
-#splanTable th.spSat,#splanTable td.spSat,#splanTable td.spSat .spIn{color:#1d4ed8 !important;}
-#splanTable th.spHol,#splanTable td.spHol,#splanTable td.spHol .spIn{color:#dc2626 !important;}
+/* 지원계획표: 숫자 진하게·모두 검은 글씨 (날짜 머리글만 토요일 파랑·일요일/공휴일 빨강) */
+#splanTable .spIn,#splanTable tbody td:not(.spLbl){font-weight:800 !important;color:#111 !important;}
+#splanTable th.spSat{color:#1d4ed8 !important;}
+#splanTable th.spHol{color:#dc2626 !important;}
 #splanTable.spTall td{font-size:14px;}
 @media (max-width:700px){ #prevWeek,#nextWeek{display:none !important;} } /* 휴대폰 지원계획표: 이전주·다음주 버튼 숨김 */
-#splanTable td.sp-avail{color:#1d4ed8 !important;font-weight:800;}
+#splanTable td.sp-avail{color:#111 !important;font-weight:800;}
 #splanTable td.sp-attend{color:#111 !important;font-weight:900;}
-#splanTable td.sp-ratio{color:#dc2626 !important;font-weight:800;}
+#splanTable td.sp-ratio{color:#111 !important;font-weight:800;}
 /* 표 폭만큼만 테두리(오른쪽 빈 공간 없앰) */
 .scrollx.fitW{width:fit-content;max-width:100%;}
 .dpBox{width:fit-content;max-width:100%;}
@@ -3811,6 +3814,7 @@ function ensureForView(){
     if(VIEW==='combined' && leaveEmpId && leaveYear) ensureAttendanceRange(`${leaveYear}-01-01`, `${leaveYear}-12-31`);
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
+  else if(VIEW==='splan'){ const ws = weekStart || mondayOf(todayStr()); ensureAttendanceRange(ws, addDays(ws, 6)); }   // 휴가·연차·기타 자동 계산용 근태
   else if(VIEW==='mail'){ const mr = mailRangeNow(); ensureAttendanceRange(mr.start, mr.end); }
   else if(VIEW==='eqpay') eqPayEnsure();
   else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
@@ -8923,11 +8927,11 @@ function pageDispatch(){
 }
 
 /* ========================= 지원계획표 ========================= */
+// 지원계획표 줄: 가동대수·정원·휴가연차기타는 자동, 선지원·지원휴무·지원만 입력
 const SPLAN_ROWS = [
-  {key:'capacity', label:'가동대수(입력)', editable:true},
-  {key:'quota', label:'정원(입력)', editable:true},
-  {key:'offCount', label:'휴무·휴가·기타(입력)', editable:true},
-  {key:'leadCount', label:'총괄조장(입력)', editable:true},
+  {key:'capacity', label:'가동대수', auto:true},
+  {key:'quota', label:'정원', auto:true},
+  {key:'offCount', label:'휴가·연차·기타', auto:true},
   {key:'preSupport', label:'선지원(입력)', editable:true},
   {key:'supportOff', label:'지원휴무(입력)', editable:true},
   {key:'support', label:'지원(입력)', editable:true},
@@ -8935,12 +8939,37 @@ const SPLAN_ROWS = [
   {key:'attend', label:'출근원', editable:false},
   {key:'ratio', label:'교대비율', editable:false}
 ];
-function splanCalc(rec){
+// 자동값: 그날 그 근무(주간·야간)를 맡은 조 기준
+//  · 가동대수 = 선석조회 크레인(QC) 작업시간에서 근무시간 중 동시에 작업한 최대 대수(주간 08~18시, 야간 18~다음날 08시)
+//  · 정원 = 조편성 관리의 그 조 인원(주간·야간 조는 주마다 바뀜 — 교대 순환 그대로)
+//  · 휴가·연차·기타 = 그 조에서 근태코드가 근무(D·N·DN·ND)·선지원(DS·NS)·지원휴무(SC)·지원(SP)이 아닌 사람 수
+const SP_WORK = new Set(['D','N','DN','ND','DS','NS','SC','SP']);
+function splanTeam(ds, shift){ const want = shift==='night' ? 'N' : 'D'; return ['1','2'].find(t=> scheduledShift(ds, t)===want) || ''; }
+function splanAuto(ds, shift){
+  const team = splanTeam(ds, shift), list = team ? employees.filter(e=> String(e.team||'')===team) : [];
+  let off = 0;
+  list.forEach(e=>{ const c = gridCode(attStore[ds+'_'+e.id], ds, String(e.name||'').trim()); if(c && !SP_WORK.has(c)) off++; });
+  let cap = null;
+  const a0 = shift==='night' ? fcaAt(ds, 18) : fcaAt(ds, 8), z0 = shift==='night' ? fcaAt(addDays(ds,1), 8) : fcaAt(ds, 18);
+  if(BQ.days[ds] && (shift!=='night' || BQ.days[addDays(ds,1)])) cap = fcaCranes(a0, z0);
+  return {team, quota: list.length, offCount: off, capacity: cap};
+}
+// 선석 자료(크레인)는 그 주 것을 한 번만 받아 둠(이 기기에 저장, 지난 날짜는 다시 안 받음)
+const _spBq = {};
+function splanEnsureBerth(ws){
+  if(!vslApi || FCA.running || _spBq[ws]) return;
+  if(!bqMissing(ws, addDays(ws, 7)).length) return;
+  _spBq[ws] = 1;
+  setTimeout(()=> fcaLoadBerth(ws, addDays(ws, 6), null), 0);   // 화면을 그리는 도중이 아니라 그린 뒤에 받기 시작(다 받으면 다시 그림)
+}
+function splanCalc(rec, auto){
   const n = k => Number(rec && rec[k]) || 0;
-  const avail = n('quota') - n('offCount') - n('supportOff');
-  const attend = avail + n('leadCount') + n('preSupport') + n('support');
-  const ratio = n('capacity') ? attend / n('capacity') : 0;
-  return {avail, attend, ratio};
+  const quota = auto ? auto.quota : n('quota'), offCount = auto ? auto.offCount : n('offCount');
+  const capacity = auto && auto.capacity != null ? auto.capacity : n('capacity');
+  const avail = quota - offCount - n('supportOff');
+  const attend = avail + n('preSupport') + n('support');
+  const ratio = capacity ? attend / capacity : 0;
+  return {capacity, quota, offCount, avail, attend, ratio};
 }
 function pageSupportPlan(){
   if(!weekStart) weekStart = mondayOf(todayStr());
@@ -8951,17 +8980,22 @@ function pageSupportPlan(){
     const [y,m,d]=ds.split('-').map(Number);
     return `<th colspan="2" class="${dayCls(ds).trim()}"${holidays[ds] ? ` title="${esc(holidays[ds])}"` : ''}>${m}/${d}(${weekdayKr(y,m,d)})</th>`;
   }).join('');
-  const subhead = `<th></th>` + days.map(ds=>`<th class="${dayCls(ds).trim()}" style="font-size:10px;">주</th><th class="${dayCls(ds).trim()}" style="font-size:10px;">야</th>`).join('');
+  const subhead = `<th></th>` + days.map(ds=>`<th class="${dayCls(ds).trim()}" style="font-size:10px;">주간</th><th class="${dayCls(ds).trim()}" style="font-size:10px;">야간</th>`).join('');
+  splanEnsureBerth(weekStart);
   const rows = SPLAN_ROWS.map(rowDef=>{
     const cells = days.map(ds=>[['day','주'],['night','야']].map(([shift,shiftLabel])=>{
       const id = `${ds}_${shift}`;
       const rec = supportPlan[id] || {};
       if(rowDef.editable){
-        return `<td class="${dayCls(ds).trim()}" style="padding:2px;"><input type="text" inputmode="numeric" pattern="[0-9]*" data-splan-date="${esc(ds)}" data-splan-shift="${esc(shift)}" data-splan-field="${rowDef.key}" value="${rec[rowDef.key]!=null?esc(rec[rowDef.key]):''}" class="spIn"></td>`;
+        return `<td class="spInCell"><input type="text" inputmode="numeric" pattern="[0-9]*" data-splan-date="${esc(ds)}" data-splan-shift="${esc(shift)}" data-splan-field="${rowDef.key}" value="${rec[rowDef.key]!=null && rec[rowDef.key]!==0 ? esc(rec[rowDef.key]) : ''}" class="spIn"></td>`;
       } else {
-        const c = splanCalc(rec);
-        const val = rowDef.key==='ratio' ? (c.ratio? c.ratio.toFixed(2) : '-') : (c[rowDef.key]||0);
-        return `<td class="sp-${rowDef.key}${dayCls(ds)}">${val}</td>`;
+        const auto = splanAuto(ds, shift), c = splanCalc(rec, auto);
+        let val;
+        if(rowDef.key==='ratio') val = c.ratio ? c.ratio.toFixed(2) : '-';
+        else if(rowDef.key==='capacity') val = auto.capacity != null ? auto.capacity : (Number(rec.capacity) || '-');   // 선석 자료가 없으면 예전에 넣은 값(없으면 -)
+        else val = c[rowDef.key] || 0;
+        const tip = rowDef.key==='quota' ? ` title="${esc(auto.team)}조 인원"` : rowDef.key==='capacity' ? ` title="${auto.capacity != null ? '선석조회 크레인 동시 작업 최대 대수' : '선석 자료 없음'}"` : '';
+        return `<td class="sp-${rowDef.key}${rowDef.auto ? ' spAuto' : ''}"${tip}>${val}</td>`;
       }
     }).join('')).join('');
     return `<tr class="spRow-${rowDef.key}"><td class="spLbl">${esc(rowDef.label)}</td>${cells}</tr>`;
