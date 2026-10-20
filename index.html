@@ -702,6 +702,13 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbRight .ctbl.gtbl thead th.mgFix{min-width:34px;width:34px;font-size:11.5px !important;}
   .cmbRight .ctbl.gtbl td.mgFix{min-width:34px;width:34px;}
 }
+/* PC 근태관리·월별 OT현황: 표 상자 안에서 위아래·옆으로 밂(가로 스크롤 막대가 화면 안에 보임), 머리글은 위에 고정 */
+.pcFreeze{overflow:auto !important;overscroll-behavior:contain;}
+.pcFreeze thead th{position:sticky;z-index:5;}
+.pcFreeze thead th.namehead{z-index:7;}
+.pcFreeze thead th.namehead.noStick{z-index:5;}
+.pcFreeze .cmbRight thead th.mgFix{z-index:6;}
+.cmbWrap.cmbJoin.pcFreeze .cmbLeft .scrollx,.cmbWrap.cmbJoin.pcFreeze .cmbRight .scrollx{overflow:visible !important;}
 /* PC 근태관리(두 표를 붙여 옆으로 밂): 월별 근태로 넘어가면 성명·지원·순번이 왼쪽에 고정 */
 .cmbWrap.cmbJoin .cmbRight td.mgFix{position:sticky;z-index:2;}
 .cmbWrap.cmbJoin .cmbRight td.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
@@ -5179,8 +5186,11 @@ function fitOtTable(){
   t.style.zoom = ''; rows.forEach(tr=> tr.style.height = '');
   if(VIEW==='ot') mFreeze(t);
   if(VIEW!=='ot' || window.innerWidth <= 700) return;
-  // 가로: PC 100%는 표를 줄이지 않고 원래 크기 그대로 — 화면보다 넓으면 옆으로 밀어서 봄(No·성명은 왼쪽에 고정)
-  const z = 1;
+  // 가로: 표 전체 폭이 화면에 들어오게 축소
+  const availW = wrap.clientWidth - 2;
+  let z = Math.min(1, availW / t.scrollWidth);
+  z = Math.max(0.45, Math.floor(z*100)/100);
+  if(z < 1) t.style.zoom = z;
   t.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); // 줄여도 구분선이 화면에서 1px로 보이게
   // 세로: 남는 아래 공간만큼 줄 높이를 늘려서 화면 아래까지 크게(글씨는 그대로, 칸만 높아짐)
   const top = wrap.getBoundingClientRect().top;
@@ -5560,9 +5570,9 @@ function fitCombinedJoin(wrap){
   const lbx = L.closest('.scrollx'), rbx = Rt.closest('.scrollx');
   const bw = el=>{ const c = getComputedStyle(el); return parseFloat(c.borderLeftWidth) + parseFloat(c.borderRightWidth); };
   const need = L.scrollWidth + Rt.scrollWidth + pad(lp) + pad(rp) + bw(lbx) + bw(rbx) + 4;
-  //  PC 100%: 표를 줄이지 않고 원래 크기 그대로 — 화면보다 넓으면 옆으로 밀어서 봄(이름 칸은 왼쪽에 고정). 남으면 오른쪽 표를 늘림
-  let z = 1;
-  if(need <= wrap.clientWidth) Rt.style.width = '100%';
+  let z = Math.min(1, wrap.clientWidth / need);
+  if(z < 1){ z = Math.max(PC_FIT_FLOOR, Math.floor(z*1000)/1000 - 0.005); L.style.zoom = z; Rt.style.zoom = z; }   // PC 최소 75%(applyUiZoom과 같은 기준)
+  else Rt.style.width = '100%';
   // 높이: 화면 아래 85%까지 줄 높이를 같게 늘림(20~70px)
   const rL = [...L.tBodies[0].rows], rR = [...Rt.tBodies[0].rows], n = Math.min(rL.length, rR.length);
   if(n){
@@ -5573,7 +5583,7 @@ function fitCombinedJoin(wrap){
     for(let i = 0; i < n; i++){ rL[i].style.height = rowH + 'px'; rR[i].style.height = rowH + 'px'; }
     for(let i = 0; i < n; i++){ const h = Math.max(rL[i].getBoundingClientRect().height, rR[i].getBoundingClientRect().height) / z; rL[i].style.height = h + 'px'; rR[i].style.height = h + 'px'; }
     const nowH = L.getBoundingClientRect().height;
-    // (예전: 화면보다 길면 표 전체를 줄였음 → 이제 줄이지 않고 위아래로 밀어서 봄)
+    if(availH >= 120 && nowH > availH + 2){ z = Math.max(PC_FIT_FLOOR, z * availH / nowH); L.style.zoom = z; Rt.style.zoom = z; }
   }
   if(z < 1){ L.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); Rt.style.setProperty('--sepW', (1/z).toFixed(2)+'px'); }
   // 테두리 굵기 차이로 생기는 1~2px 어긋남: 첫 줄 위치를 재서 낮은 쪽에 맞춰 머리글 첫 줄을 늘림
@@ -5632,20 +5642,32 @@ const UI_ZOOM_KEY = 'snct_ui_zoom', UI_ZOOM_MIN = 0.7, UI_ZOOM_MAX = 1.6, PC_FIT
 let uiZoom = 1;
 try{ const v = parseFloat(localStorage.getItem(UI_ZOOM_KEY)); if(v >= UI_ZOOM_MIN && v <= UI_ZOOM_MAX) uiZoom = v; }catch(e){}
 const UI_ZOOM_TARGETS = '#content table.otSum, #content table.ctbl, #content table.inTbl, #content #splanTable, #content #dpTable, #content .docGrid, #content .svPages';
-// PC 배차표: 100%일 때도 칸을 크게(130%) 보여 주고 옆으로 밀어서 봄
-const DP_PC_BASE = 1.3;
 function applyUiZoom(){
   const pct = document.getElementById('zoomPct'); if(pct) pct.textContent = Math.round(uiZoom*100) + '%';
   const fp = document.getElementById('zoomFabPct'); if(fp) fp.textContent = Math.round(uiZoom*100) + '%';
   const phone = window.innerWidth <= 700 || (VIEW==='combined' && landPhone()); // 휴대폰 가로 근태관리도 최소 75% 없이 칸에 맞춤
   document.querySelectorAll(UI_ZOOM_TARGETS).forEach(el=>{
     const cur = parseFloat(el.style.zoom) || 1;
-    const base = (!phone && el.id==='dpTable') ? DP_PC_BASE : 1;
-    const z = (phone ? cur : Math.max(cur, Math.min(1, PC_FIT_FLOOR))) * uiZoom * base;
+    const z = (phone ? cur : Math.max(cur, Math.min(1, PC_FIT_FLOOR))) * uiZoom;
     if(Math.abs(z - 1) < 0.001) el.style.zoom = ''; else el.style.zoom = Math.round(z*1000)/1000;
     if(z > cur + 0.001){ const sc = el.closest('.scrollx, .dpWrap'); if(sc) sc.classList.add('zoomScroll'); }
   });
+  pcFreezeView();
   viewScrollKeep();
+}
+// PC 근태관리·월별 OT현황: 배차표처럼 표 상자를 화면 높이 안에 넣어 아래 가로 스크롤 막대가 늘 보이게 하고,
+//  머리글 줄은 위에, No·성명(근태관리는 월별 근태의 성명·지원·순번까지)은 왼쪽에 고정 → 확대해도 오른쪽 끝(말일)까지 밀어서 봄
+function pcFreezeView(){
+  document.querySelectorAll('.pcFreeze').forEach(b=>{ b.classList.remove('pcFreeze'); b.style.maxHeight = ''; });
+  if(window.innerWidth <= 700 || landPhone()) return;
+  let box = null, tables = [];
+  if(VIEW==='combined'){ box = document.querySelector('.cmbWrap.cmbJoin'); if(box) tables = [...box.querySelectorAll('table.ctbl')]; }
+  else if(VIEW==='ot'){ const t = document.querySelector('table.otSum'); box = t && t.closest('.scrollx'); if(t) tables = [t]; }
+  if(!box) return;
+  box.classList.add('pcFreeze');
+  const top = Math.max(0, box.getBoundingClientRect().top);
+  box.style.maxHeight = Math.max(280, Math.floor(window.innerHeight - top - 12)) + 'px';
+  tables.forEach(t=>{ const head = t.tHead; if(!head) return; [...head.rows].forEach(tr=>{ const y = tr.offsetTop - head.rows[0].offsetTop; [...tr.cells].forEach(th=> th.style.top = y + 'px'); }); });
 }
 // 배차표·근태관리·월별 OT현황: 옆·위아래로 민 위치를 기억 → 다시 그려지거나 다른 화면에 갔다 와도 그 자리(PC·휴대폰)
 //  표 크기를 다 맞춘 뒤(applyUiZoom 끝)에 되돌려야 중간에 표가 잠깐 작아져도 위치가 앞으로 밀리지 않음
