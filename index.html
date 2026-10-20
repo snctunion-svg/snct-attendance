@@ -3837,8 +3837,9 @@ function dpKakaoText(d){
   const wd = ds ? ['일','월','화','수','목','금','토'][new Date(ds+'T00:00:00').getDay()] : '';
   const part = d.part==='night' ? '야간' : d.part==='day' ? (dispatchShift==='full' ? '일요일 주간' : '주간') : '';
   const tm = d.at ? new Date(d.at).toTimeString().slice(0,5) : '';
-  // 앱 주소는 넣지 않음 — 카톡이 주소를 보면 '링크 미리보기' 말풍선을 하나 더 붙여서 두 개로 보이기 때문
-  return `✅ ${m}/${dd}(${wd}) ${d.team || dispatchTeamFilter}조${part ? ' ' + part : ''} 배차완료${tm ? ' (' + tm + ')' : ''}\n배차표 확인해 주세요.`;
+  // 앱 주소를 문구 안에 같이 넣음(누르면 바로 배차표). 카톡이 링크 미리보기를 따로 붙일 수 있음(보내는 쪽에서 끌 수 없음)
+  const url = /^https?:/.test(location.href) ? location.origin + location.pathname : '';
+  return `✅ ${m}/${dd}(${wd}) ${d.team || dispatchTeamFilter}조${part ? ' ' + part : ''} 배차완료${tm ? ' (' + tm + ')' : ''}\n배차표 확인해 주세요.${url ? '\n' + url : ''}`;
 }
 async function dpKakaoShare(text){
   if(navigator.share){
