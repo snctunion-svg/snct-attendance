@@ -844,6 +844,14 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 }
 .dpPushBtn.on{background:#eff6ff !important;color:#1d4ed8 !important;border-color:#93c5fd !important;font-weight:800;}
 .dpKakaoBtn,.btn.dpKakaoGo{background:#fee500 !important;color:#191919 !important;border-color:#e6cf00 !important;font-weight:800;} /* 배차완료 카톡 보내기(카카오 노란색) */
+.inBtnRow .inDirtyS{display:none;}
+@media (max-width:700px){ /* 휴대폰 출퇴근 입력: 저장·수정·조장 마감·조장 수정을 한 줄로, 설명 글은 숨김 */
+  .inBtnRow{flex-wrap:nowrap !important;gap:5px !important;}
+  .inBtnRow .inLeadBtns{display:contents;}
+  .inBtnRow .btn{flex:1 1 auto;min-width:0;padding:8px 4px !important;font-size:12.5px !important;white-space:nowrap;}
+  .inBtnRow .inDirty{display:none;} .inBtnRow .inDirtyS{display:inline;}
+  .inBtnRow .inLockMsg{display:none;}
+}
 @media (max-width:700px){ .dpKakaoBtn .dpLbl{display:none;} .dpKakaoBtn{padding-left:8px !important;padding-right:8px !important;} } /* 휴대폰: 윗줄이 넘치지 않게 카톡 단추는 💬만 */
 .dpDoneChip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:800;}
 .dpDoneBtn small,.dpDoneChip small{font-weight:600;opacity:.85;font-size:11px;}
@@ -4428,15 +4436,15 @@ function pageInput(){
     <div class="scrollx gridwrap fitW"><table class="gtbl inTbl${locked ? ' inLocked' : ''}${viewOnly ? ' inView' : ''}"><thead><tr>
       <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
-    <div class="row" style="margin-top:12px;align-items:center;">
-      <button class="btn" id="inSave"${locked || viewOnly ? ' disabled' : ''}>저장${dirtyN && !locked ? ` (${dirtyN}명 변경)` : ''}</button>
+    <div class="row inBtnRow" style="margin-top:12px;align-items:center;">
+      <button class="btn" id="inSave"${locked || viewOnly ? ' disabled' : ''}>저장${dirtyN && !locked ? `<span class="inDirty"> (${dirtyN}명 변경)</span><span class="inDirtyS">(${dirtyN})</span>` : ''}</button>
       ${(()=>{ const en = !leaderClosed && (viewOnly || editing);   // 조장 마감된 날은 일반 [수정] 안 됨
         const on = editing && !leaderClosed;   // 고치는 중이면 버튼을 눌린 모양으로(다시 누르면 고친 것 버리고 보기 상태)
         return `<button class="btn ${on ? '' : 'ghost'}" id="inEdit"${en ? '' : ' disabled'} title="${leaderClosed ? '조장 마감된 날 — [조장 수정]으로만 고칠 수 있어요' : on ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '저장된 기록 고치기'}">✏️ 수정</button>`; })()}
       ${leader ? `<span class="inLeadBtns"><button class="btn ${leaderClosed ? '' : 'ghost'} inCloseBtn${leaderClosed ? ' on' : ''}" id="inCloseBtn" title="${leaderClosed ? '누르면 조장 마감 풀기' : '일반 [수정]·[저장] 못 하게 잠금'}">${leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감'}</button>
         <button class="btn ${leaderEditing ? '' : 'ghost'}" id="inLeadEdit"${leaderClosed ? '' : ' disabled'} title="${leaderEditing ? '고치는 중 — 다시 누르면 고친 것 버리고 잠금' : '조장 마감된 날 고치기'}">🔓 조장 수정</button></span>` : ''}
       ${leaderClosed ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>조장 마감</b>됐어요.${leaderEditing ? ' 고친 뒤 [저장]을 누르세요.' : leader ? ' 고치려면 [조장 수정]을 누르세요.' : ' 고치려면 조장에게 말씀하세요.'}</span>`
-        : viewOnly ? `<span class="hint" style="margin:0;">저장된 기록이에요. 고치려면 [수정]을 누르세요.</span>` : ''}
+        : ''}
     </div>
   </div>`;
 }
