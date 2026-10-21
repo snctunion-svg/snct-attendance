@@ -4238,33 +4238,16 @@ async function dpShotOpen(){
   const canCopy = !!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) && !(window.innerWidth <= 700);   // PC: 사진을 복사 → 카톡 PC 대화창에 Ctrl+V
   const body = document.getElementById('dpShotBody'); if(!body) return;
   body.className = '';
-  body.innerHTML = parts.map(pt=> `<div style="margin:0 0 10px;"><div style="font-weight:800;margin:0 0 4px;">${pt.name} <small style="color:var(--text-muted);">${pt.label}</small></div>
-      <img src="${st.urls[pt.k]}" alt="${pt.name}" style="width:100%;border:1px solid var(--border);border-radius:6px;display:block;"></div>`).join('')
-    + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-      <button type="button" class="btn sm dpKakaoBtn" data-shot="ab">💬 둘 다 보내기</button>
-      <button type="button" class="btn ghost sm" data-shot="a">전반만</button><button type="button" class="btn ghost sm" data-shot="b">후반만</button></div>
-      ${canCopy ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;"><b style="font-size:13px;">PC 카톡</b>
-        <button type="button" class="btn sm" data-copy="a">📋 전반 복사</button><button type="button" class="btn sm" data-copy="b">📋 후반 복사</button></div>` : ''}
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;"><b style="font-size:13px;">카카오 카드</b>
-        <button type="button" class="btn sm dpKakaoBtn" data-card="a" disabled>💬 전반 카드</button><button type="button" class="btn sm dpKakaoBtn" data-card="b" disabled>💬 후반 카드</button>
-        <span id="dpCardMsg" class="hint" style="margin:0;">${kakaoReady() ? '준비 중…' : '카카오를 불러오지 못했어요(앱 주소에서만 돼요).'}</span></div>
-      <p class="hint" style="margin:8px 0 0;">${canShare ? '<b>보내기:</b> 공유 창 → <b>카카오톡</b> → 방 고르기 (사진 그대로)' : '<b>보내기:</b> 이 기기에서는 사진 파일로 내려받아요.'}${canCopy ? '<br><b>PC 카톡:</b> [📋 복사] → 카톡 PC 대화방 입력칸에서 <b>Ctrl + V</b> → 전송 (한 장씩, 사진 그대로)' : ''}<br><b>카카오 카드:</b> 카카오 창 → 방 고르기 (카드 안에 작은 사진 + [배차표 열기])</p>`;
-  // 카카오 카드: 사진을 카카오 서버에 미리 올려 두고(휴대폰은 누른 순간 카톡을 열어야 해서) → 누르면 카드로 보냄
-  if(kakaoReady()){
-    const msg = ()=> document.getElementById('dpCardMsg');
-    Promise.all(parts.map(pt=> window.Kakao.Share.uploadImage({file:[st.files[pt.k]]}).then(r=>{ const o = r && r.infos && r.infos.original; st.cards = st.cards || {}; if(o) st.cards[pt.k] = {url:o.url, w:o.width, h:o.height, title:`${dispatchDate.slice(5).replace('-','/')} ${dispatchTeamFilter}조 ${dpShotNight() ? '야간' : '주간'} · ${pt.name} ${pt.label}`}; })))
-      .then(()=>{ if(dpShot!==st) return; body.querySelectorAll('[data-card]').forEach(b=> b.disabled = !(st.cards && st.cards[b.dataset.card])); const m = msg(); if(m) m.textContent = ''; })
-      .catch(err=>{ console.warn('kakao upload', err); const m = msg(); if(m) m.textContent = '카카오에 사진을 올리지 못했어요.'; });
-  }
-  body.querySelectorAll('[data-card]').forEach(b=> b.onclick = ()=>{
-    const c = st.cards && st.cards[b.dataset.card]; if(!c || !kakaoReady()) return;
-    const url = dpKakaoUrl();
-    try{ window.Kakao.Share.sendDefault({ objectType:'feed', content:{ title:c.title, description:'배차표 확인해 주세요.', imageUrl:c.url, imageWidth:c.w, imageHeight:c.h, link:{mobileWebUrl:url, webUrl:url} }, buttons:[{ title:'배차표 열기', link:{mobileWebUrl:url, webUrl:url} }] }); }
-    catch(err){ console.warn('kakao card', err); showToast('카카오 카드를 보내지 못했어요.'); } });
+  // 보이는 것: PC = [📋 전반 복사][📋 후반 복사] (카톡 PC 대화방에 Ctrl+V) / 휴대폰 = [💬 카톡 전반][💬 카톡 후반] (공유 창 → 카카오톡)
+  body.innerHTML = canCopy
+    ? `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;"><b style="font-size:15px;">PC 카톡</b>
+        <button type="button" class="btn" data-copy="a">📋 전반 복사</button><button type="button" class="btn" data-copy="b">📋 후반 복사</button></div>`
+    : `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;"><b style="font-size:15px;">카톡</b>
+        <button type="button" class="btn dpKakaoBtn" data-shot="a">💬 전반</button><button type="button" class="btn dpKakaoBtn" data-shot="b">💬 후반</button></div>`;
   body.querySelectorAll('[data-copy]').forEach(b=> b.onclick = async ()=>{
     const f = st.files[b.dataset.copy]; if(!f) return;
     try{ await navigator.clipboard.write([new ClipboardItem({'image/png': f})]); showToast(`${b.dataset.copy==='a' ? '전반' : '후반'} 사진을 복사했어요. 카톡 대화방에서 Ctrl + V 하세요.`); }
-    catch(err){ showToast('복사하지 못했어요. [보내기]로 내려받아 보내 주세요.'); } });
+    catch(err){ showToast('복사하지 못했어요. 다시 눌러 주세요.'); } });
   body.querySelectorAll('[data-shot]').forEach(b=> b.onclick = ()=>{
     const files = b.dataset.shot.split('').map(k=> st.files[k]).filter(Boolean);
     if(canShare){ navigator.share({files, title:'배차표'}).catch(err=>{ if(err && err.name!=='AbortError') showToast('공유하지 못했어요.'); }); }
