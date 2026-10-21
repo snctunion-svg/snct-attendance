@@ -1335,6 +1335,33 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .uwfGsN{font-size:7.6pt !important;}
 .uwfGsNote{font-size:8pt;margin-top:1mm;line-height:1.5;} .uwfGsNote .uwfIn{min-width:0;}
 @page uwformL{size:A4 landscape;margin:10mm;}
+/* 노동조합현황 정기 통보서(별지 제4호서식) — A4 가로 한 장 */
+.uwfNt{font-size:8.4pt;line-height:1.3;}
+.uwfNtGrid{display:grid;grid-template-columns:1fr 1fr;gap:5mm;align-items:start;}
+.uwfNtTop{font-size:7.5pt;margin-bottom:1mm;}
+.uwfNtTitle{border:1px solid #000;text-align:center;font-size:15pt;font-weight:800;padding:2.5mm 0;letter-spacing:1px;}
+.uwfNtYr{font-size:9pt;font-weight:700;margin-left:2mm;}
+.uwfNtSm{font-size:7pt;margin:.6mm 0 .8mm;}
+.uwfNtT{margin:0 0 1.5mm !important;}
+.uwfNtT th,.uwfNtT td{font-size:7.6pt;padding:.5mm .8mm;line-height:1.25;height:4.6mm;word-break:keep-all;}
+.uwfNtT td.uwfNtL{font-size:7pt;color:#222;border-bottom:none;padding-bottom:0;height:3.6mm;}
+.uwfNtT td.uwfNtV{border-top:none;height:8.2mm;padding-left:2mm;}
+.uwfNt .uwfNtT td.uwfNtV > .uwfIn{width:auto;}
+.uwfNt .uwfNtT td > .uwfIn.uwfNtN{width:auto;min-width:2.2em;}
+.uwfNtOff td{height:9mm;}
+.uwfNtS td{height:11mm;}
+.uwfNt .uwfNtT td .uwfIn{font-size:7.8pt;}
+.uwfNtT td.uwfNtV .uwfIn{min-width:1em;}
+.uwfNtT th{background:#eee;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.uwfNtT th.uwfNtSec{writing-mode:vertical-rl;letter-spacing:2px;background:#f6f6f6;}
+.uwfNtT td.uwfC .uwfIn,.uwfNtT td .uwfIn.uwfNtN{min-width:1.6em;}
+.uwfNtT .uwfIn.uwfNtN{text-align:center;}
+.uwfNtT .uwfChk{font-size:9pt;}
+.uwfNtH{font-weight:800;font-size:8.6pt;margin:0 0 .6mm;}
+.uwfNtDecl{border:1px solid #000;padding:3mm 3mm 4mm;margin-top:2mm;font-size:8.4pt;line-height:1.6;}
+.uwfNtDecl .uwfNtDate{text-align:center;margin:9mm 0 8mm;font-size:9.5pt;}
+.uwfNtDecl .uwfNtSign{text-align:right;font-size:9.5pt;}
+.uwfNtDecl .uwfIn{min-width:3em;}
 @media print{ #uwPrint.uwFormPrint.uwFormLand{width:277mm !important;page:uwformL;} #uwPrint.uwFormPrint .uwfPage.uwfLand{width:277mm;page:uwformL;} }
 @page uwform{size:A4;margin:12mm;}
 @media print{
@@ -9622,7 +9649,7 @@ function pageUwMem(){
   const vtabs = `<div class="uwmVTabs"><button type="button" class="uwmVTab${uwMemView==='list' ? ' on' : ''}" data-uwm-view="list">👥 명부 ${cur.length}명</button><button type="button" class="uwmVTab${uwMemView==='award' ? ' on' : ''}" data-uwm-view="award">🏅 조합원 표창 ${aw.found.length + aw.prize.length}건</button><button type="button" class="uwmVTab${uwMemView==='form' ? ' on' : ''}" data-uwm-view="form">📄 양식</button></div>`;
   if(uwMemView==='form') return `
   <h2 class="pgttl">조합원 명부</h2>
-  <div class="uwHead"><b>양식</b><span>근무유공자 추천서 · 공적조서 · 노동절 장학생 · 경조사비 지급기준 — 골라서 채우고 출력</span></div>
+  <div class="uwHead"><b>양식</b><span>근무유공자 추천서 · 공적조서 · 노동절 장학생 · 경조사비 지급기준 · 정기 통보서 — 골라서 채우고 출력</span></div>
   ${vtabs}${pageUwForm(cur)}`;
   if(uwMemView==='award') return `
   <h2 class="pgttl">조합원 명부</h2>
@@ -9653,6 +9680,34 @@ function subscribeGs(){
   try{ unsub.gsStd = db.collection('unionPrivate').doc('gsStd').onSnapshot(doc=>{ gsDoc = doc.exists ? (doc.data()||null) : null;
     if(VIEW==='uwmem' && uwMemView==='form' && uwForm && uwForm.kind==='gs' && !uwForm.dirty && !isEditingField()){ uwForm = uwFormDefault('gs'); scheduleRender(); } }, ()=>{}); }catch(e){}
 }
+// 노동조합현황 정기 통보서(노동조합법 시행규칙 별지 제4호서식) — 해마다 1장. 보내 준 엑셀(2025·2026) 값이 기본값
+//  임원 생년월일·연락처는 공개되는 앱 코드에 넣지 않고 비워 둠 → 한 번 입력하고 [💾 저장]하면 UNION 전용 클라우드(unionPrivate/noticeYr)에 연도별로 남음
+//  연락처는 비어 있으면 명부에서 같은 이름의 전화번호로 채움
+const UW_NT_BASE = {unName:'선광신컨테이너터미널㈜노동조합', ceo:'오원일', found:'2016.06.15', bizNo:'140-82-78928', addr:'인천 연수구 신항대로 707 (송도동, 선광신컨테이너터미널)',
+  upY:false, upN:true, upTot:'한국노총조합총연맹', upFed:'전국연합노동조합연맹', tEnt:false, tSup:true, sReg:false, sInd:false, sJob:true, sNat:false, fInd:false, fTot:false,
+  wAll:'130', wM:'', wF:'', mAll:'32', mM:'', mF:'', mgr:'오원일', mgrTel:'',
+  o0_0:'위원장', o0_1:'오원일', o1_0:'부위원장', o1_1:'유재현', o2_0:'사무국장', o2_1:'김치수', o3_0:'회계감사', o3_1:'전재필',
+  s0_0:'해당없음', s0_6:'선광신컨테이너터미널㈜', s0_7:'인천 연수구 신항대로 707 (송도동, 선광신컨테이너터미널)', s0_8:'130', s0_11:'32', s0_12:'32', signName:'오원일'};
+['0','1','2','3'].forEach(i=>{ UW_NT_BASE[`o${i}_4`] = '총회'; UW_NT_BASE[`o${i}_5`] = '24.06.16 ~ 27.06.15'; UW_NT_BASE[`o${i}_6`] = '20'; UW_NT_BASE[`o${i}_7`] = '2'; });
+const UW_NT_SEED = {'2025': {date:'2025년     01월     06일'}, '2026': {date:'2026년     01월     27일'}};
+const UW_NT_GRP = {upY:'up', upN:'up', tEnt:'t', tSup:'t', sReg:'s', sInd:'s', sJob:'s', sNat:'s', fInd:'f', fTot:'f'};
+let ntDoc = null;
+function ntSaved(){ try{ return ntDoc && ntDoc.json ? JSON.parse(ntDoc.json) || {} : {}; }catch(e){ return {}; } }
+function ntYears(){ const ys = new Set([...Object.keys(UW_NT_SEED), ...Object.keys(ntSaved())]); const y = Number(todayStr().slice(0,4)); ys.add(String(y)); ys.add(String(y+1)); return [...ys].sort(); }
+function subscribeNotice(){
+  if(!db || unsub.noticeYr || !(userRole==='union' || userRole==='all')) return;
+  try{ unsub.noticeYr = db.collection('unionPrivate').doc('noticeYr').onSnapshot(doc=>{ ntDoc = doc.exists ? (doc.data()||null) : null;
+    if(VIEW==='uwmem' && uwMemView==='form' && uwForm && uwForm.kind==='notice' && !uwForm.dirty && !isEditingField()){ uwForm = uwFormDefault('notice', uwForm.year); scheduleRender(); } }, ()=>{}); }catch(e){}
+}
+function ntValues(year){
+  const saved = ntSaved(); if(saved[year]) return Object.assign({}, UW_NT_BASE, saved[year]);
+  if(UW_NT_SEED[year]) return Object.assign({}, UW_NT_BASE, UW_NT_SEED[year]);
+  // 처음 쓰는 해: 바로 앞 해(저장본 우선) 내용을 이어받고 날짜는 비우고 조합원 수는 명부 인원으로
+  const prev = Object.keys(saved).concat(Object.keys(UW_NT_SEED)).filter(y=> y < year).sort().pop();
+  const v = Object.assign({}, UW_NT_BASE, prev ? (saved[prev] || UW_NT_SEED[prev]) : {});
+  const n = uwMemList('cur').length; if(n){ v.mAll = String(n); v.s0_11 = String(n); if(v.s0_12) v.s0_12 = String(n); }
+  v.date = `${year}년     월     일`; return v;
+}
 function uwFormChief(){ const c = uwMemList('cur').find(m=> /위원장/.test(m.pos||'') && !/부위원장/.test(m.pos||'')); return c ? c.name : ''; }
 function uwFormToday(sep){ const t = todayStr().split('-'); return sep==='kr' ? `${t[0]}년 ${Number(t[1])}월 ${Number(t[2])}일` : `${t[0]} .  ${t[1]}  .  ${t[2]}  .`; }
 // 경조사비 지급기준(보내 준 PDF): [노조 기준] 구분·현행·화환/조화·비고 / [회사 기준] 구분·경조금·선우회비·휴가·화환/조화·비고 / 장기 근속자 포상금
@@ -9663,8 +9718,13 @@ const UW_GS = {
   l: [['근무유공자','400','1일',''],['10년 근속','500','2일',''],['15년 근속','700','3일',''],['20년 근속','1,000','4일',''],['25년 근속','1,300','5일',''],['30년 근속','1,500','7일',''],['35년 근속','2,000','7일',''],['25년 이상 근속 후 정년 퇴직','(30년 이상)3,000','-','']],
   n1:'*상기 경조휴가는 연속 사용하여야 하고, 경조휴가 기간 中 휴일은 경조휴가 기간에 포함한다.', n2:'*화환은 행사 초대장 제출 시 지급한다.'
 };
-function uwFormDefault(kind){
+function uwFormDefault(kind, year){
   const chief = uwFormChief(), cur = uwMemList('cur');
+  if(kind==='notice'){ const yr = String(year || todayStr().slice(0,4)), v = ntValues(yr);
+    const tel = nm=>{ const m = cur.find(x=> String(x.name||'').replace(/\s/g,'')===String(nm||'').replace(/\s/g,'')); return m && m.tel ? uwTelFmt(m.tel) : ''; };
+    for(let i=0;i<5;i++) if(v[`o${i}_1`] && !v[`o${i}_3`]) v[`o${i}_3`] = tel(v[`o${i}_1`]);
+    if(v.mgr && !v.mgrTel) v.mgrTel = tel(v.mgr);
+    return {kind, year:yr, who:'', tenureMan:false, v, dirty:false}; }
   if(kind==='gs'){ const v = {uDate:UW_GS.uDate, cDate:UW_GS.cDate, n1:UW_GS.n1, n2:UW_GS.n2}; ['u','c','l'].forEach(t=> UW_GS[t].forEach((row,i)=> row.forEach((c,j)=> v[`${t}${i}_${j}`] = c)));
     try{ if(gsDoc && gsDoc.json) Object.assign(v, JSON.parse(gsDoc.json)); }catch(e){}   // 저장한 지급기준이 있으면 그 값
     return {kind, who:'', tenureMan:false, v, dirty:false}; }
@@ -9699,6 +9759,49 @@ function uwFormPages(f){
   const F = (k, cls)=> `<span class="uwfIn${cls ? ' '+cls : ''}" contenteditable="true" data-uwf="${k}">${esc(v[k]||'')}</span>`;
   const M = (k, cls)=> `<div class="uwfIn uwfML${cls ? ' '+cls : ''}" contenteditable="true" data-uwf="${k}">${esc(v[k]||'').replace(/\n/g,'<br>')}</div>`;
   const C = k=> `<span class="uwfChk" data-uwfc="${k}">${v[k] ? '■' : '□'}</span>`;
+  if(f.kind==='notice'){
+    const N = k=> F(k, 'uwfNtN');
+    const G = k=> `<span class="uwfChk" data-uwfc="${k}">[${v[k] ? ' V ' : '&nbsp;&nbsp;&nbsp;'}]</span>`;
+    const L = (txt, n)=> `<td class="uwfNtL" colspan="${n}">${txt}</td>`, V = (inner, n, cls)=> `<td class="uwfNtV${cls ? ' '+cls : ''}" colspan="${n}">${inner}</td>`;
+    const off = [0,1,2,3,4].map(i=> `<tr class="uwfNtOff">${[0,1,2,3,4,5,6,7].map(j=> `<td class="uwfC">${F(`o${i}_${j}`)}</td>`).join('')}</tr>`).join('');
+    const sRows = [0,1,2].map(r=> `<tr class="uwfNtS">${[...Array(14).keys()].map(c=> `<td class="uwfC">${F(`s${r}_${c}`)}</td>`).join('')}</tr>`).join('');
+    const kRows = [0,1,2].map(r=> `<tr class="uwfNtS">${[...Array(10).keys()].map(c=> `<td class="uwfC">${F(`k${r}_${c}`)}</td>`).join('')}</tr>`).join('');
+    return `<div class="uwfPage uwfLand uwfNt"><div class="uwfNtGrid">
+      <div class="uwfNtLft"><div class="uwfNtTop">■ 노동조합 및 노동관계조정법 시행규칙 [별지 제4호서식]</div>
+        <div class="uwfNtTitle">노동조합현황 정기 통보서<span class="uwfNtYr">(${esc(f.year)}년)</span></div>
+        <div class="uwfNtSm">※ 3~4쪽의 작성 유의사항 및 작성방법을 읽고 작성합니다.</div>
+        <table class="uwfT uwfNtT"><colgroup><col style="width:5%"><col style="width:10.5%"><col style="width:10.5%"><col style="width:12%"><col style="width:15%"><col style="width:10%"><col style="width:21%"><col style="width:8%"><col style="width:8%"></colgroup>
+          <tr><th class="uwfNtSec" rowspan="22">① 일반현황</th>${L('① 노동조합명',4)}${L('② 노동조합 대표자 성명',2)}${L('③ 노동조합 설립일',2)}</tr>
+          <tr>${V(F('unName'),4)}${V(F('ceo'),2)}${V(F('found'),2)}</tr>
+          <tr>${L('④ 노동조합 사업자등록번호(고유번호)',3)}${L('⑤ 주된 사무소 소재지',5)}</tr>
+          <tr>${V(F('bizNo'),3)}${V(F('addr'),5)}</tr>
+          <tr>${L('⑥ 상급단체 유무',3)}${L('⑦ 상급단체명',5)}</tr>
+          <tr>${V(`${G('upY')} 있음&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${G('upN')} 없음`,3,'uwfC')}${V(`(총연합단체명) ${F('upTot')}<br>(연합단체명) ${F('upFed')}`,5)}</tr>
+          <tr>${L('⑧ 노동조합 형태',4)}${L('⑨ 초기업별 단위노동조합인 경우 조직형태',4)}</tr>
+          <tr>${V(`* 단위노동조합: ${G('tEnt')} 기업별 단위노동조합 ${G('tSup')} 초기업별 단위노동조합<br>* (총)연합단체: ${G('fInd')} 산업별 연합단체 ${G('fTot')} 총연합단체`,4)}${V(`${G('sReg')} 지역별 노동조합 ${G('sInd')} 산업별 노동조합 ${G('sJob')} 직종별 노동조합<br>${G('sNat')} 전국(지역 · 산업 · 직종 무관)`,4)}</tr>
+          <tr>${L('⑩ 전체 근로자 수[사업(장) 기준]',4)}${L('⑪ 조합원 수',4)}</tr>
+          <tr>${V(`${N('wAll')} 명 (남: ${N('wM')} 명, 여: ${N('wF')} 명)`,4,'uwfC')}${V(`${N('mAll')} 명 (남: ${N('mM')} 명, 여: ${N('mF')} 명)`,4,'uwfC')}</tr>
+          <tr>${L('⑫ 담당자 성명',4)}${L('⑬ 담당자 연락처',4)}</tr>
+          <tr>${V(F('mgr'),4)}${V(F('mgrTel'),4)}</tr>
+          <tr><td colspan="8" class="uwfNtL" style="border-bottom:1px solid #000;padding-bottom:.5mm;">⑭ 임원 현황</td></tr>
+          <tr><th>직책</th><th>성명</th><th>생년월일</th><th>연락처</th><th>선출기관</th><th>임기(개시일~만료일)</th><th>근속<br>연수</th><th>임원<br>재임기간</th></tr>
+          ${off}</table></div>
+      <div class="uwfNtRt"><div class="uwfNtH">② 단위노동조합 산하조직 및 사업(장)별 조직 현황</div>
+        <div class="uwfNtSm">※ 기업별 단위노동조합 또는 초기업별 단위노동조합만 작성합니다.</div>
+        <table class="uwfT uwfNtT"><colgroup><col style="width:5.5%"><col style="width:5%"><col style="width:5%"><col style="width:9%"><col style="width:6%"><col style="width:8%"><col style="width:13%"><col style="width:16.5%"><col style="width:6%"><col style="width:4%"><col style="width:4%"><col style="width:6%"><col style="width:4%"><col style="width:4%"></colgroup>
+          <tr><th colspan="3">① 산하조직 명칭</th><th rowspan="2">② 산하조직<br>사업자등록번호<br>(고유번호)</th><th rowspan="2">③<br>산하조직<br>대표자</th><th rowspan="2">④ 산하조직<br>소재지</th><th rowspan="2">⑤ 사업(장)명</th><th rowspan="2">⑥ 사업(장)<br>소재지</th><th colspan="3">⑦ 근로자 수<br>[사업(장) 기준]</th><th colspan="3">⑧ 조합원 수</th></tr>
+          <tr><th>1수준</th><th>2수준</th><th>3수준</th><th>전체</th><th>남</th><th>여</th><th>전체</th><th>남</th><th>여</th></tr>
+          ${sRows}</table>
+        <div class="uwfNtH" style="margin-top:2mm;">③ (총)연합단체의 구성단체 현황</div>
+        <div class="uwfNtSm">* 연합단체 또는 총연합단체만 작성합니다.</div>
+        <table class="uwfT uwfNtT"><colgroup><col style="width:18%"><col style="width:14%"><col style="width:20%"><col style="width:11%"><col style="width:6.5%"><col style="width:5%"><col style="width:5%"><col style="width:6.5%"><col style="width:5%"><col style="width:5%"></colgroup>
+          <tr><th rowspan="2">① 구성단체 노동조합명</th><th rowspan="2">② 구성단체 노동조합<br>사업자등록번호<br>(고유번호)</th><th rowspan="2">③ 구성단체 노동조합<br>소재지</th><th rowspan="2">④ 구성단체<br>노동조합<br>대표자</th><th colspan="3">⑤ 근로자 수<br>[사업(장) 기준]</th><th colspan="3">⑥ 조합원 수</th></tr>
+          <tr><th>전체</th><th>남</th><th>여</th><th>전체</th><th>남</th><th>여</th></tr>
+          ${kRows}</table>
+        <div class="uwfNtDecl">「노동조합 및 노동관계조정법」 제13조제2항, 같은 법 시행령 제10조제4항 및 같은 법 시행규칙 제6조에 따라 노동조합 현황을 통보합니다.
+          <div class="uwfNtDate">${F('date')}</div>
+          <div class="uwfNtSign">노동조합 대표자 성명&nbsp;&nbsp;&nbsp;&nbsp;${F('signName','uwfW')}&nbsp;&nbsp;&nbsp;&nbsp;(서명 또는 인)</div></div></div></div></div>`;
+  }
   if(f.kind==='gs'){
     const T = (t, heads, cls)=> `<table class="uwfT uwfGsT ${cls||''}"><thead><tr>${heads.map(h=> `<th>${h}</th>`).join('')}</tr></thead><tbody>${UW_GS[t].map((row,i)=> `<tr>${row.map((c,j)=> `<td class="${j===0 ? 'uwfC uwfGsK' : j===row.length-1 ? 'uwfGsN' : 'uwfC'}">${F(`${t}${i}_${j}`)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     return `<div class="uwfPage uwfLand uwfGs"><div class="uwfGsGrid">
@@ -9828,32 +9931,40 @@ function uwFormPages(f){
     <div class="uwfTo">${F('to')}&nbsp;&nbsp;귀하</div></div>`;
 }
 function pageUwForm(cur){
-  subscribeGs();
+  subscribeGs(); subscribeNotice();
   if(!uwForm) uwForm = uwFormDefault('rec');
-  const f = uwForm, gsEdit = f.kind==='gs' && (userRole==='union' || userRole==='all');
-  return `<div class="row uwfBar"><span style="font-weight:800;">서류 선택</span><select id="uwfKind" class="docSel"><option value="rec"${f.kind==='rec'?' selected':''}>🏅 근무유공자 추천서</option><option value="merit"${f.kind==='merit'?' selected':''}>📜 공적조서 (4쪽)</option><option value="sch"${f.kind==='sch'?' selected':''}>🎓 노동절 장학생 (3쪽)</option><option value="gs"${f.kind==='gs'?' selected':''}>💐 경조사비 지급기준</option></select>
-      <span style="font-weight:800;${f.kind==='gs' ? 'display:none;' : ''}">대상자</span><select id="uwfWho" class="docSel"${f.kind==='gs' ? ' style="display:none;"' : ''}><option value="">직접 입력</option>${cur.map((m,i)=> `<option value="${i}"${String(f.who)===String(i)?' selected':''}>${esc(m.name||'')}${m.pos && m.pos!=='조합원' ? ' · '+esc(m.pos) : ''}</option>`).join('')}</select>
-      <button type="button" class="btn sm" id="uwfPrint">🖨️ 출력 (인쇄 · PDF 저장)</button>${gsEdit ? `<button type="button" class="btn sm" id="uwfGsSave"${f.dirty ? '' : ' disabled'}>💾 저장${f.dirty ? ' (고친 내용 있음)' : ''}</button>` : ''}<button type="button" class="btn warn ghost sm" id="uwfReset">${f.kind==='gs' ? '원본으로' : '새로 작성'}</button></div>
+  const f = uwForm, sv = f.kind==='gs' || f.kind==='notice', gsEdit = sv && (userRole==='union' || userRole==='all');
+  return `<div class="row uwfBar"><span style="font-weight:800;">서류 선택</span><select id="uwfKind" class="docSel"><option value="rec"${f.kind==='rec'?' selected':''}>🏅 근무유공자 추천서</option><option value="merit"${f.kind==='merit'?' selected':''}>📜 공적조서 (4쪽)</option><option value="sch"${f.kind==='sch'?' selected':''}>🎓 노동절 장학생 (3쪽)</option><option value="gs"${f.kind==='gs'?' selected':''}>💐 경조사비 지급기준</option><option value="notice"${f.kind==='notice'?' selected':''}>📮 노동조합 정기 통보서</option></select>
+      ${f.kind==='notice' ? `<span style="font-weight:800;">연도</span><select id="uwfYear" class="docSel">${ntYears().map(y=> `<option value="${y}"${y===f.year?' selected':''}>${y}년${ntSaved()[y] ? ' · 저장됨' : UW_NT_SEED[y] ? ' · 엑셀' : ' · 새로'}</option>`).join('')}</select>` : ''}
+      <span style="font-weight:800;${sv ? 'display:none;' : ''}">대상자</span><select id="uwfWho" class="docSel"${sv ? ' style="display:none;"' : ''}><option value="">직접 입력</option>${cur.map((m,i)=> `<option value="${i}"${String(f.who)===String(i)?' selected':''}>${esc(m.name||'')}${m.pos && m.pos!=='조합원' ? ' · '+esc(m.pos) : ''}</option>`).join('')}</select>
+      <button type="button" class="btn sm" id="uwfPrint">🖨️ 출력 (인쇄 · PDF 저장)</button>${gsEdit ? `<button type="button" class="btn sm" id="uwfGsSave"${f.dirty ? '' : ' disabled'}>💾 저장${f.dirty ? ' (고친 내용 있음)' : ''}</button>` : ''}<button type="button" class="btn warn ghost sm" id="uwfReset">${f.kind==='gs' ? '원본으로' : f.kind==='notice' ? '저장 전으로' : '새로 작성'}</button></div>
+    ${f.kind==='notice' ? `<p class="hint" style="margin:-2px 0 10px;">연도를 골라 칸을 눌러 고친 뒤 [💾 저장]하면 그 해 통보서로 남아요(UNION만 보는 곳에 저장). 처음 쓰는 해는 앞 해 내용을 이어받고 조합원 수는 명부 인원으로 채워요. 임원 생년월일은 비워 두었으니 한 번 입력해 저장해 주세요(연락처는 명부에서 채움).${ntDoc && ntDoc.at ? ' · ' + esc(new Date(ntDoc.at).toLocaleDateString('ko-KR')) + ' 마지막 저장' : ''}</p>` : ''}
     ${f.kind==='gs' ? `<p class="hint" style="margin:-2px 0 10px;">금액·날짜·비고를 눌러 고친 뒤 [💾 저장]을 누르면 다음에도 그대로 남아요.${gsDoc && gsDoc.at ? ' · ' + esc(new Date(gsDoc.at).toLocaleDateString('ko-KR')) + ' 저장본' : ' · 아직 저장한 적 없음(보내 준 PDF 기준)'}</p>` : ''}
-    <p class="hint" style="margin:-2px 0 10px;${f.kind==='gs' ? 'display:none;' : ''}">칸을 눌러 바로 입력하세요. 대상자를 고르면 명부의 이름·직위·주소·연락처가 채워져요. 생년월일 등 개인정보가 들어가므로 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요.</p>
+    <p class="hint" style="margin:-2px 0 10px;${sv ? 'display:none;' : ''}">칸을 눌러 바로 입력하세요. 대상자를 고르면 명부의 이름·직위·주소·연락처가 채워져요. 생년월일 등 개인정보가 들어가므로 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요.</p>
     ${f.kind==='sch' ? `<details class="uwfGuide"><summary>📌 추천 유의사항 (원본 4쪽 — 화면에서만 보기)</summary><div>- 교육부(재학대학), 한국장학재단(kosaf.go.kr) 등을 통해 추천인의 장학 혜택 내역을 필히 확인 후 신청<br>- 장학금 중복수혜는 가능하나, 재학 대학 등록금 기준 기존 혜택 장학금액+수령금액(800,000원)+학자금대출이 등록금을 초과하지 않는 경우 신청 가능<br>▶ 지자체(인천시청)에서 별도로 자격여부 조회 후 본부로 부적격자 통보<br>1. 학교장 직인 필히 날인(네모직인) — 총장 직인 원칙(학과장 직인 불가), 협의 필요 시 본부 회신(032-437-8501)<br>2. 휴학생 추천 불가(재학생만)&nbsp;&nbsp;3. 근로자 자녀만 추천 가능(본인·배우자 불가)&nbsp;&nbsp;4. 외국계 학교 추천 불가<br>5. 가족관계증명서·재직증명서 필수&nbsp;&nbsp;6. 사이버대·학점은행제·직업전문훈련학교·방송통신대 추천 불가<br>7. 신입생·재학생 재학증명서 전원 제출&nbsp;&nbsp;8. 성적증명서는 학교장 또는 교무처장 직인 필수<br>9. 국가장학금 대상자는 본인이 판단하여 신청(차후 환급 문제 시 추천 기관 책임)<br>10. 근로자 성명 부분 도장 또는 서명 가능&nbsp;&nbsp;11. 추천인은 추천조직 대표 직인(네모직인)<br>12. 기일 내 제출이 어려우면 스캔·팩스 먼저 제출 후 원본 우편 제출<br>제출처 : 인천시 남동구 구월남로 75, 4층 장학사업 담당자 (032-437-8501)</div></details>` : ''}
     <div class="uwfDoc" id="uwfDoc">${uwFormPages(f)}</div>`;
 }
 function bindUwForm(){
   const f = uwForm; if(!f) return;
-  const kind = document.getElementById('uwfKind'); if(kind) kind.onchange = ()=>{ const who = f.who; uwForm = uwFormDefault(kind.value); if(who !== ''){ uwForm.who = who; uwFormPick(Number(who)); } render(); };
+  const kind = document.getElementById('uwfKind'); if(kind) kind.onchange = ()=>{ const who = f.who; uwForm = uwFormDefault(kind.value); if(who !== '' && uwForm.kind!=='gs' && uwForm.kind!=='notice'){ uwForm.who = who; uwFormPick(Number(who)); } render(); };
+  const yr = document.getElementById('uwfYear'); if(yr) yr.onchange = ()=>{ const y = yr.value, go = ()=>{ uwForm = uwFormDefault('notice', y); render(); };
+    if(f.dirty){ yr.value = f.year; appConfirm('저장하지 않은 내용이 있어요. 저장하지 않고 다른 연도로 갈까요?', go); } else go(); };
   const who = document.getElementById('uwfWho'); if(who) who.onchange = ()=>{ uwForm.who = who.value; if(who.value !== '') uwFormPick(Number(who.value)); render(); };
   const rs = document.getElementById('uwfReset'); if(rs) rs.onclick = ()=>{
     if(f.kind==='gs'){ appConfirm('보내 준 PDF 원본 값으로 되돌릴까요? [💾 저장]을 눌러야 저장본도 바뀌어요.', ()=>{ const keep = gsDoc; gsDoc = null; uwForm = uwFormDefault('gs'); gsDoc = keep; uwForm.dirty = true; render(); }); return; }
+    if(f.kind==='notice'){ appConfirm('고친 내용을 버리고 마지막 저장본(없으면 엑셀 기본값)으로 되돌릴까요?', ()=>{ uwForm = uwFormDefault('notice', f.year); render(); }); return; }
     appConfirm('입력한 내용을 지우고 새로 작성할까요?', ()=>{ uwForm = uwFormDefault(f.kind); render(); }); };
   const gss = document.getElementById('uwfGsSave'); if(gss) gss.onclick = async ()=>{
     if(!db){ showToast('서버에 연결되지 않았어요.'); return; }
+    if(f.kind==='notice'){ const all = ntSaved(); all[f.year] = f.v;
+      try{ await db.collection('unionPrivate').doc('noticeYr').set({json: JSON.stringify(all), at: Date.now()}); f.dirty = false; showToast(`${f.year}년 정기 통보서를 저장했어요.`); render(); }
+      catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); } return; }
     try{ await db.collection('unionPrivate').doc('gsStd').set({json: JSON.stringify(f.v), at: Date.now()}); f.dirty = false; showToast('경조사비 지급기준을 저장했어요.'); render(); }
     catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); } };
   const pr = document.getElementById('uwfPrint'); if(pr) pr.onclick = uwFormPrint;
   document.querySelectorAll('#uwfDoc [data-uwf]').forEach(el=>{
     el.oninput = ()=>{ const k = el.dataset.uwf; f.v[k] = el.innerText.replace(/ /g,' ').replace(/\n$/,'');
-      if(f.kind==='gs' && !f.dirty){ f.dirty = true; const b = document.getElementById('uwfGsSave'); if(b){ b.disabled = false; b.textContent = '💾 저장 (고친 내용 있음)'; } }
+      if((f.kind==='gs' || f.kind==='notice') && !f.dirty){ f.dirty = true; const b = document.getElementById('uwfGsSave'); if(b){ b.disabled = false; b.textContent = '💾 저장 (고친 내용 있음)'; } }
       if(k==='tenure') f.tenureMan = !!f.v.tenure;
       if(k==='hire' && !f.tenureMan){ f.v.tenure = uwTenure(f.v.hire); const t = document.querySelector('#uwfDoc [data-uwf="tenure"]'); if(t) t.textContent = f.v.tenure; }
       document.querySelectorAll(`#uwfDoc [data-uwf="${k}"]`).forEach(o=>{ if(o!==el) o.textContent = f.v[k]; });   // 같은 칸이 두 곳(성명 등)이면 같이
@@ -9866,6 +9977,9 @@ function bindUwForm(){
     try{ f.v.photo = await uwPhotoShrink(fl); const bx = inp.closest('.uwfPhotoBox'); if(bx){ const old = bx.querySelector('img, span'); if(old) old.remove(); bx.insertAdjacentHTML('afterbegin', `<img src="${f.v.photo}" alt="">`); } }catch(err){ showToast(err.message || '사진을 넣지 못했어요.'); } });
   document.querySelectorAll('#uwfDoc [data-uwfc]').forEach(el=> el.onclick = ()=>{ const k = el.dataset.uwfc; f.v[k] = !f.v[k];
     const pair = {agree:'disagree', disagree:'agree', yes:'no', no:'yes'}[k]; if(f.v[k] && pair) f.v[pair] = false;
+    if(f.kind==='notice'){ if(f.v[k] && UW_NT_GRP[k]) Object.keys(UW_NT_GRP).forEach(o=>{ if(o!==k && UW_NT_GRP[o]===UW_NT_GRP[k]) f.v[o] = false; });
+      document.querySelectorAll('#uwfDoc [data-uwfc]').forEach(o=> o.innerHTML = f.v[o.dataset.uwfc] ? '[ V ]' : '[&nbsp;&nbsp;&nbsp;]');
+      if(!f.dirty){ f.dirty = true; const b = document.getElementById('uwfGsSave'); if(b){ b.disabled = false; b.textContent = '💾 저장 (고친 내용 있음)'; } } return; }
     document.querySelectorAll('#uwfDoc [data-uwfc]').forEach(o=> o.textContent = f.v[o.dataset.uwfc] ? '■' : '□'); });
 }
 // 휴대폰: A4 양식을 화면 폭에 맞게 줄여서 보여 줌(두 손가락으로 키워서 입력 가능)
@@ -9881,8 +9995,8 @@ function uwFormPrint(){
   box.innerHTML = doc.innerHTML; box.querySelectorAll('[contenteditable]').forEach(e=> e.removeAttribute('contenteditable'));
   document.body.appendChild(box);
   box.querySelectorAll('input[type=file]').forEach(e=> e.remove());
-  if(uwForm.kind==='gs') box.classList.add('uwFormLand');
-  const old = document.title; document.title = uwForm.kind==='rec' ? '근무유공자 추천서' : uwForm.kind==='sch' ? '장학생 추천서' : uwForm.kind==='gs' ? '경조사비 지급기준' : '공적조서';
+  if(uwForm.kind==='gs' || uwForm.kind==='notice') box.classList.add('uwFormLand');
+  const old = document.title; document.title = uwForm.kind==='rec' ? '근무유공자 추천서' : uwForm.kind==='sch' ? '장학생 추천서' : uwForm.kind==='gs' ? '경조사비 지급기준' : uwForm.kind==='notice' ? `노동조합현황 정기 통보서(${uwForm.year})` : '공적조서';
   document.body.classList.add('printing-uw');
   const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
