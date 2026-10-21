@@ -1254,7 +1254,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .uwmForm input{border:1px solid var(--border);border-radius:8px;padding:8px;font:inherit;font-size:16px;background:var(--bg);color:var(--text);min-width:0;width:100%;box-sizing:border-box;}
 .uwmBtns{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px;}
 /* 비고 사진 */
-.uwmThumb{width:34px;height:40px;object-fit:cover;object-position:center top;border-radius:4px;vertical-align:middle;margin-right:6px;border:1px solid var(--border);}
+.uwmThumb{width:34px;height:40px;object-fit:cover;object-position:center top;border-radius:4px;vertical-align:middle;border:1px solid var(--border);}
+.uwmTbl td.uwm-photo{padding:3px 6px;width:46px;}
+@media (max-width:700px){ .uwmTbl td.uwm-photo{padding:3px 0;width:100%;} .uwmTbl td.uwm-photo:empty{display:none;} }
 .uwmThumbE{display:inline-flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg);}
 .uwmPhoto{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 12px 12px;}
 .uwmPhLbl{width:100%;font-size:11.5px;font-weight:700;color:var(--text-muted);}
@@ -9468,10 +9470,10 @@ function pageUwMem(){
   uwMemTab = 'cur';   // 탈퇴자는 보이지 않게
   const cur = uwMemList('cur'), list = cur, q = uwMemQ.trim().toLowerCase();
   const shown = list.map((m,i)=> ({m, i})).filter(({m})=> !q || Object.values(m).join(' ').toLowerCase().includes(q));
-  const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','emp','part','pos','name','tel','join','note'];
-  const lbl = Object.fromEntries(UWM_COLS);
+  const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','photo','emp','part','pos','name','tel','join','note'];   // 사진 칸 = 순번과 사번 사이
+  const lbl = Object.assign(Object.fromEntries(UWM_COLS), {photo:'사진'});
   const cell = (m,k)=> k==='tel' && m.tel ? `<a href="tel:${esc(String(m.tel).replace(/[^\d+]/g,''))}">${esc(m.tel)}</a>`
-    : k==='note' ? `${m.photo ? (uwPhotoGet(m.photo) ? `<img class="uwmThumb" src="${uwPhotos[m.photo]}" alt="사진">` : '<span class="uwmThumb uwmThumbE">📷</span>') : ''}${esc(m.note||'')}`
+    : k==='photo' ? (m.photo ? (uwPhotoGet(m.photo) ? `<img class="uwmThumb" src="${uwPhotos[m.photo]}" alt="사진">` : '<span class="uwmThumb uwmThumbE">📷</span>') : '')
     : esc(m[k]||'');
   const rows = shown.map(({m,i})=> `<tr class="uwmRow" data-uwm-i="${i}">${cols.map(k=> `<td data-l="${esc(lbl[k])}" class="uwm-${k}">${cell(m,k)}</td>`).join('')}</tr>`).join('');
   const loaded = !!uwMem;
@@ -9479,7 +9481,7 @@ function pageUwMem(){
   const editPop = uwMemEdit ? (()=>{ const e = uwMemEdit, m = e.i >= 0 ? (uwMemList(e.tab)[e.i] || {}) : {}; const ks = e.tab==='left' ? UWM_COLS.map(x=>x[0]) : UWM_COLS.map(x=>x[0]).filter(k=> k!=='leave');
     return `<div class="sheetPopScrim" id="uwmScrim"><div class="sheetPop uwmPop"><div class="sheetPopHd"><b>${e.i >= 0 ? esc(m.name||'') + ' 수정' : '조합원 추가'}</b><button type="button" class="sheetPopX" id="uwmClose" aria-label="닫기">✕</button></div>
       <div class="uwmForm">${ks.map(k=> `<label><span>${esc(lbl[k])}</span><input data-uwm-f="${k}" type="${k==='join'||k==='leave' ? 'date' : k==='tel' ? 'tel' : 'text'}" value="${esc(m[k]||'')}"></label>`).join('')}</div>
-      ${(()=>{ const src = e.ph !== undefined ? e.ph : (m.photo ? uwPhotoGet(m.photo) : ''); return `<div class="uwmPhoto"><span class="uwmPhLbl">비고 · 사진</span><div class="uwmPhPrev" id="uwmPhPrev">${src ? `<img src="${src}" alt="사진">` : '<span>사진 없음</span>'}</div>
+      ${(()=>{ const src = e.ph !== undefined ? e.ph : (m.photo ? uwPhotoGet(m.photo) : ''); return `<div class="uwmPhoto"><span class="uwmPhLbl">사진</span><div class="uwmPhPrev" id="uwmPhPrev">${src ? `<img src="${src}" alt="사진">` : '<span>사진 없음</span>'}</div>
         <div class="uwmPhBtns"><label class="btn ghost sm">📷 사진 첨부<input type="file" id="uwmPhFile" accept="image/*" hidden></label><button type="button" class="btn warn ghost sm" id="uwmPhDel"${src ? '' : ' style="display:none;"'}>사진 삭제</button></div></div>`; })()}
       <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
   return `
