@@ -664,11 +664,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .ctbl th.wkA{background:#dbeafe !important;} .ctbl th.wkB{background:#dcfce7 !important;} /* 월별 근태 주 색: 연한 청색 / 연한 녹색 */
 .ctbl td.daycell.wkA,.ctbl td.daycell.wkB{background:var(--surface);}
 /* 오늘 날짜 세로줄: 바깥 테두리보다 얇은 검은 테두리(PC·휴대폰 같은 굵기) */
-.ctbl .todayCol{border-left:calc(var(--sepW,1px) * 3) solid #7c3aed !important;border-right:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
-.ctbl :is(td,th):has(+ .todayCol){border-right:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
-.ctbl .todayCol + :is(td,th){border-left:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
-.ctbl .todayCol.todayTop{border-top:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
-.ctbl .todayCol.todayBot{border-bottom:calc(var(--sepW,1px) * 3) solid #7c3aed !important;}
+.ctbl .todayCol{border-left:calc(var(--sepW,1px) * 3) solid #db2777 !important;border-right:calc(var(--sepW,1px) * 3) solid #db2777 !important;}
+.ctbl :is(td,th):has(+ .todayCol){border-right:calc(var(--sepW,1px) * 3) solid #db2777 !important;}
+.ctbl .todayCol + :is(td,th){border-left:calc(var(--sepW,1px) * 3) solid #db2777 !important;}
+.ctbl .todayCol.todayTop{border-top:calc(var(--sepW,1px) * 3) solid #db2777 !important;}
+.ctbl .todayCol.todayBot{border-bottom:calc(var(--sepW,1px) * 3) solid #db2777 !important;}
 /* 근태 집계: OT 칸 말고는 칸 폭을 똑같이 */
 .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){width:32px;min-width:32px;max-width:32px;}
 .cmbLeft .ctbl thead tr:nth-child(2) th:not(.otCol){padding:4px 0 !important;letter-spacing:-.5px;white-space:nowrap !important;word-break:keep-all;}
@@ -1180,33 +1180,33 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .sheetPopItem.on{background:#ec4899;color:#fff;font-weight:700;}
 .sheetPopIc{width:24px;text-align:center;font-size:18px;}
 /* UNION 시트 고르기 */
-.unionBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 14px;padding:10px 12px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;}
-.unionBarT{color:#4c1d95;font-size:13px;margin-right:4px;white-space:nowrap;flex:none;}
-.unionChip{display:inline-flex;align-items:center;gap:5px;border:1px solid #ddd6fe;background:#fff;color:#4c1d95;border-radius:999px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
-.unionChip.on{background:#6d28d9;border-color:#6d28d9;color:#fff;}
+.unionBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 14px;padding:10px 12px;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:12px;}
+.unionBarT{color:#be185d;font-size:13px;margin-right:4px;white-space:nowrap;flex:none;}
+.unionChip{display:inline-flex;align-items:center;gap:5px;border:1px solid #fbcfe8;background:#fff;color:#be185d;border-radius:999px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.unionChip.on{background:#db2777;border-color:#db2777;color:#fff;}
 .unionGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
 .unionCard{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font:inherit;font-size:14px;cursor:pointer;}
-.unionCard:hover{border-color:#a78bfa;background:#f5f3ff;}
+.unionCard:hover{border-color:#f9a8d4;background:#fdf2f8;}
 .unionIc{font-size:26px;}
 @media (max-width:520px){ .unionBar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;} .unionGrid{grid-template-columns:repeat(2,minmax(0,1fr));} }
 
 /* SNCT UNION 로그인 전 화면 */
 .unGate{display:flex;justify-content:center;padding:40px 16px;}
-.unGateCard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 22px;max-width:380px;width:100%;text-align:center;box-shadow:0 4px 18px rgba(76,29,149,.12);}
+.unGateCard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 22px;max-width:380px;width:100%;text-align:center;box-shadow:0 4px 18px rgba(190,24,93,.12);}
 .unGateLogo{font-size:42px;line-height:1;}
-.unGateCard h2{margin:8px 0 6px;color:#4c1d95;font-size:22px;letter-spacing:.5px;}
+.unGateCard h2{margin:8px 0 6px;color:#be185d;font-size:22px;letter-spacing:.5px;}
 .unGateCard p{margin:6px 0;color:var(--text-muted);line-height:1.55;}
-.unGateBtn{background:#4c1d95 !important;border-color:#4c1d95 !important;color:#fff !important;font-size:16px;padding:10px 22px;margin-top:12px;}
+.unGateBtn{background:#be185d !important;border-color:#be185d !important;color:#fff !important;font-size:16px;padding:10px 22px;margin-top:12px;}
 /* UNION WORK 규정 보기 */
-.uwHead{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border-radius:12px;background:#f5f3ff;border:1px solid #ddd6fe;margin-bottom:10px;}
-.uwHead b{font-size:20px;color:#4c1d95;letter-spacing:.5px;}
+.uwHead{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border-radius:12px;background:#fdf2f8;border:1px solid #fbcfe8;margin-bottom:10px;}
+.uwHead b{font-size:20px;color:#be185d;letter-spacing:.5px;}
 .uwHead span{font-size:12px;color:var(--text-muted);}
 .uwBar{position:sticky;top:0;z-index:5;display:flex;gap:8px;flex-wrap:wrap;padding:8px 0;background:var(--bg);}
 .uwBar input{flex:1 1 200px;min-width:0;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font:inherit;font-size:16px;background:var(--surface);color:var(--text);}
 .uwBar select{flex:0 1 220px;min-width:0;max-width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 8px;font:inherit;font-size:14px;background:var(--surface);color:var(--text);}
-.uwCount{font-size:12.5px;color:#6d28d9;font-weight:700;margin:2px 2px 8px;min-height:1em;}
+.uwCount{font-size:12.5px;color:#db2777;font-weight:700;margin:2px 2px 8px;min-height:1em;}
 .uwBody{max-width:860px;}
-.uwCh{margin:18px 0 8px;padding:8px 12px;border-left:4px solid #7c3aed;background:#faf5ff;border-radius:0 8px 8px 0;font-size:15px;color:#4c1d95;scroll-margin-top:70px;}
+.uwCh{margin:18px 0 8px;padding:8px 12px;border-left:4px solid #db2777;background:#fdf2f8;border-radius:0 8px 8px 0;font-size:15px;color:#be185d;scroll-margin-top:70px;}
 .uwArt{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;scroll-margin-top:70px;}
 .uwArtH{font-weight:800;font-size:14.5px;margin-bottom:6px;color:var(--text);}
 .uwL{margin:0 0 4px;font-size:14px;line-height:1.7;color:var(--text);word-break:keep-all;overflow-wrap:anywhere;}
@@ -1217,11 +1217,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 규정 수정·출력 */
 .uwTools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 8px;}
 .uwChanged{font-size:12px;color:#b45309;font-weight:700;}
-.uwEditTop{background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:12px;margin-bottom:10px;}
+.uwEditTop{background:#fdf2f8;border:1px solid #fbcfe8;border-radius:12px;padding:12px;margin-bottom:10px;}
 .uwEB{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;}
-.uwEC{background:#faf5ff;border-color:#ddd6fe;}
+.uwEC{background:#fdf2f8;border-color:#fbcfe8;}
 .uwERow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;}
-.uwETag{flex:none;font-size:11px;font-weight:800;color:#6d28d9;background:#ede9fe;border-radius:6px;padding:3px 7px;}
+.uwETag{flex:none;font-size:11px;font-weight:800;color:#db2777;background:#fce7f3;border-radius:6px;padding:3px 7px;}
 .uwEIn{flex:1 1 180px;min-width:0;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:inherit;font-size:16px;background:var(--bg);color:var(--text);}
 .uwETa{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font:inherit;font-size:15px;line-height:1.6;background:var(--bg);color:var(--text);resize:vertical;}
 .uwSaveBar{position:sticky;bottom:0;display:flex;gap:8px;flex-wrap:wrap;padding:10px 0;background:var(--bg);z-index:6;}
@@ -1247,14 +1247,14 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 조합원 명부 */
 .uwmTabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
 .uwmSum{font-size:12px;color:var(--text-muted);margin-left:4px;}
-.uwmCnt{font-size:14px;color:#4c1d95;}
+.uwmCnt{font-size:14px;color:#be185d;}
 .uwmImp{cursor:pointer;}
 .uwmWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .uwmTbl{width:100%;border-collapse:collapse;font-size:13px;}
 .uwmTbl th,.uwmTbl td{border:1px solid var(--border);padding:7px 8px;text-align:center;white-space:nowrap;}
 .uwmTbl td.uwm-name{font-weight:800;}
 .uwmTbl td.uwm-note,.uwmTbl td.uwm-email{white-space:normal;word-break:break-all;}
-.uwmRow{cursor:pointer;} .uwmRow:hover td{background:#faf5ff;}
+.uwmRow{cursor:pointer;} .uwmRow:hover td{background:#fdf2f8;}
 .uwmPop{max-width:420px;}
 .uwmForm{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;}
 .uwmForm label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;font-weight:700;color:var(--text-muted);min-width:0;}
@@ -1381,9 +1381,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .stWrap{overflow:auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 220px);border:2px solid var(--text);border-radius:10px;background:var(--surface);}
 .stTbl{border-collapse:collapse;width:100%;min-width:980px;font-size:12.5px;}
 .stTbl th,.stTbl td{border:1px solid #c4cad3;padding:4px 6px;text-align:center;vertical-align:middle;}
-.stTbl thead th{position:sticky;top:0;z-index:2;background:#ede9fe;color:#4c1d95;font-weight:800;}
+.stTbl thead th{position:sticky;top:0;z-index:2;background:#fce7f3;color:#be185d;font-weight:800;}
 .stTbl tr.stYearTop > td{border-top:2px solid #111;}
-.stTbl td.stYear{font-weight:900;color:#4c1d95;white-space:nowrap;background:#faf5ff;position:relative;}
+.stTbl td.stYear{font-weight:900;color:#be185d;white-space:nowrap;background:#fdf2f8;position:relative;}
 .stTbl td.stC0{font-weight:800;white-space:nowrap;} .stTbl td.stC1{font-weight:800;color:#1d4ed8;} .stTbl td.stC2{color:#b45309;font-weight:700;}
 .stTbl td.stC6{text-align:left;min-width:220px;} .stTbl td.stRate{font-weight:900;color:#dc2626;white-space:nowrap;}
 .stIn{display:inline-block;min-width:2.5em;min-height:1.2em;outline:none;border-radius:3px;padding:0 2px;}
@@ -1391,14 +1391,14 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .stDel{display:block;margin:3px auto 0;border:0;background:transparent;color:#dc2626;font-size:11px;cursor:pointer;}
 @media print{ #uwPrint.uwFormPrint .stTbl{min-width:0;font-size:8.6pt;} #uwPrint.uwFormPrint .stTbl th,#uwPrint.uwFormPrint .stTbl td{border:1px solid #000;padding:1mm 1.2mm;} #uwPrint.uwFormPrint .stTbl thead th{position:static;-webkit-print-color-adjust:exact;print-color-adjust:exact;} .stPHd{font-size:13pt;font-weight:800;text-align:center;margin:0 0 3mm;} .stPFt{font-size:8.5pt;text-align:right;margin-top:2mm;} #uwPrint .stTbl tr{break-inside:avoid;} }
 /* 조합원 명부: 명부 / 표창 탭 */
-.uwmVTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid #6d28d9;border-radius:10px;overflow:hidden;max-width:560px;}
-.uwmVTab{flex:1 1 0;border:0;background:var(--surface);color:#6d28d9;font:inherit;font-weight:800;font-size:13.5px;padding:8px 6px;cursor:pointer;white-space:nowrap;}
-.uwmVTab + .uwmVTab{border-left:1.5px solid #6d28d9;} .uwmVTab.on{background:#6d28d9;color:#fff;}
+.uwmVTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid #db2777;border-radius:10px;overflow:hidden;max-width:560px;}
+.uwmVTab{flex:1 1 0;border:0;background:var(--surface);color:#db2777;font:inherit;font-weight:800;font-size:13.5px;padding:8px 6px;cursor:pointer;white-space:nowrap;}
+.uwmVTab + .uwmVTab{border-left:1.5px solid #db2777;} .uwmVTab.on{background:#db2777;color:#fff;}
 .uwAwGrid{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;}
 .uwAwBox{flex:1 1 320px;min-width:0;}
-.uwAwHd{display:flex;align-items:center;gap:8px;margin:0 0 6px;} .uwAwHd b{font-size:14px;color:#4c1d95;} .uwAwHd .btn{margin-left:auto;}
+.uwAwHd{display:flex;align-items:center;gap:8px;margin:0 0 6px;} .uwAwHd b{font-size:14px;color:#be185d;} .uwAwHd .btn{margin-left:auto;}
 .uwAwTbl td.uwAwName{font-weight:800;}
-.uwAwRow{cursor:pointer;} .uwAwRow:hover td{background:#faf5ff;}
+.uwAwRow{cursor:pointer;} .uwAwRow:hover td{background:#fdf2f8;}
 @media (max-width:700px){
   .uwAwTbl thead{display:table-header-group !important;} .uwAwTbl{display:table !important;} .uwAwTbl tbody{display:table-row-group !important;} .uwAwTbl tr{display:table-row !important;border:0 !important;padding:0 !important;margin:0 !important;background:none !important;}
   .uwAwTbl td{display:table-cell !important;border:1px solid var(--border) !important;padding:6px 6px !important;text-align:center !important;width:auto !important;} .uwAwTbl td::before{content:none !important;}
@@ -1417,11 +1417,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 사진명단 고르기 창 */
 .uwcPop{max-width:460px;}
 .uwcBar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:10px 12px 6px;}
-.uwcCnt{margin-left:auto;font-size:12.5px;font-weight:800;color:#4c1d95;}
+.uwcCnt{margin-left:auto;font-size:12.5px;font-weight:800;color:#be185d;}
 .uwcOpt{display:flex;gap:6px;align-items:flex-start;padding:0 12px 6px;font-size:12px;color:var(--text-muted);cursor:pointer;} .uwcOpt input{width:16px;height:16px;flex:none;margin:1px 0 0;}
 .uwcList{max-height:min(56vh,460px);overflow:auto;padding:4px 12px 10px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
 .uwcItem{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;min-width:0;}
-.uwcItem.on{background:#f5f3ff;border-color:#c4b5fd;}
+.uwcItem.on{background:#fdf2f8;border-color:#f9a8d4;}
 .uwcItem input{width:18px;height:18px;flex:none;margin:0;}
 .uwcItem b{white-space:nowrap;} .uwcItem span{color:var(--text-muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .uwcItem i{margin-left:auto;font-style:normal;font-size:12px;} .uwcItem i.no{color:var(--text-muted);}
 @media (max-width:700px){ .uwcList{grid-template-columns:1fr;} }
@@ -1463,8 +1463,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 }
 
 /* 업무규정·취업규칙 */
-.uwPt{margin:22px 0 8px;padding:10px 14px;border-radius:10px;background:#4c1d95;color:#fff;font-size:16px;scroll-margin-top:70px;}
-.uwRg{margin:16px 0 8px;padding:9px 12px;border-radius:8px;background:#ede9fe;color:#4c1d95;font-size:15.5px;border:1px solid #ddd6fe;scroll-margin-top:70px;}
+.uwPt{margin:22px 0 8px;padding:10px 14px;border-radius:10px;background:#be185d;color:#fff;font-size:16px;scroll-margin-top:70px;}
+.uwRg{margin:16px 0 8px;padding:9px 12px;border-radius:8px;background:#fce7f3;color:#be185d;font-size:15.5px;border:1px solid #fbcfe8;scroll-margin-top:70px;}
 .uwSec{font-size:14px;border-left-width:2px;margin-left:8px;}
 .uwPre{font-family:ui-monospace,"D2Coding","Nanum Gothic Coding",Consolas,monospace;font-size:12px;line-height:1.55;white-space:pre;overflow-x:auto;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:4px 0 8px;-webkit-overflow-scrolling:touch;}
 @media print{
@@ -1742,7 +1742,7 @@ function renderDpWho(){
   return `<div id="dpWhoScrim" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;">
     <div class="panel" style="max-width:380px;width:92%;margin:0;max-height:86vh;overflow:auto;">
       <h3 style="margin:0 0 2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${esc(who)} ${code ? codeBadge(code) : ''}${(()=>{ const n = isSup ? (e && window._dpSupRank ? window._dpSupRank[e.id] : null) : (window._dpRank ? window._dpRank[empId] : null);
-        return n!=null ? `<span style="font-size:13px;font-weight:700;background:#ede9fe;color:#5b21b6;border-radius:6px;padding:2px 8px;">${isSup ? '지원 순번' : '퇴근 순번'} ${n}</span>` : ''; })()}</h3>
+        return n!=null ? `<span style="font-size:13px;font-weight:700;background:#fce7f3;color:#be185d;border-radius:6px;padding:2px 8px;">${isSup ? '지원 순번' : '퇴근 순번'} ${n}</span>` : ''; })()}</h3>
       <p class="hint" style="margin:0 0 10px;">${m}/${d}(${weekdayKr(y,m,d)}) ${part} 배차</p>
       <table class="tbl" style="width:100%;font-size:13px;"><tbody>${body}</tbody></table>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;">
@@ -3572,11 +3572,11 @@ function updateStatusBar(){
   let authHtml = '';
   if(db && authResolved){
     authHtml = userRole
-      ? `<span style="color:${userRole==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : leaderTeam ? `✏️ ${leaderTeam}조 조장` : '✏️ 조장모드'}</span>${userRole==='leader' ? `<button type="button" class="btn sm pwHdrBtn acctPwBtn" id="acctPwBtn" title="조장 로그인 비밀번호 바꾸기">🔑<span class="acctLbl"> 로그인 비번</span></button>` : ''}<button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+      ? `<span style="color:${userRole==='union' ? '#be185d' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : leaderTeam ? `✏️ ${leaderTeam}조 조장` : '✏️ 조장모드'}</span>${userRole==='leader' ? `<button type="button" class="btn sm pwHdrBtn acctPwBtn" id="acctPwBtn" title="조장 로그인 비밀번호 바꾸기">🔑<span class="acctLbl"> 로그인 비번</span></button>` : ''}<button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
       : (currentUser
           ? `<span style="color:var(--warn);">권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
-          : SITE_UNION ? `<button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">UNION 로그인</button>`
-          : `<span>👁 보기 전용</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#4c1d95;border-color:#4c1d95;">UNION</button>`);
+          : SITE_UNION ? `<button type="button" class="btn sm" id="loginUnionBtn" style="background:#be185d;border-color:#be185d;">UNION 로그인</button>`
+          : `<span>👁 보기 전용</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#be185d;border-color:#be185d;">UNION</button>`);
   }
   statusEl.innerHTML = conn + authHtml;
   const lb = document.getElementById('loginLeaderBtn'), lu = document.getElementById('loginUnionBtn'), lo = document.getElementById('logoutBtn');
@@ -3645,7 +3645,7 @@ function openLoginDialog(role){
     <form id="loginForm" style="background:var(--surface);color:var(--text);border-radius:12px;padding:20px;max-width:340px;width:88%;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:10px;">
       <input type="hidden" name="email" autocomplete="username" value="${esc(role==='union' ? (UNION_EMAILS[0]||'') : Object.keys(LEADER_TEAM_EMAILS)[0])}">
       ${role==='union' ? '' : `<div class="field"><label style="color:#be185d;font-weight:800;">조 선택</label><div style="display:flex;gap:6px;">${Object.entries(LEADER_TEAM_EMAILS).map(([em,t],i)=>`<button type="button" class="btn sm ${i===0?'':'ghost'} loginTeamBtn" data-email="${esc(em)}" style="flex:1;">${t}조 조장</button>`).join('')}</div></div>`}
-      <div class="field"><label style="color:${role==='union' ? '#4c1d95' : '#be185d'};font-weight:800;">${role==='union' ? 'UNION' : '조장관리'} 비밀번호</label><input type="password" name="pw" inputmode="numeric" autocomplete="current-password" required placeholder="비밀번호"></div>
+      <div class="field"><label style="color:${role==='union' ? '#be185d' : '#be185d'};font-weight:800;">${role==='union' ? 'UNION' : '조장관리'} 비밀번호</label><input type="password" name="pw" inputmode="numeric" autocomplete="current-password" required placeholder="비밀번호"></div>
       <div id="loginErr" style="color:var(--warn);font-size:12px;min-height:16px;"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
         <button type="button" class="btn ghost sm" id="loginCancel">취소</button>
@@ -9764,7 +9764,7 @@ function pageUwMem(){
   ${vtabs}
   <div class="uwmTabs"><b class="uwmCnt">재적 조합원 ${cur.length}명</b>${cur.length ? `<span class="uwmSum">${uwMemPartCount(cur)}</span>` : ''}</div>
   <div class="uwBar"><input type="search" id="uwmSearch" value="${esc(uwMemQ)}" placeholder="이름·직위·파트·전화번호 검색" autocomplete="off"></div>
-  <div class="uwTools"><button type="button" class="btn sm" id="uwmPrint">🖨️ PDF 출력</button><button type="button" class="btn sm" id="uwmCard" style="background:#4c1d95;border-color:#4c1d95;">🪪 사진명단 출력</button><button type="button" class="btn ghost sm" id="uwmCsv">⬇️ 엑셀(CSV) 받기</button><button type="button" class="btn ghost sm editor-only" id="uwmAdd">＋ 조합원 추가</button><label class="btn ghost sm editor-only uwmImp">📥 엑셀 가져오기<input type="file" id="uwmFile" accept=".xlsx" hidden></label></div>
+  <div class="uwTools"><button type="button" class="btn sm" id="uwmPrint">🖨️ PDF 출력</button><button type="button" class="btn sm" id="uwmCard" style="background:#be185d;border-color:#be185d;">🪪 사진명단 출력</button><button type="button" class="btn ghost sm" id="uwmCsv">⬇️ 엑셀(CSV) 받기</button><button type="button" class="btn ghost sm editor-only" id="uwmAdd">＋ 조합원 추가</button><label class="btn ghost sm editor-only uwmImp">📥 엑셀 가져오기<input type="file" id="uwmFile" accept=".xlsx" hidden></label></div>
   ${list.length ? `<div class="uwmWrap"><table class="tbl uwmTbl"><thead><tr>${cols.map(k=> `<th>${esc(lbl[k])}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${cols.length}" class="empty">'${esc(uwMemQ)}' 찾는 사람이 없어요.</td></tr>`}</tbody></table></div>`
     : (loaded ? `<div class="empty">${uwMemTab==='left' ? '탈퇴자가 없어요.' : '아직 명부가 없어요. [📥 엑셀 가져오기]로 조합원 명부 엑셀(.xlsx)을 올려 주세요.'}</div>` : '')}
   ${editPop}
