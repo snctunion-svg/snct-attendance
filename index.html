@@ -1489,8 +1489,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
     <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
     <a class="navttl navUnion" data-view="leaderhub" data-role-section="leader" style="margin-top:10px;">조장관리 <span class="navUnionArr">›</span></a>
-    <a class="navttl navUnion" data-view="unionhub" data-role-section="union" style="margin-top:10px;">UNION <span class="navUnionArr">›</span></a>
-    <a class="navttl navUnion" data-view="workhub" data-role-section="union" style="margin-top:10px;">UNION WORK <span class="navUnionArr">›</span></a>
+    <a class="navttl navUnion" data-view="workhub" data-role-section="union" style="margin-top:10px;">UNION <span class="navUnionArr">›</span></a>
+    <a class="navttl navUnion" data-view="unionhub" data-role-section="union" style="margin-top:10px;">UNION WORK <span class="navUnionArr">›</span></a>
   </nav>
   <main id="content"></main>
 </div>
@@ -1652,7 +1652,7 @@ const FULL_SLOTS_FN = ()=> DAY_SLOTS.slice(0, DAY_SLOTS.indexOf('19:00')).concat
 const SUN_NIGHT_SLOTS_FN = ()=> ['18:00','18:30'].concat(NIGHT_SLOTS.slice(NIGHT_SLOTS.indexOf('19:00'), NIGHT_SLOTS.indexOf('07:00')), ['31:00','31:30']);
 const NIGHT_SLOTS = ['18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00','22:30','23:00','23:30','24:00','00:30','01:00','01:30','02:00','02:30','03:00','03:30','04:00','04:30','05:00','05:30','06:00','06:30','07:00','07:30'];
 // 승무(크레인 근무)로 세지 않는 칸: 당직(주황, 저장 값 '후반')·셔틀(회색, 저장 값 '당직')
-function dpIsWork(cat){ return !!cat && cat!=='당직' && cat!=='후반'; }
+function dpIsWork(cat){ return !!cat && cat!=='당직'; }   // 시간대별 인원: 당직(주황 '후반') 포함, 셔틀(회색 '당직')만 뺌
 // 승무 시간: 근무·정비 + 당직(주황, 저장 값 '후반')까지 포함 — 셔틀(회색, 저장 값 '당직')만 뺌
 function dpIsCrew(cat){ return !!cat && cat!=='당직'; }
 const DISPATCH_CATS = [
@@ -2350,7 +2350,7 @@ function updateSuwuLive(empId){
 function updateCountLive(slot){
   const cells = document.querySelectorAll(`.dpCell[data-dispatch-slot="${slot}"]`);
   let cnt = 0;
-  cells.forEach(td=>{ const v = td.dataset.dispatchCur; if(dpIsWork(v)) cnt++; }); // 당직·셔틀은 시간대별 인원에서 뺌
+  cells.forEach(td=>{ const v = td.dataset.dispatchCur; if(dpIsWork(v)) cnt++; }); // 셔틀은 시간대별 인원에서 뺌(당직은 셈)
   const countCell = document.querySelector(`[data-dispatch-count="${slot}"]`);
   if(countCell){
     countCell.textContent = cnt || '';
@@ -4431,7 +4431,7 @@ function setView(v){
     if(authResolved && !roleCanSee(v)) return;
     document.getElementById('nav').classList.remove('open');
     document.getElementById('scrim').classList.remove('show');
-    openSheetPop(v==='unionhub' ? UNION_SHEETS : v==='workhub' ? WORK_SHEETS : LEADER_SHEETS, v==='unionhub' ? 'UNION' : v==='workhub' ? 'UNION WORK' : '조장관리');
+    openSheetPop(v==='unionhub' ? UNION_SHEETS : v==='workhub' ? WORK_SHEETS : LEADER_SHEETS, v==='unionhub' ? 'UNION WORK' : v==='workhub' ? 'UNION' : '조장관리');
     return;
   }
   if(UW_GROUPS[v]) v = uwGrpLast[v];   // 규약&규정·취업&업무 → 마지막에 본 규정
@@ -4573,7 +4573,7 @@ function render(){
   else if(VIEW==='unionhub') el.innerHTML = pageHub(UNION_SHEETS);
   else if(VIEW==='leaderhub') el.innerHTML = pageHub(LEADER_SHEETS);
   const hubList = isUnionSheet(VIEW) ? UNION_SHEETS : isLeaderSheet(VIEW) ? LEADER_SHEETS : isWorkSheet(VIEW) ? WORK_SHEETS : null;
-  if(hubList){ el.insertAdjacentHTML('afterbegin', sheetBar(hubList, hubList===UNION_SHEETS ? 'UNION' : hubList===WORK_SHEETS ? 'UNION WORK' : '조장관리'));   // 시트 고르기 줄(맨 위) — 휴대폰에서 고른 시트가 보이게 옆으로 맞춤
+  if(hubList){ el.insertAdjacentHTML('afterbegin', sheetBar(hubList, hubList===UNION_SHEETS ? 'UNION WORK' : hubList===WORK_SHEETS ? 'UNION' : '조장관리'));   // 시트 고르기 줄(맨 위) — 휴대폰에서 고른 시트가 보이게 옆으로 맞춤
     const bar = el.querySelector('.unionBar'), on = bar && bar.querySelector('.unionChip.on'); if(on) bar.scrollLeft = Math.max(0, on.offsetLeft - (bar.clientWidth - on.offsetWidth)/2); }
   if(hubList || VIEW==='unionhub' || VIEW==='leaderhub') el.querySelectorAll('[data-union-go]').forEach(b=> b.onclick = ()=> setView(b.dataset.unionGo));
 
@@ -9013,7 +9013,7 @@ function pageDispatch(){
     const cells = supX ? slots.map(s=> `<td class="dpLockCell${isMealSlot(s) ? ' dpMeal'+mealEdge(s) : ''}" title="상대 조 지원(이름 직접 입력) — 여기서는 칠할 수 없어요"></td>`).join('') : slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
-      if(dpIsCrew(v)) paintedSlots++; if(dpIsWork(v)) slotCounts[si]++; // 승무에는 당직 포함, 시간대별 인원에서는 당직·셔틀 뺌
+      if(dpIsCrew(v)) paintedSlots++; if(dpIsWork(v)) slotCounts[si]++; // 승무·시간대별 인원 모두 당직 포함, 셔틀만 뺌
       // 칸에 직접 쓴 글자·숫자(식사 칸 포함)는 시간대별 인원에 세지 않음 — 색칠한 근무만 셈
       return slotCell(e.id, s, v, note);
     }).join('');
@@ -9090,7 +9090,7 @@ function pageDispatch(){
     const cells = slots.map((s,si)=>{
       const v = drec && drec.slots ? (drec.slots[s]||'') : '';
       const note = drec && drec.notes ? (drec.notes[s]||'') : '';
-      if(dpIsCrew(v)) supPainted++; if(dpIsWork(v)) slotCounts[si]++; // 승무에는 당직 포함, 시간대별 인원에서는 당직·셔틀 뺌
+      if(dpIsCrew(v)) supPainted++; if(dpIsWork(v)) slotCounts[si]++; // 승무·시간대별 인원 모두 당직 포함, 셔틀만 뺌
       // 칸에 직접 쓴 글자·숫자(식사 칸 포함)는 시간대별 인원에 세지 않음 — 색칠한 근무만 셈
       return slotCell(supId, s, v, note);
     }).join('');
