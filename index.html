@@ -1300,6 +1300,29 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .uwfDateL{font-size:11pt;margin:0 0 8mm;} .uwfSignL{font-size:11pt;margin:0 0 12mm;}
 .uwfTo{font-size:15pt;font-weight:800;}
 @media (max-width:700px){ .uwfDoc{align-items:flex-start;} .uwfPage{max-width:none;} }
+/* 노동절 장학생 추천서 */
+.uwfSchNo{font-size:9pt;}
+.uwfS th,.uwfS td{font-size:9.5pt;padding:.6mm 1.4mm;height:6.4mm;line-height:1.3;}
+.uwfSch .uwfTitle{font-size:18pt;margin:1mm 0 3mm;}
+.uwfSch .uwfT{margin-bottom:1.5mm;}
+.uwfS th small{font-size:7.5pt;}
+.uwfAtt{font-size:8.3pt;line-height:1.38;}
+.uwfPhotoCell{padding:1mm !important;}
+.uwfPhotoBox{display:flex;align-items:center;justify-content:center;width:100%;height:33mm;cursor:pointer;color:#555;overflow:hidden;}
+.uwfPhotoBox img{width:100%;height:100%;object-fit:cover;}
+.uwfSecT{text-align:center !important;font-size:13pt;font-weight:900;letter-spacing:3pt;}
+.uwfSmall{font-size:8.3pt;line-height:1.4;}
+.uwfSchool > div{margin:1mm 0;}
+.uwfRecBlk{text-align:center !important;padding:2mm 3mm !important;} .uwfRecBlk > div{margin:1.3mm 0;}
+.uwfToBig{font-size:13pt;font-weight:900;text-align:left;margin-top:3mm !important;}
+.uwfNotes{margin-top:1mm;}
+.uwfO{display:inline-block;padding:0 4px;border-radius:50%;cursor:pointer;border:1.5px solid transparent;}
+.uwfO.on{border-color:#111;}
+.uwfWide{min-width:14em;}
+.uwfPledgeBox{border:1px solid #000;padding:6mm 6mm;line-height:2;margin-top:6mm;} .uwfPledgeBox p{margin:0 0 3mm;}
+.uwfSignBlk{text-align:right;line-height:2.4;font-size:11pt;}
+.uwfAgree{font-size:10pt;line-height:1.75;} .uwfAgree p{margin:0 0 3mm;} .uwfAgreeLast{border:1px solid #000;padding:3mm;margin-top:5mm !important;}
+.uwfGuide{margin:0 0 10px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:var(--surface);font-size:12.5px;line-height:1.6;} .uwfGuide summary{cursor:pointer;font-weight:800;}
 @page uwform{size:A4;margin:12mm;}
 @media print{
   #uwPrint.uwFormPrint{page:uwform;max-width:none !important;width:186mm !important;}
@@ -9572,7 +9595,7 @@ function pageUwMem(){
   const vtabs = `<div class="uwmVTabs"><button type="button" class="uwmVTab${uwMemView==='list' ? ' on' : ''}" data-uwm-view="list">👥 명부 ${cur.length}명</button><button type="button" class="uwmVTab${uwMemView==='award' ? ' on' : ''}" data-uwm-view="award">🏅 조합원 표창 ${aw.found.length + aw.prize.length}건</button><button type="button" class="uwmVTab${uwMemView==='form' ? ' on' : ''}" data-uwm-view="form">📄 양식</button></div>`;
   if(uwMemView==='form') return `
   <h2 class="pgttl">조합원 명부</h2>
-  <div class="uwHead"><b>표창 양식</b><span>근무유공자 추천서 · 공적조서 — 골라서 채우고 출력</span></div>
+  <div class="uwHead"><b>양식</b><span>근무유공자 추천서 · 공적조서 · 노동절 장학생 — 골라서 채우고 출력</span></div>
   ${vtabs}${pageUwForm(cur)}`;
   if(uwMemView==='award') return `
   <h2 class="pgttl">조합원 명부</h2>
@@ -9600,6 +9623,9 @@ function uwFormChief(){ const c = uwMemList('cur').find(m=> /위원장/.test(m.p
 function uwFormToday(sep){ const t = todayStr().split('-'); return sep==='kr' ? `${t[0]}년 ${Number(t[1])}월 ${Number(t[2])}일` : `${t[0]} .  ${t[1]}  .  ${t[2]}  .`; }
 function uwFormDefault(kind){
   const chief = uwFormChief(), cur = uwMemList('cur');
+  if(kind==='sch'){ const y = todayStr().slice(0,4); return {kind, who:'', tenureMan:false, v:{year:y, sName:'', sRrn:'', gender:'', schAddr:'', schTel:'', schZip:'', u2:'', d2:'', g2:'', u4:'', d4:'', g4:'', acct:'', bank:'', holder:'', mobile:'', sSign:'', schDate:`${y}년     월     일`,
+    wName:'', rel:'', company:'선광신컨테이너터미널', dept:'운영팀', rank:'', workAddr:'인천 연수구 송도동 신항대로 707          ☎ (032) 724 - 1212', homeAddr:'', since:'', recDate:`${y}년     월     일`, recOrg:'선광신컨테이너터미널(주) 노동조합', photo:'',
+    pDate:`${y}년     월     일`, pStu:'', pWork:'', aDate:`${y}년     월     일`}}; }
   if(kind==='rec') return {kind, who:'', tenureMan:false, v:{part:'운영팀', rank:'', name:'', birth:'', hire:'', tenure:'',
     reason:'상기인은 성실히 근무 하면서 협력적 노사 관계 구축 및 근로자 화합과 건강한 직장 분위기 조성에 최선을 다하였기에 추천 합니다.',
     date: uwFormToday('kr'), recommender: chief.split('').join(' ')}};
@@ -9619,6 +9645,7 @@ function uwTenure(hire){ const m = String(hire||'').match(/(\d{4})\D+(\d{1,2})(?
   let mo = (t[0] - Number(m[1])) * 12 + (t[1] - Number(m[2])); if(m[3] && t[2] < Number(m[3])) mo--; if(mo < 0) return ''; return `${Math.floor(mo/12)}년 ${mo%12}개월`; }
 function uwFormPick(i){
   const m = uwMemList('cur')[i]; if(!m) return; const v = uwForm.v, nm = String(m.name||'').replace(/\s/g,'');
+  if(uwForm.kind==='sch'){ const sp = nm.split('').join(' '); v.wName = sp; v.pWork = nm; v.homeAddr = m.addr ? m.addr + (m.tel ? '     ☎ ' + uwTelFmt(m.tel) : '') : v.homeAddr; return; }
   if(uwForm.kind==='rec'){ v.name = nm.split('').join(' '); if(!v.rank) v.rank = m.pos && m.pos!=='조합원' ? '' : ''; }
   else { const sp = nm.split('').join(' '); v.name = sp; v.bName = sp; v.cName = sp; v.addr = m.addr || v.addr; v.cTel = uwTelFmt(m.tel) || v.cTel; v.grade = m.pos && m.pos!=='조합원' ? m.pos : v.grade; v.bOrg = '선광신컨테이너터미널(주)'; }
 }
@@ -9627,6 +9654,55 @@ function uwFormPages(f){
   const F = (k, cls)=> `<span class="uwfIn${cls ? ' '+cls : ''}" contenteditable="true" data-uwf="${k}">${esc(v[k]||'')}</span>`;
   const M = (k, cls)=> `<div class="uwfIn uwfML${cls ? ' '+cls : ''}" contenteditable="true" data-uwf="${k}">${esc(v[k]||'').replace(/\n/g,'<br>')}</div>`;
   const C = k=> `<span class="uwfChk" data-uwfc="${k}">${v[k] ? '■' : '□'}</span>`;
+  if(f.kind==='sch'){
+    const O = (k, val)=> `<span class="uwfO${v[k]===val ? ' on' : ''}" data-uwfo="${k}" data-val="${val}">${val}</span>`;   // 누르면 동그라미(남/여, 부/모)
+    return `<div class="uwfPage uwfSch">
+    <div class="uwfSchNo">(제1호 서식)</div>
+    <div class="uwfTitle">장 학 생 추 천 서</div>
+    <table class="uwfT uwfS"><colgroup><col style="width:15%"><col style="width:15%"><col style="width:22%"><col style="width:14%"><col style="width:14%"><col style="width:20%"></colgroup>
+      <tr><td colspan="5" class="uwfAtt"><b>※ 첨부서류</b><br>1. <b>성적증명서</b> 1부. ∙신입생은 고3 평균 등급 6등급(77%) 이내 /직전학년 성적증명서(2.0이상)<br>2. <b>재학증명서</b> 1부. ∙신입생∙재학생 전부 제출<br>3. <b>가족관계증명서</b> 1부.(근로자와 학생 관계를 확인 할 수 있는 입증서류)<br>4. <b>근로자 재직증명서</b> 1부.(추천근로자의 근로관계를 확인할 수 있는 서류)<br>5. 서약서 및 개인정보이용동의서 각 1부.<br>6. 통장사본 1부.</td>
+        <td rowspan="2" class="uwfPhotoCell"><label class="uwfPhotoBox" title="눌러서 사진 넣기">${v.photo ? `<img src="${v.photo}" alt="">` : '<span>사 진</span>'}<input type="file" accept="image/*" data-uwfphoto="1" hidden></label></td></tr>
+      <tr><td colspan="5" class="uwfSecT">＊ 장 학 생 인 적 사 항 ＊</td></tr>
+      <tr><th>성&nbsp;&nbsp;&nbsp;&nbsp;명</th><td class="uwfC">${F('sName')}</td><th>주민등록번호</th><td colspan="1" class="uwfC">${F('sRrn')}</td><th>성&nbsp;별</th><td class="uwfC">${O('gender','남')} / ${O('gender','여')}</td></tr>
+      <tr><th rowspan="4">소 속 학 교<small>(해당란만기재)</small></th><th>소재지주소</th><td colspan="4">${F('schAddr')}</td></tr>
+      <tr><th>전화번호</th><td colspan="2" class="uwfC">${F('schTel')}</td><th>우편번호</th><td class="uwfC">${F('schZip')}</td></tr>
+      <tr><td colspan="5" class="uwfC">${F('u2','uwfW')} 대학(2년제)&nbsp;&nbsp;&nbsp;${F('d2','uwfW')} 학과&nbsp;&nbsp;&nbsp;${F('g2','uwfW')} 학년</td></tr>
+      <tr><td colspan="5" class="uwfC">${F('u4','uwfW')} 대학교(4년제)&nbsp;&nbsp;&nbsp;${F('d4','uwfW')} 학과&nbsp;&nbsp;&nbsp;${F('g4','uwfW')} 학년</td></tr>
+      <tr><th rowspan="2">장학금송금<br>계좌번호</th><td colspan="5">계좌번호&nbsp;&nbsp;&nbsp;${F('acct','uwfWide')}</td></tr>
+      <tr><td class="uwfC">${F('bank')}</td><th>예금주</th><td class="uwfC">${F('holder')}</td><th>휴대폰번호</th><td class="uwfC">${F('mobile')}</td></tr>
+      <tr><th>확인란</th><td colspan="3" class="uwfSmall">신청인은 장학재단을 통해 당해연도 장학지원사업에 해당 (80만원 지급 가능 자) 유·무를 확인하였으며 이후 발생할 수 있는 장학금 반납에 대해서 일체 책임을 질 것을 서약합니다.</td><td colspan="2">학생 성명 : ${F('sSign','uwfW')} (서명)</td></tr>
+      <tr><td colspan="6" class="uwfSchool"><div class="uwfSmall">※소속학교장 확인란(직인 필히 첨부)</div><div class="uwfC">${F('schDate')}</div><div class="uwfR"><b>학교장</b>&nbsp;&nbsp;[직인]</div></td></tr>
+      <tr><td colspan="6" class="uwfSecT">＊ 근 로 자 인 적 사 항 ＊</td></tr>
+      <tr><th>근로자성명<small>(보호자성명)</small></th><td colspan="2" class="uwfC">${F('wName','uwfW')}(인)</td><th>학생과의 관계</th><td colspan="2" class="uwfC">1.(&nbsp;${O('rel','부')},&nbsp;&nbsp;${O('rel','모')}&nbsp;)</td></tr>
+      <tr><th>직 장 명</th><td class="uwfC">${F('company')}</td><th>부 서 명</th><td class="uwfC">${F('dept')}</td><th>직&nbsp;위</th><td class="uwfC">${F('rank')}</td></tr>
+      <tr><th rowspan="2">주&nbsp;&nbsp;소</th><th>직&nbsp;장</th><td colspan="4">${F('workAddr')}</td></tr>
+      <tr><th>자&nbsp;택</th><td colspan="4">${F('homeAddr')}</td></tr>
+      <tr><th>근속기간</th><td colspan="5">${F('since','uwfW')}&nbsp;&nbsp;~&nbsp;&nbsp;현재</td></tr>
+      <tr><td colspan="6" class="uwfRecBlk"><div>위 학생을 ${esc(v.year)}년도 인천시 근로자 자녀장학사업 지급대상자로 추천합니다.</div><div>${F('recDate')}</div><div><b>추천인(추천단체):&nbsp;&nbsp;${F('recOrg')}&nbsp;&nbsp;[직인]</b></div><div class="uwfToBig">한국노총 인천지역본부 장학사업 운영위원회 의장 귀하</div></td></tr></table>
+    <div class="uwfSmall uwfNotes"><b>◎ 장학생 선발 제외 및 주의 사항</b><br>1. 장학생 – 부모의 근무지 또는 거주지가 인천 일 경우<br>2. 타장학금(학자금)을 지원받는 경우 재학 대학 등록금 기준 기존 혜택 장학금액+수령금액(800,000원)+학자금 대출이 등록금을 초과하지 않는 경우 신청 가능<br>3. 학교장, 신청유관기관장의 추천직인이 없는 경우.&nbsp;&nbsp;&nbsp;4. 장학금 송금계좌번호, 금융기관명, 예금주 등 필히 기재.</div></div>
+  <div class="uwfPage uwfSch">
+    <div class="uwfSmall">붙임5. 서약서 및 개인정보이용동의서 각 1부.</div>
+    <div class="uwfC" style="margin-top:12mm;">(${esc(v.year)}년 근로자 자녀 장학사업)</div>
+    <div class="uwfTitle" style="margin-top:3mm;">서 약 서</div>
+    <div class="uwfPledgeBox"><p>본인은 인천광역시 근로자 자녀 장학사업 장학신청에 있어 다음사항을 준수할 것을 서약합니다.</p>
+      <p>1. 신청 서류의 허위(위조)사항 발생 시 장학생 선발대상에서 제외 되며, 지급된 장학금을 전액 반환할 것을 서약합니다.</p>
+      <p>2. 지자체의 결격조회 시 부적격 판단에 따른 모든 책임은 서약자에 있으며 중복지원으로 발생한 장학금(수업료 초과금액)은 전액 반환할 것을 서약합니다.</p>
+      <p>3. 중복지원대상자로서 수업료 초과금액을 60일 이내에 반환조치하지 않을 경우 장학사업의 제재가 발생하여도 어떠한 이의도 제기하지 아니할 것을 서약합니다.</p></div>
+    <div class="uwfC uwfDateL" style="margin-top:20mm;">${F('pDate')}</div>
+    <div class="uwfSignBlk"><div>신청인&nbsp;&nbsp;(학생)&nbsp;&nbsp;${F('pStu','uwfW')}&nbsp;&nbsp;(서명 또는 인)</div><div>(근로자)&nbsp;&nbsp;${F('pWork','uwfW')}&nbsp;&nbsp;(서명 또는 인)</div></div>
+    <div class="uwfTo" style="margin-top:20mm;">한국노총인천지역본부 장학사업 운영위원회 귀하</div></div>
+  <div class="uwfPage uwfSch">
+    <div class="uwfTitle uwfTitleS" style="margin-top:6mm;">개인정보 수집·이용 동의서</div>
+    <div class="uwfAgree"><p>${esc(v.year)}년도 인천광역시 근로자 자녀 장학사업의 일환으로 「개인정보보호법」에 의거, 아래와 같이 개인정보를 수집하고 있습니다. 귀하께서는 아래의 내용을 충분히 숙지하신 후에, 동의 여부를 결정하여 주시기 바랍니다.</p>
+      <p class="uwfC">-아&nbsp;&nbsp;래-</p>
+      <p><b>1. 개인정보 수집 및 이용 동의서</b><br>이용자가 제공한 모든 정보는 다음의 목적을 위해 활용하며, 그 이외의 용도로는 사용되지 않습니다.</p>
+      <p><b>가. 개인정보 수집 항목 및 수집·이용 목적</b><br>1) 수집 항목 (필수항목)<br>&nbsp;- 성명, 주민등록번호, 성별, 학력사항, 학적사항, 주소, 연락처(자택, 휴대전화), 사진, 가족관계 및 가족 인적사항, 지원서에 기재된 정보 또는 이용자가 제공한 정보<br>2) 수집 및 이용 목적<br>&nbsp;- ${esc(v.year)}년도 인천광역시 근로자 자녀 장학사업 장학생 적격여부 조회<br>&nbsp;- ${esc(v.year)}년도 인천광역시 근로자 자녀 장학사업 장학생 장학금 지급 (선발자에 해당)<br>&nbsp;- ${esc(v.year)}년도 인천광역시 근로자 자녀 장학사업 장학생 수혜만료 후 사후관리(선발자에 해당)</p>
+      <p><b>나. 개인정보 보유 및 이용기간</b><br>&nbsp;- 원칙적으로 개인정보 수집 및 이용목적이 달성된 후에는 해당 개인정보를 지체 없이 파기합니다. 단, 관계법령의 규정에 의하여 보존할 필요가 있는 경우, 관계법령에서 정한 일정한 기간 동안 정보를 보관합니다.</p>
+      <p><b>다. 동의거부관리</b><br>&nbsp;- 귀하께서는 본 안내에 따른 개인정보 수집·이용에 대하여 동의를 거부하실 권리가 있습니다. 다만, 귀하가 개인정보 수집·이용에 동의를 거부하시는 경우에는 장학생 선발 과정에 있어 불이익이 발생할 수 있음을 알려드립니다.</p>
+      <p class="uwfAgreeLast">본인은 위의 동의서 내용을 충분히 숙지하였으며, 상기의 개인정보 수집 및 이용에 대해 동의하고, 본인의 개인정보를 제공하는 것에 동의합니다.</p></div>
+    <div class="uwfC uwfDateL">${F('aDate')}</div>
+    <div class="uwfSignBlk"><div>신청인&nbsp;&nbsp;(학생)&nbsp;&nbsp;${F('pStu','uwfW')}&nbsp;&nbsp;(서명 또는 인)</div><div>(근로자)&nbsp;&nbsp;${F('pWork','uwfW')}&nbsp;&nbsp;(서명 또는 인)</div></div></div>`;
+  }
   if(f.kind==='rec') return `<div class="uwfPage uwfRec">
     <div class="uwfRecTop"><div class="uwfRecTitle">근무유공자 추천서</div>
       <table class="uwfApv"><tr><td rowspan="2" class="uwfApvV">결<br><br>재</td><td>담 당</td><td>팀 장</td><td>대표이사</td></tr><tr class="uwfApvS"><td></td><td></td><td></td></tr></table></div>
@@ -9701,10 +9777,11 @@ function uwFormPages(f){
 function pageUwForm(cur){
   if(!uwForm) uwForm = uwFormDefault('rec');
   const f = uwForm;
-  return `<div class="row uwfBar"><span style="font-weight:800;">서류 선택</span><select id="uwfKind" class="docSel"><option value="rec"${f.kind==='rec'?' selected':''}>🏅 근무유공자 추천서</option><option value="merit"${f.kind==='merit'?' selected':''}>📜 공적조서 (4쪽)</option></select>
+  return `<div class="row uwfBar"><span style="font-weight:800;">서류 선택</span><select id="uwfKind" class="docSel"><option value="rec"${f.kind==='rec'?' selected':''}>🏅 근무유공자 추천서</option><option value="merit"${f.kind==='merit'?' selected':''}>📜 공적조서 (4쪽)</option><option value="sch"${f.kind==='sch'?' selected':''}>🎓 노동절 장학생 (3쪽)</option></select>
       <span style="font-weight:800;">대상자</span><select id="uwfWho" class="docSel"><option value="">직접 입력</option>${cur.map((m,i)=> `<option value="${i}"${String(f.who)===String(i)?' selected':''}>${esc(m.name||'')}${m.pos && m.pos!=='조합원' ? ' · '+esc(m.pos) : ''}</option>`).join('')}</select>
       <button type="button" class="btn sm" id="uwfPrint">🖨️ 출력 (인쇄 · PDF 저장)</button><button type="button" class="btn warn ghost sm" id="uwfReset">새로 작성</button></div>
     <p class="hint" style="margin:-2px 0 10px;">칸을 눌러 바로 입력하세요. 대상자를 고르면 명부의 이름·직위·주소·연락처가 채워져요. 생년월일 등 개인정보가 들어가므로 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요.</p>
+    ${f.kind==='sch' ? `<details class="uwfGuide"><summary>📌 추천 유의사항 (원본 4쪽 — 화면에서만 보기)</summary><div>- 교육부(재학대학), 한국장학재단(kosaf.go.kr) 등을 통해 추천인의 장학 혜택 내역을 필히 확인 후 신청<br>- 장학금 중복수혜는 가능하나, 재학 대학 등록금 기준 기존 혜택 장학금액+수령금액(800,000원)+학자금대출이 등록금을 초과하지 않는 경우 신청 가능<br>▶ 지자체(인천시청)에서 별도로 자격여부 조회 후 본부로 부적격자 통보<br>1. 학교장 직인 필히 날인(네모직인) — 총장 직인 원칙(학과장 직인 불가), 협의 필요 시 본부 회신(032-437-8501)<br>2. 휴학생 추천 불가(재학생만)&nbsp;&nbsp;3. 근로자 자녀만 추천 가능(본인·배우자 불가)&nbsp;&nbsp;4. 외국계 학교 추천 불가<br>5. 가족관계증명서·재직증명서 필수&nbsp;&nbsp;6. 사이버대·학점은행제·직업전문훈련학교·방송통신대 추천 불가<br>7. 신입생·재학생 재학증명서 전원 제출&nbsp;&nbsp;8. 성적증명서는 학교장 또는 교무처장 직인 필수<br>9. 국가장학금 대상자는 본인이 판단하여 신청(차후 환급 문제 시 추천 기관 책임)<br>10. 근로자 성명 부분 도장 또는 서명 가능&nbsp;&nbsp;11. 추천인은 추천조직 대표 직인(네모직인)<br>12. 기일 내 제출이 어려우면 스캔·팩스 먼저 제출 후 원본 우편 제출<br>제출처 : 인천시 남동구 구월남로 75, 4층 장학사업 담당자 (032-437-8501)</div></details>` : ''}
     <div class="uwfDoc" id="uwfDoc">${uwFormPages(f)}</div>`;
 }
 function bindUwForm(){
@@ -9721,6 +9798,10 @@ function bindUwForm(){
     };
     el.onkeydown = ev=>{ if(ev.key==='Enter' && !el.classList.contains('uwfML')){ ev.preventDefault(); el.blur(); } };   // 한 줄 칸은 Enter로 줄바꿈 안 함
   });
+  document.querySelectorAll('#uwfDoc [data-uwfo]').forEach(el=> el.onclick = ()=>{ const k = el.dataset.uwfo; f.v[k] = f.v[k]===el.dataset.val ? '' : el.dataset.val;
+    document.querySelectorAll(`#uwfDoc [data-uwfo="${k}"]`).forEach(o=> o.classList.toggle('on', f.v[k]===o.dataset.val)); });
+  document.querySelectorAll('#uwfDoc [data-uwfphoto]').forEach(inp=> inp.onchange = async ()=>{ const fl = inp.files && inp.files[0]; inp.value = ''; if(!fl) return;
+    try{ f.v.photo = await uwPhotoShrink(fl); const bx = inp.closest('.uwfPhotoBox'); if(bx){ const old = bx.querySelector('img, span'); if(old) old.remove(); bx.insertAdjacentHTML('afterbegin', `<img src="${f.v.photo}" alt="">`); } }catch(err){ showToast(err.message || '사진을 넣지 못했어요.'); } });
   document.querySelectorAll('#uwfDoc [data-uwfc]').forEach(el=> el.onclick = ()=>{ const k = el.dataset.uwfc; f.v[k] = !f.v[k];
     const pair = {agree:'disagree', disagree:'agree', yes:'no', no:'yes'}[k]; if(f.v[k] && pair) f.v[pair] = false;
     document.querySelectorAll('#uwfDoc [data-uwfc]').forEach(o=> o.textContent = f.v[o.dataset.uwfc] ? '■' : '□'); });
@@ -9737,7 +9818,8 @@ function uwFormPrint(){
   box = document.createElement('div'); box.id = 'uwPrint'; box.className = 'uwFormPrint';
   box.innerHTML = doc.innerHTML; box.querySelectorAll('[contenteditable]').forEach(e=> e.removeAttribute('contenteditable'));
   document.body.appendChild(box);
-  const old = document.title; document.title = uwForm.kind==='rec' ? '근무유공자 추천서' : '공적조서';
+  box.querySelectorAll('input[type=file]').forEach(e=> e.remove());
+  const old = document.title; document.title = uwForm.kind==='rec' ? '근무유공자 추천서' : uwForm.kind==='sch' ? '장학생 추천서' : '공적조서';
   document.body.classList.add('printing-uw');
   const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
