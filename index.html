@@ -3403,7 +3403,7 @@ const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','pwchange','accident']; // 근태관리 구역 = 배포용(누구나). 근태코드는 조장관리 구역이라 조장·UNION만 // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident','berth','vessel','team','holidays','leaderhub'];
-const UNION_VIEWS  = ['unionhub','workhub','uwmem','uwregs','uwjobs','unana','settle','uwemp','uwwork','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
+const UNION_VIEWS  = ['unionhub','workhub','uwmem','uwform','uwregs','uwjobs','unana','settle','uwemp','uwwork','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 let leaderTeam = null; // 조별 조장으로 로그인했을 때 그 조('1'·'2'), 아니면 null(UNION·공용 조장은 두 조 모두)
@@ -4502,7 +4502,7 @@ document.addEventListener('focusout', ()=>{
 // ===== UNION 시트 =====
 const UNION_SHEETS = [['payroll','💰','장비 시급'],['eqpay','🧾','장비 급여 관리'],['settle','🤝','연도별 타결'],['unana','📊','분석·폐지 검토'],['backup','💾','백업·복원']];   // 휴무 2명 분석·지원 폐지·휴일보전·보전 폐지 = '분석·폐지 검토' 하나로 묶음
 const LEADER_SHEETS = [['safety','🦺','관리감독자'],['codes','🏷️','근태코드'],['mail','📧','메일 송부'],['berth','⚓','선석 조회'],['vessel','🚢','본선작업'],['team','🧩','조편성 관리'],['holidays','📅','공휴일 관리']];
-const WORK_SHEETS = [['uwmem','👥','조합원 명부'],['uwregs','📘','규약&규정'],['uwjobs','📗','취업&업무']];   // UNION WORK 시트(UNION만)
+const WORK_SHEETS = [['uwmem','👥','조합원 명부'],['uwform','📄','양식'],['uwregs','📘','규약&규정'],['uwjobs','📗','취업&업무']];   // UNION WORK 시트(UNION만)
 // 묶음 시트: 경위서&학자금처럼 위에서 규정을 골라 보고 출력. 마지막에 본 규정을 기억
 const UW_GROUPS = {unana:[['fcana','📊 휴무 2명 분석'],['supcut','✂️ 지원 폐지'],['holguar','🗓️ 휴일보전'],['allcut','🧮 보전 폐지']], uwregs:[['uwrule','📘 규약'],['uwlmc','🤝 노사협의회규정'],['uwelect','🗳️ 선거관리규정']], uwjobs:[['uwemp','📗 취업규칙'],['uwwork','🏢 업무규정']]};
 const uwGrpLast = (()=>{ const d = {unana:'fcana', uwregs:'uwrule', uwjobs:'uwemp'}; try{ const o = JSON.parse(localStorage.getItem('snct_uw_grp')||'{}'); Object.keys(d).forEach(g=>{ if(o[g] && UW_GROUPS[g].some(x=> x[0]===o[g])) d[g] = o[g]; }); }catch(e){} return d; })();
@@ -4569,6 +4569,7 @@ function render(){
   else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
   else if(isUwView(VIEW)){ el.innerHTML = uwGroupBar(VIEW) + pageUwDoc(VIEW); bindUwDoc(VIEW); bindUwGroupSel(); }
   else if(VIEW==='uwmem'){ el.innerHTML = pageUwMem(); bindUwMem(); }
+  else if(VIEW==='uwform'){ el.innerHTML = pageUwFormView(); bindUwForm(); uwFormFit(); }
   else if(VIEW==='unionhub') el.innerHTML = pageHub(UNION_SHEETS);
   else if(VIEW==='leaderhub') el.innerHTML = pageHub(LEADER_SHEETS);
   const hubList = isUnionSheet(VIEW) ? UNION_SHEETS : isLeaderSheet(VIEW) ? LEADER_SHEETS : isWorkSheet(VIEW) ? WORK_SHEETS : null;
@@ -9554,7 +9555,7 @@ function uwPhotoShrink(file){
 }
 function subscribeUwMem(){
   if(!db || unsub.uwMem || !(userRole==='union' || userRole==='all')) return;
-  try{ unsub.uwMem = db.collection('unionPrivate').doc('members').onSnapshot(doc=>{ uwMem = doc.exists ? (doc.data()||{}) : {cur:[], left:[]}; uwMemErr = ''; if(VIEW==='uwmem') scheduleRender(); },
+  try{ unsub.uwMem = db.collection('unionPrivate').doc('members').onSnapshot(doc=>{ uwMem = doc.exists ? (doc.data()||{}) : {cur:[], left:[]}; uwMemErr = ''; if(VIEW==='uwmem' || VIEW==='uwform') scheduleRender(); },
     err=>{ uwMemErr = '명부를 읽을 권한이 없어요(UNION 로그인 필요).'; if(VIEW==='uwmem') scheduleRender(); }); }catch(e){}
 }
 // ----- 엑셀(.xlsx) 읽기: 라이브러리 없이 브라우저 기본 기능(압축 풀기·XML)으로 -----
@@ -9624,8 +9625,17 @@ async function uwMemSave(data){
 }
 function uwMemList(tab){ return ((uwMem && uwMem[tab]) || []); }
 function uwMemPartCount(list){ const c = {}; list.forEach(m=>{ const k = String(m.part||'').split('/')[0] || '기타'; c[k] = (c[k]||0) + 1; }); return Object.entries(c).map(([k,v])=> `${esc(k)} ${v}`).join(' · '); }
+// UNION WORK > 📄 양식(조합원 명부에서 따로 뺌) — 대상자 고르기에 명부를 씀
+function pageUwFormView(){
+  subscribeUwMem();
+  const cur = uwMemList('cur');
+  return `<h2 class="pgttl">양식</h2>
+  <div class="uwHead"><b>양식</b><span>근무유공자 추천서 · 공적조서 · 노동절 장학생 · 경조사비 지급기준 · 정기 통보서 — 골라서 채우고 출력</span></div>
+  ${pageUwForm(cur)}`;
+}
 function pageUwMem(){
   subscribeUwMem();
+  if(uwMemView==='form') uwMemView = 'list';
   uwMemTab = 'cur';   // 탈퇴자는 보이지 않게
   const cur = uwMemList('cur'), list = cur, q = uwMemQ.trim().toLowerCase();
   const shown = list.map((m,i)=> ({m, i})).filter(({m})=> !q || Object.values(m).join(' ').toLowerCase().includes(q));
@@ -9646,11 +9656,7 @@ function pageUwMem(){
         <div class="uwmPhBtns"><label class="btn ghost sm">📷 사진 첨부<input type="file" id="uwmPhFile" accept="image/*" hidden></label><button type="button" class="btn warn ghost sm" id="uwmPhDel"${src ? '' : ' style="display:none;"'}>사진 삭제</button></div></div>`; })()}
       <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
   const aw = uwAward();
-  const vtabs = `<div class="uwmVTabs"><button type="button" class="uwmVTab${uwMemView==='list' ? ' on' : ''}" data-uwm-view="list">👥 명부 ${cur.length}명</button><button type="button" class="uwmVTab${uwMemView==='award' ? ' on' : ''}" data-uwm-view="award">🏅 조합원 표창 ${aw.found.length + aw.prize.length}건</button><button type="button" class="uwmVTab${uwMemView==='form' ? ' on' : ''}" data-uwm-view="form">📄 양식</button></div>`;
-  if(uwMemView==='form') return `
-  <h2 class="pgttl">조합원 명부</h2>
-  <div class="uwHead"><b>양식</b><span>근무유공자 추천서 · 공적조서 · 노동절 장학생 · 경조사비 지급기준 · 정기 통보서 — 골라서 채우고 출력</span></div>
-  ${vtabs}${pageUwForm(cur)}`;
+  const vtabs = `<div class="uwmVTabs"><button type="button" class="uwmVTab${uwMemView==='list' ? ' on' : ''}" data-uwm-view="list">👥 명부 ${cur.length}명</button><button type="button" class="uwmVTab${uwMemView==='award' ? ' on' : ''}" data-uwm-view="award">🏅 조합원 표창 ${aw.found.length + aw.prize.length}건</button></div>`;
   if(uwMemView==='award') return `
   <h2 class="pgttl">조합원 명부</h2>
   <div class="uwHead"><b>조합원 표창</b><span>선광신컨테이너터미널㈜ 노동조합 · 조합원 포상 내역${uwAwardDoc && uwAwardDoc.at ? ' · ' + esc(new Date(uwAwardDoc.at).toLocaleDateString('ko-KR')) + ' 저장' : ''}</span></div>
@@ -9678,7 +9684,7 @@ let gsDoc = null;
 function subscribeGs(){
   if(!db || unsub.gsStd || !(userRole==='union' || userRole==='all')) return;
   try{ unsub.gsStd = db.collection('unionPrivate').doc('gsStd').onSnapshot(doc=>{ gsDoc = doc.exists ? (doc.data()||null) : null;
-    if(VIEW==='uwmem' && uwMemView==='form' && uwForm && uwForm.kind==='gs' && !uwForm.dirty && !isEditingField()){ uwForm = uwFormDefault('gs'); scheduleRender(); } }, ()=>{}); }catch(e){}
+    if(VIEW==='uwform' && uwForm && uwForm.kind==='gs' && !uwForm.dirty && !isEditingField()){ uwForm = uwFormDefault('gs'); scheduleRender(); } }, ()=>{}); }catch(e){}
 }
 // 노동조합현황 정기 통보서(노동조합법 시행규칙 별지 제4호서식) — 해마다 1장. 보내 준 엑셀(2025·2026) 값이 기본값
 //  임원 생년월일·연락처는 공개되는 앱 코드에 넣지 않고 비워 둠 → 한 번 입력하고 [💾 저장]하면 UNION 전용 클라우드(unionPrivate/noticeYr)에 연도별로 남음
@@ -9697,7 +9703,7 @@ function ntYears(){ const ys = new Set([...Object.keys(UW_NT_SEED), ...Object.ke
 function subscribeNotice(){
   if(!db || unsub.noticeYr || !(userRole==='union' || userRole==='all')) return;
   try{ unsub.noticeYr = db.collection('unionPrivate').doc('noticeYr').onSnapshot(doc=>{ ntDoc = doc.exists ? (doc.data()||null) : null;
-    if(VIEW==='uwmem' && uwMemView==='form' && uwForm && uwForm.kind==='notice' && !uwForm.dirty && !isEditingField()){ uwForm = uwFormDefault('notice', uwForm.year); scheduleRender(); } }, ()=>{}); }catch(e){}
+    if(VIEW==='uwform' && uwForm && uwForm.kind==='notice' && !uwForm.dirty && !isEditingField()){ uwForm = uwFormDefault('notice', uwForm.year); scheduleRender(); } }, ()=>{}); }catch(e){}
 }
 function ntValues(year){
   const saved = ntSaved(); if(saved[year]) return Object.assign({}, UW_NT_BASE, saved[year]);
@@ -10211,8 +10217,7 @@ function bindUwMem(){
   const el = document.getElementById('content');
   el.querySelectorAll('[data-uwm-view]').forEach(b=> b.onclick = ()=>{ uwMemView = b.dataset.uwmView; uwAwardEdit = null; render(); });
   if(uwMemView==='award'){ bindUwAward(); return; }
-  if(uwMemView==='form'){ bindUwForm(); uwFormFit(); return; }
-  el.querySelectorAll('[data-uwm-tab]').forEach(b=> b.onclick = ()=>{ uwMemTab = b.dataset.uwmTab; render(); });
+    el.querySelectorAll('[data-uwm-tab]').forEach(b=> b.onclick = ()=>{ uwMemTab = b.dataset.uwmTab; render(); });
   const s = document.getElementById('uwmSearch'); if(s){ let t = null; s.oninput = ()=>{ clearTimeout(t); t = setTimeout(()=>{ uwMemQ = s.value; const pos = s.selectionStart; render(); const s2 = document.getElementById('uwmSearch'); if(s2){ s2.focus(); try{ s2.setSelectionRange(pos, pos); }catch(e){} } }, 200); }; }
   const f = document.getElementById('uwmFile'); if(f) f.onchange = ()=>{ if(f.files && f.files[0]) uwImportXlsx(f.files[0]); f.value = ''; };
   const ad = document.getElementById('uwmAdd'); if(ad) ad.onclick = ()=>{ if(!requireEdit()) return; uwMemEdit = {tab: uwMemTab, i: -1}; render(); };
