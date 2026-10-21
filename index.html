@@ -1323,6 +1323,19 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .uwfSignBlk{text-align:right;line-height:2.4;font-size:11pt;}
 .uwfAgree{font-size:10pt;line-height:1.75;} .uwfAgree p{margin:0 0 3mm;} .uwfAgreeLast{border:1px solid #000;padding:3mm;margin-top:5mm !important;}
 .uwfGuide{margin:0 0 10px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:var(--surface);font-size:12.5px;line-height:1.6;} .uwfGuide summary{cursor:pointer;font-weight:800;}
+/* 경조사비 지급기준(A4 가로) */
+.uwfPage.uwfLand{width:277mm;min-height:190mm;padding:8mm 10mm;}
+.uwfGsGrid{display:grid;grid-template-columns:40% 1fr;gap:5mm;align-items:start;}
+.uwfGsTitle{text-align:center;font-family:"Batang","바탕","Noto Serif KR",serif;font-size:15pt;font-weight:800;text-decoration:underline;text-underline-offset:4px;margin:0 0 1mm;}
+.uwfGsDate{text-align:right;font-size:8.5pt;margin:0 0 .8mm;} .uwfGsDate .uwfIn{min-width:6em;}
+.uwfGsT{margin:0 !important;} .uwfGsT th,.uwfGsT td{font-size:8.3pt;padding:.4mm 1mm;height:5mm;line-height:1.2;font-family:"Batang","바탕","Noto Serif KR",serif;}
+.uwfGsT th{background:#dbeafe;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.uwfGsT td .uwfIn{min-width:1em;width:100%;box-sizing:border-box;}
+.uwfGsU col,.uwfGsT{table-layout:auto;}
+.uwfGsN{font-size:7.6pt !important;}
+.uwfGsNote{font-size:8pt;margin-top:1mm;line-height:1.5;} .uwfGsNote .uwfIn{min-width:0;}
+@page uwformL{size:A4 landscape;margin:10mm;}
+@media print{ #uwPrint.uwFormPrint.uwFormLand{width:277mm !important;page:uwformL;} #uwPrint.uwFormPrint .uwfPage.uwfLand{width:277mm;page:uwformL;} }
 @page uwform{size:A4;margin:12mm;}
 @media print{
   #uwPrint.uwFormPrint{page:uwform;max-width:none !important;width:186mm !important;}
@@ -9595,7 +9608,7 @@ function pageUwMem(){
   const vtabs = `<div class="uwmVTabs"><button type="button" class="uwmVTab${uwMemView==='list' ? ' on' : ''}" data-uwm-view="list">👥 명부 ${cur.length}명</button><button type="button" class="uwmVTab${uwMemView==='award' ? ' on' : ''}" data-uwm-view="award">🏅 조합원 표창 ${aw.found.length + aw.prize.length}건</button><button type="button" class="uwmVTab${uwMemView==='form' ? ' on' : ''}" data-uwm-view="form">📄 양식</button></div>`;
   if(uwMemView==='form') return `
   <h2 class="pgttl">조합원 명부</h2>
-  <div class="uwHead"><b>양식</b><span>근무유공자 추천서 · 공적조서 · 노동절 장학생 — 골라서 채우고 출력</span></div>
+  <div class="uwHead"><b>양식</b><span>근무유공자 추천서 · 공적조서 · 노동절 장학생 · 경조사비 지급기준 — 골라서 채우고 출력</span></div>
   ${vtabs}${pageUwForm(cur)}`;
   if(uwMemView==='award') return `
   <h2 class="pgttl">조합원 명부</h2>
@@ -9621,8 +9634,17 @@ function pageUwMem(){
 let uwForm = null;   // {kind:'rec'|'merit', who, v:{}, tenureMan}
 function uwFormChief(){ const c = uwMemList('cur').find(m=> /위원장/.test(m.pos||'') && !/부위원장/.test(m.pos||'')); return c ? c.name : ''; }
 function uwFormToday(sep){ const t = todayStr().split('-'); return sep==='kr' ? `${t[0]}년 ${Number(t[1])}월 ${Number(t[2])}일` : `${t[0]} .  ${t[1]}  .  ${t[2]}  .`; }
+// 경조사비 지급기준(보내 준 PDF): [노조 기준] 구분·현행·화환/조화·비고 / [회사 기준] 구분·경조금·선우회비·휴가·화환/조화·비고 / 장기 근속자 포상금
+const UW_GS = {
+  uDate:'2023-09-05', cDate:'2019-08-01',
+  u: [['본인회갑','300,000','-',''],['본인결혼','300,000','O',''],['자녀결혼','300,000','O',''],['양가 형제자매 결혼','100,000','O',''],['양가 부모 칠순','100,000','O',''],['본인 사망','500,000','O',''],['배우자 사망','500,000','O',''],['양가 부모 사망','300,000','O',''],['자녀 사망','300,000','O',''],['양가 조부모 사망','100,000','O',''],['외조부모 사망','100,000','O',''],['양가 형제 사망','100,000','O',''],['백,숙부모 사망','-','',''],['외백,숙부모 사망','-','',''],['본인 중환','20,000','','일수계산(최대 90일)'],['정년 퇴직','순금3돈','',''],['조합10년근속','100,000','','조합 가입일 기준'],['조합20년근속','100,000','','조합 가입일 기준']],
+  c: [['본인회갑','200,000','300,000','-','O','전,후 30일 내 신청 시 지급'],['본인결혼','300,000','300,000','7일','O',''],['자녀결혼','300,000','300,000','1일','O',''],['양가 형제자매 결혼','100,000','100,000','1일','-',''],['양가 부모 칠순','200,000','200,000','2일','O','전,후 30일 내 신청 시 지급'],['본인 사망','3,000,000','1,000,000','-','O',''],['배우자 사망','1,000,000','1,000,000','7일','O',''],['양가 부모 사망','500,000','300,000','7일','O',''],['자녀 사망','1,000,000','300,000','7일','O',''],['양가 조부모 사망','200,000','200,000','5일','O',''],['외조부모 사망','100,000','200,000','3일','O',''],['양가 형제 사망','100,000','100,000','5일','O',''],['백,숙부모 사망','-','','1일','-',''],['외백,숙부모 사망','-','','1일','-',''],['본인 중환(1차)','150,000','200,000','','','1개월 초과 연속입원 치료시 지급'],['본인 중환(2차)','200,000','300,000','','','3개월 초과 연속입원 치료시 지급'],['퇴직위로금(10년 이상)','-','300,000','','',''],['배우자 출산','-','-','20일','','유급 20일 · 출산 후 120일 이내 신청']],
+  l: [['근무유공자','400','1일',''],['10년 근속','500','2일',''],['15년 근속','700','3일',''],['20년 근속','1,000','4일',''],['25년 근속','1,300','5일',''],['30년 근속','1,500','7일',''],['35년 근속','2,000','7일',''],['25년 이상 근속 후 정년 퇴직','(30년 이상)3,000','-','']],
+  n1:'*상기 경조휴가는 연속 사용하여야 하고, 경조휴가 기간 中 휴일은 경조휴가 기간에 포함한다.', n2:'*화환은 행사 초대장 제출 시 지급한다.'
+};
 function uwFormDefault(kind){
   const chief = uwFormChief(), cur = uwMemList('cur');
+  if(kind==='gs'){ const v = {uDate:UW_GS.uDate, cDate:UW_GS.cDate, n1:UW_GS.n1, n2:UW_GS.n2}; ['u','c','l'].forEach(t=> UW_GS[t].forEach((row,i)=> row.forEach((c,j)=> v[`${t}${i}_${j}`] = c))); return {kind, who:'', tenureMan:false, v}; }
   if(kind==='sch'){ const y = todayStr().slice(0,4); return {kind, who:'', tenureMan:false, v:{year:y, sName:'', sRrn:'', gender:'', schAddr:'', schTel:'', schZip:'', u2:'', d2:'', g2:'', u4:'', d4:'', g4:'', acct:'', bank:'', holder:'', mobile:'', sSign:'', schDate:`${y}년     월     일`,
     wName:'', rel:'', company:'선광신컨테이너터미널', dept:'운영팀', rank:'', workAddr:'인천 연수구 송도동 신항대로 707          ☎ (032) 724 - 1212', homeAddr:'', since:'', recDate:`${y}년     월     일`, recOrg:'선광신컨테이너터미널(주) 노동조합', photo:'',
     pDate:`${y}년     월     일`, pStu:'', pWork:'', aDate:`${y}년     월     일`}}; }
@@ -9654,6 +9676,14 @@ function uwFormPages(f){
   const F = (k, cls)=> `<span class="uwfIn${cls ? ' '+cls : ''}" contenteditable="true" data-uwf="${k}">${esc(v[k]||'')}</span>`;
   const M = (k, cls)=> `<div class="uwfIn uwfML${cls ? ' '+cls : ''}" contenteditable="true" data-uwf="${k}">${esc(v[k]||'').replace(/\n/g,'<br>')}</div>`;
   const C = k=> `<span class="uwfChk" data-uwfc="${k}">${v[k] ? '■' : '□'}</span>`;
+  if(f.kind==='gs'){
+    const T = (t, heads, cls)=> `<table class="uwfT uwfGsT ${cls||''}"><thead><tr>${heads.map(h=> `<th>${h}</th>`).join('')}</tr></thead><tbody>${UW_GS[t].map((row,i)=> `<tr>${row.map((c,j)=> `<td class="${j===0 ? 'uwfC uwfGsK' : j===row.length-1 ? 'uwfGsN' : 'uwfC'}">${F(`${t}${i}_${j}`)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    return `<div class="uwfPage uwfLand uwfGs"><div class="uwfGsGrid">
+      <div class="uwfGsL"><div class="uwfGsTitle">SNCT 노동조합 경조사비 지급기준</div><div class="uwfGsDate">적용일자 : ${F('uDate')}</div>${T('u', ['구분','현행','화환/조화','비고'], 'uwfGsU')}</div>
+      <div class="uwfGsR"><div class="uwfGsTitle">SNCT 경조사 지급기준</div><div class="uwfGsDate">시행일 : ${F('cDate')}</div>${T('c', ['구분','경조금','선우회비','휴가','화환/조화','비고'], 'uwfGsC')}
+        <div class="uwfGsTitle" style="margin-top:3mm;">장기 근속자 포상금</div>${T('l', ['구분','경조급','휴가','비고'], 'uwfGsLg')}
+        <div class="uwfGsNote">${F('n1')}<br>${F('n2')}</div></div></div></div>`;
+  }
   if(f.kind==='sch'){
     const O = (k, val)=> `<span class="uwfO${v[k]===val ? ' on' : ''}" data-uwfo="${k}" data-val="${val}">${val}</span>`;   // 누르면 동그라미(남/여, 부/모)
     return `<div class="uwfPage uwfSch">
@@ -9777,7 +9807,7 @@ function uwFormPages(f){
 function pageUwForm(cur){
   if(!uwForm) uwForm = uwFormDefault('rec');
   const f = uwForm;
-  return `<div class="row uwfBar"><span style="font-weight:800;">서류 선택</span><select id="uwfKind" class="docSel"><option value="rec"${f.kind==='rec'?' selected':''}>🏅 근무유공자 추천서</option><option value="merit"${f.kind==='merit'?' selected':''}>📜 공적조서 (4쪽)</option><option value="sch"${f.kind==='sch'?' selected':''}>🎓 노동절 장학생 (3쪽)</option></select>
+  return `<div class="row uwfBar"><span style="font-weight:800;">서류 선택</span><select id="uwfKind" class="docSel"><option value="rec"${f.kind==='rec'?' selected':''}>🏅 근무유공자 추천서</option><option value="merit"${f.kind==='merit'?' selected':''}>📜 공적조서 (4쪽)</option><option value="sch"${f.kind==='sch'?' selected':''}>🎓 노동절 장학생 (3쪽)</option><option value="gs"${f.kind==='gs'?' selected':''}>💐 경조사비 지급기준</option></select>
       <span style="font-weight:800;">대상자</span><select id="uwfWho" class="docSel"><option value="">직접 입력</option>${cur.map((m,i)=> `<option value="${i}"${String(f.who)===String(i)?' selected':''}>${esc(m.name||'')}${m.pos && m.pos!=='조합원' ? ' · '+esc(m.pos) : ''}</option>`).join('')}</select>
       <button type="button" class="btn sm" id="uwfPrint">🖨️ 출력 (인쇄 · PDF 저장)</button><button type="button" class="btn warn ghost sm" id="uwfReset">새로 작성</button></div>
     <p class="hint" style="margin:-2px 0 10px;">칸을 눌러 바로 입력하세요. 대상자를 고르면 명부의 이름·직위·주소·연락처가 채워져요. 생년월일 등 개인정보가 들어가므로 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요.</p>
@@ -9819,7 +9849,8 @@ function uwFormPrint(){
   box.innerHTML = doc.innerHTML; box.querySelectorAll('[contenteditable]').forEach(e=> e.removeAttribute('contenteditable'));
   document.body.appendChild(box);
   box.querySelectorAll('input[type=file]').forEach(e=> e.remove());
-  const old = document.title; document.title = uwForm.kind==='rec' ? '근무유공자 추천서' : uwForm.kind==='sch' ? '장학생 추천서' : '공적조서';
+  if(uwForm.kind==='gs') box.classList.add('uwFormLand');
+  const old = document.title; document.title = uwForm.kind==='rec' ? '근무유공자 추천서' : uwForm.kind==='sch' ? '장학생 추천서' : uwForm.kind==='gs' ? '경조사비 지급기준' : '공적조서';
   document.body.classList.add('printing-uw');
   const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
