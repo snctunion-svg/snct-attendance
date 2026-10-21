@@ -131,6 +131,21 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
 .inCloseBtn.on{background:#111 !important;border-color:#111 !important;color:#fff !important;}
+/* 카톡 보낼 배차표 사진: PC·휴대폰 어디서 만들어도 같은 크기·모양(화면별 줄임 설정을 무시) */
+.dpShotBox #dpTable{font-size:12px !important;zoom:1 !important;}
+.dpShotBox #dpTable th,.dpShotBox #dpTable td{height:30px !important;padding:0 4px !important;line-height:1.15 !important;font-size:12px;}
+.dpShotBox #dpTable td.dpCell,.dpShotBox #dpTable td.dpLockCell,.dpShotBox #dpTable th.dpSlotH,.dpShotBox #dpTable td.dpMeal,.dpShotBox #dpTable td[data-dispatch-count]{min-width:40px !important;width:40px !important;max-width:40px !important;padding:0 !important;}
+.dpShotBox #dpTable th.dpHH{font-size:15px !important;padding:0 0 0 2px !important;}
+.dpShotBox #dpTable th.dpMM{font-size:10px !important;padding:0 0 0 2px !important;}
+.dpShotBox #dpTable .dpTxt{font-size:10px !important;}
+.dpShotBox #dpTable .dpI1{min-width:40px !important;width:40px !important;}
+.dpShotBox #dpTable .dpI2{min-width:84px !important;width:84px !important;font-size:13px !important;}
+.dpShotBox #dpTable .dpI3{min-width:48px !important;width:48px !important;}
+.dpShotBox #dpTable .dpI4{min-width:46px !important;width:46px !important;}
+.dpShotBox #dpTable .dpI5{min-width:46px !important;width:46px !important;}
+.dpShotBox #dpTable td.dpI1[colspan]{min-width:264px !important;}
+.dpShotBox #dpTable .badge,.dpShotBox #dpTable .rk{transform:none !important;font-size:11px !important;padding:1px 5px !important;height:auto !important;line-height:1.3 !important;}
+.dpShotBox #dpTable .rkPlain{font-size:12px !important;}
 #dpTable td.dpWhoCell{cursor:pointer;}
 #dpTable td.dpWhoCell:hover{text-decoration:underline;}
 #dpTable td.dpWhoCell input:disabled{pointer-events:none;}
@@ -4163,7 +4178,7 @@ function dpShotMin(s){ const [h,m] = s.split(':').map(Number); let v = h*60 + m;
 // 화면에 그려진 표를 그대로 사진(캔버스)으로 옮겨 그림 — 칸 색·테두리·글자 위치를 브라우저가 잡은 그대로 씀(외부 도구 없이)
 function dpShotPaint(box){
   const br = box.getBoundingClientRect(), W = Math.ceil(br.width), H = Math.ceil(br.height);
-  const sc = Math.min(3, Math.max(2, window.devicePixelRatio || 2));
+  const sc = 2;   // PC·휴대폰 같은 크기의 사진
   const cv = document.createElement('canvas'); cv.width = Math.round(W*sc); cv.height = Math.round(H*sc);
   const g = cv.getContext('2d'); g.scale(sc, sc); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
   const R = el=>{ const r = el.getBoundingClientRect(); return {x:r.left - br.left, y:r.top - br.top, w:r.width, h:r.height}; };
@@ -4202,9 +4217,9 @@ async function dpShotMake(part){
   const slots = dpShotSlots(), N = slots.length, keep = slots.map(s=>{ const v = dpShotMin(s); return v >= part.from && v < part.to; });
   const [y,m,d] = dispatchDate.split('-').map(Number);
   const box = document.createElement('div'); box.className = 'dpShotBox';
-  box.style.cssText = 'position:fixed;left:-20000px;top:0;background:#fff;padding:10px;width:max-content;z-index:-1;color:#000;';
-  box.innerHTML = `<div style="font-weight:800;font-size:17px;color:#9d174d;background:#fce7f3;border:1px solid #fbcfe8;border-bottom:0;border-radius:8px 8px 0 0;padding:8px 12px;">${m}월 ${d}일(${weekdayKr(y,m,d)}) ${esc(dispatchTeamFilter)}조 ${dpShotNight() ? '야간' : '주간'} · ${part.name} ${part.label}</div>`;
-  const t = src.cloneNode(true); t.removeAttribute('id'); t.id = 'dpTable'; t.style.zoom = ''; t.style.width = 'auto';
+  box.style.cssText = 'position:fixed;left:-20000px;top:0;background:#fff;padding:10px;width:max-content;z-index:-1;color:#000;font-size:12px;';
+  box.innerHTML = `<div style="font-weight:800;font-size:17px;color:#9d174d;background:#fce7f3;border:1px solid #fbcfe8;border-bottom:0;border-radius:8px 8px 0 0;padding:8px 12px;line-height:1.3;">${m}월 ${d}일(${weekdayKr(y,m,d)}) ${esc(dispatchTeamFilter)}조 ${dpShotNight() ? '야간' : '주간'} · ${part.name} ${part.label}</div>`;
+  const t = src.cloneNode(true); t.removeAttribute('style'); t.id = 'dpTable'; t.classList.remove('dpFit');   // 화면 맞춤(줌·줄 높이) 없이 늘 같은 크기
   [...t.rows].forEach(tr=>{ const cells = [...tr.cells], sc = cells.slice(-N); sc.forEach((c,i)=>{ if(!keep[i]) c.remove(); }); });
   t.querySelectorAll('th,td').forEach(c=>{ c.style.setProperty('position','static','important'); c.style.removeProperty('left'); c.style.removeProperty('top'); });
   t.querySelectorAll('input').forEach(inp=>{ const sp = document.createElement('span'); sp.textContent = inp.value; sp.style.fontWeight = '700'; inp.replaceWith(sp); });
@@ -4250,7 +4265,7 @@ async function dpShotOpen(){
     catch(err){ showToast('복사하지 못했어요. 다시 눌러 주세요.'); } });
   body.querySelectorAll('[data-shot]').forEach(b=> b.onclick = ()=>{
     const files = b.dataset.shot.split('').map(k=> st.files[k]).filter(Boolean);
-    if(canShare){ navigator.share({files, title:'배차표'}).catch(err=>{ if(err && err.name!=='AbortError') showToast('공유하지 못했어요.'); }); }
+    if(canShare){ navigator.share({files}).catch(err=>{ if(err && err.name!=='AbortError') showToast('공유하지 못했어요.'); }); }
     else files.forEach((f,i)=> setTimeout(()=>{ const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500); }, i*400));
   });
 }
