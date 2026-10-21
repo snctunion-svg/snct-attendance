@@ -1253,6 +1253,38 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .uwmForm label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;font-weight:700;color:var(--text-muted);min-width:0;}
 .uwmForm input{border:1px solid var(--border);border-radius:8px;padding:8px;font:inherit;font-size:16px;background:var(--bg);color:var(--text);min-width:0;width:100%;box-sizing:border-box;}
 .uwmBtns{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px;}
+/* 비고 사진 */
+.uwmThumb{width:34px;height:40px;object-fit:cover;object-position:center top;border-radius:4px;vertical-align:middle;margin-right:6px;border:1px solid var(--border);}
+.uwmThumbE{display:inline-flex;align-items:center;justify-content:center;font-size:16px;background:var(--bg);}
+.uwmPhoto{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 12px 12px;}
+.uwmPhLbl{width:100%;font-size:11.5px;font-weight:700;color:var(--text-muted);}
+.uwmPhPrev{width:84px;height:96px;border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:11px;color:var(--text-muted);background:var(--bg);}
+.uwmPhPrev img{width:100%;height:100%;object-fit:cover;object-position:center top;}
+.uwmPhBtns{display:flex;gap:6px;flex-wrap:wrap;}
+/* 사진명단 고르기 창 */
+.uwcPop{max-width:460px;}
+.uwcBar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:10px 12px 6px;}
+.uwcCnt{margin-left:auto;font-size:12.5px;font-weight:800;color:#4c1d95;}
+.uwcList{max-height:min(56vh,460px);overflow:auto;padding:4px 12px 10px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.uwcItem{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;min-width:0;}
+.uwcItem.on{background:#f5f3ff;border-color:#c4b5fd;}
+.uwcItem input{width:18px;height:18px;flex:none;margin:0;}
+.uwcItem b{white-space:nowrap;} .uwcItem span{color:var(--text-muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .uwcItem i{margin-left:auto;font-style:normal;font-size:12px;} .uwcItem i.no{color:var(--text-muted);}
+@media (max-width:700px){ .uwcList{grid-template-columns:1fr;} }
+/* 사진명단 출력: A4 가로, 4명 × 6줄. 카드 = 사진(2열×4행) + 직위·성명(3열) — 엑셀 열너비 6.5 ≒ 13.2mm, 행높이 19 ≒ 6.7mm */
+@page uwcard{size:A4 landscape;margin:10mm;}
+@media print{
+  #uwPrint.uwCardPrint{page:uwcard;max-width:none !important;width:277mm !important;font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.2;}
+  .uwCardPage{display:grid;grid-template-columns:repeat(4,66.1mm);column-gap:4.2mm;row-gap:5mm;align-content:start;break-after:page;page-break-after:always;}
+  .uwCardPage:last-child{break-after:auto;page-break-after:auto;}
+  .uwCard{display:flex;width:66.1mm;height:26.8mm;break-inside:avoid;page-break-inside:avoid;}
+  .uwCPh{width:26.5mm;height:26.8mm;flex:none;overflow:hidden;background:#fff;}
+  .uwCPh img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;}
+  .uwCLb{flex:1;border:.35mm solid #000;display:flex;flex-direction:column;box-sizing:border-box;}
+  .uwCPos{height:50%;border-bottom:.35mm solid #000;display:flex;align-items:center;justify-content:center;font-size:11pt;font-weight:800;letter-spacing:.5pt;}
+  .uwCName{flex:1;display:flex;align-items:center;justify-content:center;font-size:19pt;font-weight:900;white-space:nowrap;}
+  .uwCName.n3{letter-spacing:.45em;padding-left:.45em;} .uwCName.n4{letter-spacing:.06em;} .uwCName.n5{font-size:15pt;}
+}
 @media (max-width:700px){
   .uwmTbl thead{display:none;}
   .uwmTbl, .uwmTbl tbody, .uwmTbl tr, .uwmTbl td{display:block;width:100%;box-sizing:border-box;}
@@ -9336,7 +9368,26 @@ function uwPrint(id){
 // 개인정보(전화·이메일·주소)라 앱 파일(공개 주소)에는 넣지 않음 — 엑셀을 앱에서 가져와 클라우드 unionPrivate/members 에만 저장
 // (Firestore 보안 규칙에서 unionPrivate 는 UNION 계정만 읽고 쓰게 해야 함)
 let uwMem = null, uwMemErr = '', uwMemTab = 'cur', uwMemQ = '', uwMemEdit = null;   // uwMemEdit: {tab, i} (i = -1 새로 추가)
-const UWM_COLS = [['no','순번'],['reg','등록번호'],['emp','사번'],['part','파트/직무'],['pos','직위'],['name','성명'],['tel','전화번호'],['addr','주소'],['email','E-MAIL'],['join','가입일'],['leave','탈퇴일'],['note','비고']];
+const UWM_COLS = [['no','순번'],['emp','사번'],['part','파트/직무'],['pos','직위'],['name','성명'],['tel','전화번호'],['addr','주소'],['join','가입일'],['leave','탈퇴일'],['note','비고']];   // 등록번호·E-MAIL 뺌
+// ===== 조합원 사진: 명부 문서가 커지지 않게 사람마다 따로 저장(unionPrivate/photo_…, UNION만 읽고 씀). 명부에는 사진 문서 이름(m.photo)만 =====
+const uwPhotos = {};   // 사진 문서 이름 → 사진(dataURL) · '' = 없음 · null = 불러오는 중
+function uwPhotoKey(m){ return 'photo_' + String(m.emp ? 'e' + m.emp : 'n' + (m.name||'')).replace(/[\/\s.#$\[\]]/g, ''); }
+function uwPhotoGet(key){
+  if(!key) return '';
+  if(uwPhotos[key] !== undefined) return uwPhotos[key] || '';
+  uwPhotos[key] = null;
+  (async ()=>{ try{ const d = db ? await db.collection('unionPrivate').doc(key).get() : null; uwPhotos[key] = d && d.exists ? ((d.data()||{}).img || '') : ''; }catch(e){ uwPhotos[key] = ''; } if(VIEW==='uwmem') scheduleRender(); })();
+  return '';
+}
+async function uwPhotoLoad(keys){ await Promise.all(keys.filter(Boolean).map(async k=>{ if(uwPhotos[k]) return; try{ const d = db ? await db.collection('unionPrivate').doc(k).get() : null; uwPhotos[k] = d && d.exists ? ((d.data()||{}).img || '') : ''; }catch(e){ uwPhotos[k] = ''; } })); }
+// 사진 줄이기: 긴 쪽 360px JPEG(약 30KB) — 출력 칸(약 2.7cm)에 충분
+function uwPhotoShrink(file){
+  return new Promise((ok, no)=>{
+    const fr = new FileReader();
+    fr.onload = ()=>{ const im = new Image(); im.onload = ()=>{ const k = Math.min(1, 360 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width*k); c.height = Math.round(im.height*k); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', 0.82)); }; im.onerror = ()=> no(new Error('사진을 열 수 없어요.')); im.src = fr.result; };
+    fr.onerror = ()=> no(new Error('사진을 읽지 못했어요.')); fr.readAsDataURL(file);
+  });
+}
 function subscribeUwMem(){
   if(!db || unsub.uwMem || !(userRole==='union' || userRole==='all')) return;
   try{ unsub.uwMem = db.collection('unionPrivate').doc('members').onSnapshot(doc=>{ uwMem = doc.exists ? (doc.data()||{}) : {cur:[], left:[]}; uwMemErr = ''; if(VIEW==='uwmem') scheduleRender(); },
@@ -9414,15 +9465,19 @@ function pageUwMem(){
   uwMemTab = 'cur';   // 탈퇴자는 보이지 않게
   const cur = uwMemList('cur'), list = cur, q = uwMemQ.trim().toLowerCase();
   const shown = list.map((m,i)=> ({m, i})).filter(({m})=> !q || Object.values(m).join(' ').toLowerCase().includes(q));
-  const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','reg','emp','part','pos','name','tel','email','join','note'];
+  const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','emp','part','pos','name','tel','join','note'];
   const lbl = Object.fromEntries(UWM_COLS);
-  const cell = (m,k)=> k==='tel' && m.tel ? `<a href="tel:${esc(String(m.tel).replace(/[^\d+]/g,''))}">${esc(m.tel)}</a>` : k==='email' && m.email ? `<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : esc(m[k]||'');
+  const cell = (m,k)=> k==='tel' && m.tel ? `<a href="tel:${esc(String(m.tel).replace(/[^\d+]/g,''))}">${esc(m.tel)}</a>`
+    : k==='note' ? `${m.photo ? (uwPhotoGet(m.photo) ? `<img class="uwmThumb" src="${uwPhotos[m.photo]}" alt="사진">` : '<span class="uwmThumb uwmThumbE">📷</span>') : ''}${esc(m.note||'')}`
+    : esc(m[k]||'');
   const rows = shown.map(({m,i})=> `<tr class="uwmRow" data-uwm-i="${i}">${cols.map(k=> `<td data-l="${esc(lbl[k])}" class="uwm-${k}">${cell(m,k)}</td>`).join('')}</tr>`).join('');
   const loaded = !!uwMem;
   const at = uwMem && uwMem.at ? new Date(uwMem.at).toLocaleDateString('ko-KR') : '';
   const editPop = uwMemEdit ? (()=>{ const e = uwMemEdit, m = e.i >= 0 ? (uwMemList(e.tab)[e.i] || {}) : {}; const ks = e.tab==='left' ? UWM_COLS.map(x=>x[0]) : UWM_COLS.map(x=>x[0]).filter(k=> k!=='leave');
     return `<div class="sheetPopScrim" id="uwmScrim"><div class="sheetPop uwmPop"><div class="sheetPopHd"><b>${e.i >= 0 ? esc(m.name||'') + ' 수정' : '조합원 추가'}</b><button type="button" class="sheetPopX" id="uwmClose" aria-label="닫기">✕</button></div>
-      <div class="uwmForm">${ks.map(k=> `<label><span>${esc(lbl[k])}</span><input data-uwm-f="${k}" type="${k==='join'||k==='leave' ? 'date' : k==='tel' ? 'tel' : k==='email' ? 'email' : 'text'}" value="${esc(m[k]||'')}"></label>`).join('')}</div>
+      <div class="uwmForm">${ks.map(k=> `<label><span>${esc(lbl[k])}</span><input data-uwm-f="${k}" type="${k==='join'||k==='leave' ? 'date' : k==='tel' ? 'tel' : 'text'}" value="${esc(m[k]||'')}"></label>`).join('')}</div>
+      ${(()=>{ const src = e.ph !== undefined ? e.ph : (m.photo ? uwPhotoGet(m.photo) : ''); return `<div class="uwmPhoto"><span class="uwmPhLbl">비고 · 사진</span><div class="uwmPhPrev" id="uwmPhPrev">${src ? `<img src="${src}" alt="사진">` : '<span>사진 없음</span>'}</div>
+        <div class="uwmPhBtns"><label class="btn ghost sm">📷 사진 첨부<input type="file" id="uwmPhFile" accept="image/*" hidden></label><button type="button" class="btn warn ghost sm" id="uwmPhDel"${src ? '' : ' style="display:none;"'}>사진 삭제</button></div></div>`; })()}
       <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
   return `
   <h2 class="pgttl">조합원 명부</h2>
@@ -9431,10 +9486,52 @@ function pageUwMem(){
   ${!loaded && !uwMemErr ? '<div class="hint">불러오는 중…</div>' : ''}
   <div class="uwmTabs"><b class="uwmCnt">재적 조합원 ${cur.length}명</b>${cur.length ? `<span class="uwmSum">${uwMemPartCount(cur)}</span>` : ''}</div>
   <div class="uwBar"><input type="search" id="uwmSearch" value="${esc(uwMemQ)}" placeholder="이름·직위·파트·전화번호 검색" autocomplete="off"></div>
-  <div class="uwTools"><button type="button" class="btn sm" id="uwmPrint">🖨️ PDF 출력</button><button type="button" class="btn ghost sm" id="uwmCsv">⬇️ 엑셀(CSV) 받기</button><button type="button" class="btn ghost sm editor-only" id="uwmAdd">＋ 조합원 추가</button><label class="btn ghost sm editor-only uwmImp">📥 엑셀 가져오기<input type="file" id="uwmFile" accept=".xlsx" hidden></label></div>
+  <div class="uwTools"><button type="button" class="btn sm" id="uwmPrint">🖨️ PDF 출력</button><button type="button" class="btn sm" id="uwmCard" style="background:#4c1d95;border-color:#4c1d95;">🪪 사진명단 출력</button><button type="button" class="btn ghost sm" id="uwmCsv">⬇️ 엑셀(CSV) 받기</button><button type="button" class="btn ghost sm editor-only" id="uwmAdd">＋ 조합원 추가</button><label class="btn ghost sm editor-only uwmImp">📥 엑셀 가져오기<input type="file" id="uwmFile" accept=".xlsx" hidden></label></div>
   ${list.length ? `<div class="uwmWrap"><table class="tbl uwmTbl"><thead><tr>${cols.map(k=> `<th>${esc(lbl[k])}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${cols.length}" class="empty">'${esc(uwMemQ)}' 찾는 사람이 없어요.</td></tr>`}</tbody></table></div>`
     : (loaded ? `<div class="empty">${uwMemTab==='left' ? '탈퇴자가 없어요.' : '아직 명부가 없어요. [📥 엑셀 가져오기]로 조합원 명부 엑셀(.xlsx)을 올려 주세요.'}</div>` : '')}
-  ${editPop}`;
+  ${editPop}
+  ${uwCardSel ? uwCardPop(cur) : ''}`;
+}
+// ===== 사진명단(사진 + 직위 + 성명 카드) 출력: 골라서 출력 =====
+//  카드 크기 = 엑셀 열너비 6.5(약 13.2mm) · 행높이 19(약 6.7mm) 기준 — 사진 2열×4행, 직위·성명 칸 3열(직위 2행 + 성명 2행)
+//  A4 가로 한 장에 4명 × 6줄 = 24명
+let uwCardSel = null;   // 고른 사람(명부 순번 i) Set — null 이면 고르기 창 닫힘
+function uwCardPop(cur){
+  const all = cur.length, n = uwCardSel.size;
+  return `<div class="sheetPopScrim" id="uwcScrim"><div class="sheetPop uwcPop"><div class="sheetPopHd"><b>🪪 사진명단 출력 — 출력할 사람 고르기</b><button type="button" class="sheetPopX" id="uwcClose" aria-label="닫기">✕</button></div>
+    <div class="uwcBar"><button type="button" class="btn ghost sm" id="uwcAll">전체 선택</button><button type="button" class="btn ghost sm" id="uwcNone">전체 해제</button><span class="uwcCnt">${n} / ${all}명 · ${Math.max(1, Math.ceil(n/24))}장</span></div>
+    <div class="uwcList">${cur.map((m,i)=> `<label class="uwcItem${uwCardSel.has(i) ? ' on' : ''}"><input type="checkbox" data-uwc="${i}"${uwCardSel.has(i) ? ' checked' : ''}><b>${esc(m.name||'')}</b><span>${esc(m.pos||'조합원')}</span>${m.photo ? '<i title="사진 있음">📷</i>' : '<i class="no" title="사진 없음">—</i>'}</label>`).join('')}</div>
+    <div class="uwmBtns"><button type="button" class="btn sm" id="uwcPrint"${n ? '' : ' disabled'}>🖨️ ${n}명 출력</button></div></div></div>`;
+}
+async function uwCardPrint(){
+  const cur = uwMemList('cur'), list = cur.filter((m,i)=> uwCardSel.has(i));
+  if(!list.length){ showToast('출력할 사람을 골라 주세요.'); return; }
+  showToast('사진을 불러오는 중…');
+  await uwPhotoLoad(list.map(m=> m.photo));
+  const sp = nm=> { const t = String(nm||'').replace(/\s/g,''); return t.length <= 3 ? 'n3' : t.length === 4 ? 'n4' : 'n5'; };
+  const card = m=> `<div class="uwCard"><div class="uwCPh">${m.photo && uwPhotos[m.photo] ? `<img src="${uwPhotos[m.photo]}" alt="">` : ''}</div><div class="uwCLb"><div class="uwCPos">${esc(m.pos||'조합원')}</div><div class="uwCName ${sp(m.name)}">${esc(String(m.name||'').replace(/\s/g,''))}</div></div></div>`;
+  const pages = []; for(let k = 0; k < list.length; k += 24) pages.push(list.slice(k, k + 24));
+  let box = document.getElementById('uwPrint'); if(box) box.remove();
+  box = document.createElement('div'); box.id = 'uwPrint'; box.className = 'uwCardPrint';
+  box.innerHTML = pages.map(pg=> `<div class="uwCardPage">${pg.map(card).join('')}</div>`).join('');
+  document.body.appendChild(box);
+  await Promise.all([...box.querySelectorAll('img')].map(im=> im.complete ? 0 : new Promise(r=>{ im.onload = im.onerror = r; })));
+  const old = document.title; document.title = '조합원 사진명단';
+  document.body.classList.add('printing-uw');
+  const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(()=>{ window.print(); setTimeout(()=>{ if(!matchMedia('print').matches) done(); }, 1500); }, 80);
+}
+function bindUwCard(){
+  if(!uwCardSel) return;
+  const close = ()=>{ uwCardSel = null; render(); };
+  document.getElementById('uwcClose').onclick = close;
+  document.getElementById('uwcScrim').onclick = ev=>{ if(ev.target.id==='uwcScrim') close(); };
+  const cur = uwMemList('cur');
+  document.getElementById('uwcAll').onclick = ()=>{ uwCardSel = new Set(cur.map((m,i)=> i)); render(); };
+  document.getElementById('uwcNone').onclick = ()=>{ uwCardSel = new Set(); render(); };
+  document.querySelectorAll('[data-uwc]').forEach(c=> c.onchange = ()=>{ const i = Number(c.dataset.uwc); if(c.checked) uwCardSel.add(i); else uwCardSel.delete(i); render(); });
+  document.getElementById('uwcPrint').onclick = uwCardPrint;
 }
 function bindUwMem(){
   const el = document.getElementById('content');
@@ -9444,6 +9541,8 @@ function bindUwMem(){
   const ad = document.getElementById('uwmAdd'); if(ad) ad.onclick = ()=>{ if(!requireEdit()) return; uwMemEdit = {tab: uwMemTab, i: -1}; render(); };
   el.querySelectorAll('.uwmRow').forEach(tr=> tr.onclick = ev=>{ if(ev.target.closest('a')) return; if(!canEdit) return; uwMemEdit = {tab: uwMemTab, i: Number(tr.dataset.uwmI)}; render(); });
   const pr = document.getElementById('uwmPrint'); if(pr) pr.onclick = uwMemPrint;
+  const cd = document.getElementById('uwmCard'); if(cd) cd.onclick = ()=>{ uwCardSel = new Set(uwMemList('cur').map((m,i)=> i)); render(); };
+  bindUwCard();
   const cv = document.getElementById('uwmCsv'); if(cv) cv.onclick = uwMemCsv;
   if(uwMemEdit){
     const close = ()=>{ uwMemEdit = null; render(); };
@@ -9451,8 +9550,20 @@ function bindUwMem(){
     document.getElementById('uwmScrim').onclick = e=>{ if(e.target.id==='uwmScrim') close(); };
     const read = ()=>{ const o = {}; document.querySelectorAll('[data-uwm-f]').forEach(i=> o[i.dataset.uwmF] = i.value.trim()); return o; };
     const e = uwMemEdit, lists = {cur: uwMemList('cur').slice(), left: uwMemList('left').slice()};
-    document.getElementById('uwmSave').onclick = ()=>{ const o = read(); if(!o.name){ showToast('성명을 넣어 주세요.'); return; }
+    // 사진 첨부·삭제: 화면을 다시 그리지 않고 미리보기만 바꿈(입력 중인 칸이 지워지지 않게) — [저장]을 눌러야 올라감
+    const phF = document.getElementById('uwmPhFile'), phD = document.getElementById('uwmPhDel'), phP = document.getElementById('uwmPhPrev');
+    if(phF) phF.onchange = async ()=>{ const fl = phF.files && phF.files[0]; phF.value = ''; if(!fl) return;
+      try{ e.ph = await uwPhotoShrink(fl); phP.innerHTML = `<img src="${e.ph}" alt="사진">`; if(phD) phD.style.display = ''; }catch(err){ showToast(err.message || '사진을 넣지 못했어요.'); } };
+    if(phD) phD.onclick = ()=>{ e.ph = ''; phP.innerHTML = '<span>사진 없음</span>'; phD.style.display = 'none'; };
+    document.getElementById('uwmSave').onclick = async ()=>{ const o = read(); if(!o.name){ showToast('성명을 넣어 주세요.'); return; }
       if(e.i >= 0) lists[e.tab][e.i] = Object.assign({}, lists[e.tab][e.i], o); else lists[e.tab].push(Object.assign({no: String(lists[e.tab].length + 1)}, o));
+      const tg = e.i >= 0 ? lists[e.tab][e.i] : lists[e.tab][lists[e.tab].length - 1];
+      if(e.ph !== undefined && db){
+        try{
+          if(e.ph){ const key = tg.photo || uwPhotoKey(tg); await db.collection('unionPrivate').doc(key).set({img: e.ph, name: tg.name, at: Date.now()}); tg.photo = key; uwPhotos[key] = e.ph; }
+          else if(tg.photo){ const key = tg.photo; await db.collection('unionPrivate').doc(key).delete(); uwPhotos[key] = ''; tg.photo = ''; }
+        }catch(err){ showToast(saveErrMsg('사진 저장에 실패했습니다.', err)); return; }
+      }
       uwMemEdit = null; uwMemSave(lists); };
     const lv = document.getElementById('uwmLeave'); if(lv) lv.onclick = ()=> appConfirm(`${lists.cur[e.i].name} 탈퇴 처리할까요? 명부에서 빠지고 따로 남지 않아요.`, ()=>{ lists.cur.splice(e.i, 1); lists.cur.forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave({cur: lists.cur}); });
     const bk = document.getElementById('uwmBack'); if(bk) bk.onclick = ()=>{ const o = Object.assign({}, lists.left[e.i], read()); delete o.leave; lists.left.splice(e.i, 1); lists.cur.push(o); lists.cur.forEach((m,k)=> m.no = String(k+1)); lists.left.forEach((m,k)=> m.no = String(k+1)); uwMemEdit = null; uwMemSave(lists); };
@@ -9461,7 +9572,7 @@ function bindUwMem(){
 }
 function uwMemPrint(){
   const tab = uwMemTab, list = uwMemList(tab), lbl = Object.fromEntries(UWM_COLS);
-  const cols = tab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','reg','emp','part','pos','name','tel','join','note'];
+  const cols = tab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','emp','part','pos','name','tel','join','note'];
   const title = tab==='left' ? '탈퇴자 관리대장' : '조합원 명부';
   let box = document.getElementById('uwPrint'); if(box) box.remove();
   box = document.createElement('div'); box.id = 'uwPrint';
