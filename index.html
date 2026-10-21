@@ -9373,7 +9373,7 @@ function uwPrint(id){
 // 개인정보(전화·이메일·주소)라 앱 파일(공개 주소)에는 넣지 않음 — 엑셀을 앱에서 가져와 클라우드 unionPrivate/members 에만 저장
 // (Firestore 보안 규칙에서 unionPrivate 는 UNION 계정만 읽고 쓰게 해야 함)
 let uwMem = null, uwMemErr = '', uwMemTab = 'cur', uwMemQ = '', uwMemEdit = null;   // uwMemEdit: {tab, i} (i = -1 새로 추가)
-const UWM_COLS = [['no','순번'],['emp','사번'],['part','파트/직무'],['pos','직위'],['name','성명'],['tel','전화번호'],['addr','주소'],['join','가입일'],['leave','탈퇴일'],['note','비고']];   // 등록번호·E-MAIL 뺌
+const UWM_COLS = [['no','순번'],['name','성명'],['emp','사번'],['part','파트/직무'],['pos','직위'],['tel','전화번호'],['addr','주소'],['join','가입일'],['leave','탈퇴일'],['note','비고']];   // 등록번호·E-MAIL 뺌
 // ===== 조합원 사진: 명부 문서가 커지지 않게 사람마다 따로 저장(unionPrivate/photo_…, UNION만 읽고 씀). 명부에는 사진 문서 이름(m.photo)만 =====
 const uwPhotos = {};   // 사진 문서 이름 → 사진(dataURL) · '' = 없음 · null = 불러오는 중
 function uwPhotoKey(m){ return 'photo_' + String(m.emp ? 'e' + m.emp : 'n' + (m.name||'')).replace(/[\/\s.#$\[\]]/g, ''); }
@@ -9470,7 +9470,7 @@ function pageUwMem(){
   uwMemTab = 'cur';   // 탈퇴자는 보이지 않게
   const cur = uwMemList('cur'), list = cur, q = uwMemQ.trim().toLowerCase();
   const shown = list.map((m,i)=> ({m, i})).filter(({m})=> !q || Object.values(m).join(' ').toLowerCase().includes(q));
-  const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','photo','emp','part','pos','name','tel','join','note'];   // 사진 칸 = 순번과 사번 사이
+  const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','photo','name','emp','part','pos','tel','join','note'];   // 순번 | 사진 | 성명 | 사번 | 파트/직무 | 직위 | 전화번호 | 가입일 | 비고
   const lbl = Object.assign(Object.fromEntries(UWM_COLS), {photo:'사진'});
   const cell = (m,k)=> k==='tel' && m.tel ? `<a href="tel:${esc(String(m.tel).replace(/[^\d+]/g,''))}">${esc(m.tel)}</a>`
     : k==='photo' ? (m.photo ? (uwPhotoGet(m.photo) ? `<img class="uwmThumb" src="${uwPhotos[m.photo]}" alt="사진">` : '<span class="uwmThumb uwmThumbE">📷</span>') : '')
@@ -9582,7 +9582,7 @@ function bindUwMem(){
 }
 function uwMemPrint(){
   const tab = uwMemTab, list = uwMemList(tab), lbl = Object.fromEntries(UWM_COLS);
-  const cols = tab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','emp','part','pos','name','tel','join','note'];
+  const cols = tab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','name','emp','part','pos','tel','join','note'];
   const title = tab==='left' ? '탈퇴자 관리대장' : '조합원 명부';
   let box = document.getElementById('uwPrint'); if(box) box.remove();
   box = document.createElement('div'); box.id = 'uwPrint';
