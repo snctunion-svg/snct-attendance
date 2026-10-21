@@ -1253,7 +1253,21 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .uwmForm label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;font-weight:700;color:var(--text-muted);min-width:0;}
 .uwmForm input{border:1px solid var(--border);border-radius:8px;padding:8px;font:inherit;font-size:16px;background:var(--bg);color:var(--text);min-width:0;width:100%;box-sizing:border-box;}
 .uwmBtns{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px;}
-.uwGrpBar{align-items:center;gap:8px;margin:0 0 10px;flex-wrap:nowrap;} .uwGrpBar .docSel{min-width:0;}
+.uwGrpBar{align-items:center;gap:8px;margin:0 0 10px;flex-wrap:nowrap;}
+/* 조합원 명부: 명부 / 표창 탭 */
+.uwmVTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid #6d28d9;border-radius:10px;overflow:hidden;max-width:460px;}
+.uwmVTab{flex:1 1 0;border:0;background:var(--surface);color:#6d28d9;font:inherit;font-weight:800;font-size:13.5px;padding:8px 6px;cursor:pointer;white-space:nowrap;}
+.uwmVTab + .uwmVTab{border-left:1.5px solid #6d28d9;} .uwmVTab.on{background:#6d28d9;color:#fff;}
+.uwAwGrid{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;}
+.uwAwBox{flex:1 1 320px;min-width:0;}
+.uwAwHd{display:flex;align-items:center;gap:8px;margin:0 0 6px;} .uwAwHd b{font-size:14px;color:#4c1d95;} .uwAwHd .btn{margin-left:auto;}
+.uwAwTbl td.uwAwName{font-weight:800;}
+.uwAwRow{cursor:pointer;} .uwAwRow:hover td{background:#faf5ff;}
+@media (max-width:700px){
+  .uwAwTbl thead{display:table-header-group !important;} .uwAwTbl{display:table !important;} .uwAwTbl tbody{display:table-row-group !important;} .uwAwTbl tr{display:table-row !important;border:0 !important;padding:0 !important;margin:0 !important;background:none !important;}
+  .uwAwTbl td{display:table-cell !important;border:1px solid var(--border) !important;padding:6px 6px !important;text-align:center !important;width:auto !important;} .uwAwTbl td::before{content:none !important;}
+}
+@media print{ .uwPAwSec{margin-top:6mm;break-inside:avoid;} .uwPAwT{font-weight:800;font-size:11pt;margin:0 0 2mm;} .uwPAw{font-size:10pt !important;} } .uwGrpBar .docSel{min-width:0;}
 /* 비고 사진 */
 .uwmThumb{width:34px;height:40px;object-fit:cover;object-position:center top;border-radius:4px;vertical-align:middle;border:1px solid var(--border);}
 .uwmTbl td.uwm-photo{padding:3px 6px;width:46px;}
@@ -9501,11 +9515,18 @@ function pageUwMem(){
       ${(()=>{ const src = e.ph !== undefined ? e.ph : (m.photo ? uwPhotoGet(m.photo) : ''); return `<div class="uwmPhoto"><span class="uwmPhLbl">사진</span><div class="uwmPhPrev" id="uwmPhPrev">${src ? `<img src="${src}" alt="사진">` : '<span>사진 없음</span>'}</div>
         <div class="uwmPhBtns"><label class="btn ghost sm">📷 사진 첨부<input type="file" id="uwmPhFile" accept="image/*" hidden></label><button type="button" class="btn warn ghost sm" id="uwmPhDel"${src ? '' : ' style="display:none;"'}>사진 삭제</button></div></div>`; })()}
       <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
+  const aw = uwAward();
+  const vtabs = `<div class="uwmVTabs"><button type="button" class="uwmVTab${uwMemView==='list' ? ' on' : ''}" data-uwm-view="list">👥 명부 ${cur.length}명</button><button type="button" class="uwmVTab${uwMemView==='award' ? ' on' : ''}" data-uwm-view="award">🏅 조합원 표창 ${aw.found.length + aw.prize.length}건</button></div>`;
+  if(uwMemView==='award') return `
+  <h2 class="pgttl">조합원 명부</h2>
+  <div class="uwHead"><b>조합원 표창</b><span>선광신컨테이너터미널㈜ 노동조합 · 조합원 포상 내역${uwAwardDoc && uwAwardDoc.at ? ' · ' + esc(new Date(uwAwardDoc.at).toLocaleDateString('ko-KR')) + ' 저장' : ''}</span></div>
+  ${vtabs}${pageUwAward(cur)}`;
   return `
   <h2 class="pgttl">조합원 명부</h2>
   <div class="uwHead"><b>조합원 명부</b><span>선광신컨테이너터미널㈜ 노동조합${at ? ' · ' + esc(at) + ' 저장' : ''}</span></div>
   ${uwMemErr ? `<div class="note">${esc(uwMemErr)}</div>` : ''}
   ${!loaded && !uwMemErr ? '<div class="hint">불러오는 중…</div>' : ''}
+  ${vtabs}
   <div class="uwmTabs"><b class="uwmCnt">재적 조합원 ${cur.length}명</b>${cur.length ? `<span class="uwmSum">${uwMemPartCount(cur)}</span>` : ''}</div>
   <div class="uwBar"><input type="search" id="uwmSearch" value="${esc(uwMemQ)}" placeholder="이름·직위·파트·전화번호 검색" autocomplete="off"></div>
   <div class="uwTools"><button type="button" class="btn sm" id="uwmPrint">🖨️ PDF 출력</button><button type="button" class="btn sm" id="uwmCard" style="background:#4c1d95;border-color:#4c1d95;">🪪 사진명단 출력</button><button type="button" class="btn ghost sm" id="uwmCsv">⬇️ 엑셀(CSV) 받기</button><button type="button" class="btn ghost sm editor-only" id="uwmAdd">＋ 조합원 추가</button><label class="btn ghost sm editor-only uwmImp">📥 엑셀 가져오기<input type="file" id="uwmFile" accept=".xlsx" hidden></label></div>
@@ -9513,6 +9534,107 @@ function pageUwMem(){
     : (loaded ? `<div class="empty">${uwMemTab==='left' ? '탈퇴자가 없어요.' : '아직 명부가 없어요. [📥 엑셀 가져오기]로 조합원 명부 엑셀(.xlsx)을 올려 주세요.'}</div>` : '')}
   ${editPop}
   ${uwCardSel ? uwCardPop(cur) : ''}`;
+}
+// ===== 조합원 표창(포상 내역): ① 창립 기념일 근무유공자(연도·기능직·노동조합) ② 노동조합 포상내역(연월·수상자·수상내역) =====
+//  클라우드 unionPrivate/awards 에 저장(UNION만). 아직 저장한 적이 없으면 '조합원 포상 내역' 엑셀(2026-10) 내용을 기본으로 보여 줌
+let uwMemView = 'list', uwAwardDoc = null, uwAwardEdit = null;   // uwAwardEdit: {kind:'found'|'prize', i}
+const UW_AWARD_BASE = {
+  found: [{y:'2020',tech:'박천용',union:'이동화'},{y:'2021',tech:'우창기',union:'정문수'},{y:'2022',tech:'이병진',union:'홍윤택'},{y:'2023',tech:'우동식',union:'서인기'},{y:'2024',tech:'박광현',union:'박종국'},{y:'2025',tech:'',union:'유재현'},{y:'2026',tech:'',union:'유재선'}],
+  prize: [{ym:'2025.02',name:'최두영',desc:'인천연합의장상'},{ym:'2025.04',name:'김치수',desc:'인천광역시장상'},{ym:'2025.05',name:'전재필',desc:'근로자자녀장학생'},{ym:'2025.06',name:'김태화',desc:'전국연합연맹위원장상'},{ym:'2025.06',name:'정문수',desc:'인천연합의장상'},{ym:'2025.06',name:'이병진',desc:'한국노총인천의장상'},{ym:'2026.04',name:'김의섭',desc:'상공회의소회장'},{ym:'2026.06',name:'유병걸',desc:'인천연합의장상'},{ym:'2026.06',name:'우동식',desc:'한국노총인천의장상'},{ym:'2026.06',name:'김성용',desc:'전국연합연맹위원장상'}]
+};
+function subscribeUwAward(){
+  if(!db || unsub.uwAward || !(userRole==='union' || userRole==='all')) return;
+  try{ unsub.uwAward = db.collection('unionPrivate').doc('awards').onSnapshot(doc=>{ uwAwardDoc = doc.exists ? (doc.data()||null) : null; if(VIEW==='uwmem') scheduleRender(); }, ()=>{}); }catch(e){}
+}
+function uwAward(){ const d = uwAwardDoc && (Array.isArray(uwAwardDoc.found) || Array.isArray(uwAwardDoc.prize)) ? uwAwardDoc : UW_AWARD_BASE; return {found: (d.found||[]).slice(), prize: (d.prize||[]).slice()}; }
+async function uwAwardSave(a){
+  a.found.sort((x,y)=> String(x.y).localeCompare(String(y.y))); a.prize.sort((x,y)=> String(x.ym).localeCompare(String(y.ym)));
+  uwAwardDoc = {found: a.found, prize: a.prize, at: Date.now()}; render();
+  if(!db) return;
+  try{ await db.collection('unionPrivate').doc('awards').set(uwAwardDoc); showToast('표창 내역을 저장했어요.'); }catch(err){ showToast(saveErrMsg('표창 저장에 실패했습니다.', err)); }
+}
+function uwYm(v){ if(typeof v==='number'){ const y = Math.floor(v), m = Math.round((v - y) * 100); return m ? `${y}.${String(m).padStart(2,'0')}` : String(y); } const t = String(v||'').trim(), mm = t.match(/^(\d{4})\D+(\d{1,2})/); return mm ? `${mm[1]}.${mm[2].padStart(2,'0')}` : t; }
+// 엑셀 가져오기: '연도·기능직·노동조합' 표와 '연도·수상자·수상내역' 표를 찾아서 읽음(보내 준 '조합원 포상 내역' 양식)
+function uwParseAward(rows){
+  const hi = rows.findIndex(r=> r && r.some(c=> String(c||'').replace(/\s/g,'')==='수상자')); if(hi < 0) return null;
+  const head = rows[hi].map(c=> String(c||'').replace(/\s/g,''));
+  const cT = head.indexOf('기능직'), cU = head.indexOf('노동조합'), cN = head.indexOf('수상자'), cD = head.indexOf('수상내역');
+  const cY1 = cT > 0 ? cT - 1 : 0, cY2 = cN > 0 ? cN - 1 : -1;
+  const found = [], prize = [];
+  rows.slice(hi + 1).forEach(r=>{ if(!r) return;
+    const t = cT >= 0 ? String(r[cT]||'').trim() : '', u = cU >= 0 ? String(r[cU]||'').trim() : '';
+    if((t || u) && r[cY1] != null && r[cY1] !== '') found.push({y: String(Math.floor(Number(r[cY1])) || String(r[cY1]).trim()), tech: t, union: u});
+    const n = cN >= 0 ? String(r[cN]||'').trim() : '', d = cD >= 0 ? String(r[cD]||'').trim() : '';
+    if(n && cY2 >= 0) prize.push({ym: uwYm(r[cY2]), name: n, desc: d});
+  });
+  return {found, prize};
+}
+async function uwAwardImport(file){
+  if(!requireEdit()) return;
+  try{ const sh = await uwReadXlsx(file); let res = null; for(const k of Object.keys(sh)){ res = uwParseAward(sh[k] || []); if(res && (res.found.length || res.prize.length)) break; }
+    if(!res || !(res.found.length || res.prize.length)){ showToast("엑셀에서 표창 내역을 찾지 못했어요. '수상자' 칸이 있는지 확인해 주세요."); return; }
+    appConfirm(`근무유공자 ${res.found.length}건, 포상내역 ${res.prize.length}건을 읽었어요. 지금 표창 내역을 이 내용으로 바꿀까요?`, ()=> uwAwardSave(res));
+  }catch(err){ console.error(err); showToast('엑셀을 읽지 못했어요: ' + (err.message||err)); }
+}
+function uwAwardTables(a, forPrint){
+  const nm = n=> esc(n||'');
+  const t1 = `<table class="${forPrint ? 'uwPMem uwPAw' : 'tbl uwmTbl uwAwTbl'}"><thead><tr><th>연도</th><th>기능직</th><th>노동조합</th></tr></thead><tbody>${a.found.length ? a.found.map((r,i)=> `<tr${forPrint ? '' : ` class="uwAwRow" data-aw="found" data-awi="${i}"`}><td>${esc(r.y)}</td><td class="uwAwName">${nm(r.tech)}</td><td class="uwAwName">${nm(r.union)}</td></tr>`).join('') : '<tr><td colspan="3" class="empty">내역이 없어요.</td></tr>'}</tbody></table>`;
+  const t2 = `<table class="${forPrint ? 'uwPMem uwPAw' : 'tbl uwmTbl uwAwTbl'}"><thead><tr><th>연월</th><th>수상자</th><th>수상내역</th></tr></thead><tbody>${a.prize.length ? a.prize.map((r,i)=> `<tr${forPrint ? '' : ` class="uwAwRow" data-aw="prize" data-awi="${i}"`}><td>${esc(r.ym)}</td><td class="uwAwName">${nm(r.name)}</td><td>${esc(r.desc||'')}</td></tr>`).join('') : '<tr><td colspan="3" class="empty">내역이 없어요.</td></tr>'}</tbody></table>`;
+  return {t1, t2};
+}
+function pageUwAward(cur){
+  subscribeUwAward();
+  const a = uwAward(), {t1, t2} = uwAwardTables(a, false);
+  const names = cur.map(m=> `<option value="${esc(m.name||'')}">`).join('');
+  const ed = uwAwardEdit, er = ed ? (ed.i >= 0 ? (a[ed.kind][ed.i] || {}) : {}) : null;
+  const pop = !ed ? '' : `<div class="sheetPopScrim" id="uwaScrim"><div class="sheetPop uwmPop"><div class="sheetPopHd"><b>${ed.kind==='found' ? '창립 기념일 근무유공자' : '노동조합 포상내역'} ${ed.i >= 0 ? '수정' : '추가'}</b><button type="button" class="sheetPopX" id="uwaClose" aria-label="닫기">✕</button></div>
+    <div class="uwmForm">${ed.kind==='found'
+      ? `<label><span>연도</span><input data-uwa="y" inputmode="numeric" maxlength="4" value="${esc(er.y || String(new Date().getFullYear()))}"></label><label><span>기능직</span><input data-uwa="tech" list="uwaNames" value="${esc(er.tech||'')}"></label><label><span>노동조합</span><input data-uwa="union" list="uwaNames" value="${esc(er.union||'')}"></label>`
+      : `<label><span>연월 (예: 2026.06)</span><input data-uwa="ym" inputmode="decimal" value="${esc(er.ym || (todayStr().slice(0,7).replace('-','.')))}"></label><label><span>수상자</span><input data-uwa="name" list="uwaNames" value="${esc(er.name||'')}"></label><label style="grid-column:1/-1;"><span>수상내역</span><input data-uwa="desc" value="${esc(er.desc||'')}"></label>`}</div>
+    <datalist id="uwaNames">${names}</datalist>
+    <div class="uwmBtns"><button type="button" class="btn sm" id="uwaSave">저장</button>${ed.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwaDel">삭제</button>' : ''}</div></div></div>`;
+  return `
+  <div class="uwTools"><button type="button" class="btn sm" id="uwaPrint">🖨️ PDF 출력</button><label class="btn ghost sm editor-only uwmImp">📥 엑셀 가져오기<input type="file" id="uwaFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label></div>
+  ${uwAwardDoc ? '' : '<p class="hint" style="margin:0 0 8px;">보내 준 \'조합원 포상 내역\' 엑셀 내용이에요. 고치거나 추가하면 클라우드에 저장돼요.</p>'}
+  <div class="uwAwGrid">
+    <div class="uwAwBox"><div class="uwAwHd"><b>■ 창립 기념일 근무유공자 수상자</b><button type="button" class="btn ghost sm editor-only" id="uwaAddF">＋ 추가</button></div>${t1}</div>
+    <div class="uwAwBox"><div class="uwAwHd"><b>■ 노동조합 포상내역</b><button type="button" class="btn ghost sm editor-only" id="uwaAddP">＋ 추가</button></div>${t2}</div>
+  </div>
+  ${pop}`;
+}
+function bindUwAward(){
+  const el = document.getElementById('content');
+  const f = document.getElementById('uwaFile'); if(f) f.onchange = ()=>{ if(f.files && f.files[0]) uwAwardImport(f.files[0]); f.value = ''; };
+  const af = document.getElementById('uwaAddF'); if(af) af.onclick = ()=>{ if(!requireEdit()) return; uwAwardEdit = {kind:'found', i:-1}; render(); };
+  const ap = document.getElementById('uwaAddP'); if(ap) ap.onclick = ()=>{ if(!requireEdit()) return; uwAwardEdit = {kind:'prize', i:-1}; render(); };
+  el.querySelectorAll('.uwAwRow').forEach(tr=> tr.onclick = ()=>{ if(!canEdit) return; uwAwardEdit = {kind: tr.dataset.aw, i: Number(tr.dataset.awi)}; render(); });
+  const pr = document.getElementById('uwaPrint'); if(pr) pr.onclick = uwAwardPrint;
+  if(uwAwardEdit){
+    const close = ()=>{ uwAwardEdit = null; render(); };
+    document.getElementById('uwaClose').onclick = close;
+    document.getElementById('uwaScrim').onclick = ev=>{ if(ev.target.id==='uwaScrim') close(); };
+    const e = uwAwardEdit, a = uwAward();
+    document.getElementById('uwaSave').onclick = ()=>{
+      const o = {}; document.querySelectorAll('[data-uwa]').forEach(i=> o[i.dataset.uwa] = i.value.trim());
+      if(e.kind==='found'){ if(!/^\d{4}$/.test(o.y||'')){ showToast('연도를 4자리로 넣어 주세요.'); return; } if(!o.tech && !o.union){ showToast('기능직이나 노동조합 수상자를 넣어 주세요.'); return; } }
+      else { o.ym = uwYm(o.ym); if(!o.name){ showToast('수상자를 넣어 주세요.'); return; } }
+      if(e.i >= 0) a[e.kind][e.i] = o; else a[e.kind].push(o);
+      uwAwardEdit = null; uwAwardSave(a); };
+    const dl = document.getElementById('uwaDel'); if(dl) dl.onclick = ()=> appConfirm('이 표창 내역을 지울까요?', ()=>{ a[e.kind].splice(e.i, 1); uwAwardEdit = null; uwAwardSave(a); });
+  }
+}
+function uwAwardPrint(){
+  const a = uwAward(), {t1, t2} = uwAwardTables(a, true);
+  let box = document.getElementById('uwPrint'); if(box) box.remove();
+  box = document.createElement('div'); box.id = 'uwPrint';
+  box.innerHTML = `<div class="uwPMemHd"><div class="uwPMemT">선광신컨테이너터미널㈜ 노동조합 조합원 포상 내역</div><div class="uwPMemD">${esc(todayStr())} 기준</div></div>
+    <div class="uwPAwSec"><div class="uwPAwT">■ 창립 기념일 근무유공자 수상자</div>${t1}</div><div class="uwPAwSec"><div class="uwPAwT">■ 노동조합 포상내역</div>${t2}</div>`;
+  document.body.appendChild(box);
+  const old = document.title; document.title = '조합원 포상 내역';
+  document.body.classList.add('printing-uw');
+  const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(()=>{ window.print(); setTimeout(()=>{ if(!matchMedia('print').matches) done(); }, 1500); }, 50);
 }
 // ===== 사진명단(사진 + 직위 + 성명 카드) 출력: 골라서 출력 =====
 //  카드 크기 = 엑셀 열너비 6.5(약 13.2mm) · 행높이 19(약 6.7mm) 기준 — 사진 2열×4행, 직위·성명 칸 3열(직위 2행 + 성명 2행)
@@ -9562,6 +9684,8 @@ function bindUwCard(){
 }
 function bindUwMem(){
   const el = document.getElementById('content');
+  el.querySelectorAll('[data-uwm-view]').forEach(b=> b.onclick = ()=>{ uwMemView = b.dataset.uwmView; uwAwardEdit = null; render(); });
+  if(uwMemView==='award'){ bindUwAward(); return; }
   el.querySelectorAll('[data-uwm-tab]').forEach(b=> b.onclick = ()=>{ uwMemTab = b.dataset.uwmTab; render(); });
   const s = document.getElementById('uwmSearch'); if(s){ let t = null; s.oninput = ()=>{ clearTimeout(t); t = setTimeout(()=>{ uwMemQ = s.value; const pos = s.selectionStart; render(); const s2 = document.getElementById('uwmSearch'); if(s2){ s2.focus(); try{ s2.setSelectionRange(pos, pos); }catch(e){} } }, 200); }; }
   const f = document.getElementById('uwmFile'); if(f) f.onchange = ()=>{ if(f.files && f.files[0]) uwImportXlsx(f.files[0]); f.value = ''; };
