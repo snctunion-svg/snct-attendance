@@ -9645,7 +9645,14 @@ function pageUwMem(){
 // ===== 조합원 명부 > 📄 양식: ① 근무유공자 추천서 ② 공적조서(공적조서·경력/공적사항·사업체 개요·시장표창 동의서 4쪽) =====
 //  보내 준 한글 양식을 화면에서 바로 채워 출력(인쇄·PDF). 대상자를 고르면 명부에서 이름·직위·주소·연락처를 채움.
 //  개인정보(생년월일·주소 등)라 입력한 내용은 이 기기 화면에만 있고 저장하지 않음
-let uwForm = null;   // {kind:'rec'|'merit', who, v:{}, tenureMan}
+let uwForm = null;   // {kind:'rec'|'merit'|'sch'|'gs', who, v:{}, tenureMan}
+// 경조사비 지급기준은 개인정보가 아니라서 고친 값을 클라우드(unionPrivate/gsStd)에 저장 — [💾 저장]
+let gsDoc = null;
+function subscribeGs(){
+  if(!db || unsub.gsStd || !(userRole==='union' || userRole==='all')) return;
+  try{ unsub.gsStd = db.collection('unionPrivate').doc('gsStd').onSnapshot(doc=>{ gsDoc = doc.exists ? (doc.data()||null) : null;
+    if(VIEW==='uwmem' && uwMemView==='form' && uwForm && uwForm.kind==='gs' && !uwForm.dirty && !isEditingField()){ uwForm = uwFormDefault('gs'); scheduleRender(); } }, ()=>{}); }catch(e){}
+}
 function uwFormChief(){ const c = uwMemList('cur').find(m=> /위원장/.test(m.pos||'') && !/부위원장/.test(m.pos||'')); return c ? c.name : ''; }
 function uwFormToday(sep){ const t = todayStr().split('-'); return sep==='kr' ? `${t[0]}년 ${Number(t[1])}월 ${Number(t[2])}일` : `${t[0]} .  ${t[1]}  .  ${t[2]}  .`; }
 // 경조사비 지급기준(보내 준 PDF): [노조 기준] 구분·현행·화환/조화·비고 / [회사 기준] 구분·경조금·선우회비·휴가·화환/조화·비고 / 장기 근속자 포상금
@@ -9658,7 +9665,9 @@ const UW_GS = {
 };
 function uwFormDefault(kind){
   const chief = uwFormChief(), cur = uwMemList('cur');
-  if(kind==='gs'){ const v = {uDate:UW_GS.uDate, cDate:UW_GS.cDate, n1:UW_GS.n1, n2:UW_GS.n2}; ['u','c','l'].forEach(t=> UW_GS[t].forEach((row,i)=> row.forEach((c,j)=> v[`${t}${i}_${j}`] = c))); return {kind, who:'', tenureMan:false, v}; }
+  if(kind==='gs'){ const v = {uDate:UW_GS.uDate, cDate:UW_GS.cDate, n1:UW_GS.n1, n2:UW_GS.n2}; ['u','c','l'].forEach(t=> UW_GS[t].forEach((row,i)=> row.forEach((c,j)=> v[`${t}${i}_${j}`] = c)));
+    try{ if(gsDoc && gsDoc.json) Object.assign(v, JSON.parse(gsDoc.json)); }catch(e){}   // 저장한 지급기준이 있으면 그 값
+    return {kind, who:'', tenureMan:false, v, dirty:false}; }
   if(kind==='sch'){ const y = todayStr().slice(0,4); return {kind, who:'', tenureMan:false, v:{year:y, sName:'', sRrn:'', gender:'', schAddr:'', schTel:'', schZip:'', u2:'', d2:'', g2:'', u4:'', d4:'', g4:'', acct:'', bank:'', holder:'', mobile:'', sSign:'', schDate:`${y}년     월     일`,
     wName:'', rel:'', company:'선광신컨테이너터미널', dept:'운영팀', rank:'', workAddr:'인천 연수구 송도동 신항대로 707          ☎ (032) 724 - 1212', homeAddr:'', since:'', recDate:`${y}년     월     일`, recOrg:'선광신컨테이너터미널(주) 노동조합', photo:'',
     pDate:`${y}년     월     일`, pStu:'', pWork:'', aDate:`${y}년     월     일`}}; }
@@ -9819,12 +9828,14 @@ function uwFormPages(f){
     <div class="uwfTo">${F('to')}&nbsp;&nbsp;귀하</div></div>`;
 }
 function pageUwForm(cur){
+  subscribeGs();
   if(!uwForm) uwForm = uwFormDefault('rec');
-  const f = uwForm;
+  const f = uwForm, gsEdit = f.kind==='gs' && (userRole==='union' || userRole==='all');
   return `<div class="row uwfBar"><span style="font-weight:800;">서류 선택</span><select id="uwfKind" class="docSel"><option value="rec"${f.kind==='rec'?' selected':''}>🏅 근무유공자 추천서</option><option value="merit"${f.kind==='merit'?' selected':''}>📜 공적조서 (4쪽)</option><option value="sch"${f.kind==='sch'?' selected':''}>🎓 노동절 장학생 (3쪽)</option><option value="gs"${f.kind==='gs'?' selected':''}>💐 경조사비 지급기준</option></select>
-      <span style="font-weight:800;">대상자</span><select id="uwfWho" class="docSel"><option value="">직접 입력</option>${cur.map((m,i)=> `<option value="${i}"${String(f.who)===String(i)?' selected':''}>${esc(m.name||'')}${m.pos && m.pos!=='조합원' ? ' · '+esc(m.pos) : ''}</option>`).join('')}</select>
-      <button type="button" class="btn sm" id="uwfPrint">🖨️ 출력 (인쇄 · PDF 저장)</button><button type="button" class="btn warn ghost sm" id="uwfReset">새로 작성</button></div>
-    <p class="hint" style="margin:-2px 0 10px;">칸을 눌러 바로 입력하세요. 대상자를 고르면 명부의 이름·직위·주소·연락처가 채워져요. 생년월일 등 개인정보가 들어가므로 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요.</p>
+      <span style="font-weight:800;${f.kind==='gs' ? 'display:none;' : ''}">대상자</span><select id="uwfWho" class="docSel"${f.kind==='gs' ? ' style="display:none;"' : ''}><option value="">직접 입력</option>${cur.map((m,i)=> `<option value="${i}"${String(f.who)===String(i)?' selected':''}>${esc(m.name||'')}${m.pos && m.pos!=='조합원' ? ' · '+esc(m.pos) : ''}</option>`).join('')}</select>
+      <button type="button" class="btn sm" id="uwfPrint">🖨️ 출력 (인쇄 · PDF 저장)</button>${gsEdit ? `<button type="button" class="btn sm" id="uwfGsSave"${f.dirty ? '' : ' disabled'}>💾 저장${f.dirty ? ' (고친 내용 있음)' : ''}</button>` : ''}<button type="button" class="btn warn ghost sm" id="uwfReset">${f.kind==='gs' ? '원본으로' : '새로 작성'}</button></div>
+    ${f.kind==='gs' ? `<p class="hint" style="margin:-2px 0 10px;">금액·날짜·비고를 눌러 고친 뒤 [💾 저장]을 누르면 다음에도 그대로 남아요.${gsDoc && gsDoc.at ? ' · ' + esc(new Date(gsDoc.at).toLocaleDateString('ko-KR')) + ' 저장본' : ' · 아직 저장한 적 없음(보내 준 PDF 기준)'}</p>` : ''}
+    <p class="hint" style="margin:-2px 0 10px;${f.kind==='gs' ? 'display:none;' : ''}">칸을 눌러 바로 입력하세요. 대상자를 고르면 명부의 이름·직위·주소·연락처가 채워져요. 생년월일 등 개인정보가 들어가므로 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요.</p>
     ${f.kind==='sch' ? `<details class="uwfGuide"><summary>📌 추천 유의사항 (원본 4쪽 — 화면에서만 보기)</summary><div>- 교육부(재학대학), 한국장학재단(kosaf.go.kr) 등을 통해 추천인의 장학 혜택 내역을 필히 확인 후 신청<br>- 장학금 중복수혜는 가능하나, 재학 대학 등록금 기준 기존 혜택 장학금액+수령금액(800,000원)+학자금대출이 등록금을 초과하지 않는 경우 신청 가능<br>▶ 지자체(인천시청)에서 별도로 자격여부 조회 후 본부로 부적격자 통보<br>1. 학교장 직인 필히 날인(네모직인) — 총장 직인 원칙(학과장 직인 불가), 협의 필요 시 본부 회신(032-437-8501)<br>2. 휴학생 추천 불가(재학생만)&nbsp;&nbsp;3. 근로자 자녀만 추천 가능(본인·배우자 불가)&nbsp;&nbsp;4. 외국계 학교 추천 불가<br>5. 가족관계증명서·재직증명서 필수&nbsp;&nbsp;6. 사이버대·학점은행제·직업전문훈련학교·방송통신대 추천 불가<br>7. 신입생·재학생 재학증명서 전원 제출&nbsp;&nbsp;8. 성적증명서는 학교장 또는 교무처장 직인 필수<br>9. 국가장학금 대상자는 본인이 판단하여 신청(차후 환급 문제 시 추천 기관 책임)<br>10. 근로자 성명 부분 도장 또는 서명 가능&nbsp;&nbsp;11. 추천인은 추천조직 대표 직인(네모직인)<br>12. 기일 내 제출이 어려우면 스캔·팩스 먼저 제출 후 원본 우편 제출<br>제출처 : 인천시 남동구 구월남로 75, 4층 장학사업 담당자 (032-437-8501)</div></details>` : ''}
     <div class="uwfDoc" id="uwfDoc">${uwFormPages(f)}</div>`;
 }
@@ -9832,10 +9843,17 @@ function bindUwForm(){
   const f = uwForm; if(!f) return;
   const kind = document.getElementById('uwfKind'); if(kind) kind.onchange = ()=>{ const who = f.who; uwForm = uwFormDefault(kind.value); if(who !== ''){ uwForm.who = who; uwFormPick(Number(who)); } render(); };
   const who = document.getElementById('uwfWho'); if(who) who.onchange = ()=>{ uwForm.who = who.value; if(who.value !== '') uwFormPick(Number(who.value)); render(); };
-  const rs = document.getElementById('uwfReset'); if(rs) rs.onclick = ()=> appConfirm('입력한 내용을 지우고 새로 작성할까요?', ()=>{ uwForm = uwFormDefault(f.kind); render(); });
+  const rs = document.getElementById('uwfReset'); if(rs) rs.onclick = ()=>{
+    if(f.kind==='gs'){ appConfirm('보내 준 PDF 원본 값으로 되돌릴까요? [💾 저장]을 눌러야 저장본도 바뀌어요.', ()=>{ const keep = gsDoc; gsDoc = null; uwForm = uwFormDefault('gs'); gsDoc = keep; uwForm.dirty = true; render(); }); return; }
+    appConfirm('입력한 내용을 지우고 새로 작성할까요?', ()=>{ uwForm = uwFormDefault(f.kind); render(); }); };
+  const gss = document.getElementById('uwfGsSave'); if(gss) gss.onclick = async ()=>{
+    if(!db){ showToast('서버에 연결되지 않았어요.'); return; }
+    try{ await db.collection('unionPrivate').doc('gsStd').set({json: JSON.stringify(f.v), at: Date.now()}); f.dirty = false; showToast('경조사비 지급기준을 저장했어요.'); render(); }
+    catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); } };
   const pr = document.getElementById('uwfPrint'); if(pr) pr.onclick = uwFormPrint;
   document.querySelectorAll('#uwfDoc [data-uwf]').forEach(el=>{
     el.oninput = ()=>{ const k = el.dataset.uwf; f.v[k] = el.innerText.replace(/ /g,' ').replace(/\n$/,'');
+      if(f.kind==='gs' && !f.dirty){ f.dirty = true; const b = document.getElementById('uwfGsSave'); if(b){ b.disabled = false; b.textContent = '💾 저장 (고친 내용 있음)'; } }
       if(k==='tenure') f.tenureMan = !!f.v.tenure;
       if(k==='hire' && !f.tenureMan){ f.v.tenure = uwTenure(f.v.hire); const t = document.querySelector('#uwfDoc [data-uwf="tenure"]'); if(t) t.textContent = f.v.tenure; }
       document.querySelectorAll(`#uwfDoc [data-uwf="${k}"]`).forEach(o=>{ if(o!==el) o.textContent = f.v[k]; });   // 같은 칸이 두 곳(성명 등)이면 같이
