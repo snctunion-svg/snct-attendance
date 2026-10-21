@@ -1523,7 +1523,6 @@ body[class*="printing"] .colNav{display:none !important;}
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
     <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
     <a class="navttl navUnion" data-view="leaderhub" data-role-section="leader" style="margin-top:10px;">조장관리 <span class="navUnionArr">›</span></a>
-    <a class="navttl navUnion" data-view="unionhub" data-role-section="union" style="margin-top:10px;">UNION WORK <span class="navUnionArr">›</span></a>
   </nav>
   <main id="content"></main>
 </div>
@@ -4677,8 +4676,8 @@ document.addEventListener('focusout', ()=>{
   setTimeout(()=>{ if(renderDeferred && !isEditingField()){ renderDeferred = false; render(); } }, 0);
 });
 // ===== UNION 시트 =====
-const UNION_SHEETS = [['payroll','💰','장비 시급'],['eqpay','🧾','장비 급여 관리'],['settle','🤝','연도별 타결'],['unana','📊','분석·폐지 검토'],['backup','💾','백업·복원']];   // 휴무 2명 분석·지원 폐지·휴일보전·보전 폐지 = '분석·폐지 검토' 하나로 묶음
-const LEADER_SHEETS = [['safety','🦺','관리감독자'],['codes','🏷️','근태코드'],['mail','📧','메일 송부'],['berth','⚓','선석 조회'],['vessel','🚢','본선작업'],['team','🧩','조편성 관리'],['holidays','📅','공휴일 관리']];
+const UNION_SHEETS = [['payroll','💰','장비 시급'],['eqpay','🧾','장비 급여 관리'],['settle','🤝','연도별 타결'],['unana','📊','분석·폐지 검토']];   // 휴무 2명 분석·지원 폐지·휴일보전·보전 폐지 = '분석·폐지 검토' 하나로 묶음
+const LEADER_SHEETS = [['safety','🦺','관리감독자'],['codes','🏷️','근태코드'],['mail','📧','메일 송부'],['berth','⚓','선석 조회'],['vessel','🚢','본선작업'],['team','🧩','조편성 관리'],['holidays','📅','공휴일 관리'],['backup','💾','백업·복원']];   // 백업·복원은 UNION만 보임(roleCanSee)
 const WORK_SHEETS = [['uwmem','👥','조합원 명부'],['uwform','📄','양식'],['uwregs','📘','규약&규정'],['uwjobs','📗','취업&업무']];   // UNION WORK 시트(UNION만)
 // 묶음 시트: 경위서&학자금처럼 위에서 규정을 골라 보고 출력. 마지막에 본 규정을 기억
 const UW_GROUPS = {unana:[['fcana','📊 휴무 2명 분석'],['supcut','✂️ 지원 폐지'],['holguar','🗓️ 휴일보전'],['allcut','🧮 보전 폐지']], uwregs:[['uwrule','📘 규약'],['uwlmc','🤝 노사협의회규정'],['uwelect','🗳️ 선거관리규정']], uwjobs:[['uwemp','📗 취업규칙'],['uwwork','🏢 업무규정']]};
