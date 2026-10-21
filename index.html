@@ -713,7 +713,6 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .fzInner{display:flex;align-items:flex-start;width:max-content;}
 .fzInner > table{flex:0 0 auto;}
 .fzTail{flex:0 0 auto;height:1px;align-self:flex-start;}
-.colSnap{scroll-snap-type:x mandatory;} .colSnap .colSnapT{scroll-snap-align:start;}
 .pcFreeze td.fzCol,.pcFreeze th.fzCol{position:sticky !important;}
 .pcFreeze tbody td.fzCol{z-index:3;}
 .pcFreeze thead th.fzCol{z-index:8 !important;}
@@ -5998,8 +5997,37 @@ function colSnapFit(){
                         : [...box.querySelectorAll('.cmbRight table.ctbl thead tr:first-child th.dayHead')];
   }
   if(!box || !cells.length) return;
-  box.classList.add('colSnap'); box.style.scrollPaddingLeft = Math.round(fix) + 'px';
+  box.classList.add('colSnap'); box._snapFix = fix; box._snapRest = colSnapPos(box).reduce((a,p)=> Math.abs(p - box.scrollLeft) < Math.abs(a - box.scrollLeft) ? p : a, box.scrollLeft);
   cells.forEach(c=> c.classList.add('colSnapT'));
+  if(!box._snapHook){ box._snapHook = 1;
+    let t = null, down = false;
+    box.addEventListener('pointerdown', ()=>{ down = true; }, true);
+    window.addEventListener('pointerup', ()=>{ if(down){ down = false; clearTimeout(t); t = setTimeout(()=> colSnapSettle(box), 60); } }, true);
+    const settle = ()=>{ if(!down) colSnapSettle(box); };
+    if('onscrollend' in window) box.addEventListener('scrollend', settle);
+    box.addEventListener('scroll', ()=>{ clearTimeout(t); t = setTimeout(settle, 'onscrollend' in window ? 400 : 160); }, {passive:true});
+  }
+}
+// 칸 경계 위치(scrollLeft 값): 각 칸 왼쪽이 고정칸 바로 옆에 오는 위치 + 맨 끝
+function colSnapPos(box){
+  const br = box.getBoundingClientRect(), x0 = br.left + box.clientLeft, max = box.scrollWidth - box.clientWidth;
+  const ps = [...box.querySelectorAll('.colSnapT')].map(c=> Math.round(c.getBoundingClientRect().left - x0 + box.scrollLeft - (box._snapFix||0))).filter(p=> p >= 0 && p <= max);
+  ps.push(0, max); ps.sort((a,b)=> a-b);
+  const out = []; ps.forEach(p=>{ if(!out.length || p - out[out.length-1] >= 4) out.push(p); else if(p===max) out[out.length-1] = max; });   // 0과 첫 칸처럼 몇 px 차이 나는 위치는 하나로
+  return out;
+}
+// 움직임이 멈추면 칸에 맞추기 — 절대 뒤로 되돌아가지 않고 가던 방향으로만 맞춤
+//  · 직전 칸에서 조금(화살표 한 번)만 움직였으면 딱 한 칸 · 많이 움직였으면 가던 쪽의 가장 가까운 칸
+function colSnapSettle(box){
+  if(!box.classList.contains('colSnap') || box._snapping) return;
+  const sl = box.scrollLeft, rest = box._snapRest == null ? sl : box._snapRest, d = sl - rest;
+  const ps = colSnapPos(box);
+  if(Math.abs(d) < 1 || ps.some(p=> Math.abs(p - sl) < 1)){ box._snapRest = sl; return; }
+  let tg;
+  if(d > 0){ const nx = ps.filter(p=> p > rest + 1); tg = Math.abs(d) <= 48 ? nx[0] : ps.filter(p=> p >= sl - 1)[0]; }
+  else { const pv = ps.filter(p=> p < rest - 1); tg = Math.abs(d) <= 48 ? pv[pv.length-1] : ps.filter(p=> p <= sl + 1).pop(); }
+  if(tg == null){ box._snapRest = sl; return; }
+  box._snapRest = tg; box._snapping = true; box.scrollLeft = tg; setTimeout(()=>{ box._snapping = false; }, 50);
 }
 function fzClear(){
   document.querySelectorAll('.fzCol').forEach(c=>{ c.classList.remove('fzCol','fzEnd'); c.style.removeProperty('left'); c.style.removeProperty('position'); });
