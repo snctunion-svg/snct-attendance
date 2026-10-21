@@ -1010,6 +1010,15 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .inTbl.inFit input[type=checkbox]{width:calc(var(--inRowH) * .5);height:calc(var(--inRowH) * .5);min-width:11px;min-height:11px;margin:0;}
 }
 /* 휴대폰 확대·축소 버튼(화면 오른쪽 아래에 떠 있음) */
+/* 표 좌우 한 칸씩 이동 화살표(배차표·근태관리·월별 OT현황·지원계획표) — 한 번 누르면 한 칸, 꾹 누르면 계속 */
+.colNav{display:none;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:61;align-items:center;gap:2px;
+  background:rgba(255,255,255,.82);border:1px solid #f9a8d4;border-radius:999px;padding:3px;box-shadow:0 2px 8px rgba(190,24,93,.15);-webkit-user-select:none;user-select:none;touch-action:none;}
+.colNav.show{display:flex;}
+.colNav button{border:0;background:#db2777;color:#fff;font:inherit;font-weight:900;font-size:17px;width:44px;height:38px;border-radius:999px;cursor:pointer;line-height:1;-webkit-tap-highlight-color:transparent;}
+.colNav button:active{background:#be185d;}
+.colNav button:disabled{background:#fbcfe8;cursor:default;}
+@media (max-width:9999px){ .colNav{right:auto;left:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));} .colNav button{width:46px;height:34px;} }
+body[class*="printing"] .colNav{display:none !important;}
 .zoomFab{display:none;}
 @media (max-width:700px){
   .zoomFab{display:flex;position:fixed;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:60;align-items:center;gap:0;
@@ -4083,6 +4092,7 @@ async function pushSendDone(team, at){
 }
 // 앱이 열려 있으면 어느 화면이든: 다른 기기(PC 등)에서 방금 누른 배차완료를 받아서 음성 + 진동 + 큰 알림
 function subscribeDpDoneLive(){
+  return;   // 배차완료 알림 없앰(배차표 사진을 카톡으로 보내는 기능으로 바꿈)
   if(!db || unsub.dpDoneLive) return;
   try{ unsub.dpDoneLive = db.collection('dpDone').where('at','>=', Date.now() - 10*60000).onSnapshot(snap=>{
     const first = dpDoneSeen===null; if(first) dpDoneSeen = {};
@@ -4134,6 +4144,137 @@ function dpDoneSound(team){ dpChime(); if(dpTtsAuto()) setTimeout(()=> dpSpeak(d
   ['pointerdown','touchend','keydown'].forEach(t=> document.addEventListener(t, unlock, {capture:true, passive:true}));
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{ window.speechSynthesis && window.speechSynthesis.resume(); }catch(e){} } });
 })();
+// ===== 배차표 사진(전반·후반)을 카톡으로 보내기 =====
+//  보고 있는 날짜·조·주야 그대로. 주간: 전반 07~13시 · 후반 12~19시 / 야간: 전반 18~01시 · 후반 24~08시
+//  사진은 휴대폰 공유 창으로 보냄 → 카카오톡 고르고 → 단톡방 고르면 끝. (공유가 안 되는 PC는 사진 파일로 내려받기)
+let dpShot = null;   // {files:{a,b}, urls:{a,b}, busy}
+function dpShotSlots(){
+  const fullAll = FULL_SLOTS_FN(), cut = fullAll.indexOf('19:00');
+  return dispatchShift==='full' ? (dispatchSunPart==='night' ? SUN_NIGHT_SLOTS_FN() : fullAll.slice(0, cut))
+    : dispatchShift==='day' ? DAY_SLOTS.filter(x=>x!=='19:00') : NIGHT_SLOTS;
+}
+function dpShotNight(){ return dispatchShift==='night' || (dispatchShift==='full' && dispatchSunPart==='night'); }
+function dpShotParts(){
+  return dpShotNight()
+    ? [{k:'a', name:'전반', label:'18~01시', from:18*60, to:25*60}, {k:'b', name:'후반', label:'24~08시', from:24*60, to:32*60}]
+    : [{k:'a', name:'전반', label:'07~13시', from:7*60, to:13*60}, {k:'b', name:'후반', label:'12~19시', from:12*60, to:19*60}];
+}
+function dpShotMin(s){ const [h,m] = s.split(':').map(Number); let v = h*60 + m; if(dpShotNight() && v < 12*60) v += 24*60; return v; }
+// 화면에 그려진 표를 그대로 사진(캔버스)으로 옮겨 그림 — 칸 색·테두리·글자 위치를 브라우저가 잡은 그대로 씀(외부 도구 없이)
+function dpShotPaint(box){
+  const br = box.getBoundingClientRect(), W = Math.ceil(br.width), H = Math.ceil(br.height);
+  const sc = Math.min(3, Math.max(2, window.devicePixelRatio || 2));
+  const cv = document.createElement('canvas'); cv.width = Math.round(W*sc); cv.height = Math.round(H*sc);
+  const g = cv.getContext('2d'); g.scale(sc, sc); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  const R = el=>{ const r = el.getBoundingClientRect(); return {x:r.left - br.left, y:r.top - br.top, w:r.width, h:r.height}; };
+  const clear = c=> !c || c==='transparent' || /rgba\([^)]*,\s*0\)$/.test(c);
+  const fillBg = el=>{ const cs = getComputedStyle(el); if(clear(cs.backgroundColor)) return; const r = R(el), rad = parseFloat(cs.borderTopLeftRadius) || 0;
+    g.fillStyle = cs.backgroundColor; g.beginPath(); if(rad && g.roundRect) g.roundRect(r.x, r.y, r.w, r.h, Math.min(rad, r.h/2)); else g.rect(r.x, r.y, r.w, r.h); g.fill(); };
+  const borders = el=>{ const cs = getComputedStyle(el), r = R(el);
+    [['Top',r.x,r.y,r.w,0],['Bottom',r.x,r.y+r.h,r.w,0],['Left',r.x,r.y,0,r.h],['Right',r.x+r.w,r.y,0,r.h]].forEach(([sd,x,y,w,h])=>{
+      const bw = parseFloat(cs['border'+sd+'Width']) || 0, st = cs['border'+sd+'Style']; if(!bw || st==='none' || st==='hidden' || clear(cs['border'+sd+'Color'])) return;
+      g.fillStyle = cs['border'+sd+'Color'];
+      const t = Math.max(1, bw);
+      if(st==='dotted' || st==='dashed'){ const step = st==='dotted' ? 2*t : 4*t, len = w || h; for(let k=0;k<len;k+=step){ if(w) g.fillRect(x+k, sd==='Top' ? y : y-t, Math.min(step/2, len-k), t); else g.fillRect(sd==='Left' ? x : x-t, y+k, t, Math.min(step/2, len-k)); } }
+      else if(w) g.fillRect(x, sd==='Top' ? y : y-t, w, t); else g.fillRect(sd==='Left' ? x : x-t, y, t, h);
+    }); };
+  const texts = (root, clip)=>{
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for(let n = tw.nextNode(); n; n = tw.nextNode()){
+      const txt = n.nodeValue.replace(/\s+/g,' ').trim(); if(!txt) continue;
+      const pe = n.parentElement, cs = getComputedStyle(pe); if(cs.visibility==='hidden' || cs.display==='none') continue;
+      const rg = document.createRange(); rg.selectNodeContents(n); const rr = rg.getBoundingClientRect(); if(!rr.width) continue;
+      g.save(); if(clip){ g.beginPath(); g.rect(clip.x, clip.y, clip.w, clip.h); g.clip(); }
+      g.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; g.fillStyle = cs.color; g.textBaseline = 'middle';
+      g.fillText(txt, rr.left - br.left, rr.top - br.top + rr.height/2); g.restore();
+    } };
+  const ban = box.firstElementChild; fillBg(ban); borders(ban); texts(ban);
+  const t = box.querySelector('table'); fillBg(t);
+  [...t.rows].forEach(tr=> fillBg(tr));
+  const cells = [...t.querySelectorAll('th,td')];
+  cells.forEach(c=>{ fillBg(c); c.querySelectorAll('*').forEach(fillBg); });
+  cells.forEach(c=> texts(c, R(c)));
+  cells.forEach(borders); borders(t);
+  return cv;
+}
+async function dpShotMake(part){
+  const src = document.getElementById('dpTable'); if(!src) throw new Error('배차표가 없어요.');
+  const slots = dpShotSlots(), N = slots.length, keep = slots.map(s=>{ const v = dpShotMin(s); return v >= part.from && v < part.to; });
+  const [y,m,d] = dispatchDate.split('-').map(Number);
+  const box = document.createElement('div'); box.className = 'dpShotBox';
+  box.style.cssText = 'position:fixed;left:-20000px;top:0;background:#fff;padding:10px;width:max-content;z-index:-1;color:#000;';
+  box.innerHTML = `<div style="font-weight:800;font-size:17px;color:#9d174d;background:#fce7f3;border:1px solid #fbcfe8;border-bottom:0;border-radius:8px 8px 0 0;padding:8px 12px;">${m}월 ${d}일(${weekdayKr(y,m,d)}) ${esc(dispatchTeamFilter)}조 ${dpShotNight() ? '야간' : '주간'} · ${part.name} ${part.label}</div>`;
+  const t = src.cloneNode(true); t.removeAttribute('id'); t.id = 'dpTable'; t.style.zoom = ''; t.style.width = 'auto';
+  [...t.rows].forEach(tr=>{ const cells = [...tr.cells], sc = cells.slice(-N); sc.forEach((c,i)=>{ if(!keep[i]) c.remove(); }); });
+  t.querySelectorAll('th,td').forEach(c=>{ c.style.setProperty('position','static','important'); c.style.removeProperty('left'); c.style.removeProperty('top'); });
+  t.querySelectorAll('input').forEach(inp=>{ const sp = document.createElement('span'); sp.textContent = inp.value; sp.style.fontWeight = '700'; inp.replaceWith(sp); });
+  box.appendChild(t);
+  src.removeAttribute('id');   // 잠깐 같은 id가 두 개가 되지 않게
+  document.body.appendChild(box);
+  try{
+    if(document.fonts && document.fonts.ready) await document.fonts.ready;
+    const cv = dpShotPaint(box);
+    const blob = await new Promise(r=> cv.toBlob(r, 'image/png'));
+    const fname = `배차표_${m}월${d}일_${dispatchTeamFilter}조_${dpShotNight() ? '야간' : '주간'}_${part.name}.png`;
+    return {file: new File([blob], fname, {type:'image/png'}), url: URL.createObjectURL(blob)};
+  } finally { box.remove(); src.id = 'dpTable'; }
+}
+async function dpShotOpen(){
+  if(!document.getElementById('dpTable')){ showToast('배차표가 없어요.'); return; }
+  dpShotClose();
+  const parts = dpShotParts(), ov = document.createElement('div'); ov.id = 'dpShotPop';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:950;display:flex;align-items:center;justify-content:center;padding:12px;';
+  ov.innerHTML = `<div style="background:var(--surface);color:var(--text);border-radius:14px;padding:16px;max-width:520px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 10px 30px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;"><b style="color:#be185d;font-size:16px;">📸 배차표 카톡 보내기 · ${esc(dispatchTeamFilter)}조 ${dpShotNight() ? '야간' : '주간'}</b><button type="button" class="btn ghost sm" id="dpShotX">닫기</button></div>
+    <div id="dpShotBody" class="hint">사진 만드는 중…</div></div>`;
+  document.body.appendChild(ov);
+  ov.addEventListener('click', ev=>{ if(ev.target===ov) dpShotClose(); });
+  ov.querySelector('#dpShotX').onclick = dpShotClose;
+  const st = dpShot = {files:{}, urls:{}};
+  try{
+    for(const pt of parts){ const r = await dpShotMake(pt); if(dpShot!==st){ URL.revokeObjectURL(r.url); return; } st.files[pt.k] = r.file; st.urls[pt.k] = r.url; }
+  }catch(err){ const b = document.getElementById('dpShotBody'); if(b) b.textContent = '사진을 만들지 못했어요. ' + ((err && err.message) || ''); return; }
+  const canShare = !!(navigator.canShare && navigator.canShare({files:[st.files.a]}));
+  const canCopy = !!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) && !(window.innerWidth <= 700);   // PC: 사진을 복사 → 카톡 PC 대화창에 Ctrl+V
+  const body = document.getElementById('dpShotBody'); if(!body) return;
+  body.className = '';
+  body.innerHTML = parts.map(pt=> `<div style="margin:0 0 10px;"><div style="font-weight:800;margin:0 0 4px;">${pt.name} <small style="color:var(--text-muted);">${pt.label}</small></div>
+      <img src="${st.urls[pt.k]}" alt="${pt.name}" style="width:100%;border:1px solid var(--border);border-radius:6px;display:block;"></div>`).join('')
+    + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+      <button type="button" class="btn sm dpKakaoBtn" data-shot="ab">💬 둘 다 보내기</button>
+      <button type="button" class="btn ghost sm" data-shot="a">전반만</button><button type="button" class="btn ghost sm" data-shot="b">후반만</button></div>
+      ${canCopy ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;"><b style="font-size:13px;">PC 카톡</b>
+        <button type="button" class="btn sm" data-copy="a">📋 전반 복사</button><button type="button" class="btn sm" data-copy="b">📋 후반 복사</button></div>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;"><b style="font-size:13px;">카카오 카드</b>
+        <button type="button" class="btn sm dpKakaoBtn" data-card="a" disabled>💬 전반 카드</button><button type="button" class="btn sm dpKakaoBtn" data-card="b" disabled>💬 후반 카드</button>
+        <span id="dpCardMsg" class="hint" style="margin:0;">${kakaoReady() ? '준비 중…' : '카카오를 불러오지 못했어요(앱 주소에서만 돼요).'}</span></div>
+      <p class="hint" style="margin:8px 0 0;">${canShare ? '<b>보내기:</b> 공유 창 → <b>카카오톡</b> → 방 고르기 (사진 그대로)' : '<b>보내기:</b> 이 기기에서는 사진 파일로 내려받아요.'}${canCopy ? '<br><b>PC 카톡:</b> [📋 복사] → 카톡 PC 대화방 입력칸에서 <b>Ctrl + V</b> → 전송 (한 장씩, 사진 그대로)' : ''}<br><b>카카오 카드:</b> 카카오 창 → 방 고르기 (카드 안에 작은 사진 + [배차표 열기])</p>`;
+  // 카카오 카드: 사진을 카카오 서버에 미리 올려 두고(휴대폰은 누른 순간 카톡을 열어야 해서) → 누르면 카드로 보냄
+  if(kakaoReady()){
+    const msg = ()=> document.getElementById('dpCardMsg');
+    Promise.all(parts.map(pt=> window.Kakao.Share.uploadImage({file:[st.files[pt.k]]}).then(r=>{ const o = r && r.infos && r.infos.original; st.cards = st.cards || {}; if(o) st.cards[pt.k] = {url:o.url, w:o.width, h:o.height, title:`${dispatchDate.slice(5).replace('-','/')} ${dispatchTeamFilter}조 ${dpShotNight() ? '야간' : '주간'} · ${pt.name} ${pt.label}`}; })))
+      .then(()=>{ if(dpShot!==st) return; body.querySelectorAll('[data-card]').forEach(b=> b.disabled = !(st.cards && st.cards[b.dataset.card])); const m = msg(); if(m) m.textContent = ''; })
+      .catch(err=>{ console.warn('kakao upload', err); const m = msg(); if(m) m.textContent = '카카오에 사진을 올리지 못했어요.'; });
+  }
+  body.querySelectorAll('[data-card]').forEach(b=> b.onclick = ()=>{
+    const c = st.cards && st.cards[b.dataset.card]; if(!c || !kakaoReady()) return;
+    const url = dpKakaoUrl();
+    try{ window.Kakao.Share.sendDefault({ objectType:'feed', content:{ title:c.title, description:'배차표 확인해 주세요.', imageUrl:c.url, imageWidth:c.w, imageHeight:c.h, link:{mobileWebUrl:url, webUrl:url} }, buttons:[{ title:'배차표 열기', link:{mobileWebUrl:url, webUrl:url} }] }); }
+    catch(err){ console.warn('kakao card', err); showToast('카카오 카드를 보내지 못했어요.'); } });
+  body.querySelectorAll('[data-copy]').forEach(b=> b.onclick = async ()=>{
+    const f = st.files[b.dataset.copy]; if(!f) return;
+    try{ await navigator.clipboard.write([new ClipboardItem({'image/png': f})]); showToast(`${b.dataset.copy==='a' ? '전반' : '후반'} 사진을 복사했어요. 카톡 대화방에서 Ctrl + V 하세요.`); }
+    catch(err){ showToast('복사하지 못했어요. [보내기]로 내려받아 보내 주세요.'); } });
+  body.querySelectorAll('[data-shot]').forEach(b=> b.onclick = ()=>{
+    const files = b.dataset.shot.split('').map(k=> st.files[k]).filter(Boolean);
+    if(canShare){ navigator.share({files, title:'배차표'}).catch(err=>{ if(err && err.name!=='AbortError') showToast('공유하지 못했어요.'); }); }
+    else files.forEach((f,i)=> setTimeout(()=>{ const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500); }, i*400));
+  });
+}
+function dpShotClose(){
+  const ov = document.getElementById('dpShotPop'); if(ov) ov.remove();
+  if(dpShot){ Object.values(dpShot.urls||{}).forEach(u=> URL.revokeObjectURL(u)); dpShot = null; }
+}
 // 배차완료: 배포용(로그인 안 함)도 누를 수 있음 — 조별 조장은 자기 조만. 취소는 조장·UNION만(dpDoneToggle)
 function dpDoneCanPress(){ return teamAllowed(dispatchTeamFilter); }
 function dpDoneCanCancel(){ return (userRole==='leader' || userRole==='union' || userRole==='all') && teamAllowed(dispatchTeamFilter); }   // 배포용(로그인 안 함)은 보기만
@@ -5919,6 +6060,7 @@ function applyUiZoom(){
   dpTailFit();
   colSnapFit();
   viewScrollKeep();
+  colNavUpdate();
 }
 // 배차표: 표 오른쪽에 빈 여백을 붙여서, 막대를 끝까지 밀면 마지막 시간 칸이 고정칸(No·성명·근태·퇴근·승무) 바로 옆에 오게
 //  여백 = 표 상자 폭 - 고정칸 폭 - 마지막 칸 폭 (표 크기·확대 배율을 다 맞춘 뒤 잼)
@@ -5989,7 +6131,13 @@ function colSnapFit(){
     if(VIEW==='dispatch') box = document.getElementById('dpWrap');
     else if(VIEW==='combined') box = document.querySelector('.cmbWrap.cmbPhJoin');
     else if(VIEW==='splan'){ const t = document.getElementById('splanTable'); box = t && t.closest('.scrollx'); }
+    else if(VIEW==='ot'){ const t = document.querySelector('table.otSum'); box = t && t.closest('.scrollx'); }
     if(!box) return;
+    [...box.querySelectorAll('table')].forEach(t=>{ const r = t.tBodies[0] && t.tBodies[0].rows[0]; if(!r) return;
+      [...r.cells].forEach(c=>{ if(getComputedStyle(c).position!=='sticky') cells.push(c); }); });
+    box._snapPhone = true;
+  } else if(VIEW==='splan'){   // PC 지원계획표: 휴대폰과 같은 방식(고정칸이 있으면 그 옆에 맞춤)
+    const t = document.getElementById('splanTable'); box = t && t.closest('.scrollx'); if(!box) return colNavUpdate();
     [...box.querySelectorAll('table')].forEach(t=>{ const r = t.tBodies[0] && t.tBodies[0].rows[0]; if(!r) return;
       [...r.cells].forEach(c=>{ if(getComputedStyle(c).position!=='sticky') cells.push(c); }); });
     box._snapPhone = true;
@@ -6004,7 +6152,7 @@ function colSnapFit(){
                         : [...box.querySelectorAll('.cmbRight table.ctbl thead tr:first-child th.dayHead')];
   }
   if(!box || !cells.length) return;
-  box.classList.add('colSnap'); box._snapFix = fix; if(!(window.innerWidth <= 700 || landPhone())) box._snapPhone = false;
+  box.classList.add('colSnap'); box._snapFix = fix; if(!(window.innerWidth <= 700 || landPhone()) && VIEW!=='splan') box._snapPhone = false;
   cells.forEach(c=> c.classList.add('colSnapT'));
   box._snapRest = colSnapPos(box).reduce((a,p)=> Math.abs(p - box.scrollLeft) < Math.abs(a - box.scrollLeft) ? p : a, box.scrollLeft);
   if(!box._snapHook){ box._snapHook = 1;
@@ -6018,6 +6166,38 @@ function colSnapFit(){
     if('onscrollend' in window) box.addEventListener('scrollend', settle);
     box.addEventListener('scroll', ()=>{ clearTimeout(t); t = setTimeout(settle, 'onscrollend' in window ? 400 : 160); }, {passive:true});
   }
+}
+// ◀ ▶ 화살표: 한 번 누르면 한 칸, 꾹 누르고 있으면 계속 한 칸씩(엑셀처럼)
+function colNavBox(){ if(!(window.innerWidth <= 700 || landPhone())) return null;   // 화살표는 휴대폰에서만
+  const b = document.querySelector('.colSnap'); return b && ['dispatch','combined','ot','splan'].includes(VIEW) && b.scrollWidth - b.clientWidth > 4 ? b : null; }
+function colStep(dir){
+  const box = colNavBox(); if(!box) return false;
+  const ps = colSnapPos(box), sl = box.scrollLeft;
+  const tg = dir > 0 ? ps.find(p=> p > sl + 1) : ps.filter(p=> p < sl - 1).pop();
+  if(tg == null) return false;
+  box._snapRest = tg; box._snapping = true; box.scrollLeft = tg; setTimeout(()=>{ box._snapping = false; }, 50);
+  colNavUpdate(); return true;
+}
+function colNavUpdate(){
+  let nav = document.getElementById('colNav');
+  if(!nav){
+    nav = document.createElement('div'); nav.id = 'colNav'; nav.className = 'colNav';
+    nav.innerHTML = '<button type="button" data-dir="-1" aria-label="왼쪽으로 한 칸">◀</button><button type="button" data-dir="1" aria-label="오른쪽으로 한 칸">▶</button>';
+    document.body.appendChild(nav);
+    let rep = null, wait = null;
+    const stop = ()=>{ clearTimeout(wait); clearInterval(rep); wait = rep = null; };
+    nav.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('pointerdown', ev=>{ ev.preventDefault(); stop(); const d = Number(b.dataset.dir);
+        if(!colStep(d)) return; wait = setTimeout(()=>{ rep = setInterval(()=>{ if(!colStep(d)) stop(); }, 110); }, 380); });
+      ['pointerup','pointerleave','pointercancel','lostpointercapture'].forEach(e=> b.addEventListener(e, stop));
+      b.addEventListener('contextmenu', ev=> ev.preventDefault());
+    });
+    window.addEventListener('blur', stop);
+  }
+  const box = colNavBox();
+  nav.classList.toggle('show', !!box);
+  if(box){ const max = box.scrollWidth - box.clientWidth; nav.querySelector('[data-dir="-1"]').disabled = box.scrollLeft <= 1; nav.querySelector('[data-dir="1"]').disabled = box.scrollLeft >= max - 1;
+    if(!box._navHook){ box._navHook = 1; box.addEventListener('scroll', ()=>{ clearTimeout(box._navT); box._navT = setTimeout(colNavUpdate, 80); }, {passive:true}); } }
 }
 // 칸 경계 위치(scrollLeft 값): 각 칸 왼쪽이 고정칸 바로 옆에 오는 위치 + 맨 끝
 function colSnapPos(box){
@@ -9216,11 +9396,7 @@ function pageDispatch(){
     <input type="date" id="dpDate" value="${esc(ds)}" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--bg);color:var(--text);font:inherit;">
     <button class="btn ${dispatchTeamFilter==='1'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="1">1조</button>
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
-    ${(()=>{ const dd = dpDone[dpDoneKey(ds, dispatchTeamFilter)];
-      const tm = dd && dd.at ? new Date(dd.at).toTimeString().slice(0,5) : '';
-      if(dpDoneCanPress()) return `<button type="button" class="btn sm dpDoneBtn${dd ? ' on' : ''}" id="dpDoneBtn" title="${dd ? `${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)} · 누르면 취소` : `${esc(dispatchTeamFilter)}조 배차완료 + 음성 안내`}">${dd ? '✅ 배차완료' : '📢 배차완료'}</button>${dd ? `<button type="button" class="btn ghost sm dpKakaoBtn" id="dpKakaoBtn" title="배차완료를 카톡으로 보내기">💬<span class="dpLbl"> 카톡</span></button>` : ''}`;
-      return dd ? `<span class="dpDoneChip" title="${esc(dispatchTeamFilter)}조 배차완료 ${esc(tm)}">✅ 배차완료</span><button type="button" class="btn ghost sm dpKakaoBtn" id="dpKakaoBtn" title="배차완료를 카톡으로 보내기">💬<span class="dpLbl"> 카톡</span></button>` : ''; /* 배포용(보기 전용)도 배차완료된 날은 카톡으로 보낼 수 있음 */ })()}
-    <button type="button" class="btn ghost sm dpPushBtn${pushOn() ? ' on' : ''}" id="dpPushBtn" title="${pushOn() ? `${esc((pushLocal()||{}).team || dispatchTeamFilter)}조 배차완료 알림 켜짐 · 누르면 끄기` : '화면이 꺼져 있어도 배차완료 알림 받기'}">${pushOn() ? '🔔<span class="dpLbl"> 알림</span>' : '🔕<span class="dpLbl"> 알림</span>'}</button>
+    <button type="button" class="btn sm dpKakaoBtn" id="dpShotBtn" title="배차표를 전반·후반 사진으로 만들어 카톡으로 보내기">📸<span class="dpLbl"> 카톡</span></button>
   </div>
   ${dispatchShift==='full' ? `<div class="row" style="margin:-4px 0 12px;align-items:center;">
     <button class="btn ${dispatchSunPart!=='night'?'':'ghost'} sm" data-act="dp-sun-part" data-part="day">주간</button>
@@ -10660,6 +10836,7 @@ function afterRender(){
   };
   el.querySelectorAll('[data-act="ot-team-filter"]').forEach(x=>x.onclick=()=>{ otTeamFilter = x.dataset.team; try{ localStorage.setItem('snct_team_ot', otTeamFilter); }catch(e){} render(); });
   { const db0 = document.getElementById('dpDoneBtn'); if(db0) db0.onclick = dpDoneToggle; }
+  { const sb = document.getElementById('dpShotBtn'); if(sb) sb.onclick = dpShotOpen; }
   { const kb = document.getElementById('dpKakaoBtn'); if(kb) kb.onclick = ()=>{ const dd = dpDone[dpDoneKey(dispatchDate, dispatchTeamFilter)]; if(dd) dpKakaoShare(dd); }; }
   { const pb = document.getElementById('dpPushBtn'); if(pb) pb.onclick = pushToggle; }
   el.querySelectorAll('[data-act="dispatch-team-filter"]').forEach(x=>x.onclick=()=>{ dispatchTeamFilter = x.dataset.team; inputTeam = dispatchTeamFilter; pushSyncTeam(); try{ localStorage.setItem('snct_dp_team', dispatchTeamFilter); localStorage.setItem('snct_input_team', inputTeam); }catch(e){} if(dispatchAuto){ dpApplyAutoDate(); if(dbReady) subscribeDispatchDay(dispatchDate); } else autoDispatchShift(); render(); });
@@ -11399,6 +11576,7 @@ document.addEventListener('change', (e)=>{
   }
 });
 
+{ const _r0 = render; render = function(){ _r0(); try{ colNavUpdate(); }catch(e){} }; }   // 화면이 바뀔 때 ◀ ▶ 화살표 보이기/숨기기
 /* ========================= 내비게이션/모바일 ========================= */
 if(SITE_UNION){   // SNCT UNION: 메뉴는 조합원 명부·양식·규약&규정·취업&업무만
   document.getElementById('nav').innerHTML = '<div class="navttl">SNCT UNION</div>' + WORK_SHEETS.map(([id,ic,l])=> `<a data-view="${id}" data-role-section="union"><span class="ic">${ic}</span>${l}</a>`).join('');
