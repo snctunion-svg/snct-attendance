@@ -1265,6 +1265,7 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .uwcPop{max-width:460px;}
 .uwcBar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:10px 12px 6px;}
 .uwcCnt{margin-left:auto;font-size:12.5px;font-weight:800;color:#4c1d95;}
+.uwcOpt{display:flex;gap:6px;align-items:flex-start;padding:0 12px 6px;font-size:12px;color:var(--text-muted);cursor:pointer;} .uwcOpt input{width:16px;height:16px;flex:none;margin:1px 0 0;}
 .uwcList{max-height:min(56vh,460px);overflow:auto;padding:4px 12px 10px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
 .uwcItem{display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;min-width:0;}
 .uwcItem.on{background:#f5f3ff;border-color:#c4b5fd;}
@@ -1280,9 +1281,11 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .uwCard{display:flex;width:66.1mm;height:26.8mm;break-inside:avoid;page-break-inside:avoid;}
   .uwCPh{width:26.5mm;height:26.8mm;flex:none;overflow:hidden;background:#fff;}
   .uwCPh img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block;}
+  .uwCPh:empty{border:.35mm solid #000;border-right:0;box-sizing:border-box;}   /* 사진이 없으면 사진 칸 테두리만(손으로 붙이기용) */
   .uwCLb{flex:1;border:.35mm solid #000;display:flex;flex-direction:column;box-sizing:border-box;}
   .uwCPos{height:50%;border-bottom:.35mm solid #000;display:flex;align-items:center;justify-content:center;font-size:11pt;font-weight:800;letter-spacing:.5pt;}
   .uwCName{flex:1;display:flex;align-items:center;justify-content:center;font-size:19pt;font-weight:900;white-space:nowrap;}
+  .uwCPos.p5{font-size:10pt;letter-spacing:0;} .uwCPos.p7{font-size:8.5pt;letter-spacing:0;}
   .uwCName.n3{letter-spacing:.45em;padding-left:.45em;} .uwCName.n4{letter-spacing:.06em;} .uwCName.n5{font-size:15pt;}
 }
 @media (max-width:700px){
@@ -9496,10 +9499,12 @@ function pageUwMem(){
 //  카드 크기 = 엑셀 열너비 6.5(약 13.2mm) · 행높이 19(약 6.7mm) 기준 — 사진 2열×4행, 직위·성명 칸 3열(직위 2행 + 성명 2행)
 //  A4 가로 한 장에 4명 × 6줄 = 24명
 let uwCardSel = null;   // 고른 사람(명부 순번 i) Set — null 이면 고르기 창 닫힘
+let uwCardBlank = (()=>{ try{ return localStorage.getItem('snct_uwcard_blank') !== '0'; }catch(e){ return true; } })();   // 마지막 줄 남는 칸을 빈 카드(직위 '조합원', 이름 칸 비움)로 채움
 function uwCardPop(cur){
   const all = cur.length, n = uwCardSel.size;
   return `<div class="sheetPopScrim" id="uwcScrim"><div class="sheetPop uwcPop"><div class="sheetPopHd"><b>🪪 사진명단 출력 — 출력할 사람 고르기</b><button type="button" class="sheetPopX" id="uwcClose" aria-label="닫기">✕</button></div>
     <div class="uwcBar"><button type="button" class="btn ghost sm" id="uwcAll">전체 선택</button><button type="button" class="btn ghost sm" id="uwcNone">전체 해제</button><span class="uwcCnt">${n} / ${all}명 · ${Math.max(1, Math.ceil(n/24))}장</span></div>
+    <label class="uwcOpt"><input type="checkbox" id="uwcBlank"${uwCardBlank ? ' checked' : ''}> 마지막 줄 남는 칸은 빈 카드로 채우기 (직위 '조합원', 사진·이름은 비움 — 새 조합원 손으로 적기용)</label>
     <div class="uwcList">${cur.map((m,i)=> `<label class="uwcItem${uwCardSel.has(i) ? ' on' : ''}"><input type="checkbox" data-uwc="${i}"${uwCardSel.has(i) ? ' checked' : ''}><b>${esc(m.name||'')}</b><span>${esc(m.pos||'조합원')}</span>${m.photo ? '<i title="사진 있음">📷</i>' : '<i class="no" title="사진 없음">—</i>'}</label>`).join('')}</div>
     <div class="uwmBtns"><button type="button" class="btn sm" id="uwcPrint"${n ? '' : ' disabled'}>🖨️ ${n}명 출력</button></div></div></div>`;
 }
@@ -9509,7 +9514,9 @@ async function uwCardPrint(){
   showToast('사진을 불러오는 중…');
   await uwPhotoLoad(list.map(m=> m.photo));
   const sp = nm=> { const t = String(nm||'').replace(/\s/g,''); return t.length <= 3 ? 'n3' : t.length === 4 ? 'n4' : 'n5'; };
-  const card = m=> `<div class="uwCard"><div class="uwCPh">${m.photo && uwPhotos[m.photo] ? `<img src="${uwPhotos[m.photo]}" alt="">` : ''}</div><div class="uwCLb"><div class="uwCPos">${esc(m.pos||'조합원')}</div><div class="uwCName ${sp(m.name)}">${esc(String(m.name||'').replace(/\s/g,''))}</div></div></div>`;
+  const posCls = t=> { const n = String(t||'').replace(/\s/g,'').length; return n >= 7 ? ' p7' : n >= 5 ? ' p5' : ''; };   // 긴 직위(산업안전부장 등)는 글씨를 줄여 한 줄에
+  const card = m=> `<div class="uwCard"><div class="uwCPh">${m.photo && uwPhotos[m.photo] ? `<img src="${uwPhotos[m.photo]}" alt="">` : ''}</div><div class="uwCLb"><div class="uwCPos${posCls(m.pos||'조합원')}">${esc(m.pos||'조합원')}</div><div class="uwCName ${sp(m.name)}">${esc(String(m.name||'').replace(/\s/g,''))}</div></div></div>`;
+  if(uwCardBlank){ const rest = (4 - list.length % 4) % 4; for(let k = 0; k < rest; k++) list.push({pos:'조합원', name:''}); }
   const pages = []; for(let k = 0; k < list.length; k += 24) pages.push(list.slice(k, k + 24));
   let box = document.getElementById('uwPrint'); if(box) box.remove();
   box = document.createElement('div'); box.id = 'uwPrint'; box.className = 'uwCardPrint';
@@ -9532,6 +9539,7 @@ function bindUwCard(){
   document.getElementById('uwcNone').onclick = ()=>{ uwCardSel = new Set(); render(); };
   document.querySelectorAll('[data-uwc]').forEach(c=> c.onchange = ()=>{ const i = Number(c.dataset.uwc); if(c.checked) uwCardSel.add(i); else uwCardSel.delete(i); render(); });
   document.getElementById('uwcPrint').onclick = uwCardPrint;
+  const bl = document.getElementById('uwcBlank'); if(bl) bl.onchange = ()=>{ uwCardBlank = bl.checked; try{ localStorage.setItem('snct_uwcard_blank', uwCardBlank ? '1' : '0'); }catch(e){} };
 }
 function bindUwMem(){
   const el = document.getElementById('content');
