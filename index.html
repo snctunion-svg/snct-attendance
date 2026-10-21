@@ -1531,6 +1531,7 @@ let dispatchTeamFilter = ''; // 배차표: '' (전체), '1', '2' — 새로 고�
 try{ const v = localStorage.getItem('snct_dp_team'); if(v==='' || v==='1' || v==='2') dispatchTeamFilter = v; }catch(e){}
 let addCodeFormOpen = false; // 근태코드 화면: 코드 추가 폼 표시 여부
 // 임금월 계산: "M월"은 (M-1월)26일 ~ M월25일
+function sundayOnOrAfter(ds){ const w = new Date(ds+'T00:00:00').getDay(); return w===0 ? ds : addDays(ds, 7-w); }
 function payPeriodRange(y,m){
   let sy=y, sm=m-1;
   if(sm<1){ sm=12; sy=y-1; }
@@ -4569,6 +4570,7 @@ function render(){
   renderDeferred = false;
   const el = document.getElementById('content');
   if(SITE_UNION && !(userRole==='union' || userRole==='all')){ el.innerHTML = pageUnionGate(); bindUnionGate(); return; }   // SNCT UNION: UNION 로그인 전에는 아무것도 안 보임
+  if(VIEW==='combined' && codeStatsEnd) codeStatsEnd = sundayOnOrAfter(codeStatsEnd);   // 근태 집계는 항상 그 주 일요일까지(토요일로 끝나면 다음 날 일요일까지)
   ensureForView();
   if(authResolved){ canEdit = roleCanEdit(VIEW); if(leaderBlocksView()) canEdit = false; }   // 조별 조장: 다른 조는 보기만
   if(VIEW==='input' || VIEW==='input2') el.innerHTML = pageInput();
