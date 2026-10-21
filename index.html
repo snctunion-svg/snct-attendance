@@ -536,11 +536,8 @@ th.gh{background:var(--g) !important;color:#fff !important;font-weight:800;}
 .otSum td.payName span.pn{text-decoration:underline dotted;text-underline-offset:3px;}
 .cmbLeft .scrollx{max-width:100%;}
 @media (max-width:860px){ .cmbLeft{flex:1 1 100%;min-width:0;} .cmbLeft .scrollx{display:block !important;overflow-x:auto;} }
-.cmbYmPick{position:relative;display:inline-flex;align-items:center;cursor:pointer;padding:4px 8px;border-radius:8px;border:1px dashed #f9a8d4;}
-.cmbYmPick:hover{background:#fdf2f8;}
-.cmbPhTop .cmbYmPick{padding:1px 3px;border-radius:6px;}
-.cmbYmPick input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0;margin:0;font-size:16px;}
-.cmbYmPick input[type=date]::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;cursor:pointer;}
+.mgDateIn{height:32px;padding:3px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;font-size:13px;}
+.ctbl th.mgMonthStart,.ctbl td.mgMonthStart{border-left:2px solid #db2777 !important;}
 .dayHead{cursor:pointer;} @media (hover:hover){ .dayHead:hover{outline:2px solid var(--accent);outline-offset:-2px;} }
 .cellMemo{display:block;font-size:8px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:clip;max-width:28px;margin:0 auto;}
 .inTbl td{padding:0 !important;height:34px;} .inTbl td.inName{padding:0 8px !important;white-space:nowrap;}
@@ -1552,6 +1549,11 @@ let prefill = null; // {date, employeeId} - 그리드에서 셀 클릭 시 입�
 let inputViewDate = null, inputViewEmp = null; // 출퇴근 입력화면에서 마지막으로 보던 날짜/직원 (재렌더 시에도 유지)
 let combinedTeamFilter = (()=>{ try{ return localStorage.getItem('snct_team_cmb')||''; }catch(e){ return ''; } })(); // 근태관리 표: '' (전체), '1', '2' — 기기에 기억
 let combinedYm = null; // 근태관리 아래 '월별 근태코드' 표의 연/월 {y,m}
+// 월별 근태 보기 기간(시작~종료): 달을 넘어 정할 수 있음(예: 10/1~11/8). 이 기기에 기억
+let mgStart = null, mgEnd = null;
+try{ const o = JSON.parse(localStorage.getItem('snct_mg_range') || 'null'); if(o && /^\d{4}-\d{2}-\d{2}$/.test(o.s||'') && /^\d{4}-\d{2}-\d{2}$/.test(o.e||'')){ mgStart = o.s; mgEnd = o.e; } }catch(e){}
+function mgSaveRange(){ try{ localStorage.setItem('snct_mg_range', JSON.stringify({s:mgStart, e:mgEnd})); }catch(e){} }
+function mgSetMonth(y, m){ mgStart = dstr(y, m, 1); mgEnd = dstr(y, m, daysInMonth(y, m)); combinedYm = {y, m}; mgSaveRange(); }
 let teamOtFilter = ''; // 조별 월간집계: '' (전체), '1', '2'
 let otMatrixStart = null, otMatrixEnd = null; // 월별 OT현황: 작업기간
 let otPayYear = null, otPayMonth = null; // 월별 OT현황: 임금월(예: "10월"=9/26~10/25) 기준 연/월
@@ -4032,7 +4034,8 @@ function ensureForView(){
   else if(VIEW==='grid'){ const d = dstr(curYear,curMonth,1); ensureAttendanceRange(d, d); }
   else if(VIEW==='combined' || VIEW==='codestats'){
     if(codeStatsStart && codeStatsEnd) ensureAttendanceRange(codeStatsStart, codeStatsEnd);
-    if(VIEW==='combined' && combinedYm){ const d = dstr(combinedYm.y, combinedYm.m, 1); ensureAttendanceRange(d, d); }
+    if(VIEW==='combined' && mgStart && mgEnd) ensureAttendanceRange(mgStart, mgEnd);
+    else if(VIEW==='combined' && combinedYm){ const d = dstr(combinedYm.y, combinedYm.m, 1); ensureAttendanceRange(d, d); }
     if(VIEW==='combined' && leaveEmpId && leaveYear) ensureAttendanceRange(`${leaveYear}-01-01`, `${leaveYear}-12-31`);
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
@@ -5304,6 +5307,7 @@ function pageCombined(){
   }
   // ② 월별 근태코드: 달력 한 달 기준
   if(!combinedYm){ const t = new Date(); combinedYm = {y:t.getFullYear(), m:t.getMonth()+1}; }
+  if(!mgStart || !mgEnd){ mgStart = dstr(combinedYm.y, combinedYm.m, 1); mgEnd = dstr(combinedYm.y, combinedYm.m, daysInMonth(combinedYm.y, combinedYm.m)); }
   const rangeStart = codeStatsStart, rangeEnd = codeStatsEnd;
   const sortedEmployees = employees.slice().filter(e=> !combinedTeamFilter || (e.team||'')===combinedTeamFilter).sort((a,b)=>{
     const ta = a.team||'9', tb = b.team||'9';
@@ -5352,14 +5356,15 @@ function pageCombined(){
   }).join('');
 
   // 월별 근태코드 표
-  const {y:cy, m:cm} = combinedYm;
-  const monthDays = Array.from({length:daysInMonth(cy,cm)}, (_,i)=>dstr(cy,cm,i+1));
+  const [cy, cm] = mgStart.split('-').map(Number);
+  const monthDays = []; for(let ds = mgStart; ds <= mgEnd && monthDays.length < 93; ds = addDays(ds, 1)) monthDays.push(ds);   // 정한 기간(최대 93일)
   const TODAY = todayStr(); // 오늘 날짜 칸은 보라색 굵은 테두리(매일 바뀜)
   const lastEmpId = sortedEmployees.length ? sortedEmployees[sortedEmployees.length-1].id : '';
-  const dayHead = monthDays.map(ds=>{
-    const d = Number(ds.slice(8,10));
-    const cls = dayCellClass(ds, cy, cm, d);
-    return `<th class="${cls} ${weekBand(ds)} dayHead${ds===TODAY?' todayCol todayTop':''}" data-act="daymemo" data-date="${esc(ds)}" title="${esc(holidays[ds]||'')}">${d}<br>${weekdayKr(cy,cm,d)}</th>`;
+  const dayHead = monthDays.map((ds,i)=>{
+    const [yy, mm, d] = ds.split('-').map(Number);
+    const cls = dayCellClass(ds, yy, mm, d);
+    const lbl = d===1 && i>0 ? `<span style="font-size:.8em;">${mm}/</span>${d}` : d;   // 다음 달로 넘어가는 1일은 '11/1'처럼
+    return `<th class="${cls} ${weekBand(ds)} dayHead${ds===TODAY?' todayCol todayTop':''}${d===1 && i>0 ? ' mgMonthStart' : ''}" data-act="daymemo" data-date="${esc(ds)}" title="${esc(holidays[ds]||'')}">${lbl}<br>${weekdayKr(yy,mm,d)}</th>`;
   }).join('');
   // 날짜별 근무 인원: 근태코드가 N·D·ND·DN 이거나 비어 있는(휴무 아님) 사람 수
   const WORK_SET = new Set(['N','D','ND','DN']);
@@ -5377,9 +5382,9 @@ function pageCombined(){
     const rankCell = `<td class="mgFix rkCol g-blk" style="text-align:center;">${mgNum(rankSup[ei])}</td>`
       + `<td class="mgFix mgFixEnd rkCol g-${mgR.g}" style="text-align:center;">${mgNum(mgArr[ei])}</td>`;
     const cells = monthDays.map(ds=>{
-      const d = Number(ds.slice(8,10));
+      const [yy, mm, d] = ds.split('-').map(Number);
       const rec = codeStatsAttendance[ds+'_'+e.id];
-      const cls = dayCellClass(ds, cy, cm, d);
+      const cls = dayCellClass(ds, yy, mm, d);
       let inner = '', fill = '';
       const dc = gridCode(rec, ds, String(e.name||'').trim());
       {
@@ -5400,7 +5405,7 @@ function pageCombined(){
   const ph = cmbPhone();
   const teamPh = ['1','2'].map(t=>`<button class="btn ${combinedTeamFilter===t?'':'ghost'} sm" data-act="team-filter" data-team="${t}">${t}조</button>`).join('');
   //  휴대폰은 두 표를 옆으로 이어 붙여 한 번에 밀어 봄 → 위 줄은 지금 보이는 표에 맞춰 바뀜(두 가지를 다 그려 두고 보이는 것만 표시)
-  const phTop = !ph ? '' : `<div class="cmbPhTop" data-on="${cmbPhoneTab}"><span class="phV phV-stat"><b class="phT">근태 집계</b><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></span><span class="phV phV-month"><b class="phT">월별 근태</b><button class="btn ghost sm phNav" id="cmbPrevMonth">◀</button><label class="cmbYmPick" title="날짜를 골라 그 달·그 날로 이동"><b class="phYm">${cy}.${pad2(cm)}</b><input type="date" id="cmbDatePick" value="${esc(cmbPickVal(cy,cm))}" aria-label="날짜 선택"></label><button class="btn ghost sm phNav" id="cmbNextMonth">▶</button></span>
+  const phTop = !ph ? '' : `<div class="cmbPhTop" data-on="${cmbPhoneTab}"><span class="phV phV-stat"><b class="phT">근태 집계</b><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></span><span class="phV phV-month"><b class="phT">월별 근태</b><input type="date" id="mgStartIn" value="${esc(mgStart)}" aria-label="월별 근태 시작일"><input type="date" id="mgEndIn" value="${esc(mgEnd)}" aria-label="월별 근태 종료일"></span>
     <span class="phTeam">${teamPh}</span></div>`;
   const teamBtns = ph ? phTop : `<div class="row cmbTeamRow" style="margin-bottom:14px;">
     <button class="btn ${combinedTeamFilter===''?'':'ghost'} sm" data-act="team-filter" data-team="">전체</button>
@@ -5433,9 +5438,9 @@ function pageCombined(){
       ${ph ? '' : `<div class="cmbCtrl">
         <h3>월별 근태</h3>
         <div class="row" style="align-items:center;flex-wrap:nowrap;height:58px;">
-          <button class="btn ghost sm" id="cmbPrevMonth">◀ 이전달</button>
-          <label class="cmbYmPick" title="날짜를 골라 그 달·그 날로 이동"><b style="font-size:15px;white-space:nowrap;">${cy}년 ${cm}월 📅</b><input type="date" id="cmbDatePick" value="${esc(cmbPickVal(cy,cm))}" aria-label="날짜 선택"></label>
-          <button class="btn ghost sm" id="cmbNextMonth">다음달 ▶</button>
+          <button class="btn ghost sm" id="cmbPrevMonth" title="이전 달 전체">◀</button>
+          <input type="date" id="mgStartIn" value="${esc(mgStart)}" aria-label="월별 근태 시작일" class="mgDateIn"><span>~</span><input type="date" id="mgEndIn" value="${esc(mgEnd)}" aria-label="월별 근태 종료일" class="mgDateIn">
+          <button class="btn ghost sm" id="cmbNextMonth" title="다음 달 전체">▶</button>
         </div>
       </div>`}
       ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${supHead}${rankHead}${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
@@ -5870,22 +5875,6 @@ function fitCombined(){
         box.addEventListener('touchend', up, {passive:true}); box.addEventListener('touchcancel', up, {passive:true}); }
     }
   }
-}
-// 월별 근태 날짜 고르기: 고른 날의 달로 바꾸고, 그 날짜 칸이 고정칸(성명·지원·순번) 바로 옆에 오게 밀어 줌
-let cmbPickDay = null;
-function cmbPickVal(y, m){ return cmbPickDay && cmbPickDay.slice(0,7) === `${y}-${pad2(m)}` ? cmbPickDay : (todayStr().slice(0,7) === `${y}-${pad2(m)}` ? todayStr() : `${y}-${pad2(m)}-01`); }
-function cmbJumpTo(ds){
-  if(VIEW!=='combined') return;
-  const th = document.querySelector(`.cmbRight th.dayHead[data-date="${ds}"]`); if(!th) return;
-  const box = th.closest('.colSnap') || th.closest('.cmbWrap') || th.closest('.scrollx'); if(!box) return;
-  const t = th.closest('table'), x0 = box.getBoundingClientRect().left + box.clientLeft;
-  let fix = 0;
-  if(box._snapPhone || !box._snapFix){ const r = t.tBodies[0] && t.tBodies[0].rows[0];
-    if(r) [...r.cells].forEach(c=>{ const cs = getComputedStyle(c); if(cs.position!=='sticky') return; const w = c.getBoundingClientRect().width, z = w / (parseFloat(cs.width) || w) || 1; fix = Math.max(fix, (parseFloat(cs.left) || 0) * z + w); });
-  } else fix = box._snapFix;
-  const max = box.scrollWidth - box.clientWidth, tg = Math.max(0, Math.min(max, Math.round(th.getBoundingClientRect().left - x0 + box.scrollLeft - fix)));
-  box._snapRest = tg; box.scrollLeft = tg;
-  if(window._mgScroll) window._mgScroll.x = tg;
 }
 // PC: 두 표를 한 장처럼 붙임 — 같은 배율(zoom), 같은 머리글 높이, 같은 줄 높이 → 왼쪽·오른쪽 줄이 정확히 이어짐
 // 월별 근태 지원·순번·퇴근 칸: 휴대폰에서 성명 바로 옆에 차례로 고정 — 앞 칸 폭을 재서 그만큼씩 오른쪽에 붙임
@@ -10919,12 +10908,16 @@ function afterRender(){
     curMonth++; if(curMonth>12){curMonth=1;curYear++;} if(dbReady) subscribeAttendanceMonth(curYear,curMonth); render();
   };
   const cmbPrev = document.getElementById('cmbPrevMonth'), cmbNext = document.getElementById('cmbNextMonth');
-  if(cmbPrev) cmbPrev.onclick = ()=>{ let {y,m} = combinedYm; m--; if(m<1){ m=12; y--; } combinedYm = {y,m}; render(); };
-  if(cmbNext) cmbNext.onclick = ()=>{ let {y,m} = combinedYm; m++; if(m>12){ m=1; y++; } combinedYm = {y,m}; render(); };
-  const cmbPick = document.getElementById('cmbDatePick');
-  if(cmbPick) cmbPick.onchange = ()=>{ const v = cmbPick.value; if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
-    const [y,m] = v.split('-').map(Number); combinedYm = {y, m}; cmbPickDay = v; render();
-    setTimeout(()=> cmbJumpTo(v), 80); setTimeout(()=> cmbJumpTo(v), 450); };   // 표 크기를 다 맞춘 뒤 그 날짜가 고정칸 바로 옆에 오게
+  const mgMon = d=>{ let [y,m] = mgStart.split('-').map(Number); m += d; if(m<1){ m=12; y--; } if(m>12){ m=1; y++; } mgSetMonth(y, m); render(); };
+  if(cmbPrev) cmbPrev.onclick = ()=> mgMon(-1);
+  if(cmbNext) cmbNext.onclick = ()=> mgMon(1);
+  const mgS = document.getElementById('mgStartIn'), mgE = document.getElementById('mgEndIn');
+  const mgApply = which=>{ const sv = mgS && mgS.value, ev = mgE && mgE.value; if(!sv || !ev) return;   // 날짜를 지우는 중이면 무시
+    let st = sv, en = ev; if(en < st){ if(which==='s') en = st; else st = en; }
+    if(addDays(st, 92) < en){ if(which==='s') en = addDays(st, 92); else st = addDays(en, -92); showToast('월별 근태는 한 번에 93일까지 볼 수 있어요.'); }
+    mgStart = st; mgEnd = en; const [y,m] = st.split('-').map(Number); combinedYm = {y, m}; mgSaveRange(); render(); };
+  if(mgS) mgS.onchange = ()=> mgApply('s');
+  if(mgE) mgE.onchange = ()=> mgApply('e');   // 표 크기를 다 맞춘 뒤 그 날짜가 고정칸 바로 옆에 오게
   const codeStatsMealChk = document.getElementById('codeStatsMealChk');
   const codeStatsStartInput = document.getElementById('codeStatsStartInput'), codeStatsEndInput = document.getElementById('codeStatsEndInput');
   if(codeStatsStartInput) codeStatsStartInput.onchange = ()=>{
