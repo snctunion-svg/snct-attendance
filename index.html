@@ -9384,6 +9384,10 @@ function uwPhotoGet(key){
   (async ()=>{ try{ const d = db ? await db.collection('unionPrivate').doc(key).get() : null; uwPhotos[key] = d && d.exists ? ((d.data()||{}).img || '') : ''; }catch(e){ uwPhotos[key] = ''; } if(VIEW==='uwmem') scheduleRender(); })();
   return '';
 }
+// 전화번호: 숫자만 모아 000-0000-0000 모양으로(치는 중에도 자동으로 - 넣음)
+// 파트/직무: '장비/STS'처럼 장비 파트는 '장비'로만 보여 줌(저장된 값은 그대로)
+function uwPartShow(v){ const t = String(v||'').trim(); return /^장비/.test(t) ? '장비' : t; }
+function uwTelFmt(v){ const d = String(v||'').replace(/\D/g,'').slice(0, 11); if(d.length <= 3) return d; if(d.length <= 7) return d.slice(0,3) + '-' + d.slice(3); return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7); }
 async function uwPhotoLoad(keys){ await Promise.all(keys.filter(Boolean).map(async k=>{ if(uwPhotos[k]) return; try{ const d = db ? await db.collection('unionPrivate').doc(k).get() : null; uwPhotos[k] = d && d.exists ? ((d.data()||{}).img || '') : ''; }catch(e){ uwPhotos[k] = ''; } })); }
 // 사진 줄이기: 긴 쪽 360px JPEG(약 30KB) — 출력 칸(약 2.7cm)에 충분
 function uwPhotoShrink(file){
@@ -9443,7 +9447,7 @@ function uwParseRoster(rows){   // '성명' 칸이 있는 줄을 머리로 보�
   const idx = k=> head.findIndex(h=> ({no:['순번'],reg:['등록번호'],emp:['사번'],part:['파트/직무','파트','직무'],pos:['직위'],name:['성명'],tel:['전화번호','핸드폰','연락처'],addr:['주소'],email:['E-MAIL','EMAIL','이메일'],join:['가입일'],leave:['탈퇴일'],note:['비고']})[k].includes(h));
   const ix = {}; UWM_COLS.forEach(([k])=> ix[k] = idx(k));
   return rows.slice(hi + 1).filter(r=> r && ix.name >= 0 && String(r[ix.name]||'').trim()).map(r=>{
-    const o = {}; UWM_COLS.forEach(([k])=>{ let v = ix[k] >= 0 ? r[ix[k]] : ''; if(k==='join' || k==='leave') v = uwXDate(v); o[k] = v==null ? '' : String(v).trim(); }); return o; });
+    const o = {}; UWM_COLS.forEach(([k])=>{ let v = ix[k] >= 0 ? r[ix[k]] : ''; if(k==='join' || k==='leave') v = uwXDate(v); o[k] = v==null ? '' : String(v).trim(); }); if(o.tel){ let d = o.tel.replace(/\D/g,''); if(d.length===10 && d[0]==='1') d = '0' + d; o.tel = uwTelFmt(d); } return o; });   // 엑셀에서 앞 0이 빠진 번호도 맞춤
 }
 async function uwImportXlsx(file){
   if(!requireEdit()) return;
@@ -9472,15 +9476,17 @@ function pageUwMem(){
   const shown = list.map((m,i)=> ({m, i})).filter(({m})=> !q || Object.values(m).join(' ').toLowerCase().includes(q));
   const cols = uwMemTab==='left' ? ['no','part','pos','name','tel','join','leave','note'] : ['no','photo','name','emp','part','pos','tel','join','note'];   // 순번 | 사진 | 성명 | 사번 | 파트/직무 | 직위 | 전화번호 | 가입일 | 비고
   const lbl = Object.assign(Object.fromEntries(UWM_COLS), {photo:'사진'});
-  const cell = (m,k)=> k==='tel' && m.tel ? `<a href="tel:${esc(String(m.tel).replace(/[^\d+]/g,''))}">${esc(m.tel)}</a>`
+  const cell = (m,k)=> k==='tel' && m.tel ? `<a href="tel:${esc(String(m.tel).replace(/[^\d+]/g,''))}">${esc(uwTelFmt(m.tel))}</a>`
     : k==='photo' ? (m.photo ? (uwPhotoGet(m.photo) ? `<img class="uwmThumb" src="${uwPhotos[m.photo]}" alt="사진">` : '<span class="uwmThumb uwmThumbE">📷</span>') : '')
+    : k==='part' ? esc(uwPartShow(m.part))
     : esc(m[k]||'');
   const rows = shown.map(({m,i})=> `<tr class="uwmRow" data-uwm-i="${i}">${cols.map(k=> `<td data-l="${esc(lbl[k])}" class="uwm-${k}">${cell(m,k)}</td>`).join('')}</tr>`).join('');
   const loaded = !!uwMem;
   const at = uwMem && uwMem.at ? new Date(uwMem.at).toLocaleDateString('ko-KR') : '';
   const editPop = uwMemEdit ? (()=>{ const e = uwMemEdit, m = e.i >= 0 ? (uwMemList(e.tab)[e.i] || {}) : {}; const ks = e.tab==='left' ? UWM_COLS.map(x=>x[0]) : UWM_COLS.map(x=>x[0]).filter(k=> k!=='leave');
     return `<div class="sheetPopScrim" id="uwmScrim"><div class="sheetPop uwmPop"><div class="sheetPopHd"><b>${e.i >= 0 ? esc(m.name||'') + ' 수정' : '조합원 추가'}</b><button type="button" class="sheetPopX" id="uwmClose" aria-label="닫기">✕</button></div>
-      <div class="uwmForm">${ks.map(k=> `<label><span>${esc(lbl[k])}</span><input data-uwm-f="${k}" type="${k==='join'||k==='leave' ? 'date' : k==='tel' ? 'tel' : 'text'}" value="${esc(m[k]||'')}"></label>`).join('')}</div>
+      <div class="uwmForm">${ks.map(k=>{ const v = k==='no' && e.i < 0 ? String(uwMemList(e.tab).length + 1) : k==='tel' ? uwTelFmt(m.tel) : (m[k]||'');   // 새로 추가: 순번 자동(맨 끝 번호)
+        return `<label><span>${esc(lbl[k])}${k==='no' && e.i < 0 ? ' (자동)' : ''}</span><input data-uwm-f="${k}" type="${k==='join'||k==='leave' ? 'date' : k==='tel' ? 'tel' : 'text'}"${k==='tel' ? ' inputmode="numeric" placeholder="000-0000-0000" maxlength="13"' : ''}${k==='no' ? ' inputmode="numeric"' : ''} value="${esc(v)}"></label>`; }).join('')}</div>
       ${(()=>{ const src = e.ph !== undefined ? e.ph : (m.photo ? uwPhotoGet(m.photo) : ''); return `<div class="uwmPhoto"><span class="uwmPhLbl">사진</span><div class="uwmPhPrev" id="uwmPhPrev">${src ? `<img src="${src}" alt="사진">` : '<span>사진 없음</span>'}</div>
         <div class="uwmPhBtns"><label class="btn ghost sm">📷 사진 첨부<input type="file" id="uwmPhFile" accept="image/*" hidden></label><button type="button" class="btn warn ghost sm" id="uwmPhDel"${src ? '' : ' style="display:none;"'}>사진 삭제</button></div></div>`; })()}
       <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
@@ -9558,7 +9564,8 @@ function bindUwMem(){
     const close = ()=>{ uwMemEdit = null; render(); };
     document.getElementById('uwmClose').onclick = close;
     document.getElementById('uwmScrim').onclick = e=>{ if(e.target.id==='uwmScrim') close(); };
-    const read = ()=>{ const o = {}; document.querySelectorAll('[data-uwm-f]').forEach(i=> o[i.dataset.uwmF] = i.value.trim()); return o; };
+    const read = ()=>{ const o = {}; document.querySelectorAll('[data-uwm-f]').forEach(i=> o[i.dataset.uwmF] = i.value.trim()); if(o.tel != null) o.tel = uwTelFmt(o.tel); return o; };
+    document.querySelectorAll('[data-uwm-f="tel"]').forEach(i=> i.oninput = ()=>{ const at = i.selectionStart, before = i.value.slice(0, at).replace(/\D/g,'').length; i.value = uwTelFmt(i.value); let p = 0, n = 0; while(p < i.value.length && n < before){ if(/\d/.test(i.value[p])) n++; p++; } try{ i.setSelectionRange(p, p); }catch(_){} });
     const e = uwMemEdit, lists = {cur: uwMemList('cur').slice(), left: uwMemList('left').slice()};
     // 사진 첨부·삭제: 화면을 다시 그리지 않고 미리보기만 바꿈(입력 중인 칸이 지워지지 않게) — [저장]을 눌러야 올라감
     const phF = document.getElementById('uwmPhFile'), phD = document.getElementById('uwmPhDel'), phP = document.getElementById('uwmPhPrev');
@@ -9566,6 +9573,7 @@ function bindUwMem(){
       try{ e.ph = await uwPhotoShrink(fl); phP.innerHTML = `<img src="${e.ph}" alt="사진">`; if(phD) phD.style.display = ''; }catch(err){ showToast(err.message || '사진을 넣지 못했어요.'); } };
     if(phD) phD.onclick = ()=>{ e.ph = ''; phP.innerHTML = '<span>사진 없음</span>'; phD.style.display = 'none'; };
     document.getElementById('uwmSave').onclick = async ()=>{ const o = read(); if(!o.name){ showToast('성명을 넣어 주세요.'); return; }
+      if(!o.no && e.i < 0) o.no = String(lists[e.tab].length + 1);   // 순번을 비우면 자동
       if(e.i >= 0) lists[e.tab][e.i] = Object.assign({}, lists[e.tab][e.i], o); else lists[e.tab].push(Object.assign({no: String(lists[e.tab].length + 1)}, o));
       const tg = e.i >= 0 ? lists[e.tab][e.i] : lists[e.tab][lists[e.tab].length - 1];
       if(e.ph !== undefined && db){
@@ -9587,7 +9595,7 @@ function uwMemPrint(){
   let box = document.getElementById('uwPrint'); if(box) box.remove();
   box = document.createElement('div'); box.id = 'uwPrint';
   box.innerHTML = `<div class="uwPMemHd"><div class="uwPMemT">선광신컨테이너터미널㈜ 노동조합 ${title}</div><div class="uwPMemD">${esc(todayStr())} 기준 · ${list.length}명</div></div>
-    <table class="uwPMem"><thead><tr>${cols.map(k=> `<th class="uwp-${k}">${esc(lbl[k])}</th>`).join('')}</tr></thead><tbody>${list.map(m=> `<tr>${cols.map(k=> `<td class="uwp-${k}">${esc(m[k]||'')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    <table class="uwPMem"><thead><tr>${cols.map(k=> `<th class="uwp-${k}">${esc(lbl[k])}</th>`).join('')}</tr></thead><tbody>${list.map(m=> `<tr>${cols.map(k=> `<td class="uwp-${k}">${esc(k==='part' ? uwPartShow(m.part) : k==='tel' ? uwTelFmt(m.tel) : (m[k]||''))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
   document.body.appendChild(box);
   const old = document.title; document.title = title;
   document.body.classList.add('printing-uw');
