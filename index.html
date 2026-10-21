@@ -1254,8 +1254,61 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .uwmForm input{border:1px solid var(--border);border-radius:8px;padding:8px;font:inherit;font-size:16px;background:var(--bg);color:var(--text);min-width:0;width:100%;box-sizing:border-box;}
 .uwmBtns{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px;}
 .uwGrpBar{align-items:center;gap:8px;margin:0 0 10px;flex-wrap:nowrap;}
+/* 조합원 명부 > 양식(근무유공자 추천서·공적조서): 화면은 A4 모양 그대로, 칸을 눌러 입력 */
+.uwfBar{align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;}
+.uwfDoc{display:flex;flex-direction:column;gap:14px;align-items:center;overflow-x:auto;padding-bottom:6px;}
+.uwfPage{width:186mm;max-width:100%;min-height:262mm;background:#fff;color:#111;box-shadow:0 1px 6px rgba(0,0,0,.15);padding:10mm 10mm;box-sizing:content-box;font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:10.5pt;line-height:1.45;}
+.uwfIn{display:inline-block;min-width:3em;min-height:1.3em;outline:none;border-radius:3px;background:#fffbea;padding:0 2px;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;vertical-align:middle;}
+.uwfIn:focus{background:#fff3c4;box-shadow:0 0 0 2px #2563eb;}
+.uwfML{display:block;width:100%;box-sizing:border-box;min-height:3em;}
+.uwfW{min-width:4em;}
+.uwfChk{cursor:pointer;font-size:12pt;padding:0 2px;}
+.uwfT{width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 4mm;}
+.uwfT th,.uwfT td{border:1px solid #000;padding:1.6mm 1.8mm;vertical-align:middle;text-align:left;}
+.uwfT th{font-weight:700;text-align:center;}
+.uwfT th small{display:block;font-size:8pt;font-weight:400;}
+.uwfC{text-align:center !important;} .uwfR{text-align:right;} .uwfBold .uwfIn{font-weight:800;font-size:12pt;}
+.uwfT td.uwfC .uwfIn{text-align:center;}
+.uwfT td > .uwfIn:not(.uwfW){width:100%;box-sizing:border-box;}
+.uwfTitle{text-align:center;font-size:20pt;font-weight:900;letter-spacing:10pt;margin:6mm 0 6mm;}
+.uwfTitleS{font-size:16pt;letter-spacing:4pt;margin:2mm 0 5mm;}
+/* 근무유공자 추천서 */
+.uwfRecTop{display:flex;align-items:flex-start;justify-content:space-between;margin:2mm 0 6mm;}
+.uwfRecTitle{flex:1;text-align:center;font-size:18pt;font-weight:900;letter-spacing:2pt;margin-top:5mm;}
+.uwfRecTitle{text-decoration:underline;text-underline-offset:5px;}
+.uwfApv{border-collapse:collapse;font-size:9pt;} .uwfApv td{border:1px solid #000;text-align:center;width:16mm;padding:.8mm;} .uwfApv td.uwfApvV{width:7mm;} .uwfApvS td{height:15mm;}
+.uwfRec .uwfT th{background:#d9d9d9;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.uwfRec .uwfT td{height:8mm;text-align:center;}
+.uwfReason td.uwfBig{height:130mm;vertical-align:middle;}
+.uwfReasonTxt{font-size:12pt;font-weight:700;line-height:1.8;text-align:left;}
+.uwfFoot{padding:5mm 4mm !important;} .uwfFoot1{text-align:center;margin-bottom:4mm;} .uwfFoot2{text-align:right;margin-bottom:4mm;} .uwfFoot3{text-align:right;letter-spacing:1pt;}
+/* 공적조서 */
+.uwfM td,.uwfM th{height:9mm;} .uwfM td.uwfL{text-align:left;}
+.uwfSum{margin-top:2mm;min-height:32mm;line-height:1.7;}
+.uwfSpaced{font-weight:700;}
+.uwfConfirm{padding:4mm !important;} .uwfConfirm > div{margin-bottom:5mm;}
+.uwfSignLn{display:flex;justify-content:space-between;align-items:center;gap:3mm;font-weight:800;font-size:11.5pt;margin-top:6mm;}
+.uwfT td.uwfHd,.uwfHd{text-align:center;font-weight:800;background:#f2f2f2;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.uwfM2 td{height:8mm;}
+.uwfMeritCell{vertical-align:top !important;height:150mm;}
+.uwfMeritTxt{line-height:1.75;}
+.uwfM3 td,.uwfM3 th{height:10mm;font-size:10pt;}
+.uwfNote{font-size:9.5pt;margin:0;}
+.uwfSub{font-weight:800;margin:0 0 2mm;}
+.uwfBox{border:1px solid #000;padding:3mm 4mm;margin:0 0 4mm;font-size:10pt;} .uwfBox p{margin:0 0 2mm;} .uwfBoxT{font-weight:800;text-align:center;margin-bottom:2mm;}
+.uwfPledge{margin:4mm 0 8mm;line-height:1.7;}
+.uwfDateL{font-size:11pt;margin:0 0 8mm;} .uwfSignL{font-size:11pt;margin:0 0 12mm;}
+.uwfTo{font-size:15pt;font-weight:800;}
+@media (max-width:700px){ .uwfDoc{align-items:flex-start;} .uwfPage{max-width:none;} }
+@page uwform{size:A4;margin:12mm;}
+@media print{
+  #uwPrint.uwFormPrint{page:uwform;max-width:none !important;width:186mm !important;}
+  #uwPrint.uwFormPrint .uwfPage{box-shadow:none;padding:0;min-height:0;width:186mm;break-after:page;page-break-after:always;font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.45;}
+  #uwPrint.uwFormPrint .uwfPage:last-child{break-after:auto;page-break-after:auto;}
+  #uwPrint.uwFormPrint .uwfIn{background:none !important;box-shadow:none !important;}
+}
 /* 조합원 명부: 명부 / 표창 탭 */
-.uwmVTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid #6d28d9;border-radius:10px;overflow:hidden;max-width:460px;}
+.uwmVTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid #6d28d9;border-radius:10px;overflow:hidden;max-width:560px;}
 .uwmVTab{flex:1 1 0;border:0;background:var(--surface);color:#6d28d9;font:inherit;font-weight:800;font-size:13.5px;padding:8px 6px;cursor:pointer;white-space:nowrap;}
 .uwmVTab + .uwmVTab{border-left:1.5px solid #6d28d9;} .uwmVTab.on{background:#6d28d9;color:#fff;}
 .uwAwGrid{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;}
@@ -4353,7 +4406,7 @@ function isEditingField(){
   if(!a) return false;
   const content = document.getElementById('content');
   if(!content || !content.contains(a)) return false;
-  if(a.tagName==='TEXTAREA' || a.tagName==='SELECT') return true;
+  if(a.tagName==='TEXTAREA' || a.tagName==='SELECT' || a.isContentEditable) return true;   // 양식 칸(contenteditable) 입력 중에도 화면을 다시 그리지 않음
   if(a.tagName==='INPUT'){ const t=(a.type||'').toLowerCase(); return !['checkbox','radio','button','submit','reset','file'].includes(t); }
   return false;
 }
@@ -9516,7 +9569,11 @@ function pageUwMem(){
         <div class="uwmPhBtns"><label class="btn ghost sm">📷 사진 첨부<input type="file" id="uwmPhFile" accept="image/*" hidden></label><button type="button" class="btn warn ghost sm" id="uwmPhDel"${src ? '' : ' style="display:none;"'}>사진 삭제</button></div></div>`; })()}
       <div class="uwmBtns"><button type="button" class="btn sm" id="uwmSave">저장</button>${e.i >= 0 && e.tab==='cur' ? '<button type="button" class="btn ghost sm" id="uwmLeave">탈퇴 처리</button>' : ''}${e.i >= 0 ? '<button type="button" class="btn warn ghost sm" id="uwmDel">삭제</button>' : ''}</div></div></div>`; })() : '';
   const aw = uwAward();
-  const vtabs = `<div class="uwmVTabs"><button type="button" class="uwmVTab${uwMemView==='list' ? ' on' : ''}" data-uwm-view="list">👥 명부 ${cur.length}명</button><button type="button" class="uwmVTab${uwMemView==='award' ? ' on' : ''}" data-uwm-view="award">🏅 조합원 표창 ${aw.found.length + aw.prize.length}건</button></div>`;
+  const vtabs = `<div class="uwmVTabs"><button type="button" class="uwmVTab${uwMemView==='list' ? ' on' : ''}" data-uwm-view="list">👥 명부 ${cur.length}명</button><button type="button" class="uwmVTab${uwMemView==='award' ? ' on' : ''}" data-uwm-view="award">🏅 조합원 표창 ${aw.found.length + aw.prize.length}건</button><button type="button" class="uwmVTab${uwMemView==='form' ? ' on' : ''}" data-uwm-view="form">📄 양식</button></div>`;
+  if(uwMemView==='form') return `
+  <h2 class="pgttl">조합원 명부</h2>
+  <div class="uwHead"><b>표창 양식</b><span>근무유공자 추천서 · 공적조서 — 골라서 채우고 출력</span></div>
+  ${vtabs}${pageUwForm(cur)}`;
   if(uwMemView==='award') return `
   <h2 class="pgttl">조합원 명부</h2>
   <div class="uwHead"><b>조합원 표창</b><span>선광신컨테이너터미널㈜ 노동조합 · 조합원 포상 내역${uwAwardDoc && uwAwardDoc.at ? ' · ' + esc(new Date(uwAwardDoc.at).toLocaleDateString('ko-KR')) + ' 저장' : ''}</span></div>
@@ -9534,6 +9591,157 @@ function pageUwMem(){
     : (loaded ? `<div class="empty">${uwMemTab==='left' ? '탈퇴자가 없어요.' : '아직 명부가 없어요. [📥 엑셀 가져오기]로 조합원 명부 엑셀(.xlsx)을 올려 주세요.'}</div>` : '')}
   ${editPop}
   ${uwCardSel ? uwCardPop(cur) : ''}`;
+}
+// ===== 조합원 명부 > 📄 양식: ① 근무유공자 추천서 ② 공적조서(공적조서·경력/공적사항·사업체 개요·시장표창 동의서 4쪽) =====
+//  보내 준 한글 양식을 화면에서 바로 채워 출력(인쇄·PDF). 대상자를 고르면 명부에서 이름·직위·주소·연락처를 채움.
+//  개인정보(생년월일·주소 등)라 입력한 내용은 이 기기 화면에만 있고 저장하지 않음
+let uwForm = null;   // {kind:'rec'|'merit', who, v:{}, tenureMan}
+function uwFormChief(){ const c = uwMemList('cur').find(m=> /위원장/.test(m.pos||'') && !/부위원장/.test(m.pos||'')); return c ? c.name : ''; }
+function uwFormToday(sep){ const t = todayStr().split('-'); return sep==='kr' ? `${t[0]}년 ${Number(t[1])}월 ${Number(t[2])}일` : `${t[0]} .  ${t[1]}  .  ${t[2]}  .`; }
+function uwFormDefault(kind){
+  const chief = uwFormChief(), cur = uwMemList('cur');
+  if(kind==='rec') return {kind, who:'', tenureMan:false, v:{part:'운영팀', rank:'', name:'', birth:'', hire:'', tenure:'',
+    reason:'상기인은 성실히 근무 하면서 협력적 노사 관계 구축 및 근로자 화합과 건강한 직장 분위기 조성에 최선을 다하였기에 추천 합니다.',
+    date: uwFormToday('kr'), recommender: chief.split('').join(' ')}};
+  return {kind, who:'', tenureMan:false, v:{name:'', hanja:'', birth:'', mil:'', nat:'', addr:'', job:'컨테이너크레인운전기능사', org:'선광신컨테이너터미널', rank:'', grade:'', period:'', field:'모범근로자',
+    summary:'상기인은 선광신컨테이너터미널(주)의 OO으로써 OOOO년 OO월 회사에 입사하여 장기근속하며 컨테이너운전의 생산성 확대 및 안전작업을 하며 인천신항의 선두업체로 자리 매김 할 수 있도록 회사의 경쟁력 강화에 최선의 노력을 다하고 있으며 직원복지 및 근무조건의 개선을 위한 노력과 생산성 관리에 대한 창의적인 제안과 건강한 직장 문화 조성으로 회사발전과 지역경제 활성화에 이바지한 공이 큼',
+    award:'인천광역시장', order:'', invOrg:'', invPos:'', invGrade:'', invName:'', cDate:'      년      월      일', chiefPos:'', chiefName:'',
+    e1d:'', e1t:'', e2d:'', e2t:'', e3d:'', e3t:'', e4d:'', e4t:'', e5d:'', e5t:'', e6d:'', e6t:'',
+    p1d:'-', p1t:'-', p2d:'-', p2t:'-', p3d:'', p3t:'', p4d:'', p4t:'',
+    merit:'□ 회사 소개\n  • 주소 : 인천 연수구 신항대로 707 • 대표자 : 정국위\n\n 1. 확고한 직업관과 성실한 업무 자세로 타의 모범이 되며 회사발전에 기여\n  ○ 상기인은 선광신컨테이너터미널(주)의 현장직 근로자로 성실히 근무하면서 회사의 생산성 향상과 안전관리에 헌신하며 회사발전에 기여한 공이 타의 귀감이 됨\n\n 2. 발전적인 노사문화 형성에 기여\n  ○ 근로조건 및 근로환경 개선, 협력적 노사관계 구축, 근로자 화합과 건강한 직장 분위기 조성에 기여\n\n 3. 생산성 향상으로 회사 경쟁력에 기여\n  ○ 오랜 현장 경험으로 생산성에 대한 이해의 폭이 넓어 본선작업의 문제해결을 하여 동종업계의 경쟁력 강화에 기여\n\n상기와 같이 확고한 직업관과 성실함으로 기업의 경쟁력 강화에 최선을 다했으며 발전적인 노사문화 형성에 적극 노력하여 표창대상자로 추천합니다.',
+    bName:'', bHanja:'', bOrg:'', coName:'선광신컨테이너터미널(주)', coCeo:'정국위', coAddr:'인천광역시 연수구 신항대로 707', coTel:'', coSize:'', coWorkers:'', coBiz:'', coFound:'', coFdi:'',
+    unName:'선광신컨테이너터미널(주) 노동조합', unUpper:'', unCeo: chief, unMembers: cur.length ? cur.length + '명' : '', unFound:'2015. 06. 14.', unExpire:'', unDispute:'   년(유 ․ 무),          년(유 ․ 무),          년(유 ․ 무)',
+    vOrg:'', vGrade:'', vName:'',
+    cName:'', cRank:'', cAddr:'인천시 연수구 인천신항대로 707번길(송도동)', cTel:'', agree:false, disagree:false, yes:false, no:false, sDate: uwFormToday('dot'), to:'인천광역시장'}};
+}
+// 입사일 → 재직기간(오늘까지 ○년 ○개월)
+function uwTenure(hire){ const m = String(hire||'').match(/(\d{4})\D+(\d{1,2})(?:\D+(\d{1,2}))?/); if(!m) return ''; const t = todayStr().split('-').map(Number);
+  let mo = (t[0] - Number(m[1])) * 12 + (t[1] - Number(m[2])); if(m[3] && t[2] < Number(m[3])) mo--; if(mo < 0) return ''; return `${Math.floor(mo/12)}년 ${mo%12}개월`; }
+function uwFormPick(i){
+  const m = uwMemList('cur')[i]; if(!m) return; const v = uwForm.v, nm = String(m.name||'').replace(/\s/g,'');
+  if(uwForm.kind==='rec'){ v.name = nm.split('').join(' '); if(!v.rank) v.rank = m.pos && m.pos!=='조합원' ? '' : ''; }
+  else { const sp = nm.split('').join(' '); v.name = sp; v.bName = sp; v.cName = sp; v.addr = m.addr || v.addr; v.cTel = uwTelFmt(m.tel) || v.cTel; v.grade = m.pos && m.pos!=='조합원' ? m.pos : v.grade; v.bOrg = '선광신컨테이너터미널(주)'; }
+}
+function uwFormPages(f){
+  const v = f.v;
+  const F = (k, cls)=> `<span class="uwfIn${cls ? ' '+cls : ''}" contenteditable="true" data-uwf="${k}">${esc(v[k]||'')}</span>`;
+  const M = (k, cls)=> `<div class="uwfIn uwfML${cls ? ' '+cls : ''}" contenteditable="true" data-uwf="${k}">${esc(v[k]||'').replace(/\n/g,'<br>')}</div>`;
+  const C = k=> `<span class="uwfChk" data-uwfc="${k}">${v[k] ? '■' : '□'}</span>`;
+  if(f.kind==='rec') return `<div class="uwfPage uwfRec">
+    <div class="uwfRecTop"><div class="uwfRecTitle">근무유공자 추천서</div>
+      <table class="uwfApv"><tr><td rowspan="2" class="uwfApvV">결<br><br>재</td><td>담 당</td><td>팀 장</td><td>대표이사</td></tr><tr class="uwfApvS"><td></td><td></td><td></td></tr></table></div>
+    <table class="uwfT"><colgroup><col style="width:20%"><col style="width:30%"><col style="width:20%"><col style="width:30%"></colgroup>
+      <tr><th>소&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;속</th><td>${F('part')}</td><th>직&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;위</th><td>${F('rank')}</td></tr>
+      <tr><th>성&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;명</th><td>${F('name')}</td><th>생년월일</th><td>${F('birth')}</td></tr>
+      <tr><th>입&nbsp;사&nbsp;일</th><td>${F('hire')}</td><th>재직기간</th><td>${F('tenure')}</td></tr></table>
+    <table class="uwfT uwfReason"><tr><th>추&nbsp;천&nbsp;사&nbsp;유</th></tr><tr><td class="uwfBig">${M('reason','uwfReasonTxt')}</td></tr>
+      <tr><td class="uwfFoot"><div class="uwfFoot1">상기와 같은 사유로 근무유공 포상을 추천합니다.</div><div class="uwfFoot2">${F('date')}</div><div class="uwfFoot3">추&nbsp;천&nbsp;인&nbsp;:&nbsp;&nbsp;${F('recommender')}&nbsp;(서명)</div></td></tr></table></div>`;
+  return `<div class="uwfPage uwfMerit">
+    <div class="uwfTitle">공 적 조 서</div>
+    <table class="uwfT uwfM"><colgroup><col style="width:17%"><col style="width:33%"><col style="width:17%"><col style="width:33%"></colgroup>
+      <tr><th>(1)성&nbsp;&nbsp;명</th><td class="uwfC uwfBold">${F('name')}</td><th>(한&nbsp;자)</th><td>${F('hanja')}</td></tr>
+      <tr><th rowspan="2">(2)생년월일</th><td rowspan="2" class="uwfC">${F('birth')}</td><th>(3)군번<small>(군인의 경우)</small></th><td>${F('mil')}</td></tr>
+      <tr><th>(4)국적<small>(외국인의 경우)</small></th><td>${F('nat')}</td></tr>
+      <tr><th>(5)주&nbsp;&nbsp;소</th><td colspan="3">${F('addr')}</td></tr>
+      <tr><th>(6)직&nbsp;&nbsp;업</th><td class="uwfC">${F('job')}</td><th>(7)소&nbsp;&nbsp;속</th><td class="uwfC">${F('org')}</td></tr>
+      <tr><th>(8)직&nbsp;&nbsp;위</th><td class="uwfC">${F('rank')}</td><th>(9)직급‧계급</th><td class="uwfC">${F('grade')}</td></tr>
+      <tr><th>(10)근무기간</th><td class="uwfC">${F('period')}</td><th>(11)공적분야</th><td class="uwfC">${F('field')}</td></tr>
+      <tr><td colspan="4" class="uwfL">(12)공적요지(50자 내외)${M('summary','uwfSum')}</td></tr>
+      <tr><th>(13)추천훈격</th><td class="uwfC">${F('award')}</td><th>(14)추천순위</th><td class="uwfC">${F('order')}</td></tr>
+      <tr><td colspan="4" class="uwfC uwfSpaced">조&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;사&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;자</td></tr>
+      <tr><th>(15)소&nbsp;&nbsp;&nbsp;속</th><td class="uwfC">${F('invOrg')}</td><th>(16)직&nbsp;&nbsp;위</th><td class="uwfC">${F('invPos')}</td></tr>
+      <tr><th>(17)직&nbsp;&nbsp;&nbsp;급</th><td class="uwfC">${F('invGrade')}</td><th>(17)성&nbsp;&nbsp;명</th><td class="uwfC">${F('invName')}</td></tr>
+      <tr><td colspan="4" class="uwfConfirm"><div>위 기록이 틀림없음을 확인합니다.</div><div class="uwfR">${F('cDate')}</div><div class="uwfSignLn"><b>천&nbsp;&nbsp;관</b><span>직위</span>${F('chiefPos','uwfW')}<span>성명</span>${F('chiefName','uwfW')}<span>(인)</span></div></td></tr></table></div>
+  <div class="uwfPage uwfMerit">
+    <table class="uwfT uwfM2"><colgroup><col style="width:18%"><col style="width:32%"><col style="width:18%"><col style="width:32%"></colgroup>
+      <tr><td colspan="4" class="uwfHd">주&nbsp;&nbsp;요&nbsp;&nbsp;학&nbsp;&nbsp;력&nbsp;&nbsp;&nbsp;및&nbsp;&nbsp;&nbsp;경&nbsp;&nbsp;력</td></tr>
+      <tr><th>(19)&nbsp;년&nbsp;월&nbsp;일</th><th>(20)&nbsp;이&nbsp;&nbsp;&nbsp;력</th><th>(21)&nbsp;년&nbsp;월&nbsp;일</th><th>(22)&nbsp;이&nbsp;&nbsp;&nbsp;력</th></tr>
+      ${[[1,2],[3,4],[5,6]].map(([a,b])=> `<tr><td class="uwfC">${F('e'+a+'d')}</td><td>${F('e'+a+'t')}</td><td class="uwfC">${F('e'+b+'d')}</td><td>${F('e'+b+'t')}</td></tr>`).join('')}
+      <tr><td colspan="4" class="uwfHd">최근 2년 이내 표창기록 (훈장․포장․표창별로 기록)</td></tr>
+      <tr><th>(23)&nbsp;년&nbsp;월&nbsp;일</th><th>(24)&nbsp;내&nbsp;&nbsp;&nbsp;용</th><th>(25)&nbsp;년&nbsp;월&nbsp;일</th><th>(26)&nbsp;내&nbsp;&nbsp;&nbsp;용</th></tr>
+      ${[[1,2],[3,4]].map(([a,b])=> `<tr><td class="uwfC">${F('p'+a+'d')}</td><td>${F('p'+a+'t')}</td><td class="uwfC">${F('p'+b+'d')}</td><td>${F('p'+b+'t')}</td></tr>`).join('')}
+      <tr><td colspan="4" class="uwfHd">(27)&nbsp;공&nbsp;&nbsp;적&nbsp;&nbsp;사&nbsp;&nbsp;항</td></tr>
+      <tr><td colspan="4" class="uwfMeritCell">${M('merit','uwfMeritTxt')}</td></tr></table></div>
+  <div class="uwfPage uwfMerit">
+    <div class="uwfTitle uwfTitleS">소속 사업체 개요</div>
+    <table class="uwfT uwfM3"><colgroup><col style="width:13%"><col style="width:17%"><col style="width:25%"><col style="width:17%"><col style="width:28%"></colgroup>
+      <tr><th>피추천자</th><th>성명</th><td>${F('bName')}</td><th>(한자)</th><td>${F('bHanja')}</td></tr>
+      <tr><th>소&nbsp;&nbsp;속</th><td colspan="4">${F('bOrg')}</td></tr>
+      <tr><th rowspan="5">사업체</th><th>사업체명</th><td>${F('coName')}</td><th>대&nbsp;표&nbsp;자</th><td>${F('coCeo')}</td></tr>
+      <tr><th>소&nbsp;재&nbsp;지</th><td colspan="3">${F('coAddr')}</td></tr>
+      <tr><th>전화번호</th><td>${F('coTel')}</td><th>규모<small>(중소기업․대기업)</small></th><td>${F('coSize')}</td></tr>
+      <tr><th>근로자 수</th><td>${F('coWorkers')}</td><th>업종<small>(생산품목)</small></th><td>${F('coBiz')}</td></tr>
+      <tr><th>설립일자</th><td>${F('coFound')}</td><th>외투기업<small>(유․무)</small></th><td>${F('coFdi')}</td></tr>
+      <tr><th rowspan="4">노동조합</th><th>명&nbsp;&nbsp;&nbsp;&nbsp;칭</th><td>${F('unName')}</td><th>상급단체</th><td>${F('unUpper')}</td></tr>
+      <tr><th>대&nbsp;표&nbsp;자</th><td>${F('unCeo')}</td><th>조합원 수</th><td>${F('unMembers')}</td></tr>
+      <tr><th>설립일자</th><td>${F('unFound')}</td><th>임‧단협 만료일</th><td>${F('unExpire')}</td></tr>
+      <tr><th>노사분규 유무</th><td colspan="3">${F('unDispute')}</td></tr>
+      <tr><th>확인자</th><th>소속</th><td>${F('vOrg')}</td><th>직급 · 성명</th><td>${F('vGrade','uwfW')} ${F('vName','uwfW')} (서명 또는 인)</td></tr></table>
+    <p class="uwfNote">※ 확인자 : 소속 사업체의 총무․인사과장</p></div>
+  <div class="uwfPage uwfMerit">
+    <div class="uwfTitle uwfTitleS">시장표창에 대한 동의서</div>
+    <div class="uwfSub">□ 표창 후보자</div>
+    <table class="uwfT uwfM4"><colgroup><col style="width:20%"><col style="width:30%"><col style="width:20%"><col style="width:30%"></colgroup>
+      <tr><th>성&nbsp;&nbsp;명</th><td class="uwfC">${F('cName')}</td><th>직위(급)</th><td class="uwfC">${F('cRank')}</td></tr>
+      <tr><th>소속(주소)</th><td>${F('cAddr')}</td><th>연락처</th><td class="uwfC">${F('cTel')}</td></tr></table>
+    <div class="uwfBox"><div class="uwfBoxT">&lt;개인정보 제공 동의&gt;</div>
+      <p>개인정보보호법 제15조에 따라 개인정보 수집 및 이용에 따른 동의를 거부할 수 있습니다. 다만, 동의를 거부할 경우에는 시장표창 추천이 제한될 수 있습니다.</p>
+      <p>1. (개인정보의 수집⋅이용 목적)<br>&nbsp;&nbsp;- 공적조서 작성, 공적사실 확인, 포상대장 관리, 시장표창계획상 추천제한 사유 해당여부 확인 등 표창 추천 및 기록에 관한 사항</p>
+      <p>2. (수집하려는 개인정보의 항목)<br>&nbsp;&nbsp;- 성명, 생년월일, 성별, 주소, 연락처, 직업, 소속, 직위 및 직급, 공적요지, 공적내용, 주요학력 및 경력, 과거 표창기록, 군번(군인의 경우), 국적(외국인의 경우)</p>
+      <p>3. (개인정보의 처리 및 보유 기간)<br>&nbsp;&nbsp;- 포상대장에 기록되는 개인정보(성명, 생년월일, 성별, 소속 또는 주소, 직위 또는 직급)는 영구 보유<br>&nbsp;&nbsp;- 부서별 표창추천서류에 기록되는 개인정보는 5년간 처리 및 보유</p>
+      <p class="uwfR">개인정보 제공에 동의합니다.&nbsp;&nbsp;&nbsp;&nbsp;동의함 ${C('agree')}&nbsp;&nbsp;&nbsp;&nbsp;동의하지 않음 ${C('disagree')}</p></div>
+    <div class="uwfBox"><div class="uwfBoxT">&lt;추천제한사유 해당여부&gt;</div>
+      <p>시장표창 계획 등에 따라 표창대상자의 추천제한 사유(<u>지방세 체납 및 범죄경력 등</u>) 여부를 확인하고 있으며, 제한사유가 있을 경우 표창 추천이 제한될 수 있습니다.</p>
+      <p class="uwfR">추천제한사유에 대하여 설명을 들었으며, 해당사항이 없습니다&nbsp;&nbsp;&nbsp;&nbsp;예 ${C('yes')}&nbsp;&nbsp;아니오 ${C('no')}</p></div>
+    <p class="uwfPledge">위 본인은 표창과 관련하여 민원이 야기되거나, 추천제한사유에 해당하는 것으로 확인되어 시장표창이 철회 또는 취소될 경우, 이의를 제기하지 않을 것을 서약합니다.</p>
+    <div class="uwfC uwfDateL">${F('sDate')}</div>
+    <div class="uwfR uwfSignL">성명&nbsp;&nbsp;&nbsp;&nbsp;${F('cName','uwfW')}&nbsp;&nbsp;&nbsp;&nbsp;(서명)</div>
+    <div class="uwfTo">${F('to')}&nbsp;&nbsp;귀하</div></div>`;
+}
+function pageUwForm(cur){
+  if(!uwForm) uwForm = uwFormDefault('rec');
+  const f = uwForm;
+  return `<div class="row uwfBar"><span style="font-weight:800;">서류 선택</span><select id="uwfKind" class="docSel"><option value="rec"${f.kind==='rec'?' selected':''}>🏅 근무유공자 추천서</option><option value="merit"${f.kind==='merit'?' selected':''}>📜 공적조서 (4쪽)</option></select>
+      <span style="font-weight:800;">대상자</span><select id="uwfWho" class="docSel"><option value="">직접 입력</option>${cur.map((m,i)=> `<option value="${i}"${String(f.who)===String(i)?' selected':''}>${esc(m.name||'')}${m.pos && m.pos!=='조합원' ? ' · '+esc(m.pos) : ''}</option>`).join('')}</select>
+      <button type="button" class="btn sm" id="uwfPrint">🖨️ 출력 (인쇄 · PDF 저장)</button><button type="button" class="btn warn ghost sm" id="uwfReset">새로 작성</button></div>
+    <p class="hint" style="margin:-2px 0 10px;">칸을 눌러 바로 입력하세요. 대상자를 고르면 명부의 이름·직위·주소·연락처가 채워져요. 생년월일 등 개인정보가 들어가므로 입력한 내용은 이 기기 화면에만 있고 저장되지 않아요.</p>
+    <div class="uwfDoc" id="uwfDoc">${uwFormPages(f)}</div>`;
+}
+function bindUwForm(){
+  const f = uwForm; if(!f) return;
+  const kind = document.getElementById('uwfKind'); if(kind) kind.onchange = ()=>{ const who = f.who; uwForm = uwFormDefault(kind.value); if(who !== ''){ uwForm.who = who; uwFormPick(Number(who)); } render(); };
+  const who = document.getElementById('uwfWho'); if(who) who.onchange = ()=>{ uwForm.who = who.value; if(who.value !== '') uwFormPick(Number(who.value)); render(); };
+  const rs = document.getElementById('uwfReset'); if(rs) rs.onclick = ()=> appConfirm('입력한 내용을 지우고 새로 작성할까요?', ()=>{ uwForm = uwFormDefault(f.kind); render(); });
+  const pr = document.getElementById('uwfPrint'); if(pr) pr.onclick = uwFormPrint;
+  document.querySelectorAll('#uwfDoc [data-uwf]').forEach(el=>{
+    el.oninput = ()=>{ const k = el.dataset.uwf; f.v[k] = el.innerText.replace(/ /g,' ').replace(/\n$/,'');
+      if(k==='tenure') f.tenureMan = !!f.v.tenure;
+      if(k==='hire' && !f.tenureMan){ f.v.tenure = uwTenure(f.v.hire); const t = document.querySelector('#uwfDoc [data-uwf="tenure"]'); if(t) t.textContent = f.v.tenure; }
+      document.querySelectorAll(`#uwfDoc [data-uwf="${k}"]`).forEach(o=>{ if(o!==el) o.textContent = f.v[k]; });   // 같은 칸이 두 곳(성명 등)이면 같이
+    };
+    el.onkeydown = ev=>{ if(ev.key==='Enter' && !el.classList.contains('uwfML')){ ev.preventDefault(); el.blur(); } };   // 한 줄 칸은 Enter로 줄바꿈 안 함
+  });
+  document.querySelectorAll('#uwfDoc [data-uwfc]').forEach(el=> el.onclick = ()=>{ const k = el.dataset.uwfc; f.v[k] = !f.v[k];
+    const pair = {agree:'disagree', disagree:'agree', yes:'no', no:'yes'}[k]; if(f.v[k] && pair) f.v[pair] = false;
+    document.querySelectorAll('#uwfDoc [data-uwfc]').forEach(o=> o.textContent = f.v[o.dataset.uwfc] ? '■' : '□'); });
+}
+// 휴대폰: A4 양식을 화면 폭에 맞게 줄여서 보여 줌(두 손가락으로 키워서 입력 가능)
+function uwFormFit(){
+  const doc = document.getElementById('uwfDoc'), pg = doc && doc.querySelector('.uwfPage'); if(!doc || !pg) return;
+  doc.style.zoom = ''; if(window.innerWidth > 700) return;
+  const z = Math.min(1, (doc.clientWidth - 4) / pg.offsetWidth); if(z < 1) doc.style.zoom = Math.floor(z*1000)/1000;
+}
+function uwFormPrint(){
+  const doc = document.getElementById('uwfDoc'); if(!doc) return;
+  let box = document.getElementById('uwPrint'); if(box) box.remove();
+  box = document.createElement('div'); box.id = 'uwPrint'; box.className = 'uwFormPrint';
+  box.innerHTML = doc.innerHTML; box.querySelectorAll('[contenteditable]').forEach(e=> e.removeAttribute('contenteditable'));
+  document.body.appendChild(box);
+  const old = document.title; document.title = uwForm.kind==='rec' ? '근무유공자 추천서' : '공적조서';
+  document.body.classList.add('printing-uw');
+  const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(()=>{ window.print(); setTimeout(()=>{ if(!matchMedia('print').matches) done(); }, 1500); }, 60);
 }
 // ===== 조합원 표창(포상 내역): ① 창립 기념일 근무유공자(연도·기능직·노동조합) ② 노동조합 포상내역(연월·수상자·수상내역) =====
 //  클라우드 unionPrivate/awards 에 저장(UNION만). 아직 저장한 적이 없으면 '조합원 포상 내역' 엑셀(2026-10) 내용을 기본으로 보여 줌
@@ -9686,6 +9894,7 @@ function bindUwMem(){
   const el = document.getElementById('content');
   el.querySelectorAll('[data-uwm-view]').forEach(b=> b.onclick = ()=>{ uwMemView = b.dataset.uwmView; uwAwardEdit = null; render(); });
   if(uwMemView==='award'){ bindUwAward(); return; }
+  if(uwMemView==='form'){ bindUwForm(); uwFormFit(); return; }
   el.querySelectorAll('[data-uwm-tab]').forEach(b=> b.onclick = ()=>{ uwMemTab = b.dataset.uwmTab; render(); });
   const s = document.getElementById('uwmSearch'); if(s){ let t = null; s.oninput = ()=>{ clearTimeout(t); t = setTimeout(()=>{ uwMemQ = s.value; const pos = s.selectionStart; render(); const s2 = document.getElementById('uwmSearch'); if(s2){ s2.focus(); try{ s2.setSelectionRange(pos, pos); }catch(e){} } }, 200); }; }
   const f = document.getElementById('uwmFile'); if(f) f.onchange = ()=>{ if(f.files && f.files[0]) uwImportXlsx(f.files[0]); f.value = ''; };
