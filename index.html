@@ -4624,7 +4624,18 @@ function subscribeInputClose(){
   if(!db || demoMode || unsub.inputClose) return;
   try{ unsub.inputClose = db.collection('inputClose').onSnapshot(snap=>{ const m = {}; snap.forEach(d=>{ m[d.id] = d.data(); }); inputClose = m; if(VIEW==='input' || VIEW==='input2') scheduleRender(); }, ()=>{}); }catch(e){}
 }
-function isInputClosed(date, team){ const c = inputClose[date+'_'+team]; return !!(c && c.closed); }
+// 조장 마감은 inputClose 문서 + 그날 그 조 출퇴근 기록(attendance)의 leaderLock 표시 두 곳에 남김
+//  → inputClose를 못 읽는 기기(배포용)나 다시 연 뒤에도 기록에 남은 표시로 계속 잠김. 풀 때는 두 곳 모두 풂
+function attLeaderLocked(date, team){ return employees.some(e=> (e.team||'')===team && (attStore[date+'_'+e.id]||{}).leaderLock===true); }
+function isInputClosed(date, team){ const c = inputClose[date+'_'+team]; return !!(c && c.closed) || attLeaderLocked(date, team); }
+function setLeaderLockRecs(date, team, on, extraIds){
+  const ids = new Set(extraIds||[]);
+  employees.forEach(e=>{ if((e.team||'')===team && attStore[date+'_'+e.id]) ids.add(e.id); });
+  const parts = [];
+  ids.forEach(id=>{ const k = date+'_'+id; if(attStore[k]) attStore[k].leaderLock = on; parts.push({date, employeeId:id, leaderLock:on}); });
+  if(!parts.length || !db || demoMode) return Promise.resolve();
+  return Promise.all(parts.map(p=> db.collection('attendance').doc(p.date+'_'+p.employeeId).set(p, {merge:true})));
+}
 function isLeaderUser(){ return userRole==='leader' || userRole==='union' || userRole==='all'; }
 // 출퇴근 입력 흐름: [저장] = 저장만(화면 그대로, 월별 OT 반영 안 됨) · [마감] = 월별 OT에 반영하고 잠금 · [수정] = 마감 풀고 고치기(월별 OT에서 다시 빠짐)
 // 조장 마감된 날: 일반 [저장]·[수정]은 막힘. 조장(조장관리·UNION)이 [조장 수정]을 누른 동안만 고치고 저장 가능(마감은 그대로 유지)
@@ -4668,21 +4679,22 @@ async function inputLeaderLock(){
   const date = inputViewDate || todayStr(), team = inputTeam, id = date+'_'+team;
   if(isInputClosed(date, team)){   // 이미 마감 → 마감 풀기
     appConfirm(`${date} ${team}조 조장 마감을 풀까요? 풀면 일반 [수정]·[저장]으로 다시 고칠 수 있어요.`, async ()=>{
-      delete inputClose[id]; delete inputLeaderEdit[id]; render();
+      delete inputClose[id]; delete inputLeaderEdit[id]; const lp = setLeaderLockRecs(date, team, false); render();
       if(!db || demoMode) return;
-      try{ await db.collection('inputClose').doc(id).delete(); showToast('조장 마감을 풀었어요.'); }
+      try{ await Promise.all([db.collection('inputClose').doc(id).delete(), lp]); showToast('조장 마감을 풀었어요.'); }
       catch(err){ showToast(saveErrMsg('조장 마감 해제에 실패했습니다.', err)); }
     });
     return;
   }
-  const pending = Object.keys(inputDraft).filter(k=> k.startsWith(date+'|')).length;
+  const pendKeys = Object.keys(inputDraft).filter(k=> k.startsWith(date+'|')), pending = pendKeys.length, pendIds = pendKeys.map(k=> k.split('|')[1]);
   appConfirm(`${date} ${team}조를 조장 마감할까요?${pending ? ` 저장 안 한 ${pending}명 내용은 먼저 저장해요.` : ''} 마감하면 [조장 수정]으로만 고칠 수 있어요.`, async ()=>{
     if(pending){ const sb = document.getElementById('inSave'); if(sb && sb.onclick) await sb.onclick(); }
     delete inputEdit[id]; delete inputLeaderEdit[id];
     inputClose[id] = {closed:true, at: Date.now()};
+    const lp = setLeaderLockRecs(date, team, true, pendIds);
     render();
     if(!db || demoMode) return;
-    try{ await db.collection('inputClose').doc(id).set({closed:true, at: Date.now(), team, date}); showToast('조장 마감했어요. [조장 수정]으로만 고칠 수 있어요.'); }
+    try{ await Promise.all([db.collection('inputClose').doc(id).set({closed:true, at: Date.now(), team, date}), lp]); showToast('조장 마감했어요. [조장 수정]으로만 고칠 수 있어요.'); }
     catch(err){ showToast(saveErrMsg('조장 마감 저장에 실패했습니다.', err)); }
   });
 }
@@ -4713,9 +4725,10 @@ async function toggleInputClose(){
   const date = inputViewDate || todayStr(), team = inputTeam, id = date+'_'+team, now = isInputClosed(date, team);
   appConfirm(now ? `${date} ${team}조 마감을 풀까요? 풀면 배포용 출퇴근 입력에서 다시 수정할 수 있어요.` : `${date} ${team}조를 마감할까요? 마감하면 배포용 출퇴근 입력에서는 수정할 수 없어요.`, async ()=>{
     if(now) delete inputClose[id]; else inputClose[id] = {closed:true, at: Date.now()};
+    const lp = setLeaderLockRecs(date, team, !now);
     render();
     if(!db || demoMode) return;
-    try{ if(now) await db.collection('inputClose').doc(id).delete(); else await db.collection('inputClose').doc(id).set({closed:true, at: Date.now(), team, date}); showToast(now ? '마감을 풀었어요.' : '마감했어요.'); }
+    try{ await lp; if(now) await db.collection('inputClose').doc(id).delete(); else await db.collection('inputClose').doc(id).set({closed:true, at: Date.now(), team, date}); showToast(now ? '마감을 풀었어요.' : '마감했어요.'); }
     catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); }
   });
 }
