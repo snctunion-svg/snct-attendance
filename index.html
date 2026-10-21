@@ -5984,12 +5984,19 @@ function fzFreezeCols(t, fixEnd, base, org){
 //  (가로 스크롤을 칸 단위로 맞춤 — 고정칸 바로 옆에 칸이 딱 붙게. 막대를 끌거나 휠을 돌려도 칸에 맞춰 멈춤)
 function colSnapFit(){
   document.querySelectorAll('.colSnap').forEach(b=>{ b.classList.remove('colSnap'); b.style.scrollPaddingLeft = ''; });
-  if(window.innerWidth <= 700 || landPhone()) return;
   let box = null, fix = 0, cells = [];
-  if(VIEW==='dispatch'){
+  if(window.innerWidth <= 700 || landPhone()){   // 휴대폰: 배차표·근태관리·지원계획표 — 손으로 밀고 놓으면 칸에 딱 맞춰 멈춤(가던 방향으로만)
+    if(VIEW==='dispatch') box = document.getElementById('dpWrap');
+    else if(VIEW==='combined') box = document.querySelector('.cmbWrap.cmbPhJoin');
+    else if(VIEW==='splan'){ const t = document.getElementById('splanTable'); box = t && t.closest('.scrollx'); }
+    if(!box) return;
+    [...box.querySelectorAll('table')].forEach(t=>{ const r = t.tBodies[0] && t.tBodies[0].rows[0]; if(!r) return;
+      [...r.cells].forEach(c=>{ if(getComputedStyle(c).position!=='sticky') cells.push(c); }); });
+    box._snapPhone = true;
+  } else if(VIEW==='dispatch'){
     box = document.getElementById('dpWrap'); const t = document.getElementById('dpTable'), f = t && t.querySelector('thead th.dpI5');
     if(!box || !f) return;
-    fix = f.getBoundingClientRect().right - (box.getBoundingClientRect().left + box.clientLeft) + box.scrollLeft;
+    fix = f.getBoundingClientRect().right - (box.getBoundingClientRect().left + box.clientLeft);   // 고정칸이라 밀어도 같은 자리
     cells = [...t.querySelectorAll('thead th.dpSlotH')];
   } else if(VIEW==='combined' || VIEW==='ot'){
     box = document.querySelector('.pcFreeze'); if(!box || !box._fzRight) return; fix = box._fzRight;
@@ -5997,12 +6004,16 @@ function colSnapFit(){
                         : [...box.querySelectorAll('.cmbRight table.ctbl thead tr:first-child th.dayHead')];
   }
   if(!box || !cells.length) return;
-  box.classList.add('colSnap'); box._snapFix = fix; box._snapRest = colSnapPos(box).reduce((a,p)=> Math.abs(p - box.scrollLeft) < Math.abs(a - box.scrollLeft) ? p : a, box.scrollLeft);
+  box.classList.add('colSnap'); box._snapFix = fix; if(!(window.innerWidth <= 700 || landPhone())) box._snapPhone = false;
   cells.forEach(c=> c.classList.add('colSnapT'));
+  box._snapRest = colSnapPos(box).reduce((a,p)=> Math.abs(p - box.scrollLeft) < Math.abs(a - box.scrollLeft) ? p : a, box.scrollLeft);
   if(!box._snapHook){ box._snapHook = 1;
     let t = null, down = false;
     box.addEventListener('pointerdown', ()=>{ down = true; }, true);
-    window.addEventListener('pointerup', ()=>{ if(down){ down = false; clearTimeout(t); t = setTimeout(()=> colSnapSettle(box), 60); } }, true);
+    const up = ev=>{ if(!down) return; down = false; clearTimeout(t);
+      if(ev.pointerType==='mouse') t = setTimeout(()=> colSnapSettle(box), 60); };   // 손가락은 놓은 뒤에도 미끄러지므로 다 멈춘 뒤(scrollend)에 맞춤
+    window.addEventListener('pointerup', up, true);
+    box.addEventListener('touchstart', ()=>{ down = true; }, {passive:true}); const tend = ()=>{ down = false; }; window.addEventListener('touchend', tend, true); window.addEventListener('touchcancel', tend, true);
     const settle = ()=>{ if(!down) colSnapSettle(box); };
     if('onscrollend' in window) box.addEventListener('scrollend', settle);
     box.addEventListener('scroll', ()=>{ clearTimeout(t); t = setTimeout(settle, 'onscrollend' in window ? 400 : 160); }, {passive:true});
@@ -6011,9 +6022,18 @@ function colSnapFit(){
 // 칸 경계 위치(scrollLeft 값): 각 칸 왼쪽이 고정칸 바로 옆에 오는 위치 + 맨 끝
 function colSnapPos(box){
   const br = box.getBoundingClientRect(), x0 = br.left + box.clientLeft, max = box.scrollWidth - box.clientWidth;
-  const ps = [...box.querySelectorAll('.colSnapT')].map(c=> Math.round(c.getBoundingClientRect().left - x0 + box.scrollLeft - (box._snapFix||0))).filter(p=> p >= 0 && p <= max);
+  let ps;
+  if(box._snapPhone){
+    // 휴대폰: 표마다 고정칸(sticky) 폭이 다름(근태관리는 근태 집계·월별 근태 두 표가 옆으로 붙어 있음) → 칸이 속한 표의 고정칸 바로 옆에 오게
+    const fixOf = new Map(), fx = t=>{ if(fixOf.has(t)) return fixOf.get(t); let f = 0; const r = t.tBodies[0] && t.tBodies[0].rows[0];
+      if(r) [...r.cells].forEach(c=>{ const cs = getComputedStyle(c); if(cs.position!=='sticky') return; const w = c.getBoundingClientRect().width, z = w / (parseFloat(cs.width) || w) || 1; f = Math.max(f, (parseFloat(cs.left) || 0) * z + w); });
+      fixOf.set(t, f); return f; };
+    ps = [...box.querySelectorAll('.colSnapT')].map(c=> Math.round(c.getBoundingClientRect().left - x0 + box.scrollLeft - fx(c.closest('table'))));
+    box.querySelectorAll('table').forEach(t=> ps.push(Math.round(t.getBoundingClientRect().left - x0 + box.scrollLeft)));   // 표가 시작하는 자리도
+    ps = ps.filter(p=> p >= 0 && p <= max);
+  } else ps = [...box.querySelectorAll('.colSnapT')].map(c=> Math.round(c.getBoundingClientRect().left - x0 + box.scrollLeft - (box._snapFix||0))).filter(p=> p >= 0 && p <= max);
   ps.push(0, max); ps.sort((a,b)=> a-b);
-  const out = []; ps.forEach(p=>{ if(!out.length || p - out[out.length-1] >= 4) out.push(p); else if(p===max) out[out.length-1] = max; });   // 0과 첫 칸처럼 몇 px 차이 나는 위치는 하나로
+  const out = []; ps.forEach(p=>{ if(!out.length || p - out[out.length-1] >= 12) out.push(p); else if(p===max) out[out.length-1] = max; });   // 0과 첫 칸처럼 몇 px 차이 나는 위치는 하나로
   return out;
 }
 // 움직임이 멈추면 칸에 맞추기 — 절대 뒤로 되돌아가지 않고 가던 방향으로만 맞춤
