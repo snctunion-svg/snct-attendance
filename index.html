@@ -1343,6 +1343,19 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   #uwPrint.uwFormPrint .uwfPage:last-child{break-after:auto;page-break-after:auto;}
   #uwPrint.uwFormPrint .uwfIn{background:none !important;box-shadow:none !important;}
 }
+/* UNION > 연도별 타결 */
+.stWrap{overflow:auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 220px);border:2px solid var(--text);border-radius:10px;background:var(--surface);}
+.stTbl{border-collapse:collapse;width:100%;min-width:980px;font-size:12.5px;}
+.stTbl th,.stTbl td{border:1px solid #c4cad3;padding:4px 6px;text-align:center;vertical-align:middle;}
+.stTbl thead th{position:sticky;top:0;z-index:2;background:#ede9fe;color:#4c1d95;font-weight:800;}
+.stTbl tr.stYearTop > td{border-top:2px solid #111;}
+.stTbl td.stYear{font-weight:900;color:#4c1d95;white-space:nowrap;background:#faf5ff;position:relative;}
+.stTbl td.stC0{font-weight:800;white-space:nowrap;} .stTbl td.stC1{font-weight:800;color:#1d4ed8;} .stTbl td.stC2{color:#b45309;font-weight:700;}
+.stTbl td.stC6{text-align:left;min-width:220px;} .stTbl td.stRate{font-weight:900;color:#dc2626;white-space:nowrap;}
+.stIn{display:inline-block;min-width:2.5em;min-height:1.2em;outline:none;border-radius:3px;padding:0 2px;}
+.stIn:hover{background:#fffbea;} .stIn:focus{background:#fff3c4;box-shadow:0 0 0 2px #2563eb;}
+.stDel{display:block;margin:3px auto 0;border:0;background:transparent;color:#dc2626;font-size:11px;cursor:pointer;}
+@media print{ #uwPrint.uwFormPrint .stTbl{min-width:0;font-size:8.6pt;} #uwPrint.uwFormPrint .stTbl th,#uwPrint.uwFormPrint .stTbl td{border:1px solid #000;padding:1mm 1.2mm;} #uwPrint.uwFormPrint .stTbl thead th{position:static;-webkit-print-color-adjust:exact;print-color-adjust:exact;} .stPHd{font-size:13pt;font-weight:800;text-align:center;margin:0 0 3mm;} .stPFt{font-size:8.5pt;text-align:right;margin-top:2mm;} #uwPrint .stTbl tr{break-inside:avoid;} }
 /* 조합원 명부: 명부 / 표창 탭 */
 .uwmVTabs{display:flex;gap:0;margin:0 0 10px;border:1.5px solid #6d28d9;border-radius:10px;overflow:hidden;max-width:560px;}
 .uwmVTab{flex:1 1 0;border:0;background:var(--surface);color:#6d28d9;font:inherit;font-weight:800;font-size:13.5px;padding:8px 6px;cursor:pointer;white-space:nowrap;}
@@ -3363,7 +3376,7 @@ const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','pwchange','accident']; // 근태관리 구역 = 배포용(누구나). 근태코드는 조장관리 구역이라 조장·UNION만 // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident','berth','vessel','team','holidays','leaderhub'];
-const UNION_VIEWS  = ['unionhub','workhub','uwmem','uwregs','uwjobs','uwemp','uwwork','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
+const UNION_VIEWS  = ['unionhub','workhub','uwmem','uwregs','uwjobs','unana','settle','uwemp','uwwork','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
 let userRole = null; // null | 'leader' | 'union' | 'all'(미리보기)
 let leaderTeam = null; // 조별 조장으로 로그인했을 때 그 조('1'·'2'), 아니면 null(UNION·공용 조장은 두 조 모두)
@@ -4460,19 +4473,20 @@ document.addEventListener('focusout', ()=>{
   setTimeout(()=>{ if(renderDeferred && !isEditingField()){ renderDeferred = false; render(); } }, 0);
 });
 // ===== UNION 시트 =====
-const UNION_SHEETS = [['payroll','💰','장비 시급'],['eqpay','🧾','장비 급여 관리'],['fcana','📊','휴무 2명 분석'],['supcut','✂️','지원 폐지'],['holguar','🗓️','휴일보전'],['allcut','🧮','보전 폐지'],['backup','💾','백업·복원']];
+const UNION_SHEETS = [['payroll','💰','장비 시급'],['eqpay','🧾','장비 급여 관리'],['settle','🤝','연도별 타결'],['unana','📊','분석·폐지 검토'],['backup','💾','백업·복원']];   // 휴무 2명 분석·지원 폐지·휴일보전·보전 폐지 = '분석·폐지 검토' 하나로 묶음
 const LEADER_SHEETS = [['safety','🦺','관리감독자'],['codes','🏷️','근태코드'],['mail','📧','메일 송부'],['berth','⚓','선석 조회'],['vessel','🚢','본선작업'],['team','🧩','조편성 관리'],['holidays','📅','공휴일 관리']];
 const WORK_SHEETS = [['uwmem','👥','조합원 명부'],['uwregs','📘','규약&규정'],['uwjobs','📗','취업&업무']];   // UNION WORK 시트(UNION만)
 // 묶음 시트: 경위서&학자금처럼 위에서 규정을 골라 보고 출력. 마지막에 본 규정을 기억
-const UW_GROUPS = {uwregs:[['uwrule','📘 규약'],['uwlmc','🤝 노사협의회규정'],['uwelect','🗳️ 선거관리규정']], uwjobs:[['uwemp','📗 취업규칙'],['uwwork','🏢 업무규정']]};
-const uwGrpLast = (()=>{ const d = {uwregs:'uwrule', uwjobs:'uwemp'}; try{ const o = JSON.parse(localStorage.getItem('snct_uw_grp')||'{}'); Object.keys(d).forEach(g=>{ if(o[g] && UW_GROUPS[g].some(x=> x[0]===o[g])) d[g] = o[g]; }); }catch(e){} return d; })();
+const UW_GROUPS = {unana:[['fcana','📊 휴무 2명 분석'],['supcut','✂️ 지원 폐지'],['holguar','🗓️ 휴일보전'],['allcut','🧮 보전 폐지']], uwregs:[['uwrule','📘 규약'],['uwlmc','🤝 노사협의회규정'],['uwelect','🗳️ 선거관리규정']], uwjobs:[['uwemp','📗 취업규칙'],['uwwork','🏢 업무규정']]};
+const uwGrpLast = (()=>{ const d = {unana:'fcana', uwregs:'uwrule', uwjobs:'uwemp'}; try{ const o = JSON.parse(localStorage.getItem('snct_uw_grp')||'{}'); Object.keys(d).forEach(g=>{ if(o[g] && UW_GROUPS[g].some(x=> x[0]===o[g])) d[g] = o[g]; }); }catch(e){} return d; })();
 function uwGroupOf(v){ return Object.keys(UW_GROUPS).find(g=> UW_GROUPS[g].some(x=> x[0]===v)) || ''; }
 function uwGroupBar(v){
   const g = uwGroupOf(v); if(!g) return '';
-  return `<div class="row uwGrpBar"><span style="font-weight:800;">${g==='uwregs' ? '규정 선택' : '서류 선택'}</span><select id="uwGrpSel" class="docSel">${UW_GROUPS[g].map(([id,l])=> `<option value="${id}"${id===v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+  return `<div class="row uwGrpBar"><span style="font-weight:800;">${g==='uwregs' ? '규정 선택' : g==='unana' ? '분석 선택' : '서류 선택'}</span><select id="uwGrpSel" class="docSel">${UW_GROUPS[g].map(([id,l])=> `<option value="${id}"${id===v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
 }
-function isWorkSheet(v){ return WORK_SHEETS.some(x=> x[0]===v) || !!uwGroupOf(v); }
-function isUnionSheet(v){ return UNION_SHEETS.some(x=> x[0]===v); }
+function bindUwGroupSel(){ const gs = document.getElementById('uwGrpSel'); if(gs) gs.onchange = ()=>{ const g = uwGroupOf(gs.value); if(g){ uwGrpLast[g] = gs.value; try{ localStorage.setItem('snct_uw_grp', JSON.stringify(uwGrpLast)); }catch(e){} } setView(gs.value); }; }
+function isWorkSheet(v){ return WORK_SHEETS.some(x=> x[0]===v) || (!!uwGroupOf(v) && uwGroupOf(v)!=='unana'); }
+function isUnionSheet(v){ return UNION_SHEETS.some(x=> x[0]===v) || uwGroupOf(v)==='unana'; }
 function isLeaderSheet(v){ return LEADER_SHEETS.some(x=> x[0]===v); }
 function sheetBar(list, title){
   return `<div class="unionBar"><b class="unionBarT">${esc(title)}</b>${list.filter(([v])=> roleCanSee(v)).map(([v,ic,l])=> `<button type="button" class="unionChip${VIEW===v || uwGroupOf(VIEW)===v ?' on':''}" data-union-go="${v}"><span>${ic}</span>${esc(l)}</button>`).join('')}</div>`;
@@ -4518,15 +4532,15 @@ function render(){
   else if(VIEW==='backup') el.innerHTML = pageBackup();
   else if(VIEW==='payroll') el.innerHTML = pagePayroll();
   else if(VIEW==='eqpay') el.innerHTML = pageEqPay();
-  else if(VIEW==='fcana') el.innerHTML = pageFcAna();
-  else if(VIEW==='supcut') el.innerHTML = pageSupCut();
-  else if(VIEW==='holguar') el.innerHTML = pageHolGuar();
-  else if(VIEW==='allcut') el.innerHTML = pageAllCut();
+  else if(VIEW==='fcana'){ el.innerHTML = uwGroupBar(VIEW) + pageFcAna(); bindUwGroupSel(); }
+  else if(VIEW==='supcut'){ el.innerHTML = uwGroupBar(VIEW) + pageSupCut(); bindUwGroupSel(); }
+  else if(VIEW==='holguar'){ el.innerHTML = uwGroupBar(VIEW) + pageHolGuar(); bindUwGroupSel(); }
+  else if(VIEW==='allcut'){ el.innerHTML = uwGroupBar(VIEW) + pageAllCut(); bindUwGroupSel(); }
+  else if(VIEW==='settle'){ el.innerHTML = pageSettle(); bindSettle(); }
   else if(VIEW==='accident') el.innerHTML = pageAccident();
   else if(VIEW==='safety') el.innerHTML = pageSafety();
   else if(VIEW==='pwchange') el.innerHTML = pagePwChange();
-  else if(isUwView(VIEW)){ el.innerHTML = uwGroupBar(VIEW) + pageUwDoc(VIEW); bindUwDoc(VIEW);
-    const gs = document.getElementById('uwGrpSel'); if(gs) gs.onchange = ()=>{ const g = uwGroupOf(gs.value); if(g){ uwGrpLast[g] = gs.value; try{ localStorage.setItem('snct_uw_grp', JSON.stringify(uwGrpLast)); }catch(e){} } setView(gs.value); }; }
+  else if(isUwView(VIEW)){ el.innerHTML = uwGroupBar(VIEW) + pageUwDoc(VIEW); bindUwDoc(VIEW); bindUwGroupSel(); }
   else if(VIEW==='uwmem'){ el.innerHTML = pageUwMem(); bindUwMem(); }
   else if(VIEW==='unionhub') el.innerHTML = pageHub(UNION_SHEETS);
   else if(VIEW==='leaderhub') el.innerHTML = pageHub(LEADER_SHEETS);
@@ -9855,6 +9869,64 @@ function uwFormPrint(){
   const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
   setTimeout(()=>{ window.print(); setTimeout(()=>{ if(!matchMedia('print').matches) done(); }, 1500); }, 60);
+}
+// ===== UNION > 연도별 타결: 해마다 임금교섭 타결 내용(직종별 인상·타결금·수당·보전·주요 합의) — 보내 준 엑셀(2016~2025) 기본값 =====
+//  UNION만 봄. 칸을 눌러 고치고 [💾 저장]하면 클라우드(unionPrivate/settle)에 저장. 엑셀처럼 세로로 합친 칸(rowspan) 그대로
+const SETTLE_BASE = [{"y":"2016","rate":"9%","rows":[["STS","1100원","","","보전수당 45h","고공수당15만원","토요일은 휴무일로 정하고 무급."],["YT","850원",null,"STS승무 변경시 250원",null,"없음","주중40h 이상 근로시 법정가산 지급"],["정비","200원",null,"",null,"없음","휴무일을 변경하여 주주에 대체하여 휴무"]],"spans":[[1,1,3,1,3,1,1],[1,1,0,1,0,1,1],[1,1,0,1,0,1,1]]},{"y":"2017","rate":"5%","rows":[["STS","5%","타결금x","","보전수당 45h","고공수당15만원","STS 승무비율 평일1.8 휴일 2.0"],["YT","5%",null,"STS승무 변경시 262원",null,"없음",""],["정비","5%",null,"",null,"없음","비상정비수당 2h 통상시급150%,휴일200%"]],"spans":[[1,1,3,1,3,1,1],[1,1,0,1,0,1,1],[1,1,0,1,0,1,1]]},{"y":"2018","rate":"12.27%","rows":[["STS","6.7%정률","타결금x","","보전수당 45h","고공수당15만원","STS 승무비율 평일2.0 휴일 2.0"],["YT","인상후",null,"STS승무 변경시 262원",null,"없음",""],["정비","716원 정액",null,"",null,"없음",""]],"spans":[[1,1,3,1,3,1,1],[1,1,0,1,0,1,1],[1,1,0,1,0,1,1]]},{"y":"2019","rate":"2.39%","rows":[["STS","350원 정액","타결금100%","","보전수당 45h","고공수당15만원",""],["YT","후",null,"STS승무 변경시 280원",null,"없음",""],["정비","50원 조정",null,"",null,"없음",""]],"spans":[[1,1,3,1,3,1,1],[1,1,0,1,0,1,1],[1,1,0,1,0,1,1]]},{"y":"2020","rate":"3%","rows":[["STS","450원 정액","타결금100%","","보전수당 45h","고공수당15만원",""],["YT",null,null,"STS승무 변경시 280원",null,"없음",""],["정비",null,null,"",null,"없음",""]],"spans":[[1,3,3,1,3,1,1],[1,0,0,1,0,1,1],[1,0,0,1,0,1,1]]},{"y":"2021","rate":"5.5%","rows":[["장비직","7.5%","타결금 x","","휴일45h,지원20h","고공수당15만원","통상임금(기본급,근속,고공,위험,기술)"],[null,null,null,"STS승무 변경시 300원",null,"없음","근속수당5년만원 ,1년마다오천원 가산"],["정비직","3.5%",null,"","보전수당45h","위험수당10만원","연차,근속 선광 입사기준,STS 고정휴무실시"]],"spans":[[2,2,3,1,2,1,1],[0,0,0,1,0,1,1],[1,1,0,1,1,1,1]]},{"y":"2022","rate":"3%","rows":[["장비직","3%","타결금100%","","휴일45h,지원20h","고공수당15만원",""],[null,null,null,"STS승무 변경시 300원",null,"없음",""],["정비직",null,null,"","보전수당45h","위험수당10만원",""]],"spans":[[2,3,3,1,2,1,1],[0,0,0,1,0,1,1],[1,0,0,1,1,1,1]]},{"y":"2023","rate":"5%","rows":[["장비직","5%","타결금100%","","휴일45h,지원20h","고공수당20만원",""],[null,null,null,"STS승무 변경시 300원",null,"승무수당5만원",""],["정비직",null,null,"","보전수당45h","위험수당15만원",""]],"spans":[[2,3,3,1,2,1,1],[0,0,0,1,0,1,1],[1,0,0,1,1,1,1]]},{"y":"2024","rate":"3.6%","rows":[["장비직","3.6%","타결금100%","고공수당:시급957원","휴일45h,지원20h","고공수당20만원",""],[null,null,null,"수당:239원",null,"승무수당5만원",""],["정비직",null,null,"위험수당: 718원","보전수당45h","위험수당15만원",""]],"spans":[[2,3,3,1,2,1,1],[0,0,0,1,0,1,1],[1,0,0,1,1,1,1]]},{"y":"2025","rate":"","rows":[["장비직","600원","타결금100%","","휴일45h,지원20h","",""],[null,null,null,"",null,"",""],["정비직",null,null,"","보전수당45h","","비상정비수당 평일 5만원 휴일 7만원"]],"spans":[[2,3,3,1,2,1,1],[0,0,0,1,0,1,1],[1,0,0,1,1,1,1]]}];
+const SETTLE_COLS = ['직종','임금 인상','타결금','승무·수당 단가','보전수당','수당','주요 합의 내용'];
+let settleDoc = null, settleDirty = false;
+function subscribeSettle(){
+  if(!db || unsub.settle || !(userRole==='union' || userRole==='all')) return;
+  try{ unsub.settle = db.collection('unionPrivate').doc('settle').onSnapshot(doc=>{ settleDoc = doc.exists ? (doc.data()||null) : null; if(VIEW==='settle' && !settleDirty && !isEditingField()) scheduleRender(); }, ()=>{}); }catch(e){}
+}
+function settleData(){ try{ if(settleDoc && settleDoc.json) return JSON.parse(settleDoc.json); }catch(e){} return JSON.parse(JSON.stringify(SETTLE_BASE)); }
+let settleWork = null;   // 화면에서 고치는 중인 사본
+function settleTable(data, edit){
+  const E = (txt, attrs)=> edit ? `<span class="stIn" contenteditable="true" ${attrs}>${esc(txt||'')}</span>` : esc(txt||'');
+  const head = `<tr><th>연도</th>${SETTLE_COLS.map(h=> `<th>${h}</th>`).join('')}<th>환산<br>인상률</th></tr>`;
+  const body = data.map((Y, yi)=> Y.rows.map((row, ri)=> `<tr class="${ri===0 ? 'stYearTop' : ''}">${ri===0 ? `<td rowspan="${Y.rows.length}" class="stYear">${E(Y.y, `data-sy="${yi}" data-sk="y"`)}년${edit ? `<button type="button" class="stDel" data-stdel="${yi}" title="이 연도 지우기">✕</button>` : ''}</td>` : ''}${row.map((c, ci)=> c===null ? '' : `<td${(Y.spans[ri]||[])[ci] > 1 ? ` rowspan="${Y.spans[ri][ci]}"` : ''} class="stC${ci}">${E(c, `data-sy="${yi}" data-sr="${ri}" data-sc="${ci}"`)}</td>`).join('')}${ri===0 ? `<td rowspan="${Y.rows.length}" class="stRate">${E(Y.rate, `data-sy="${yi}" data-sk="rate"`)}</td>` : ''}</tr>`).join('')).join('');
+  return `<table class="stTbl"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+}
+function pageSettle(){
+  subscribeSettle();
+  if(!settleWork || !settleDirty) settleWork = settleData();
+  const edit = canEdit && (userRole==='union' || userRole==='all');
+  const at = settleDoc && settleDoc.at ? new Date(settleDoc.at).toLocaleDateString('ko-KR') + ' 저장' : '엑셀(2016~2025) 기본값';
+  return `<h2 class="pgttl">연도별 타결</h2>
+  <div class="uwHead"><b>연도별 타결</b><span>임금교섭 타결 내용 · ${esc(at)}</span></div>
+  <div class="uwTools"><button type="button" class="btn sm" id="stPrint">🖨️ PDF 출력</button>${edit ? `<button type="button" class="btn sm" id="stSave"${settleDirty ? '' : ' disabled'}>💾 저장${settleDirty ? ' (고친 내용 있음)' : ''}</button><button type="button" class="btn ghost sm" id="stAdd">＋ 다음 연도 추가</button>` : ''}</div>
+  ${edit ? '<p class="hint" style="margin:0 0 8px;">칸을 눌러 바로 고치고 [💾 저장]을 누르세요. 엑셀처럼 세로로 합쳐진 칸은 그대로 합쳐져 있어요.</p>' : ''}
+  <div class="stWrap">${settleTable(settleWork, edit)}</div>`;
+}
+function bindSettle(){
+  const el = document.getElementById('content');
+  el.querySelectorAll('.stIn').forEach(x=>{
+    x.oninput = ()=>{ const y = Number(x.dataset.sy), t = x.innerText.replace(/\u00a0/g,' ').replace(/\n$/,'');
+      if(x.dataset.sk) settleWork[y][x.dataset.sk] = t.replace(/년$/,''); else settleWork[y].rows[Number(x.dataset.sr)][Number(x.dataset.sc)] = t;
+      if(!settleDirty){ settleDirty = true; const b = document.getElementById('stSave'); if(b){ b.disabled = false; b.textContent = '💾 저장 (고친 내용 있음)'; } } };
+    x.onkeydown = ev=>{ if(ev.key==='Enter' && !ev.shiftKey){ ev.preventDefault(); x.blur(); } };
+  });
+  el.querySelectorAll('[data-stdel]').forEach(b=> b.onclick = ()=>{ const yi = Number(b.dataset.stdel); appConfirm(`${settleWork[yi].y}년 타결 내용을 지울까요? [💾 저장]을 눌러야 클라우드에서도 지워져요.`, ()=>{ settleWork.splice(yi, 1); settleDirty = true; render(); }); });
+  const ad = document.getElementById('stAdd'); if(ad) ad.onclick = ()=>{
+    const last = settleWork[settleWork.length - 1], y = String((Number(last && last.y) || new Date().getFullYear()) + 1);
+    const tpl = last ? {rows: last.rows.map(row=> row.map((c, ci)=> c===null ? null : ci===0 ? c : '')), spans: JSON.parse(JSON.stringify(last.spans))} : {rows:[['장비직','','','','','',''],['','',null,'',null,'',''],['정비직','',null,'','','','']], spans:[[1,1,3,1,2,1,1],[1,1,0,1,0,1,1],[1,1,0,1,1,1,1]]};
+    settleWork.push({y, rate:'', rows: tpl.rows, spans: tpl.spans}); settleDirty = true; render();
+    setTimeout(()=>{ const w = document.querySelector('.stWrap'); if(w) w.scrollTop = w.scrollHeight; const t = document.querySelector('.stTbl tbody tr:last-child'); if(t) t.scrollIntoView({block:'center'}); }, 30); };
+  const sv = document.getElementById('stSave'); if(sv) sv.onclick = async ()=>{
+    if(!db){ showToast('서버에 연결되지 않았어요.'); return; }
+    settleWork.sort((a,b)=> String(a.y).localeCompare(String(b.y)));
+    try{ await db.collection('unionPrivate').doc('settle').set({json: JSON.stringify(settleWork), at: Date.now()}); settleDirty = false; showToast('연도별 타결을 저장했어요.'); render(); }
+    catch(err){ showToast(saveErrMsg('저장에 실패했습니다.', err)); } };
+  const pr = document.getElementById('stPrint'); if(pr) pr.onclick = ()=>{
+    let box = document.getElementById('uwPrint'); if(box) box.remove();
+    box = document.createElement('div'); box.id = 'uwPrint'; box.className = 'uwFormPrint uwFormLand';
+    box.innerHTML = `<div class="stPHd">선광신컨테이너터미널㈜ 노동조합 · 연도별 임금교섭 타결 내용</div>${settleTable(settleWork, false)}<div class="stPFt">${esc(todayStr())} 기준</div>`;
+    document.body.appendChild(box);
+    const old = document.title; document.title = '연도별 타결';
+    document.body.classList.add('printing-uw');
+    const done = ()=>{ document.body.classList.remove('printing-uw'); document.title = old; const b2 = document.getElementById('uwPrint'); if(b2) b2.remove(); window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    setTimeout(()=>{ window.print(); setTimeout(()=>{ if(!matchMedia('print').matches) done(); }, 1500); }, 60); };
 }
 // ===== 조합원 표창(포상 내역): ① 창립 기념일 근무유공자(연도·기능직·노동조합) ② 노동조합 포상내역(연월·수상자·수상내역) =====
 //  클라우드 unionPrivate/awards 에 저장(UNION만). 아직 저장한 적이 없으면 '조합원 포상 내역' 엑셀(2026-10) 내용을 기본으로 보여 줌
