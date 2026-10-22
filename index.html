@@ -132,6 +132,7 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 /* 급여관리·급여명세서 */
 .payName{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;}
 .payTbl input{width:100%;min-width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;text-align:right;box-sizing:border-box;}
+.inReflBtn.on{background:#16a34a !important;border-color:#16a34a !important;color:#fff !important;opacity:1 !important;}
 .inCloseBtn.on{background:#111 !important;border-color:#111 !important;color:#fff !important;}
 /* 카톡 보낼 배차표 사진: PC·휴대폰 어디서 만들어도 같은 크기·모양(화면별 줄임 설정을 무시) */
 .dpShotBox #dpTable{font-size:12px !important;zoom:1 !important;}
@@ -4665,11 +4666,11 @@ function isEditingField(){
 function scheduleRender(){
   if(renderScheduled) return;
   renderScheduled = true;
-  setTimeout(()=>{
+  setTimeout(()=>{   // 자료가 한꺼번에 들어올 때(앱 열 때 등) 여러 번 그리지 않고 한 번에 — 휴대폰 버벅임 줄임
     renderScheduled = false;
     if(isEditingField()){ renderDeferred = true; return; }
     render();
-  }, 0);
+  }, window.innerWidth <= 700 ? 60 : 16);
 }
 document.addEventListener('focusout', ()=>{
   if(!renderDeferred) return;
@@ -4825,9 +4826,12 @@ function inputLocked(){ const d = inputViewDate || todayStr(); return isInputClo
 //  · 조장 근태관리 [🔒 조장 마감] = 배포용에서 못 고치게 잠그기만(OT 반영과는 따로). 조장 근태관리 [수정]으로 풂
 // 월별 OT 반영 기준: OT_CLOSE_FROM 날부터는 출퇴근 입력에서 [OT 반영]한 날만 들어감.
 //   그 전 날짜는 예전처럼 들어감(단, 저장·[수정]으로 다시 연 기록(otHold)은 [OT 반영] 전까지 뺌)
-const OT_CLOSE_FROM = '2026-10-13';
+const OT_CLOSE_FROM = '2026-10-22';   // 이 날부터는 [📊 OT 반영]을 눌러야 월별 OT에 들어감(그 전 날짜는 예전처럼 저장만 해도 들어감)
+function dayReflected(date, team){   // 그날 그 조의 기록이 모두 OT 반영됨
+  const recs = employees.filter(e=> (e.team||'')===team).map(e=> attStore[date+'_'+e.id]).filter(b=> b && ['checkIn','checkOut','supportIn','supportOut','honjoComp','tajoComp'].some(f=> b[f]));
+  return recs.length > 0 && recs.every(b=> b.dayClosed);
+}
 function otExcluded(rec, ds, e){
-  return false;   // [OT 반영] 기능을 뺌 → 저장하면 바로 월별 OT에 들어감(예전 방식)
   if(!rec) return false;
   if(rec.otHold) return true;
   if(ds >= OT_CLOSE_FROM && !rec.dayClosed) return true;   // [OT 반영]한 날만 들어감
@@ -4893,7 +4897,10 @@ function inputLeaderEditToggle(){
   if(!isLeaderUser()){ showToast('조장 수정은 조장관리로 로그인해야 할 수 있어요.'); return; }
   if(!teamAllowed(inputTeam)){ showToast(teamDeniedMsg(inputTeam)); return; }
   const date = inputViewDate || todayStr(), key = date+'_'+inputTeam;
-  if(!isInputClosed(date, inputTeam)){ showToast('조장 마감된 날만 [조장 수정]을 써요. 지금은 [수정]으로 고칠 수 있어요.'); return; }
+  if(!isInputClosed(date, inputTeam)){   // 마감 안 한 날: 일반 수정처럼 칸을 열고 닫음
+    const dirty = Object.keys(inputDraft).some(k=> k.startsWith(date+'|'));
+    if(inputEdit[key] || dirty){ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputEdit[key]; render(); return; }
+    inputEdit[key] = true; render(); const c0 = document.querySelector('.inTbl input.inCell:not([disabled])'); if(c0) c0.focus(); return; }
   if(inputLeaderEdit[key]){ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputLeaderEdit[key]; render(); return; }
   inputLeaderEdit[key] = true; render();
   const c = document.querySelector('.inTbl input.inCell:not([disabled])'); if(c) c.focus();
@@ -4971,12 +4978,21 @@ function pageInput(){
       <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row inBtnRow" style="margin-top:12px;align-items:center;">
-      <button class="btn" id="inSave"${locked || viewOnly ? ' disabled' : ''}>저장${dirtyN && !locked ? `<span class="inDirty"> (${dirtyN}명 변경)</span><span class="inDirtyS">(${dirtyN})</span>` : ''}</button>
-      ${(()=>{ const en = !leaderClosed && (viewOnly || editing);   // 조장 마감된 날은 일반 [수정] 안 됨
-        const on = editing && !leaderClosed;   // 고치는 중이면 버튼을 눌린 모양으로(다시 누르면 고친 것 버리고 보기 상태)
-        return `<button class="btn ${on ? '' : 'ghost'}" id="inEdit"${en ? '' : ' disabled'} title="${leaderClosed ? '조장 마감된 날 — [조장 수정]으로만 고칠 수 있어요' : on ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '저장된 기록 고치기'}">✏️ 수정</button>`; })()}
-      ${leader ? `<span class="inLeadBtns"><button class="btn ${leaderClosed ? '' : 'ghost'} inCloseBtn${leaderClosed ? ' on' : ''}" id="inCloseBtn" title="${leaderClosed ? '누르면 조장 마감 풀기' : '일반 [수정]·[저장] 못 하게 잠금'}">${leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감'}</button>
-        <button class="btn ${leaderEditing ? '' : 'ghost'}" id="inLeadEdit"${leaderClosed ? '' : ' disabled'} title="${leaderEditing ? '고치는 중 — 다시 누르면 고친 것 버리고 잠금' : '조장 마감된 날 고치기'}">🔓 조장 수정</button></span>` : ''}
+      ${(()=>{   // 배포용(로그인 안 함): [저장] [수정] [OT 반영] / 조장모드(조장관리·UNION): [조장 마감] [조장 수정] (+ 고칠 수 있을 때 [저장])
+        const pub = !isLeaderUser(), refl = dayReflected(date, inputTeam);
+        const saveBtn = `<button class="btn" id="inSave"${locked || viewOnly ? ' disabled' : ''}>저장${dirtyN && !locked ? `<span class="inDirty"> (${dirtyN}명 변경)</span><span class="inDirtyS">(${dirtyN})</span>` : ''}</button>`;
+        if(pub){
+          const en = !leaderClosed && (viewOnly || editing), on = editing && !leaderClosed;
+          const editBtn = `<button class="btn ${on ? '' : 'ghost'}" id="inEdit"${en ? '' : ' disabled'} title="${leaderClosed ? '조장 마감된 날이에요' : on ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '저장된 기록 고치기'}">✏️ 수정</button>`;
+          const rEn = !leaderClosed && !refl && (hasSaved || dirtyN > 0);
+          const reflBtn = `<button class="btn ${refl ? '' : 'ghost'} inReflBtn${refl ? ' on' : ''}" id="inReflect"${rEn ? '' : ' disabled'} title="${refl ? '월별 OT에 반영됨 — 고치면 다시 [OT 반영]을 눌러야 해요' : '눌러야 월별 OT에 들어가요'}">${refl ? '✅ OT 반영됨' : '📊 OT 반영'}</button>`;
+          return saveBtn + editBtn + reflBtn;
+        }
+        if(!leader) return '';   // 다른 조는 보기만
+        const edOn = leaderEditing || (editing && !leaderClosed);
+        return (!locked && !viewOnly ? saveBtn : '') + `<span class="inLeadBtns"><button class="btn ${leaderClosed ? '' : 'ghost'} inCloseBtn${leaderClosed ? ' on' : ''}" id="inCloseBtn" title="${leaderClosed ? '누르면 조장 마감 풀기' : '배포용에서 못 고치게 잠금'}">${leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감'}</button>
+          <button class="btn ${edOn ? '' : 'ghost'}" id="inLeadEdit" title="${edOn ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '조장이 고치기'}">🔓 조장 수정</button></span>`;
+      })()}
       ${leaderClosed ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>조장 마감</b>됐어요.${leaderEditing ? ' 고친 뒤 [저장]을 누르세요.' : leader ? ' 고치려면 [조장 수정]을 누르세요.' : ' 고치려면 조장에게 말씀하세요.'}</span>`
         : ''}
     </div>
@@ -5047,18 +5063,20 @@ function bindInputTable(el){
   if(inputLocked() || el.querySelector('.inTbl.inView')) el.querySelectorAll('.inTbl input').forEach(x=> x.disabled = true);
   const cb = document.getElementById('inCloseBtn'); if(cb) cb.onclick = inputLeaderLock;
   const lb = document.getElementById('inLeadEdit'); if(lb) lb.onclick = inputLeaderEditToggle;
-  document.getElementById('inSave').onclick = async ()=>{
+  const rb = document.getElementById('inReflect'); if(rb) rb.onclick = inputReflectDay;
+  const inSaveBtn = document.getElementById('inSave'); if(inSaveBtn) inSaveBtn.onclick = async ()=>{
     if(inputLocked()){ showToast('조장 마감된 날이라 고칠 수 없어요. 조장에게 말씀하세요.'); return; }
     if(!requireEdit()) return;
     const date = inputViewDate;
     const keys = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|'));
     const teamList = employees.filter(e=> (e.team||'')===inputTeam);
     const heldIds = teamList.filter(e=>{ const b = attStore[date+'_'+e.id]; return b && b.otHold; }).map(e=> e.id);
+    const keepRefl = isLeaderUser() ? dayReflected(date, inputTeam) : false;
     if(!keys.length){ showToast('변경된 내용이 없습니다.'); return; }
     const badCells = keys.some(k=> IN_TIME.some(f=> inputDraft[k][f]!==undefined && excelToHm(inputDraft[k][f])===null));
     if(badCells){ showToast('빨간 칸의 시각 형식을 확인해 주세요 (예: 8, 15.3, 7.3).'); return; }
     const partials = keys.map(k=>{
-      const empId = k.split('|')[1], dr = inputDraft[k], emp0 = employees.find(x=>x.id===empId), p = {date, employeeId: empId, team: (emp0 && emp0.team) || inputTeam, updatedAt: Date.now()};
+      const empId = k.split('|')[1], dr = inputDraft[k], emp0 = employees.find(x=>x.id===empId), p = {date, employeeId: empId, team: (emp0 && emp0.team) || inputTeam, updatedAt: Date.now(), dayClosed: keepRefl};   // 배포용이 고쳐 저장하면 OT 반영이 풀림(다시 [OT 반영]) · 조장이 고치면 반영 상태 그대로
       IN_TIME.forEach(f=>{ if(dr[f]!==undefined) p[f] = excelToHm(dr[f]) || ''; });
       IN_NUM.forEach(f=>{ if(dr[f]!==undefined) p[f] = String(dr[f]).trim(); });
       IN_CHK.forEach(f=>{ if(dr[f]!==undefined) p[f] = !!dr[f]; });
@@ -5654,7 +5672,8 @@ function mFreeze(t){
     }
   }
   const head = t.tHead; if(!head) return;
-  [...head.rows].forEach(tr=>{ const y = tr.offsetTop - head.rows[0].offsetTop; [...tr.cells].forEach(th=> th.style.top = y + 'px'); });
+  const hr = [...head.rows], y0 = hr.length ? hr[0].offsetTop : 0, ys = hr.map(tr=> tr.offsetTop - y0);   // 먼저 다 재고 → 한꺼번에 씀(재고 쓰고를 번갈아 하면 휴대폰이 느려짐)
+  hr.forEach((tr,i)=>{ [...tr.cells].forEach(th=> th.style.top = ys[i] + 'px'); });
 }
 function fitTableToScreen(t, {fitW=false, fitH=true, reserve=16, minRow=24, maxRow=90, ratio=1}={}){
   if(!t) return;
@@ -5903,7 +5922,9 @@ function fitCombinedPhone(wrap){
     const bx = t.closest('.scrollx'); if(bx){ bx.classList.remove('mFreeze'); bx.style.maxHeight = ''; bx.style.paddingTop = ''; } });
   if(L && Rt){   // 머리글 줄 높이를 두 표 중 높은 쪽에 맞춤
     const hL = [...L.tHead.rows], hR = [...Rt.tHead.rows];
-    for(let i = 0; i < Math.min(hL.length, hR.length); i++){ const h = Math.max(hL[i].getBoundingClientRect().height, hR[i].getBoundingClientRect().height); hL[i].style.height = h + 'px'; hR[i].style.height = h + 'px'; }
+    const hn = Math.min(hL.length, hR.length), hh = [];
+    for(let i = 0; i < hn; i++) hh.push(Math.max(hL[i].getBoundingClientRect().height, hR[i].getBoundingClientRect().height));   // 먼저 다 재고
+    for(let i = 0; i < hn; i++){ hL[i].style.height = hh[i] + 'px'; hR[i].style.height = hh[i] + 'px'; }                       // 한꺼번에 씀
   }
   const sc = document.getElementById('content');
   const scTop = sc ? Math.max(0, sc.getBoundingClientRect().top) : 0;
@@ -5921,7 +5942,8 @@ function fitCombinedPhone(wrap){
   }
   if(L && Rt){
     const rL = [...L.tBodies[0].rows], rR = [...Rt.tBodies[0].rows], m = Math.min(rL.length, rR.length);
-    for(let i = 0; i < m; i++){ const h = Math.max(rL[i].getBoundingClientRect().height, rR[i].getBoundingClientRect().height); rL[i].style.height = h + 'px'; rR[i].style.height = h + 'px'; }
+    const rh = []; for(let i = 0; i < m; i++) rh.push(Math.max(rL[i].getBoundingClientRect().height, rR[i].getBoundingClientRect().height));
+    for(let i = 0; i < m; i++){ rL[i].style.height = rh[i] + 'px'; rR[i].style.height = rh[i] + 'px'; }
     const fr = t=> { const r = t.tBodies[0] && t.tBodies[0].rows[0]; return r ? r.getBoundingClientRect().top : t.getBoundingClientRect().top; };
     const d = fr(Rt) - fr(L);
     if(Math.abs(d) >= 1){ const bx = (d > 0 ? L : Rt).closest('.scrollx'); if(bx) bx.style.paddingTop = Math.round(Math.abs(d)) + 'px'; }
@@ -10864,8 +10886,13 @@ function afterRender(){
   fitDocs();
   fitSafety();
   fitDispatch();
-  if(window.innerWidth<=700 && (VIEW==='dispatch' || VIEW==='input' || VIEW==='input2' || VIEW==='splan')){ [300, 1000].forEach(ms=> setTimeout(()=>{ fitDispatch(); fitInputMobile(); fitSplan(); applyUiZoom(); }, ms)); }
-  if(window.innerWidth<=700 && (VIEW==='ot' || VIEW==='combined')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined'){ if(cmbPhone()) fitCombined(); else document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } }, ms)); }
+  // 휴대폰: 주소창이 접히는 등 화면 높이가 바뀌었을 때만 다시 맞춤(같으면 건너뜀 — 매번 다시 재면 안드로이드에서 버벅임)
+  const fitSig = ()=> VIEW + '|' + window.innerWidth + 'x' + Math.round(phoneViewH()) + '|' + Math.round((document.getElementById('content')||document.body).getBoundingClientRect().top);
+  const sig0 = window.innerWidth<=700 ? fitSig() : '', rid = (window._fitRid = (window._fitRid||0) + 1);
+  const changed = ()=>{ if(rid !== window._fitRid) return false; const s1 = fitSig(); if(s1 === window._fitLastSig) return false; window._fitLastSig = s1; return true; };
+  window._fitLastSig = sig0;
+  if(window.innerWidth<=700 && (VIEW==='dispatch' || VIEW==='input' || VIEW==='input2' || VIEW==='splan')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(!changed()) return; fitDispatch(); fitInputMobile(); fitSplan(); applyUiZoom(); }, ms)); }
+  if(window.innerWidth<=700 && (VIEW==='ot' || VIEW==='combined')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(!changed()) return; if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined'){ if(cmbPhone()) fitCombined(); else document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } }, ms)); }
   fitSplan();
   applyUiZoom();
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ { const t = empTeamOf(x.dataset.emp); if(canEdit && !teamAllowed(t)){ showToast(teamDeniedMsg(t)); return; } } otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
