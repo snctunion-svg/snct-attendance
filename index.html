@@ -3859,7 +3859,27 @@ async function initDb(){
 }
 // 편집자 로그인 직후: 클라우드가 비어 있으면 이전 브라우저 데이터를 올리거나 기본값을 채움
 let editorSetupDone = false;
+// 한 번만: 1조·2조 2026-09-26(10월 근무기간 시작) ~ 2026-10-21 출퇴근 입력을 조장 마감 처리(그 뒤로는 조장이 직접 [조장 마감])
+//  조장·UNION으로 로그인한 기기에서 한 번 실행하고 meta/inputCloseSeed1021에 표시 → 다시는 안 함. 이미 마감된 날은 그대로
+const INPUT_CLOSE_SEED = {id:'inputCloseSeed1021', from:'2026-09-26', to:'2026-10-21', teams:['1','2']};
+async function seedInputCloseOnce(){
+  if(!db || demoMode || !(userRole==='leader' || userRole==='union' || userRole==='all')) return;
+  try{
+    const mk = db.doc('meta/' + INPUT_CLOSE_SEED.id), m = await mk.get(); if(m.exists) return;
+    const jobs = [], at = Date.now();
+    for(let d = INPUT_CLOSE_SEED.from; d <= INPUT_CLOSE_SEED.to; d = addDays(d, 1)) INPUT_CLOSE_SEED.teams.forEach(team=>{
+      const id = d + '_' + team; if(isInputClosed(d, team)) return;
+      inputClose[id] = {closed:true, at, team, date:d};
+      jobs.push(db.collection('inputClose').doc(id).set({closed:true, at, team, date:d, auto:true}));
+    });
+    await Promise.all(jobs);
+    await mk.set({at, by: userRole, count: jobs.length});
+    if(jobs.length) showToast(`1조·2조 ${INPUT_CLOSE_SEED.to.slice(5).replace('-','/')}까지 조장 마감했어요.`);
+    if(VIEW==='input') scheduleRender();
+  }catch(err){ showToast(saveErrMsg('지난 날짜 조장 마감에 실패했습니다.', err)); }
+}
 async function afterEditorLogin(){
+  seedInputCloseOnce();
   if(editorSetupDone) return;
   editorSetupDone = true;
   try{
