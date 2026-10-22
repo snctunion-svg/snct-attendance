@@ -899,7 +899,10 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .inBtnRow .btn{flex:1 1 auto;min-width:0;padding:8px 4px !important;font-size:12.5px !important;white-space:nowrap;}
   .inBtnRow .inDirty{display:none;} .inBtnRow .inDirtyS{display:inline;}
   .inBtnRow .inLockMsg{display:none;}
+  .inBtnRow .btn .lgL{display:none;} .inBtnRow .btn .smL{display:inline;}
+  .inBtnRow .btn{flex:1 1 0;padding:8px 2px !important;font-size:12px !important;letter-spacing:-.3px;}
 }
+.inBtnRow .smL{display:none;}
 @media (max-width:700px){ .dpKakaoBtn .dpLbl{display:none;} .dpKakaoBtn{padding-left:8px !important;padding-right:8px !important;} } /* 휴대폰: 윗줄이 넘치지 않게 카톡 단추는 💬만 */
 .dpDoneChip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:13px;font-weight:800;}
 .dpDoneBtn small,.dpDoneChip small{font-weight:600;opacity:.85;font-size:11px;}
@@ -4978,20 +4981,21 @@ function pageInput(){
       <th class="namehead">성명</th><th>본출근</th><th>본퇴근</th><th>지원출근</th><th>지원퇴근</th><th>승무시간</th><th>본조보상</th><th>타조보상</th><th>조출</th><th>석출</th><th>중식</th><th>야식</th><th>담당</th><th>연근</th><th>총OT</th>
     </tr></thead><tbody>${rows || `<tr><td colspan="15" class="empty">${inputTeam}조에 배정된 직원이 없습니다.</td></tr>`}</tbody></table></div>
     <div class="row inBtnRow" style="margin-top:12px;align-items:center;">
-      ${(()=>{   // 배포용(로그인 안 함): [저장] [수정] [OT 반영] / 조장모드(조장관리·UNION): [조장 마감] [조장 수정] (+ 고칠 수 있을 때 [저장])
+      ${(()=>{   // 배포용(로그인 안 함): [저장] [수정] [OT 반영] / 조장모드·UNION: [저장] [수정] [OT 반영] [조장 마감] [조장 수정]
         const pub = !isLeaderUser(), refl = dayReflected(date, inputTeam);
+        if(!pub && !leader) return '';   // 조별 조장이 다른 조를 볼 때는 보기만
         const saveBtn = `<button class="btn" id="inSave"${locked || viewOnly ? ' disabled' : ''}>저장${dirtyN && !locked ? `<span class="inDirty"> (${dirtyN}명 변경)</span><span class="inDirtyS">(${dirtyN})</span>` : ''}</button>`;
-        if(pub){
+        {
           const en = !leaderClosed && (viewOnly || editing), on = editing && !leaderClosed;
-          const editBtn = `<button class="btn ${on ? '' : 'ghost'}" id="inEdit"${en ? '' : ' disabled'} title="${leaderClosed ? '조장 마감된 날이에요' : on ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '저장된 기록 고치기'}">✏️ 수정</button>`;
+          const editBtn = `<button class="btn ${on ? '' : 'ghost'}" id="inEdit"${en ? '' : ' disabled'} title="${leaderClosed ? '조장 마감된 날이에요' : on ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '저장된 기록 고치기'}"><span class="lgL">✏️ 수정</span><span class="smL">수정</span></button>`;
           const rEn = !leaderClosed && !refl && (hasSaved || dirtyN > 0);
-          const reflBtn = `<button class="btn ${refl ? '' : 'ghost'} inReflBtn${refl ? ' on' : ''}" id="inReflect"${rEn ? '' : ' disabled'} title="${refl ? '월별 OT에 반영됨 — 고치면 다시 [OT 반영]을 눌러야 해요' : '눌러야 월별 OT에 들어가요'}">${refl ? '✅ OT 반영됨' : '📊 OT 반영'}</button>`;
-          return saveBtn + editBtn + reflBtn;
+          const reflBtn = `<button class="btn ${refl ? '' : 'ghost'} inReflBtn${refl ? ' on' : ''}" id="inReflect"${rEn ? '' : ' disabled'} title="${refl ? '월별 OT에 반영됨 — 고치면 다시 [OT 반영]을 눌러야 해요' : '눌러야 월별 OT에 들어가요'}">${refl ? '<span class="lgL">✅ OT 반영됨</span><span class="smL">반영됨</span>' : '<span class="lgL">📊 OT 반영</span><span class="smL">OT반영</span>'}</button>`;
+          if(pub) return saveBtn + editBtn + reflBtn;
+          var pubBtns = saveBtn + editBtn + reflBtn;
         }
-        if(!leader) return '';   // 다른 조는 보기만
         const edOn = leaderEditing || (editing && !leaderClosed);
-        return (!locked && !viewOnly ? saveBtn : '') + `<span class="inLeadBtns"><button class="btn ${leaderClosed ? '' : 'ghost'} inCloseBtn${leaderClosed ? ' on' : ''}" id="inCloseBtn" title="${leaderClosed ? '누르면 조장 마감 풀기' : '배포용에서 못 고치게 잠금'}">${leaderClosed ? '🔒 조장 마감됨' : '🔒 조장 마감'}</button>
-          <button class="btn ${edOn ? '' : 'ghost'}" id="inLeadEdit" title="${edOn ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '조장이 고치기'}">🔓 조장 수정</button></span>`;
+        return pubBtns + `<span class="inLeadBtns"><button class="btn ${leaderClosed ? '' : 'ghost'} inCloseBtn${leaderClosed ? ' on' : ''}" id="inCloseBtn" title="${leaderClosed ? '누르면 조장 마감 풀기' : '배포용에서 못 고치게 잠금'}">${leaderClosed ? '<span class="lgL">🔒 조장 마감됨</span><span class="smL">마감됨</span>' : '<span class="lgL">🔒 조장 마감</span><span class="smL">조장마감</span>'}</button>
+          <button class="btn ${edOn ? '' : 'ghost'}" id="inLeadEdit" title="${edOn ? '고치는 중 — 다시 누르면 고친 것 버리고 보기 상태로' : '조장이 고치기'}"><span class="lgL">🔓 조장 수정</span><span class="smL">조장수정</span></button></span>`;
       })()}
       ${leaderClosed ? `<span class="inLockMsg">🔒 ${esc(date)} ${esc(inputTeam)}조는 <b>조장 마감</b>됐어요.${leaderEditing ? ' 고친 뒤 [저장]을 누르세요.' : leader ? ' 고치려면 [조장 수정]을 누르세요.' : ' 고치려면 조장에게 말씀하세요.'}</span>`
         : ''}
@@ -5071,7 +5075,7 @@ function bindInputTable(el){
     const keys = Object.keys(inputDraft).filter(k=>k.startsWith(date+'|'));
     const teamList = employees.filter(e=> (e.team||'')===inputTeam);
     const heldIds = teamList.filter(e=>{ const b = attStore[date+'_'+e.id]; return b && b.otHold; }).map(e=> e.id);
-    const keepRefl = isLeaderUser() ? dayReflected(date, inputTeam) : false;
+    const keepRefl = isLeaderUser() && inputLeaderEdit[date+'_'+inputTeam] ? dayReflected(date, inputTeam) : false;   // 조장 마감한 날 [조장 수정]으로 고친 것만 OT 반영 그대로, 나머지는 다시 [OT 반영]
     if(!keys.length){ showToast('변경된 내용이 없습니다.'); return; }
     const badCells = keys.some(k=> IN_TIME.some(f=> inputDraft[k][f]!==undefined && excelToHm(inputDraft[k][f])===null));
     if(badCells){ showToast('빨간 칸의 시각 형식을 확인해 주세요 (예: 8, 15.3, 7.3).'); return; }
