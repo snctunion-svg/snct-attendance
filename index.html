@@ -3020,10 +3020,12 @@ function autoManguen(dateStr, empId){
   if(!empId || typeof attStore==='undefined') return false;
   const [y,m,d] = dateStr.split('-').map(Number);
   if(new Date(y,m-1,d).getDay()!==6) return false;
+  const emp = (typeof employees!=='undefined' && employees.find(x=> x.id===empId)) || null, nm = emp ? String(emp.name||'').trim() : '';
   for(let i=5;i>=1;i--){
     const ds = addDays(dateStr, -i);
     const r = attStore[ds+'_'+empId];
-    const ok = (r && r.checkIn && !preSupportRec(r, ds)) || isHolidayFor(ds, empId) || (r && MANGUEN_CODES.has(r.statusCode));
+    const code = effCode(r, ds, nm);   // 근태코드는 statusCode·attCode·원본 엑셀 어디에 있든 같은 값(월별 근태에 보이는 코드)
+    const ok = (r && r.checkIn && !preSupportRec(r, ds)) || isHolidayFor(ds, empId) || MANGUEN_CODES.has(code);
     if(!ok) return false;
   }
   return true;
