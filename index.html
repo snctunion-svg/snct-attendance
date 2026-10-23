@@ -1115,7 +1115,6 @@ body[class*="printing"] .colNav{display:none !important;}
 }
 /* 배차표 근태 칸: 토요일 만근 표시(분홍 글씨) */
 #dpTable .dpMg{color:#db2777;font-weight:800;font-size:12px;white-space:nowrap;}
-.ctbl .mgSup{color:#db2777;font-weight:900;font-size:9px;margin-left:1px;vertical-align:super;line-height:0;}
 .inTbl .inMg{margin-left:4px;color:#db2777;font-weight:800;font-size:12.5px;white-space:nowrap;}
 @media (max-width:700px){ #dpTable .dpMg{font-size:11px;} }
 /* 장비 급여 관리 */
@@ -5439,7 +5438,6 @@ function pageCombined(){
       const memo = rec && rec.note ? String(rec.note) : '';
       const mno = (dc && MEMO_NO_CODES.has(dc)) ? memoOrderNo(ds, e.name, e.team) : 0;   // 날짜 메모에 적힌 이름 순서(VP·AV·RV·LS만)
       if(mno) inner += `<sup class="mmNo">${mno}</sup>`;
-      if(new Date(ds+'T00:00:00').getDay()===6 && recManguen(Object.assign({}, rec||{}, {employeeId:e.id, date:ds}), ds)) inner += `<sup class="mgSup" title="토요일 만근">만</sup>`;   // 토요일 만근 표시
       const sunCls = (new Date(ds+'T00:00:00').getDay()===0 && (e.team==='1' || e.team==='2') && scheduledShift(ds, e.team)==='N') ? ' sunN' : ''; // 야간 주의 일요일은 회색(근태코드 색이 있으면 그 색)
       return `<td class="daycell ${cls} ${weekBand(ds)}${sunCls}${fill?' filled':''}${ds===TODAY ? (' todayCol'+(e.id===lastEmpId?' todayBot':'')) : ''}" data-act="grid-cell" data-date="${esc(ds)}" data-emp="${esc(e.id)}"${fill?` style="background:${fill};"`:''}>${inner}</td>`;
     }).join('');
