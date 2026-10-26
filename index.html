@@ -714,9 +714,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 @media (max-width:700px){
   /* 휴대폰: 성명·지원·순번·퇴근을 왼쪽에 고정 → 말일까지 옆으로 밀면 날짜가 퇴근 바로 옆으로 들어옴 */
   .scrollx.mFreeze td.mgFix{position:sticky;z-index:2;}
-  .scrollx.mFreeze thead th.mgFix{position:sticky;z-index:7;box-shadow:inset 0 -1px 0 #111;}
+  .scrollx.mFreeze thead th.mgFix{position:sticky;z-index:7;}
   .scrollx.mFreeze td.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
-  .scrollx.mFreeze thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111;}
+  .scrollx.mFreeze thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
   .scrollx.mFreeze td.namecell{z-index:3;}
   .cmbRight .ctbl.gtbl thead th.mgFix{min-width:34px;width:34px;font-size:11.5px !important;}
   .cmbRight .ctbl.gtbl td.mgFix{min-width:34px;width:34px;}
@@ -741,8 +741,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* PC 근태관리(두 표를 붙여 옆으로 밂): 월별 근태로 넘어가면 성명·지원·순번이 왼쪽에 고정 */
 .cmbWrap.cmbJoin .cmbRight td.mgFix{position:sticky;z-index:2;}
 .cmbWrap.cmbJoin .cmbRight td.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
-.cmbWrap.cmbJoin .cmbRight thead th.mgFix{position:sticky;z-index:4;box-shadow:inset 0 -1px 0 #111;}
-.cmbWrap.cmbJoin .cmbRight thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111;}
+.cmbWrap.cmbJoin .cmbRight thead th.mgFix{position:sticky;z-index:4;}
+.cmbWrap.cmbJoin .cmbRight thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
 .cmbWrap.cmbJoin .cmbRight td.namecell{z-index:3;}
 /* 성명 칸 가운데 정렬(근태 집계·월별 근태·월별 OT현황) */
 .ctbl td.namecell,.ctbl th.namehead,.otSum td.namecell,.otSum th.namehead{text-align:center !important;}
@@ -807,8 +807,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
   .cmbWrap.cmbPhJoin .cmbRight .gridwrap{border-top-left-radius:0;border-bottom-left-radius:0;}
   .cmbWrap.cmbPhJoin td.mgFix{position:sticky;z-index:2;}
   .cmbWrap.cmbPhJoin td.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
-  .cmbWrap.cmbPhJoin thead th.mgFix{position:sticky;z-index:4;box-shadow:inset 0 -1px 0 #111;}
-  .cmbWrap.cmbPhJoin thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111, inset 0 -1px 0 #111;}
+  .cmbWrap.cmbPhJoin thead th.mgFix{position:sticky;z-index:4;}
+  .cmbWrap.cmbPhJoin thead th.mgFixEnd{box-shadow:inset -1px 0 0 #111;}
   .cmbWrap.cmbPhJoin .cmbRight td.namecell{z-index:3;}
   .cmbWrap.cmbPhJoin .cmbRight thead th.namehead{z-index:5;}
   .cmbPhTop .phV{display:none;align-items:center;gap:5px;min-width:0;flex:1 1 auto;}
@@ -3730,7 +3730,7 @@ function updateNavForRole(){
 }
 // 보기 전용일 때 화면의 편집 요소를 잠그고 숨김 (실제 차단은 보안 규칙 + requireEdit이 담당)
 function applyReadonly(el){
-  const allow = new Set(['payPwInput','codeStatsStartInput','codeStatsEndInput','codeStatsMealChk','otRangeStartInput','otRangeEndInput','dpDate','dpShift','vslReload','vslToggle','fDate','fEmp1','fEmp2']);
+  const allow = new Set(['payPwInput','codeStatsStartInput','codeStatsEndInput','mgStartIn','mgEndIn','codeStatsMealChk','otRangeStartInput','otRangeEndInput','dpDate','dpShift','vslReload','vslToggle','fDate','fEmp1','fEmp2']);
   el.querySelectorAll('input,select,textarea').forEach(x=>{ if(!allow.has(x.id) && x.type!=='file' && !(x.dataset && x.dataset.mgRank)) x.disabled = true; });   // 월별 근태 순번 종류 선택은 보기만 하는 사람도 쓸 수 있음(저장하지 않음)
   el.querySelectorAll('#holForm,#teamAddForm,#showAddCodeBtn,#splanResetBtn,#backupImportBtn,#delRecBtn,#attForm button[type="submit"],[data-act="del-emp"],[data-act="del-hol"],[data-act="delete-code"],[data-act="restore-code"],[data-act="save-code"],.dpCatBtn,.editor-only')
     .forEach(x=> x.style.display = 'none');
