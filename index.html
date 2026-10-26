@@ -9504,8 +9504,8 @@ function pageDispatch(){
   return `
   <h2 class="pgttl">배차표</h2>
   <div class="row dpHead" style="margin-bottom:12px;align-items:center;">
-    <button type="button" class="btn ghost sm" id="dpPrevDay" title="전날">◀<span class="dpLbl"> 전날</span></button>
     <input type="date" id="dpDate" value="${esc(ds)}" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--bg);color:var(--text);font:inherit;">
+    <button type="button" class="btn ghost sm" id="dpPrevDay" title="전날">◀<span class="dpLbl"> 전날</span></button>
     <button type="button" class="btn ghost sm" id="dpNextDay" title="다음날"><span class="dpLbl">다음날 </span>▶</button>
     <button class="btn ${dispatchTeamFilter==='1'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="1">1조</button>
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
