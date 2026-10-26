@@ -2963,6 +2963,10 @@ function excelAttRec(r, empId){
   return rec;
 }
 // 해당 달에 클라우드 기록이 없는 날만 원본 기록으로 채움
+// 마감·반영 표시만 있고 출퇴근·근태 내용이 없는 기록(예전 버전 조장 마감이 원본 엑셀 날짜에 만든 빈 기록) → 원본 내용을 밑에 깔아서 보여 줌
+const ATT_META = new Set(['date','employeeId','team','leaderLock','dayClosed','otHold','updatedAt']);
+const attBareDocs = {};
+function attIsBare(d){ return !!d && Object.keys(d).every(k=> ATT_META.has(k) || !d[k] || (k==='workCode' && d[k]==='OFF')); }
 function mergeExcelAtt(ym){
   if(typeof employees==='undefined' || !employees.length) return;
   const list = excelAttIndex().get(ym); if(!list) return;
@@ -2971,6 +2975,7 @@ function mergeExcelAtt(ym){
     const id = byName[name]; if(!id) return;
     const ds = '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6), key = ds+'_'+id;
     if(!attStore[key] || attStore[key]._emb) attStore[key] = normAtt(excelAttRec(r, id));
+    else if(attBareDocs[key] && attIsBare(attStore[key])) attStore[key] = normAtt(Object.assign(excelAttRec(r, id), attBareDocs[key], {_emb:true}));   // 빈 기록 + 원본 → 원본 내용 살림(마감 표시는 그대로)
   });
 }
 function hasExcelAtt(ds, name){ const list = excelAttIndex().get(ds.slice(0,7)); return !!(list && list.some(([n, r])=> n===name && '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6)===ds)); }
@@ -4114,7 +4119,9 @@ function ensureMonth(ym){
         const delAt = recentlyDeleted[d.id];
         if(delAt && now - delAt < 8000) return; // 방금 삭제한 기록은 잠깐 무시
         seen.add(d.id);
-        attStore[d.id] = normAtt(d.data());
+        const dd = d.data();
+        attStore[d.id] = normAtt(dd);
+        if(attIsBare(dd)) attBareDocs[d.id] = dd; else delete attBareDocs[d.id];
       });
       Object.keys(attStore).forEach(k=>{ if(k.startsWith(ym) && !seen.has(k)) delete attStore[k]; });
       mergeExcelAtt(ym);
@@ -4910,7 +4917,8 @@ function setLeaderLockRecs(date, team, on, extraIds){
   const ids = new Set(extraIds||[]);
   employees.forEach(e=>{ if((e.team||'')===team && attStore[date+'_'+e.id]) ids.add(e.id); });
   const parts = [];
-  ids.forEach(id=>{ const k = date+'_'+id; if(attStore[k]) attStore[k].leaderLock = on; parts.push({date, employeeId:id, leaderLock:on}); });
+  ids.forEach(id=>{ const k = date+'_'+id; const p = withEmbedded({date, employeeId:id, leaderLock:on});   // 원본(엑셀) 기록만 있는 날은 원본 내용까지 같이 저장 — 빈 기록이 원본을 가리지 않게
+    if(attStore[k]) attStore[k] = normAtt(Object.assign({}, attStore[k], p, {_emb:false})); parts.push(p); });
   if(!parts.length || !db || demoMode) return Promise.resolve();
   return Promise.all(parts.map(p=> db.collection('attendance').doc(p.date+'_'+p.employeeId).set(p, {merge:true})));
 }
