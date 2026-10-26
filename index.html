@@ -1115,6 +1115,21 @@ body[class*="printing"] .colNav{display:none !important;}
 }
 /* 배차표 근태 칸: 토요일 만근 표시(분홍 글씨) */
 #dpTable .dpMg{color:#db2777;font-weight:800;font-size:12px;white-space:nowrap;}
+/* 월별 OT현황 No → 개인 월 OT */
+.otNoBtn{color:var(--accent) !important;text-decoration:underline dotted;}
+.otpScrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:12px;}
+.otpBox{max-width:720px;width:100%;max-height:92vh;margin:0;display:flex;flex-direction:column;padding:14px !important;}
+.otpHd{display:flex;align-items:center;gap:8px;margin-bottom:8px;} .otpHd b{font-size:16px;color:#be185d;}
+.otpWrap{overflow:auto;flex:1 1 auto;border:1px solid var(--border);border-radius:8px;}
+.otpTbl{width:100%;border-collapse:collapse;font-size:13px;}
+.otpTbl th,.otpTbl td{border-bottom:1px solid var(--border);padding:5px 6px;text-align:center;white-space:nowrap;}
+.otpTbl td:nth-child(3){text-align:left;white-space:normal;}
+.otpTbl thead th{position:sticky;top:0;background:#fce7f3;color:#9d174d;z-index:1;}
+.otpTbl tfoot td{background:#fff7d6;font-weight:800;} .otpTbl tfoot tr.otpG td{background:#fde68a;}
+.otpSumBar{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 8px;font-size:13px;} .otpSumBar b{color:#be185d;}
+.otpTbl tr.otpZero td{color:var(--text-muted);} .otpTbl td.otpSum{font-weight:800;}
+@media (max-width:700px){ .otpTbl{font-size:11.5px;} .otpTbl th,.otpTbl td{padding:4px 2px;} .otpTbl{font-size:11px;letter-spacing:-.2px;} .otpBox{padding:8px !important;} .otpScrim{padding:6px;} .otpTbl td:first-child{padding-left:3px;} .otpTbl .otpHol{display:none;} .otpSumBar{font-size:12px;} .otpBox .otpTbl .lgL{display:none;} .otpBox .otpTbl .smL{display:inline;} }
+.otpTbl .smL{display:none;}
 .inTbl .inMg{margin-left:4px;color:#db2777;font-weight:800;font-size:12.5px;white-space:nowrap;}
 @media (max-width:700px){ #dpTable .dpMg{font-size:11px;} }
 /* 장비 급여 관리 */
@@ -1580,6 +1595,40 @@ let paintSession = null; // {empId, changes:{slot:value}} - 배차표 드래그 
 let gridEdit = null; // {date, employeeId} - 월별표에서 셀 클릭 시 근무코드/근태코드 인라인 편집
 let otDetailEmpId = null;
 let otEdit = null; // 월별 OT현황에서 바로 보기·수정하는 칸 {date, employeeId}
+// ===== 월별 OT현황 > No 누르면: 그 사람의 근무기간 날짜별 OT(회사 'OT 개별조회'처럼) =====
+let otEmpPop = null;   // 사원 id
+function renderOtEmpPop(){
+  const e = employees.find(x=> x.id===otEmpPop); if(!e || !otMatrixStart || !otMatrixEnd) return '';
+  const nm = String(e.name||'').trim(), T = {wk:0, sp:0, ho:0, meal:0, all:0};
+  const z = v=> v ? fmtH(v) : '0';
+  let rows = '';
+  for(let ds = otMatrixStart; ds <= otMatrixEnd; ds = addDays(ds, 1)){
+    const rec0 = otMatrixAttendance[ds+'_'+e.id], excl = otExcluded(rec0, ds, e), rec = excl ? null : rec0;
+    const c = computeDaily(rec, ds), su = computeSupportDaily(rec, ds), meal = computeMealAllowance(rec) + computeDamdang(rec);
+    let wk = 0, ho = 0, sp = 0;
+    if(c.valid){ if(c.category==='평일' || c.category==='토요일') wk = c.premium; else ho = c.premium; }
+    if(su.valid){ const cat = dayCategory(ds, recManguen(rec, ds), e.id); if(cat==='SU' || cat==='H') ho += su.premium; else sp = su.premium; }
+    const all = wk + ho + sp + meal;
+    T.wk += wk; T.sp += sp; T.ho += ho; T.meal += meal; T.all += all;
+    const [y,m,d] = ds.split('-').map(Number), w = new Date(y, m-1, d).getDay();
+    const col = (w===0 || holidays[ds]) ? '#dc2626' : w===6 ? '#1d4ed8' : 'inherit';
+    const code = gridCode(rec0, ds, nm);
+    const sat = w===6 && recManguen(Object.assign({}, rec0||{}, {employeeId:e.id, date:ds}), ds);
+    rows += `<tr${all ? '' : ' class="otpZero"'}><td style="color:${col};white-space:nowrap;">${m}/${d}(${weekdayKr(y,m,d)})</td>
+      <td class="otpHol" style="color:#dc2626;">${esc(isHolidayFor(ds, e.id) ? (holidays[ds] || '공휴일') : '')}</td>
+      <td>${code ? esc(code) + (statusLabel(code)!==code ? `<span class="lgL">${esc(statusLabel(code).slice(code.length))}</span>` : '') : ''}${sat ? ' <b style="color:#db2777;">만근</b>' : ''}${excl ? ' <small style="color:#b45309;">(OT 반영 전)</small>' : ''}</td>
+      <td>${z(wk)}</td><td>${z(sp)}</td><td>${z(ho)}</td><td>${z(meal)}</td><td class="otpSum">${z(all)}</td></tr>`;
+  }
+  const spG = Math.max(T.sp, 30), hoG = Math.max(T.ho, 60), guar = T.wk + spG + hoG + T.meal;
+  return `<div id="otEmpScrim" class="otpScrim"><div class="otpBox panel">
+    <div class="otpHd"><b>${esc(e.name)} · 월 OT</b><span class="hint" style="margin:0;">${esc(otMatrixStart.slice(5).replace('-','/'))} ~ ${esc(otMatrixEnd.slice(5).replace('-','/'))}</span><span style="flex:1"></span><button type="button" class="btn ghost sm" id="otEmpClose">닫기</button></div>
+    <div class="otpSumBar"><span>OT 합계 <b>${z(T.all)}</b></span><span>보전 반영 <b>${z(guar)}</b></span><span>평일 ${z(T.wk)} · 지원 ${z(T.sp)} · 휴일 ${z(T.ho)} · 식사·담당 ${z(T.meal)}</span></div>
+    <div class="otpWrap"><table class="otpTbl"><thead><tr><th>근무일</th><th class="otpHol">휴일</th><th>근태</th><th><span class="lgL">평일 OT</span><span class="smL">평일</span></th><th><span class="lgL">지원 OT</span><span class="smL">지원</span></th><th><span class="lgL">휴일 OT</span><span class="smL">휴일</span></th><th><span class="lgL">식사·담당</span><span class="smL">식사</span></th><th>합계</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="2">합계</td><td class="otpHol"></td><td>${z(T.wk)}</td><td>${z(T.sp)}</td><td>${z(T.ho)}</td><td>${z(T.meal)}</td><td>${z(T.all)}</td></tr>
+        <tr class="otpG"><td colspan="2">보전 반영 (지원 30·휴일 60)</td><td class="otpHol"></td><td>${z(T.wk)}</td><td>${z(spG)}</td><td>${z(hoG)}</td><td>${z(T.meal)}</td><td>${z(guar)}</td></tr></tfoot></table></div>
+  </div></div>`;
+}
 function renderOtEdit(){
   const {date, employeeId} = otEdit;
   const e = employees.find(x=>x.id===employeeId); if(!e) return '';
@@ -4641,7 +4690,7 @@ function setView(v){
   if(v==='pay') v = 'combined'; // 급여 명세서는 잠시 숨김(나중에 다시 사용)
   if(authResolved && !SITE_UNION && !roleCanSee(v)) v = 'combined';
   canEdit = roleCanEdit(v);
-  mgRankManual = null; // 화면을 다시 열면 순번은 다시 날짜에 맞춰 자동
+  mgRankManual = null; mgOutManual = null; otEmpPop = null; // 화면을 다시 열면 순번·퇴근은 다시 날짜에 맞춰 자동
   if(window._mgScroll) window._mgScroll.x = null; // 화면을 다시 열면 월별 근태는 오늘 날짜 위치부터
   VIEW = v;
   document.querySelectorAll('nav#nav a').forEach(a=>a.classList.toggle('on', a.dataset.view===v || (SITE_UNION && !!a.dataset.view && uwGroupOf(v)===a.dataset.view) || (a.dataset.view==='unionhub' && isUnionSheet(v)) || (a.dataset.view==='leaderhub' && isLeaderSheet(v)) || (a.dataset.view==='workhub' && isWorkSheet(v))));
@@ -5331,6 +5380,7 @@ const MG_RANK = { '평일':{k:'rankGyeWk', g:'wk', t:'평일 FC·MC 합계 순�
 // 순번 자동: 일요일 → 일요일(MCS), 일요일 아닌 공휴일 → 공휴일(FCH·MCH), 그 외(월~토) → 평일(FC·MC)
 //  직접 고르면 그 종류로 보임(화면을 다시 열거나 새로고침하면 다시 자동)
 let mgRankManual = null;
+let mgOutManual = null;   // 월별 근태 '퇴근' 순번 종류: null=자동(오늘 날짜) · '평일' · '휴일'
 function mgRankAuto(ds){
   ds = ds || todayStr();
   if(new Date(ds+'T00:00:00').getDay()===0) return '일요일';
@@ -5421,10 +5471,14 @@ function pageCombined(){
   const mgR = MG_RANK[mgRankType], mgArr = ({rankGyeWk, rankMCS, rankGyeHol})[mgR.k] || [];
   const mgNum = n => n==null ? '' : `<span class="rkPlain">${n}</span>`;
   const supHead = `<th class="mgFix gc g-blk" rowspan="2" title="지원근무 순번 (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">지원</th>`;
-  const rankHead = `<th class="mgFix mgFixEnd mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류"><option value="auto"${!mgRankManual?' selected':''}>자동(오늘 ${esc(mgAutoT)})</option>${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankManual?' selected':''}>${k}</option>`).join('')}</select></th>`;
+  const mgOutAuto = ['SU','H'].includes(dayCategory(TODAY, false)) ? '휴일' : '평일', mgOutT = (mgOutManual==='평일' || mgOutManual==='휴일') ? mgOutManual : mgOutAuto;
+  const mgOutArr = mgOutT==='휴일' ? rankOtHol : rankOtWk, mgOutG = mgOutT==='휴일' ? 'yel' : 'pur';
+  const outHead = `<th class="mgFix mgFixEnd mgRkHead gc g-${mgOutG}" rowspan="2" title="눌러서 퇴근 순번 종류 선택 — ${mgOutT} OT 퇴근 순번 (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">퇴근<select class="mgRkSel" data-mg-rank="out" aria-label="퇴근 순번 종류"><option value="auto"${!mgOutManual?' selected':''}>자동(오늘 ${mgOutAuto})</option><option value="평일"${mgOutManual==='평일'?' selected':''}>평일</option><option value="휴일"${mgOutManual==='휴일'?' selected':''}>휴일</option></select></th>`;
+  const rankHead = `<th class="mgFix mgRkHead gc g-${mgR.g}" rowspan="2" title="눌러서 순번 종류 선택 — ${esc(mgR.t)} (근태 집계 ${esc(rangeStart)}~${esc(rangeEnd)} 기준)">순번<select class="mgRkSel" data-mg-rank="1" aria-label="순번 종류"><option value="auto"${!mgRankManual?' selected':''}>자동(오늘 ${esc(mgAutoT)})</option>${Object.keys(MG_RANK).map(k=>`<option value="${k}"${k===mgRankManual?' selected':''}>${k}</option>`).join('')}</select></th>`;
   const codeRows = sortedEmployees.map((e,ei)=>{
     const rankCell = `<td class="mgFix rkCol g-blk" style="text-align:center;">${mgNum(rankSup[ei])}</td>`
-      + `<td class="mgFix mgFixEnd rkCol g-${mgR.g}" style="text-align:center;">${mgNum(mgArr[ei])}</td>`;
+      + `<td class="mgFix rkCol g-${mgR.g}" style="text-align:center;">${mgNum(mgArr[ei])}</td>`
+      + `<td class="mgFix mgFixEnd rkCol g-${mgOutG}" style="text-align:center;">${mgNum(mgOutArr[ei])}</td>`;
     const cells = monthDays.map(ds=>{
       const [yy, mm, d] = ds.split('-').map(Number);
       const rec = codeStatsAttendance[ds+'_'+e.id];
@@ -5487,7 +5541,7 @@ function pageCombined(){
           <button class="btn ghost sm" id="cmbNextMonth" title="다음 달 전체">▶</button>
         </div>
       </div>`}
-      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${supHead}${rankHead}${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
+      ${sortedEmployees.length? `<div class="scrollx gridwrap"><table class="gtbl ctbl"><thead><tr><th class="namehead" rowspan="2">성명</th>${supHead}${rankHead}${outHead}${dayHead}</tr><tr>${countHead}</tr></thead><tbody>${codeRows}</tbody></table></div>`
         : `<div class="empty">등록된 직원이 없습니다.</div>`}
     </div>
     ${ph ? '' : '<div class="fzTail" id="cmbTail"></div>'}
@@ -5558,7 +5612,7 @@ function pageOT(){
       return `<td class="${cls}${r.damDays[ds]?' otDam':''}${mn?' otMealC':''}" data-act="ot-cell-detail" data-date="${esc(ds)}" data-emp="${esc(r.emp.id)}" style="text-align:center;cursor:pointer;"${tip?` title="${esc(tip)}"`:''}>${v?fmtH(v):''}${mn?`<sup class="otMealNo">${mn}</sup>`:''}</td>`;
     }).join('');
     return `<tr>
-      <td class="stNo" style="text-align:center;">${esc(noCell)}</td>
+      <td class="stNo otNoBtn" data-act="ot-emp" data-emp="${esc(r.emp.id)}" style="text-align:center;cursor:pointer;" title="눌러서 ${esc(r.emp.name)} 월 OT 보기">${esc(noCell)}</td>
       <td class="namecell stName payName" data-act="pay-open" data-emp="${esc(r.emp.id)}" title="급여명세서 보기"><span class="pn">${esc(r.emp.name)}</span></td>
       <td class="gc g-meal" style="text-align:center;font-weight:700;">${z(r.mealTotal)}</td>
       <td class="gc g-wk" style="text-align:center;font-weight:700;">${z(r.wkTotal)}</td>
@@ -5628,6 +5682,7 @@ function pageOT(){
   </thead><tbody>${rows}</tbody></table><div class="fzTail" id="otTail"></div></div></div>`
     : `<div class="empty">등록된 직원이 없습니다.</div>`}
   ${otEdit ? renderOtEdit() : ''}
+  ${otEmpPop ? renderOtEmpPop() : ''}
   ${payPw ? renderPayPw() : ''}
   ${paySlip ? renderPaySlip() : ''}
   `;
@@ -9449,7 +9504,9 @@ function pageDispatch(){
   return `
   <h2 class="pgttl">배차표</h2>
   <div class="row dpHead" style="margin-bottom:12px;align-items:center;">
+    <button type="button" class="btn ghost sm" id="dpPrevDay" title="전날">◀<span class="dpLbl"> 전날</span></button>
     <input type="date" id="dpDate" value="${esc(ds)}" style="border:1px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--bg);color:var(--text);font:inherit;">
+    <button type="button" class="btn ghost sm" id="dpNextDay" title="다음날"><span class="dpLbl">다음날 </span>▶</button>
     <button class="btn ${dispatchTeamFilter==='1'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="1">1조</button>
     <button class="btn ${dispatchTeamFilter==='2'?'':'ghost'} sm" data-act="dispatch-team-filter" data-team="2">2조</button>
     <button type="button" class="btn sm dpKakaoBtn" id="dpShotBtn" title="배차표를 전반·후반 사진으로 만들어 카톡으로 보내기">📸<span class="dpLbl"> 카톡</span></button>
@@ -10921,6 +10978,8 @@ function afterRender(){
   if(window.innerWidth<=700 && (VIEW==='ot' || VIEW==='combined')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(!changed()) return; if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined'){ if(cmbPhone()) fitCombined(); else document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } }, ms)); }
   fitSplan();
   applyUiZoom();
+  el.querySelectorAll('[data-act="ot-emp"]').forEach(x=> x.onclick = ()=>{ otEmpPop = x.dataset.emp; render(); });
+  { const sc = document.getElementById('otEmpScrim'); if(sc){ const cl = ()=>{ otEmpPop = null; render(); }; sc.onclick = ev=>{ if(ev.target===sc) cl(); }; const cb = document.getElementById('otEmpClose'); if(cb) cb.onclick = cl; } }
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ { const t = empTeamOf(x.dataset.emp); if(canEdit && !teamAllowed(t)){ showToast(teamDeniedMsg(t)); return; } } otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
   bindOtEdit(el);
   // 작업기간 직접수정
@@ -11237,6 +11296,8 @@ function afterRender(){
   const dpDate = document.getElementById('dpDate'), dpShift = document.getElementById('dpShift');
   if(dpDate) dpDate.onchange = ()=>{ dpSel = null; dispatchDate = dpDate.value; dispatchAuto = (dispatchDate === dpWorkDate()); autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
   if(dpShift) dpShift.onchange = ()=>{ dispatchShift = dpShift.value; render(); };
+  const dpGo = n=>{ dpSel = null; dispatchDate = addDays(dispatchDate, n); dispatchAuto = (dispatchDate === dpWorkDate()); autoDispatchShift(); if(dbReady) subscribeDispatchDay(dispatchDate); render(); };
+  { const pv = document.getElementById('dpPrevDay'), nx = document.getElementById('dpNextDay'); if(pv) pv.onclick = ()=> dpGo(-1); if(nx) nx.onclick = ()=> dpGo(1); }
   // 팔레트: 선택한 칸에 바로 적용(선택이 없으면 안내)
   el.querySelectorAll('.dpCatBtn').forEach(x=>{ x.onpointerdown = ev=> ev.preventDefault(); x.onclick = ()=> dpApplyCatToSel(x.dataset.cat); });
   el.querySelectorAll('[data-act="dp-sun-part"]').forEach(x=>x.onclick=()=>{ dispatchSunPart = x.dataset.part; render(); });   // 보던 위치는 viewScrollKeep이 주간·야간 따로 기억
@@ -11639,8 +11700,9 @@ document.addEventListener('click', (e)=>{
 });
 document.addEventListener('change', (e)=>{
   if(e.target && e.target.id==='backupImportFile') importBackupFile(e.target.files && e.target.files[0]);
-  if(e.target && e.target.dataset && e.target.dataset.mgRank){   // 월별 근태 순번 종류 바꿈(자동 = 날짜에 맞춤)
-    mgRankManual = MG_RANK[e.target.value] ? e.target.value : null;
+  if(e.target && e.target.dataset && e.target.dataset.mgRank){   // 월별 근태 순번·퇴근 종류 바꿈(자동 = 날짜에 맞춤)
+    if(e.target.dataset.mgRank==='out') mgOutManual = (e.target.value==='평일' || e.target.value==='휴일') ? e.target.value : null;
+    else mgRankManual = MG_RANK[e.target.value] ? e.target.value : null;
     render();
   }
 });
