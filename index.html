@@ -5668,7 +5668,7 @@ function pageOT(){
     ${days.map(()=>'<td></td>').join('')}
   </tr>`;
 
-  const holdList = (()=>{ const m = {}; Object.keys(otMatrixAttendance).forEach(k=>{ const r = otMatrixAttendance[k]; if(!r) return; const ds = k.slice(0,10); if(ds < otMatrixStart || ds > otMatrixEnd || ds > todayStr()) return; const e = employees.find(x=> x.id===r.employeeId); if(!otExcluded(r, ds, e)) return; if(!(r.checkIn || r.checkOut || r.supportIn || r.supportOut || r.honjoComp || r.tajoComp)) return; const t = (e && e.team) || r.team || ''; m[ds+'|'+t] = 1; }); return Object.keys(m).sort().map(x=>{ const [d,t] = x.split('|'); return {d, t, label:`${Number(d.slice(5,7))}/${Number(d.slice(8,10))}${t ? ' '+t+'조' : ''}`}; }); })();
+  const holdList = (()=>{ const m = {}; Object.keys(otMatrixAttendance).forEach(k=>{ const r = otMatrixAttendance[k]; if(!r) return; const ds = k.slice(0,10); if(ds < otMatrixStart || ds > otMatrixEnd || ds > todayStr()) return; const e = employees.find(x=> x.id===r.employeeId); if(!otExcluded(r, ds, e)) return; if(!(r.checkIn || r.checkOut || r.supportIn || r.supportOut || r.honjoComp || r.tajoComp)) return; const t = (e && e.team) || r.team || ''; if(otTeamFilter && t !== otTeamFilter) return; /* 1조를 보면 1조 알림만, 2조를 보면 2조 알림만(전체는 모두) */ m[ds+'|'+t] = 1; }); return Object.keys(m).sort().map(x=>{ const [d,t] = x.split('|'); return {d, t, label:`${Number(d.slice(5,7))}/${Number(d.slice(8,10))}${t ? ' '+t+'조' : ''}`}; }); })();
   window._otHold = holdList;   // 🔔 알림 팝업에서 씀
   return `
   <h2 class="pgttl">월별 OT현황</h2>
