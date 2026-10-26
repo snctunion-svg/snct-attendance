@@ -923,7 +923,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable th{padding:4px 2px !important;}
 #splanTable th,#splanTable td{color:#111 !important;text-align:center !important;vertical-align:middle;padding:2px 4px;}
 #splanTable thead th,#splanTable tr.spWkHead th{font-weight:800;font-size:12px;background:#f1f5f9;}
-#splanTable tr.spWkGap > th{border-top:3px solid #db2777 !important;}   /* 다음 주 시작: 분홍 굵은 선으로 구분 */
+#splanTable .spWk2S{border-left:3px solid #db2777 !important;}   /* 다음 주 시작: 분홍 굵은 선으로 구분 */
+@media (min-width:701px){ #splanTable.spTwoWk{width:100%;table-layout:fixed;} #splanTable.spTwoWk td.spLbl,#splanTable.spTwoWk thead tr:first-child th:first-child{width:112px;} #splanTable.spTwoWk thead tr:first-child th{font-size:11.5px;letter-spacing:-.4px;white-space:normal;line-height:1.2;word-break:keep-all;} #splanTable.spTwoWk .spIn{font-size:12px;} }   /* PC: 두 주(28칸)를 화면 폭에 꽉 맞춤 */
 #splanTable td.spLbl{font-weight:700;white-space:nowrap;padding:2px 10px;}
 #splanTable .spIn{width:52px;border:0;border-radius:0;padding:3px 2px;background:transparent;color:#111;text-align:center;font:inherit;font-size:12px;outline:none;}
 #splanTable td.spInCell{padding:0 !important;background:#fffbea;}   /* 입력 칸: 네모 없이 칸 자체가 입력창(연한 노란 바탕) */
@@ -9593,26 +9594,28 @@ function splanCalc(rec, auto){
 }
 function pageSupportPlan(){
   if(!weekStart) weekStart = mondayOf(todayStr());
-  // 한 화면에 두 주: 위 = 보고 있는 주, 아래 = 그다음 주 (한 표 안에 두 덩어리 — 칸 폭이 위아래로 맞음)
+  // 한 화면에 두 주: 왼쪽 = 보고 있는 주, 오른쪽 = 그다음 주 (한 표 안에 옆으로 — 다음 주 시작에 분홍 굵은 선)
   const dayCls = ds=>{ const w = new Date(ds+'T00:00:00').getDay(); return (w===0 || holidays[ds]) ? ' spHol' : w===6 ? ' spSat' : ''; };
-  const headCells = days=> `<th>항목</th>` + days.map(ds=>{
+  const wk2 = i=> i===7 ? ' spWk2S' : '';   // 다음 주 첫날
+  const headCells = days=> `<th>항목</th>` + days.map((ds,i)=>{
     const [y,m,d]=ds.split('-').map(Number);
-    return `<th colspan="2" class="${dayCls(ds).trim()}"${holidays[ds] ? ` title="${esc(holidays[ds])}"` : ''}>${m}/${d}(${weekdayKr(y,m,d)})</th>`;
+    return `<th colspan="2" class="${dayCls(ds).trim()}${wk2(i)}"${holidays[ds] ? ` title="${esc(holidays[ds])}"` : ''}>${m}/${d}(${weekdayKr(y,m,d)})</th>`;
   }).join('');
-  const subCells = days=> `<th></th>` + days.map(ds=>`<th class="${dayCls(ds).trim()}" style="font-size:10px;">주간</th><th class="${dayCls(ds).trim()}" style="font-size:10px;">야간</th>`).join('');
+  const subCells = days=> `<th></th>` + days.map((ds,i)=>`<th class="${dayCls(ds).trim()}${wk2(i)}" style="font-size:10px;">주간</th><th class="${dayCls(ds).trim()}" style="font-size:10px;">야간</th>`).join('');
   const bodyRows = days=> SPLAN_ROWS.map(rowDef=>{
-    const cells = days.map(ds=>[['day','주'],['night','야']].map(([shift])=>{
+    const cells = days.map((ds,di)=>[['day','주'],['night','야']].map(([shift])=>{
       const id = `${ds}_${shift}`;
       const rec = supportPlan[id] || {};
+      const s2 = shift==='day' ? wk2(di) : '';
       if(rowDef.editable){
-        return `<td class="spInCell"><input type="text" inputmode="numeric" pattern="[0-9]*" data-splan-date="${esc(ds)}" data-splan-shift="${esc(shift)}" data-splan-field="${rowDef.key}" value="${rec[rowDef.key]!=null && rec[rowDef.key]!==0 ? esc(rec[rowDef.key]) : ''}" class="spIn"></td>`;
+        return `<td class="spInCell${s2}"><input type="text" inputmode="numeric" pattern="[0-9]*" data-splan-date="${esc(ds)}" data-splan-shift="${esc(shift)}" data-splan-field="${rowDef.key}" value="${rec[rowDef.key]!=null && rec[rowDef.key]!==0 ? esc(rec[rowDef.key]) : ''}" class="spIn"></td>`;
       } else {
         const auto = splanAuto(ds, shift), c = splanCalc(rec, auto);
         let val;
         if(rowDef.key==='ratio') val = c.ratio ? c.ratio.toFixed(2) : '-';
         else val = c[rowDef.key] || 0;
         const tip = rowDef.key==='quota' ? ` title="${esc(auto.team)}조 인원"` : '';
-        return `<td class="sp-${rowDef.key}${rowDef.auto ? ' spAuto' : ''}"${tip}>${val}</td>`;
+        return `<td class="sp-${rowDef.key}${rowDef.auto ? ' spAuto' : ''}${s2}"${tip}>${val}</td>`;
       }
     }).join('')).join('');
     return `<tr class="spRow-${rowDef.key}"><td class="spLbl">${esc(rowDef.label)}</td>${cells}</tr>`;
@@ -9626,9 +9629,8 @@ function pageSupportPlan(){
     <button class="btn ghost sm" id="prevWeek">◀ 이전주</button>
     <button class="btn ghost sm" id="nextWeek">다음주 ▶</button>
   </div>
-  <div class="scrollx gridwrap fitW"><table class="tbl" id="splanTable"><thead><tr>${headCells(w1)}</tr><tr>${subCells(w1)}</tr></thead>
-    <tbody>${bodyRows(w1)}</tbody>
-    <tbody class="spWk2"><tr class="spWkHead spWkGap">${headCells(w2)}</tr><tr class="spWkHead">${subCells(w2)}</tr>${bodyRows(w2)}</tbody></table></div>
+  <div class="scrollx gridwrap fitW"><table class="tbl spTwoWk" id="splanTable"><thead><tr>${headCells(w1.concat(w2))}</tr><tr>${subCells(w1.concat(w2))}</tr></thead>
+    <tbody>${bodyRows(w1.concat(w2))}</tbody></table></div>
   <div class="row" style="margin-top:12px;align-items:center;">
     <button class="btn warn ghost" id="splanResetBtn">초기화</button>
   </div>
