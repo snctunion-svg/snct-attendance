@@ -922,7 +922,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 #splanTable td.spLbl{padding:2px 6px !important;}
 #splanTable th{padding:4px 2px !important;}
 #splanTable th,#splanTable td{color:#111 !important;text-align:center !important;vertical-align:middle;padding:2px 4px;}
-#splanTable thead th{font-weight:800;font-size:12px;background:#f1f5f9;}
+#splanTable thead th,#splanTable tr.spWkHead th{font-weight:800;font-size:12px;background:#f1f5f9;}
+#splanTable tr.spWkGap > th{border-top:3px solid #db2777 !important;}   /* 다음 주 시작: 분홍 굵은 선으로 구분 */
 #splanTable td.spLbl{font-weight:700;white-space:nowrap;padding:2px 10px;}
 #splanTable .spIn{width:52px;border:0;border-radius:0;padding:3px 2px;background:transparent;color:#111;text-align:center;font:inherit;font-size:12px;outline:none;}
 #splanTable td.spInCell{padding:0 !important;background:#fffbea;}   /* 입력 칸: 네모 없이 칸 자체가 입력창(연한 노란 바탕) */
@@ -4117,7 +4118,7 @@ function ensureForView(){
     if(VIEW==='combined' && leaveEmpId && leaveYear) ensureAttendanceRange(`${leaveYear}-01-01`, `${leaveYear}-12-31`);
   }
   else if(VIEW==='ot'){ if(otMatrixStart && otMatrixEnd) ensureAttendanceRange(otMatrixStart, otMatrixEnd); }
-  else if(VIEW==='splan'){ const ws = weekStart || mondayOf(todayStr()); ensureAttendanceRange(ws, addDays(ws, 6)); }   // 휴가·연차·기타 자동 계산용 근태
+  else if(VIEW==='splan'){ const ws = weekStart || mondayOf(todayStr()); ensureAttendanceRange(ws, addDays(ws, 13)); }   // 휴가·연차·기타 자동 계산용 근태
   else if(VIEW==='mail'){ const mr = mailRangeNow(); ensureAttendanceRange(mr.start, mr.end); }
   else if(VIEW==='eqpay') eqPayEnsure();
   else if(VIEW==='pay'){ if(payYm){ const [a,b] = payPeriodRange(payYm.y, payYm.m); ensureAttendanceRange(a, b); } }
@@ -4466,7 +4467,7 @@ function loadSupportPlanAll(){
   if(!db || !weekStart) return;
   if(splanSubWeek === weekStart && unsub.splan) return;
   if(unsub.splan) unsub.splan();
-  const ws = weekStart, we = addDays(weekStart, 6);
+  const ws = weekStart, we = addDays(weekStart, 13);   // 이번 주 + 다음 주(한 화면에 두 주)
   splanSubWeek = ws;
   unsub.splan = db.collection('supportPlan').where('date','>=',ws).where('date','<=',we).onSnapshot(snap=>{
     const fresh = {};
@@ -9563,17 +9564,15 @@ function splanCalc(rec, auto){
 }
 function pageSupportPlan(){
   if(!weekStart) weekStart = mondayOf(todayStr());
-  const days = Array.from({length:7}, (_,i)=>addDays(weekStart,i));
-  // 토요일 = 파란 글씨, 일요일·공휴일 = 빨간 글씨 (날짜 머리글과 그 날 칸 숫자 모두)
+  // 한 화면에 두 주: 위 = 보고 있는 주, 아래 = 그다음 주 (한 표 안에 두 덩어리 — 칸 폭이 위아래로 맞음)
   const dayCls = ds=>{ const w = new Date(ds+'T00:00:00').getDay(); return (w===0 || holidays[ds]) ? ' spHol' : w===6 ? ' spSat' : ''; };
-  const head = `<th>항목</th>` + days.map(ds=>{
+  const headCells = days=> `<th>항목</th>` + days.map(ds=>{
     const [y,m,d]=ds.split('-').map(Number);
     return `<th colspan="2" class="${dayCls(ds).trim()}"${holidays[ds] ? ` title="${esc(holidays[ds])}"` : ''}>${m}/${d}(${weekdayKr(y,m,d)})</th>`;
   }).join('');
-  const subhead = `<th></th>` + days.map(ds=>`<th class="${dayCls(ds).trim()}" style="font-size:10px;">주간</th><th class="${dayCls(ds).trim()}" style="font-size:10px;">야간</th>`).join('');
-
-  const rows = SPLAN_ROWS.map(rowDef=>{
-    const cells = days.map(ds=>[['day','주'],['night','야']].map(([shift,shiftLabel])=>{
+  const subCells = days=> `<th></th>` + days.map(ds=>`<th class="${dayCls(ds).trim()}" style="font-size:10px;">주간</th><th class="${dayCls(ds).trim()}" style="font-size:10px;">야간</th>`).join('');
+  const bodyRows = days=> SPLAN_ROWS.map(rowDef=>{
+    const cells = days.map(ds=>[['day','주'],['night','야']].map(([shift])=>{
       const id = `${ds}_${shift}`;
       const rec = supportPlan[id] || {};
       if(rowDef.editable){
@@ -9589,15 +9588,18 @@ function pageSupportPlan(){
     }).join('')).join('');
     return `<tr class="spRow-${rowDef.key}"><td class="spLbl">${esc(rowDef.label)}</td>${cells}</tr>`;
   }).join('');
+  const w1 = Array.from({length:7}, (_,i)=>addDays(weekStart,i)), w2 = Array.from({length:7}, (_,i)=>addDays(weekStart,i+7));
   return `
   <h2 class="pgttl">지원계획표</h2>
   <div class="panel">
   <div class="row" style="align-items:flex-end;margin-bottom:12px;">
-    <div class="field" style="min-width:auto;"><b style="font-size:15px;line-height:38px;">${esc(weekStart)} ~ ${esc(addDays(weekStart,6))}</b></div>
+    <div class="field" style="min-width:auto;"><b style="font-size:15px;line-height:38px;">${esc(weekStart)} ~ ${esc(addDays(weekStart,13))}</b></div>
     <button class="btn ghost sm" id="prevWeek">◀ 이전주</button>
     <button class="btn ghost sm" id="nextWeek">다음주 ▶</button>
   </div>
-  <div class="scrollx gridwrap fitW"><table class="tbl" id="splanTable"><thead><tr>${head}</tr><tr>${subhead}</tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="scrollx gridwrap fitW"><table class="tbl" id="splanTable"><thead><tr>${headCells(w1)}</tr><tr>${subCells(w1)}</tr></thead>
+    <tbody>${bodyRows(w1)}</tbody>
+    <tbody class="spWk2"><tr class="spWkHead spWkGap">${headCells(w2)}</tr><tr class="spWkHead">${subCells(w2)}</tr>${bodyRows(w2)}</tbody></table></div>
   <div class="row" style="margin-top:12px;align-items:center;">
     <button class="btn warn ghost" id="splanResetBtn">초기화</button>
   </div>
@@ -11410,8 +11412,8 @@ function afterRender(){
   });
   const splanResetBtn = document.getElementById('splanResetBtn');
   if(splanResetBtn) splanResetBtn.onclick = ()=>{
-    appConfirm('이번 주 지원계획표 입력값을 모두 초기화할까요?', ()=>{
-      deleteSupportPlanWeek(weekStart);
+    appConfirm(`${weekStart.slice(5).replace('-','/')} ~ ${addDays(weekStart,13).slice(5).replace('-','/')} 두 주 지원계획표 입력값을 모두 초기화할까요?`, ()=>{
+      deleteSupportPlanWeek(weekStart); deleteSupportPlanWeek(addDays(weekStart, 7));
     });
   };
 
