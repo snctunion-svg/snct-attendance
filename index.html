@@ -786,7 +786,9 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .cmbPhTop{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;margin:0 0 8px;}
 .cmbPhTop .phT{font-size:14px;white-space:nowrap;margin-right:1px;}
 .cmbPhTop input[type=date]{min-width:0;flex:1 1 0;max-width:118px;height:30px;padding:2px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);box-sizing:border-box;}
-.cmbPhTop .phNav{padding:4px 9px !important;}
+.cmbPhTop .phNav{padding:4px 7px !important;flex:0 0 auto;}
+.cmbPhTop .phV-month .phT{font-size:13px;}
+@media (max-width:360px){ .cmbPhTop .phV-month .phT{display:none;} }   /* 좁은 폰(아이폰 SE 등): 아래 [월별 근태] 단추가 있으니 제목을 숨기고 날짜 칸을 넓게 */
 .cmbPhTop .phYm{font-size:14px;white-space:nowrap;}
 .cmbPhTop .phTeam{margin-left:auto;display:flex;gap:4px;flex:0 0 auto;}
 .cmbPhTop .phTeam .btn.sm{padding:4px 8px;font-size:12px;}
@@ -5503,7 +5505,7 @@ function pageCombined(){
   const ph = cmbPhone();
   const teamPh = ['1','2'].map(t=>`<button class="btn ${combinedTeamFilter===t?'':'ghost'} sm" data-act="team-filter" data-team="${t}">${t}조</button>`).join('');
   //  휴대폰은 두 표를 옆으로 이어 붙여 한 번에 밀어 봄 → 위 줄은 지금 보이는 표에 맞춰 바뀜(두 가지를 다 그려 두고 보이는 것만 표시)
-  const phTop = !ph ? '' : `<div class="cmbPhTop" data-on="${cmbPhoneTab}"><span class="phV phV-stat"><b class="phT">근태 집계</b><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></span><span class="phV phV-month"><b class="phT">월별 근태</b><input type="date" id="mgStartIn" value="${esc(mgStart)}" aria-label="월별 근태 시작일"><input type="date" id="mgEndIn" value="${esc(mgEnd)}" aria-label="월별 근태 종료일"></span>
+  const phTop = !ph ? '' : `<div class="cmbPhTop" data-on="${cmbPhoneTab}"><span class="phV phV-stat"><b class="phT">근태 집계</b><input type="date" id="codeStatsStartInput" value="${esc(rangeStart)}"><input type="date" id="codeStatsEndInput" value="${esc(rangeEnd)}"></span><span class="phV phV-month"><b class="phT">월별 근태</b><button class="btn ghost sm phNav" id="cmbPrevMonth" title="이전 달">◀</button><input type="date" id="mgStartIn" value="${esc(mgStart)}" aria-label="월별 근태 시작일"><input type="date" id="mgEndIn" value="${esc(mgEnd)}" aria-label="월별 근태 종료일"><button class="btn ghost sm phNav" id="cmbNextMonth" title="다음 달">▶</button></span>
     <span class="phTeam">${teamPh}</span></div>`;
   const teamBtns = ph ? phTop : `<div class="row cmbTeamRow" style="margin-bottom:14px;">
     <button class="btn ${combinedTeamFilter===''?'':'ghost'} sm" data-act="team-filter" data-team="">전체</button>
