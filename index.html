@@ -1036,14 +1036,13 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 }
 /* 휴대폰 확대·축소 버튼(화면 오른쪽 아래에 떠 있음) */
 /* 표 좌우 한 칸씩 이동 화살표(배차표·근태관리·월별 OT현황·지원계획표) — 한 번 누르면 한 칸, 꾹 누르면 계속 */
-.colNav{display:none;position:fixed;right:10px;top:70px;z-index:61;align-items:center;gap:2px;
+.colNav{display:none;position:fixed;right:160px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:61;align-items:center;gap:2px;
   background:transparent;border:1px solid #f9a8d4;border-radius:999px;padding:1px;box-shadow:none;-webkit-user-select:none;user-select:none;touch-action:none;}   /* 투명 — 뒤 화면이 비쳐 보임 */
 .colNav.show{display:flex;}
 @media (max-width:380px){ .otMonRow .otMonLbl{display:none;} }   /* 좁은 폰: 월별 OT 이전달·다음달은 화살표만(조 단추와 안 겹치게) */
 .colNav button{border:0;background:transparent;color:#db2777;font:inherit;font-weight:900;font-size:17px;width:44px;height:30px;border-radius:999px;cursor:pointer;line-height:1;-webkit-tap-highlight-color:transparent;}
 .colNav button:active{background:rgba(219,39,119,.15);}
 .colNav button:disabled{color:#f9a8d4;cursor:default;}
-@media (max-width:700px){ body.colNavOn main#content{padding-top:50px !important;} }   /* 휴대폰: 맨 위 오른쪽에 ◀ ▶ 자리 */
 body[class*="printing"] .colNav{display:none !important;}
 .zoomFab{display:none;}
 @media (max-width:700px){
@@ -6312,7 +6311,8 @@ function colNavUpdate(){
   }
   const box = colNavBox();
   nav.classList.toggle('show', !!box);
-  { const ct = document.getElementById('content'); if(ct) nav.style.top = Math.round(ct.getBoundingClientRect().top + 9) + 'px'; }   // 맨 위(머리줄 바로 아래) 오른쪽
+  { const fab = document.getElementById('zoomFab'), fr = fab && getComputedStyle(fab).display!=='none' ? fab.getBoundingClientRect() : null;   // 아래쪽, 확대·축소(− 100% +) 버튼 바로 왼쪽
+    if(fr && fr.width){ nav.style.right = Math.round(window.innerWidth - fr.left + 8) + 'px'; nav.style.bottom = Math.round(window.innerHeight - fr.bottom + (fr.height - 34) / 2) + 'px'; } }
   if(box){ const max = box.scrollWidth - box.clientWidth; nav.querySelector('[data-dir="-1"]').disabled = box.scrollLeft <= 1; nav.querySelector('[data-dir="1"]').disabled = box.scrollLeft >= max - 1;
     if(!box._navHook){ box._navHook = 1; box.addEventListener('scroll', ()=>{ clearTimeout(box._navT); box._navT = setTimeout(colNavUpdate, 80); }, {passive:true}); } }
 }
