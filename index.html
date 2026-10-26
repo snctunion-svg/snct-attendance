@@ -1075,6 +1075,11 @@ body[class*="printing"] .colNav{display:none !important;}
 /* 월별 OT현황: 이전달 · 연월 · 다음달 한 줄 */
 .otMonRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 8px;}
 .otMonTxt{font-size:16px;white-space:nowrap;}
+.otAlertBtn{position:relative;border:1px solid #fecaca;background:#fef2f2;border-radius:999px;font-size:16px;line-height:1;padding:3px 7px;display:inline-flex;align-items:center;cursor:pointer;flex:0 0 auto;animation:otBell 2.4s ease-in-out infinite;}
+.otAlertBtn .otAlertN{position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;font-size:10px;font-weight:800;border-radius:999px;min-width:16px;height:16px;line-height:16px;padding:0 3px;text-align:center;}
+@keyframes otBell{0%,88%,100%{transform:rotate(0);}91%{transform:rotate(-14deg);}94%{transform:rotate(12deg);}97%{transform:rotate(-6deg);}}
+.otAlertBtn .otBellSvg{width:20px;height:20px;display:block;}
+.otAlertList{display:flex;flex-wrap:wrap;gap:6px;}
 .otMonRange{font-size:12px;color:var(--text-muted);white-space:nowrap;}
 @media (max-width:700px){
   .otMonRow{gap:6px;margin:2px 0 6px;}
@@ -1598,6 +1603,22 @@ let paintSession = null; // {empId, changes:{slot:value}} - 배차표 드래그 
 let gridEdit = null; // {date, employeeId} - 월별표에서 셀 클릭 시 근무코드/근태코드 인라인 편집
 let otDetailEmpId = null;
 let otEdit = null; // 월별 OT현황에서 바로 보기·수정하는 칸 {date, employeeId}
+// 월별 OT현황 🔔 알림: OT 반영 안 해서 월별 OT에서 빠진 날 — 누르면 팝업, 날짜를 누르면 그날 출퇴근 입력으로
+function otAlertOpen(){
+  const list = window._otHold || []; if(!list.length) return;
+  const old = document.getElementById('otAlertPop'); if(old) old.remove();
+  const ov = document.createElement('div'); ov.id = 'otAlertPop'; ov.className = 'otpScrim';
+  ov.innerHTML = `<div class="otpBox panel" style="max-width:420px;">
+    <div class="otpHd"><b style="display:inline-flex;align-items:center;gap:4px;"><svg class="otBellSvg" style="width:20px;height:20px;" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2a5.6 5.6 0 0 0-5.6 5.6v3.6L4.6 15.6v1.2h14.8v-1.2l-1.8-3.2V8.8A5.6 5.6 0 0 0 12 3.2z" fill="#dc2626"/><path d="M9.6 18.2a2.4 2.4 0 0 0 4.8 0z" fill="#dc2626"/><path d="M3.2 7.6a8.2 8.2 0 0 1 2.4-4M20.8 7.6a8.2 8.2 0 0 0-2.4-4" stroke="#dc2626" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>알림</b><span style="flex:1"></span><button type="button" class="btn ghost sm" id="otAlertX">닫기</button></div>
+    <p style="margin:0 0 8px;line-height:1.5;"><b>아직 OT 반영을 안 해서 월별 OT에서 빠진 날</b>이에요. 출퇴근 입력에서 <b>[📊 OT 반영]</b>을 누르면 들어가요.</p>
+    <div class="otAlertList">${list.map(x=> `<button type="button" class="btn ghost sm" data-go-date="${esc(x.d)}" data-go-team="${esc(x.t)}">${esc(x.label)} →</button>`).join('')}</div>
+    <p class="hint" style="margin:8px 0 0;">날짜를 누르면 그날 출퇴근 입력으로 가요.</p></div>`;
+  document.body.appendChild(ov);
+  const close = ()=> ov.remove();
+  ov.addEventListener('click', ev=>{ if(ev.target===ov) close(); });
+  ov.querySelector('#otAlertX').onclick = close;
+  ov.querySelectorAll('[data-go-date]').forEach(b=> b.onclick = ()=>{ close(); prefill = {date: b.dataset.goDate}; if(b.dataset.goTeam==='1' || b.dataset.goTeam==='2') inputTeam = b.dataset.goTeam; inputViewDate = b.dataset.goDate; inputAuto = false; setView('input'); });
+}
 // ===== 월별 OT현황 > No 누르면: 그 사람의 근무기간 날짜별 OT(회사 'OT 개별조회'처럼) =====
 let otEmpPop = null;   // 사원 id
 function renderOtEmpPop(){
@@ -5647,16 +5668,16 @@ function pageOT(){
     ${days.map(()=>'<td></td>').join('')}
   </tr>`;
 
-  const holdList = (()=>{ const m = {}; Object.keys(otMatrixAttendance).forEach(k=>{ const r = otMatrixAttendance[k]; if(!r) return; const ds = k.slice(0,10); if(ds < otMatrixStart || ds > otMatrixEnd || ds > todayStr()) return; const e = employees.find(x=> x.id===r.employeeId); if(!otExcluded(r, ds, e)) return; if(!(r.checkIn || r.checkOut || r.supportIn || r.supportOut || r.honjoComp || r.tajoComp)) return; const t = (e && e.team) || r.team || ''; m[ds+'|'+t] = 1; }); return Object.keys(m).sort().map(x=>{ const [d,t] = x.split('|'); return `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}${t ? ' '+t+'조' : ''}`; }); })();
+  const holdList = (()=>{ const m = {}; Object.keys(otMatrixAttendance).forEach(k=>{ const r = otMatrixAttendance[k]; if(!r) return; const ds = k.slice(0,10); if(ds < otMatrixStart || ds > otMatrixEnd || ds > todayStr()) return; const e = employees.find(x=> x.id===r.employeeId); if(!otExcluded(r, ds, e)) return; if(!(r.checkIn || r.checkOut || r.supportIn || r.supportOut || r.honjoComp || r.tajoComp)) return; const t = (e && e.team) || r.team || ''; m[ds+'|'+t] = 1; }); return Object.keys(m).sort().map(x=>{ const [d,t] = x.split('|'); return {d, t, label:`${Number(d.slice(5,7))}/${Number(d.slice(8,10))}${t ? ' '+t+'조' : ''}`}; }); })();
+  window._otHold = holdList;   // 🔔 알림 팝업에서 씀
   return `
   <h2 class="pgttl">월별 OT현황</h2>
-  ${holdList.length ? `<div class="note" style="margin:0 0 10px;">📊 아직 OT 반영 안 해서 빠진 날: <b>${esc(holdList.join(', '))}</b> — 출퇴근 입력에서 [OT 반영]을 누르면 들어가요.</div>` : ''}
   <div class="otTopBar">
   <div class="otMonRow">
     <button class="btn ghost sm" id="prevPayMonth">◀<span class="otMonLbl"> 이전달</span></button>
     <b class="otMonTxt">${otPayYear}년 ${otPayMonth}월</b>
     <button class="btn ghost sm" id="nextPayMonth"><span class="otMonLbl">다음달 </span>▶</button>
-    <span class="otMonRange">(${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)})</span>
+    ${holdList.length ? `<button type="button" class="otAlertBtn" id="otAlertBtn" title="알림 ${holdList.length}건 — 눌러서 보기" aria-label="알림 ${holdList.length}건"><svg class="otBellSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2a5.6 5.6 0 0 0-5.6 5.6v3.6L4.6 15.6v1.2h14.8v-1.2l-1.8-3.2V8.8A5.6 5.6 0 0 0 12 3.2z" fill="#dc2626"/><path d="M9.6 18.2a2.4 2.4 0 0 0 4.8 0z" fill="#dc2626"/><path d="M3.2 7.6a8.2 8.2 0 0 1 2.4-4M20.8 7.6a8.2 8.2 0 0 0-2.4-4" stroke="#dc2626" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg><span class="otAlertN">${holdList.length}</span></button>` : ''}
   </div>
   <div class="row otTeamRow" style="margin-bottom:14px;">
     <button class="btn ${otTeamFilter===''?'':'ghost'} sm" data-act="ot-team-filter" data-team="">전체</button>
@@ -10985,6 +11006,7 @@ function afterRender(){
   if(window.innerWidth<=700 && (VIEW==='ot' || VIEW==='combined')){ [300, 1000].forEach(ms=> setTimeout(()=>{ if(!changed()) return; if(VIEW==='ot') mFreeze(document.querySelector('table.otSum')); if(VIEW==='combined'){ if(cmbPhone()) fitCombined(); else document.querySelectorAll('table.ctbl').forEach(t=> mFreeze(t)); } }, ms)); }
   fitSplan();
   applyUiZoom();
+  { const ab = document.getElementById('otAlertBtn'); if(ab) ab.onclick = otAlertOpen; }
   el.querySelectorAll('[data-act="ot-emp"]').forEach(x=> x.onclick = ()=>{ otEmpPop = x.dataset.emp; render(); });
   { const sc = document.getElementById('otEmpScrim'); if(sc){ const cl = ()=>{ otEmpPop = null; render(); }; sc.onclick = ev=>{ if(ev.target===sc) cl(); }; const cb = document.getElementById('otEmpClose'); if(cb) cb.onclick = cl; } }
   el.querySelectorAll('[data-act="ot-cell-detail"]').forEach(x=>x.onclick=()=>{ { const t = empTeamOf(x.dataset.emp); if(canEdit && !teamAllowed(t)){ showToast(teamDeniedMsg(t)); return; } } otEdit = {date:x.dataset.date, employeeId:x.dataset.emp}; render(); });
