@@ -1035,13 +1035,14 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 }
 /* 휴대폰 확대·축소 버튼(화면 오른쪽 아래에 떠 있음) */
 /* 표 좌우 한 칸씩 이동 화살표(배차표·근태관리·월별 OT현황·지원계획표) — 한 번 누르면 한 칸, 꾹 누르면 계속 */
-.colNav{display:none;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:61;align-items:center;gap:2px;
-  background:rgba(255,255,255,.82);border:1px solid #f9a8d4;border-radius:999px;padding:3px;box-shadow:0 2px 8px rgba(190,24,93,.15);-webkit-user-select:none;user-select:none;touch-action:none;}
+.colNav{display:none;position:fixed;right:10px;top:70px;z-index:61;align-items:center;gap:2px;
+  background:transparent;border:1px solid #f9a8d4;border-radius:999px;padding:1px;box-shadow:none;-webkit-user-select:none;user-select:none;touch-action:none;}   /* 투명 — 뒤 화면이 비쳐 보임 */
 .colNav.show{display:flex;}
-.colNav button{border:0;background:#db2777;color:#fff;font:inherit;font-weight:900;font-size:17px;width:44px;height:38px;border-radius:999px;cursor:pointer;line-height:1;-webkit-tap-highlight-color:transparent;}
-.colNav button:active{background:#be185d;}
-.colNav button:disabled{background:#fbcfe8;cursor:default;}
-@media (max-width:9999px){ .colNav{right:auto;left:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));} .colNav button{width:46px;height:34px;} }
+@media (max-width:380px){ .otMonRow .otMonLbl{display:none;} }   /* 좁은 폰: 월별 OT 이전달·다음달은 화살표만(조 단추와 안 겹치게) */
+.colNav button{border:0;background:transparent;color:#db2777;font:inherit;font-weight:900;font-size:17px;width:44px;height:30px;border-radius:999px;cursor:pointer;line-height:1;-webkit-tap-highlight-color:transparent;}
+.colNav button:active{background:rgba(219,39,119,.15);}
+.colNav button:disabled{color:#f9a8d4;cursor:default;}
+@media (max-width:700px){ body.colNavOn main#content{padding-top:50px !important;} }   /* 휴대폰: 맨 위 오른쪽에 ◀ ▶ 자리 */
 body[class*="printing"] .colNav{display:none !important;}
 .zoomFab{display:none;}
 @media (max-width:700px){
@@ -4794,6 +4795,7 @@ function render(){
   renderDeferred = false;
   const el = document.getElementById('content');
   if(SITE_UNION && !(userRole==='union' || userRole==='all')){ el.innerHTML = pageUnionGate(); bindUnionGate(); return; }   // SNCT UNION: UNION 로그인 전에는 아무것도 안 보임
+  document.body.classList.toggle('colNavOn', window.innerWidth <= 700 && ['dispatch','combined','ot','splan'].includes(VIEW));   // 휴대폰 ◀ ▶ 자리(표 크기 맞추기 전에 정함)
   if(VIEW==='combined' && codeStatsEnd) codeStatsEnd = sundayOnOrAfter(codeStatsEnd);   // 근태 집계는 항상 그 주 일요일까지(토요일로 끝나면 다음 날 일요일까지)
   ensureForView();
   if(authResolved){ canEdit = roleCanEdit(VIEW); if(leaderBlocksView()) canEdit = false; }   // 조별 조장: 다른 조는 보기만
@@ -5651,9 +5653,9 @@ function pageOT(){
   ${holdList.length ? `<div class="note" style="margin:0 0 10px;">📊 아직 OT 반영 안 해서 빠진 날: <b>${esc(holdList.join(', '))}</b> — 출퇴근 입력에서 [OT 반영]을 누르면 들어가요.</div>` : ''}
   <div class="otTopBar">
   <div class="otMonRow">
-    <button class="btn ghost sm" id="prevPayMonth">◀ 이전달</button>
+    <button class="btn ghost sm" id="prevPayMonth">◀<span class="otMonLbl"> 이전달</span></button>
     <b class="otMonTxt">${otPayYear}년 ${otPayMonth}월</b>
-    <button class="btn ghost sm" id="nextPayMonth">다음달 ▶</button>
+    <button class="btn ghost sm" id="nextPayMonth"><span class="otMonLbl">다음달 </span>▶</button>
     <span class="otMonRange">(${esc(otMatrixStart)} ~ ${esc(otMatrixEnd)})</span>
   </div>
   <div class="row otTeamRow" style="margin-bottom:14px;">
@@ -6309,6 +6311,7 @@ function colNavUpdate(){
   }
   const box = colNavBox();
   nav.classList.toggle('show', !!box);
+  { const ct = document.getElementById('content'); if(ct) nav.style.top = Math.round(ct.getBoundingClientRect().top + 9) + 'px'; }   // 맨 위(머리줄 바로 아래) 오른쪽
   if(box){ const max = box.scrollWidth - box.clientWidth; nav.querySelector('[data-dir="-1"]').disabled = box.scrollLeft <= 1; nav.querySelector('[data-dir="1"]').disabled = box.scrollLeft >= max - 1;
     if(!box._navHook){ box._navHook = 1; box.addEventListener('scroll', ()=>{ clearTimeout(box._navT); box._navT = setTimeout(colNavUpdate, 80); }, {passive:true}); } }
 }
