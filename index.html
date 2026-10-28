@@ -1731,6 +1731,28 @@ function saveCombinedPref(){
   try{ localStorage.setItem(CMB_PREF_KEY, JSON.stringify({start:codeStatsStart, end:codeStatsEnd, meal:codeStatsIncludeMeal})); }catch(e){}
   saveViewPrefsCloud({combinedStart:codeStatsStart, combinedEnd:codeStatsEnd, combinedMeal:codeStatsIncludeMeal});
 }
+// 근태 집계 종료일 자동 넘김: 일요일 08:00 전까지는 그 일요일, 08:00부터는 다음 주 일요일
+//  (지금+16시간의 날짜 → 그 주 일요일). 종료일이 지난 주 일요일 근처(1주 이내)면 자동으로 새 일요일로 바꿈.
+//  이번 주에 직접 종료일을 고르면 다음 넘김(일요일 08:00)까지는 그대로 둠.
+const CMB_MANUAL_KEY = 'snct_cmb_manual_end';
+function cmbAutoEndDate(){ const t = new Date(Date.now() + 16*3600*1000); return sundayOnOrAfter(dstr(t.getFullYear(), t.getMonth()+1, t.getDate())); }
+function cmbAutoEnd(){
+  if(!codeStatsEnd) return false;
+  const auto = cmbAutoEndDate();
+  let man = null; try{ man = localStorage.getItem(CMB_MANUAL_KEY); }catch(e){}
+  if(man === auto) return false;
+  if(codeStatsEnd < auto && codeStatsEnd >= addDays(auto, -7)){
+    codeStatsEnd = auto;
+    if(codeStatsStart && codeStatsStart > codeStatsEnd) codeStatsStart = codeStatsEnd;
+    saveCombinedPref();
+    if(typeof dbReady!=='undefined' && dbReady && codeStatsStart) try{ subscribeCodeStatsRange(codeStatsStart, codeStatsEnd); }catch(e){}
+    return true;
+  }
+  return false;
+}
+// 앱을 켜 둔 채로 일요일 08:00이 지나도 바뀌게 1분마다·화면 돌아올 때 확인
+setInterval(()=>{ try{ if(cmbAutoEnd()) render(); }catch(e){} }, 60000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) try{ if(cmbAutoEnd()) render(); }catch(e){} });
 // 월별 OT현황 기간도 같은 방식으로 기억
 const OT_PREF_KEY = 'snct_ot_range';
 const isYmd = v => /^\d{4}-\d{2}-\d{2}$/.test(v||'');
@@ -4825,6 +4847,7 @@ function render(){
   const el = document.getElementById('content');
   if(SITE_UNION && !(userRole==='union' || userRole==='all')){ el.innerHTML = pageUnionGate(); bindUnionGate(); return; }   // SNCT UNION: UNION 로그인 전에는 아무것도 안 보임
   document.body.classList.toggle('colNavOn', window.innerWidth <= 700 && ['dispatch','combined','ot','splan'].includes(VIEW));   // 휴대폰 ◀ ▶ 자리(표 크기 맞추기 전에 정함)
+  cmbAutoEnd();   // 매주 일요일 08:00이 지나면 근태 집계 종료일을 다음 주 일요일로
   if(VIEW==='combined' && codeStatsEnd) codeStatsEnd = sundayOnOrAfter(codeStatsEnd);   // 근태 집계는 항상 그 주 일요일까지(토요일로 끝나면 다음 날 일요일까지)
   ensureForView();
   if(authResolved){ canEdit = roleCanEdit(VIEW); if(leaderBlocksView()) canEdit = false; }   // 조별 조장: 다른 조는 보기만
@@ -11082,6 +11105,7 @@ function afterRender(){
   if(codeStatsEndInput) codeStatsEndInput.onchange = ()=>{
     if(!codeStatsEndInput.value) return;
     codeStatsEnd = codeStatsEndInput.value;
+    try{ localStorage.setItem(CMB_MANUAL_KEY, cmbAutoEndDate()); }catch(e){}   // 직접 고른 종료일은 다음 일요일 08:00까지 유지
     if(codeStatsEnd < codeStatsStart) codeStatsStart = codeStatsEnd;
     saveCombinedPref();
     if(dbReady) subscribeCodeStatsRange(codeStatsStart, codeStatsEnd);
