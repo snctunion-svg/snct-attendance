@@ -3166,6 +3166,7 @@ function preSupportRec(rec, dateStr){
   // 교육·노조업무처럼 주간 본근무로 인정되는 날(원본 엑셀은 근무 칸에 D 체크)은 선지원이 아님
   if(['E','UJ','EC'].includes(rec.statusCode)) return null;
   if(rec.statusCode && (rec.workCode==='D' || rec.workCode==='DN')) return null;
+  { const sc = rec.statusCode || rec.attCode || ''; if(dateStr >= SUP_DSNS_FROM && (sc==='D' || sc==='DN' || sc==='N')) return null; }   // 10/12부터 선지원은 DS·NS로만 — 근태가 D(근무 바꿈)인 날은 본근무로 계산(지원 안 갔는데 지원으로 잡히던 문제)
   const sched = rec.baseShift || ((typeof empScheduled==='function' && rec.employeeId) ? empScheduled(rec.employeeId, dateStr) : '');
   if(sched !== 'N') return null;
   return Object.assign({}, rec, {supportIn: rec.checkIn, supportOut: rec.checkOut, checkIn: '', checkOut: ''});
@@ -4960,10 +4961,11 @@ function inputLocked(){ const d = inputViewDate || todayStr(); return isInputClo
 const OT_CLOSE_FROM = '2026-10-22';   // 이 날부터는 [📊 OT 반영]을 눌러야 월별 OT에 들어감(그 전 날짜는 예전처럼 저장만 해도 들어감)
 function dayReflected(date, team){   // 그날 그 조의 기록이 모두 OT 반영됨
   const recs = employees.filter(e=> (e.team||'')===team).map(e=> attStore[date+'_'+e.id]).filter(b=> b && ['checkIn','checkOut','supportIn','supportOut','honjoComp','tajoComp'].some(f=> b[f]));
-  return recs.length > 0 && recs.every(b=> b.dayClosed);
+  return recs.length > 0 && recs.every(b=> b.dayClosed || b.leaderLock);   // 조장 마감한 날도 OT 반영된 것으로 봄
 }
 function otExcluded(rec, ds, e){
   if(!rec) return false;
+  if(rec.leaderLock) return false;   // 조장 마감한 날은 [OT 반영]을 안 눌렀어도 월별 OT에 들어감(마감 뒤엔 [OT 반영] 버튼이 잠겨 OT가 빠져 보이던 문제)
   if(rec.otHold) return true;
   if(ds >= OT_CLOSE_FROM && !rec.dayClosed) return true;   // [OT 반영]한 날만 들어감
   return false;
@@ -5018,10 +5020,15 @@ async function inputReopen(){
   const date = inputViewDate || todayStr(), team = inputTeam, key = date+'_'+team;
   if(isInputClosed(date, team)){ showToast(isLeaderUser() ? '조장 마감된 날이에요. [조장 수정]을 누르세요.' : '조장 마감된 날이에요. 고치려면 조장에게 말씀하세요.'); return; }
   const dirty = Object.keys(inputDraft).some(k=> k.startsWith(date+'|'));
-  if(inputEdit[key] || dirty){ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputEdit[key]; render(); return; }   // 수정 취소
+  if(inputEdit[key] || dirty){ if(dirty) return inputAskSave(date); Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputEdit[key]; render(); return; }   // 수정 취소(고친 게 있으면 저장할지 먼저 물어봄)
   if(!requireEdit()) return;
   inputEdit[key] = true; render();
   const c = document.querySelector('.inTbl input.inCell:not([disabled])'); if(c) c.focus();
+}
+// 고친 내용이 있는데 [수정]·[조장 수정]을 다시 누르면 말없이 버리지 않고 저장할지 물어봄(확인 = 저장, 취소 = 계속 고치기)
+function inputAskSave(date){
+  const n = Object.keys(inputDraft).filter(k=> k.startsWith(date+'|')).length;
+  appConfirm(`저장 안 한 ${n}명 내용이 있어요. 저장할까요?\n(취소를 누르면 계속 고칠 수 있어요)`, async ()=>{ const sb = document.getElementById('inSave'); if(sb && sb.onclick) await sb.onclick(); });
 }
 // [🔓 조장 수정]: 조장 마감된 날을 조장만 고치기(누르면 칸 열림, 다시 누르면 고친 것 버리고 잠금). 저장해도 마감은 그대로
 function inputLeaderEditToggle(){
@@ -5030,9 +5037,9 @@ function inputLeaderEditToggle(){
   const date = inputViewDate || todayStr(), key = date+'_'+inputTeam;
   if(!isInputClosed(date, inputTeam)){   // 마감 안 한 날: 일반 수정처럼 칸을 열고 닫음
     const dirty = Object.keys(inputDraft).some(k=> k.startsWith(date+'|'));
-    if(inputEdit[key] || dirty){ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputEdit[key]; render(); return; }
+    if(inputEdit[key] || dirty){ if(dirty) return inputAskSave(date); Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputEdit[key]; render(); return; }
     inputEdit[key] = true; render(); const c0 = document.querySelector('.inTbl input.inCell:not([disabled])'); if(c0) c0.focus(); return; }
-  if(inputLeaderEdit[key]){ Object.keys(inputDraft).forEach(k=>{ if(k.startsWith(date+'|')) delete inputDraft[k]; }); delete inputLeaderEdit[key]; render(); return; }
+  if(inputLeaderEdit[key]){ if(Object.keys(inputDraft).some(k=> k.startsWith(date+'|'))) return inputAskSave(date); delete inputLeaderEdit[key]; render(); return; }
   inputLeaderEdit[key] = true; render();
   const c = document.querySelector('.inTbl input.inCell:not([disabled])'); if(c) c.focus();
 }
@@ -5158,7 +5165,7 @@ function bindInputTable(el){
     const e = employees.find(x=>x.id===empId); const tr = inp.closest('tr'); if(!e || !tr) return;
     const tot = inputRowTotal(inputViewDate, e); const cell = tr.querySelector('.inTot'); if(cell) cell.textContent = tot ? fmtH(tot) : '';
     tr.classList.add('inDirty');
-    const sb = document.getElementById('inSave'); const n = Object.keys(inputDraft).filter(k=>k.startsWith(inputViewDate+'|')).length; if(sb) sb.textContent = `저장 (${n}명 변경)`;
+    const sb = document.getElementById('inSave'); const n = Object.keys(inputDraft).filter(k=>k.startsWith(inputViewDate+'|')).length; if(sb) sb.innerHTML = `저장<span class="inDirty"> (${n}명 변경)</span><span class="inDirtyS">(${n})</span>`;   // 휴대폰은 짧게 (n)
   };
   el.querySelectorAll('.inCell').forEach(x=>{
     x.oninput = ()=>{ setDraft(x.dataset.emp, x.dataset.f, x.value); if(IN_TIME.includes(x.dataset.f)) x.classList.toggle('bad', excelToHm(x.value)===null); refreshRow(x.dataset.emp, x); };
@@ -5209,6 +5216,7 @@ function bindInputTable(el){
     if(badCells){ showToast('빨간 칸의 시각 형식을 확인해 주세요 (예: 8, 15.3, 7.3).'); return; }
     const partials = keys.map(k=>{
       const empId = k.split('|')[1], dr = inputDraft[k], emp0 = employees.find(x=>x.id===empId), p = {date, employeeId: empId, team: (emp0 && emp0.team) || inputTeam, updatedAt: Date.now(), dayClosed: keepRefl};   // 배포용이 고쳐 저장하면 OT 반영이 풀림(다시 [OT 반영]) · 조장이 고치면 반영 상태 그대로
+      if(isInputClosed(date, inputTeam)) p.leaderLock = true;   // 조장 마감된 날 [조장 수정]으로 새로 넣은 사람도 마감·OT 반영 그대로
       IN_TIME.forEach(f=>{ if(dr[f]!==undefined) p[f] = excelToHm(dr[f]) || ''; });
       IN_NUM.forEach(f=>{ if(dr[f]!==undefined) p[f] = String(dr[f]).trim(); });
       IN_CHK.forEach(f=>{ if(dr[f]!==undefined) p[f] = !!dr[f]; });
