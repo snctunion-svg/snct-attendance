@@ -9607,7 +9607,8 @@ const SPLAN_ROWS = [
 //  · 정원 = 조편성 관리의 그 조 인원(주간·야간 조는 주마다 바뀜 — 교대 순환 그대로)
 //  · 휴가·연차·기타 = 그 조에서 근태코드가 근무(D·N·DN·ND)·선지원(DS·NS)·지원휴무(SC)·지원(SP)이 아닌 사람 수
 const SP_WORK = new Set(['D','N','DN','ND','DS','NS','SC','SP']);
-function splanTeam(ds, shift){ const want = shift==='night' ? 'N' : 'D'; return ['1','2'].find(t=> scheduledShift(ds, t)===want) || ''; }
+function splanTeam(ds, shift){ const want = shift==='night' && new Date(ds+'T00:00:00').getDay()!==0 ? 'N' : 'D';   // 일요일은 주간 조가 주야(DN) 근무 → 야간도 주간과 같은 조(정원·휴가 인원 같게)
+  return ['1','2'].find(t=> scheduledShift(ds, t)===want) || ''; }
 function splanAuto(ds, shift){
   const team = splanTeam(ds, shift), list = team ? employees.filter(e=> String(e.team||'')===team) : [];
   let off = 0;
