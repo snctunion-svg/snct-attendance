@@ -785,6 +785,13 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 /* 휴대폰 세로: 시트 두 개(근태 집계 / 월별 근태) — 단추로 하나씩 */
 .cmbPhTop{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;margin:0 0 8px;}
 .cmbPhTop .phT{font-size:14px;white-space:nowrap;margin-right:1px;}
+/* 휴대폰 날짜 칸(dwFix): 원래 글자는 숨기고 위에 같은 글자를 겹쳐 보여 줌 — 안드로이드·아이폰 같은 모양 */
+.dWrap{position:relative;display:inline-flex;align-items:stretch;vertical-align:middle;}
+.dWrap > input.dwOn{color:transparent !important;-webkit-text-fill-color:transparent !important;}
+.dWrap > input.dwOn::-webkit-datetime-edit{opacity:0;}
+.dWrap > input.dwOn::-webkit-calendar-picker-indicator{opacity:0;}
+.dwTxt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums;letter-spacing:-.2px;}
+.dwTxt.dwPh{opacity:.45;}
 .cmbPhTop input[type=date]{min-width:0;flex:1 1 0;max-width:118px;height:30px;padding:2px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);box-sizing:border-box;}
 .cmbPhTop .phNav{padding:4px 7px !important;flex:0 0 auto;}
 .cmbPhTop .phV-month .phT{font-size:13px;}
@@ -6130,7 +6137,7 @@ function cmbPhMark(wrap){
   const on = (rp.getBoundingClientRect().left - wrap.getBoundingClientRect().left) < wrap.clientWidth / 2 ? 'month' : 'stat';
   if(on !== cmbPhoneTab){ cmbPhoneTab = on; try{ localStorage.setItem('snct_cmb_tab', on); }catch(e){} }
   document.querySelectorAll('.cmbTab').forEach(b=> b.classList.toggle('on', b.dataset.tab===on));
-  const top = document.querySelector('.cmbPhTop'); if(top && top.dataset.on !== on) top.dataset.on = on;
+  const top = document.querySelector('.cmbPhTop'); if(top && top.dataset.on !== on){ top.dataset.on = on; requestAnimationFrame(()=>{ try{ dwFix(top); }catch(e){} }); }   // 보이게 된 날짜 칸 글자 폭 맞춤
 }
 function fitCombinedJoin(wrap){
   { const tl = document.getElementById('cmbTail'); if(tl) tl.style.width = '0px'; }
@@ -11779,7 +11786,60 @@ document.addEventListener('change', (e)=>{
   }
 });
 
-{ const _r0 = render; render = function(){ _r0(); try{ colNavUpdate(); }catch(e){} }; }   // 화면이 바뀔 때 ◀ ▶ 화살표 보이기/숨기기
+{ const _r0 = render; render = function(){ _r0(); try{ colNavUpdate(); }catch(e){} }; }
+// ===== 휴대폰 날짜 칸: 안드로이드·아이폰 똑같이 "2026.11.09"로 보이게 =====
+//  안드로이드 크롬은 칸이 좁으면 "2026. 11." 처럼 일이 잘려 보임 → 터치 기기에서는 원래 글자를 숨기고 같은 모양의 글자를 위에 겹쳐 보여 줌
+//  (칸을 누르면 원래 달력이 그대로 열림 — 저장·동작은 그대로)
+const DW_TOUCH = (()=>{ try{ return matchMedia('(pointer:coarse)').matches; }catch(e){ return false; } })();
+function dwText(inp){
+  const v = inp.value || '';
+  if(inp.type==='month'){ const m = v.match(/^(\d{4})-(\d{2})$/); return m ? `${m[1]}.${m[2]}` : ''; }
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? [`${m[1]}.${m[2]}.${m[3]}`, `${m[1].slice(2)}.${m[2]}.${m[3]}`, `${Number(m[2])}/${Number(m[3])}`] : '';
+}
+function dwSet(inp){
+  const t = inp._dwT; if(!t) return;
+  const key = inp.value + '|' + inp.clientWidth; if(t._k === key) return; t._k = key;   // 바뀐 게 없으면 손대지 않음(감시 반복 방지)
+  const v = dwText(inp);
+  if(!Array.isArray(v)){ t.textContent = v || '날짜'; t.classList.toggle('dwPh', !v); return; }
+  t.classList.remove('dwPh');
+  // 칸 폭에 맞는 가장 긴 표기: 2026.11.09 → 26.11.09 → 11/9
+  const avail = inp.clientWidth - 6;
+  t.innerHTML = '<span class="dwIn"></span>'; const sp = t.firstChild;
+  sp.textContent = v[0];
+  // 칸이 좁으면 글자를 조금 줄여서라도 '2026.11.09' 그대로(기기마다 같은 모양). 너무 작아지면(10px 미만) 26.11.09
+  const fs = parseFloat(t.style.fontSize) || 13; sp.style.fontSize = '';
+  if(avail > 0 && sp.offsetWidth > avail){ const f = Math.floor(fs * avail / sp.offsetWidth * 10) / 10;
+    if(f >= 10) sp.style.fontSize = f + 'px'; else { sp.textContent = v[1]; if(sp.offsetWidth > avail) sp.style.fontSize = Math.max(8, Math.floor(fs * avail / sp.offsetWidth * 10) / 10) + 'px'; } }
+}
+function dwFix(root){
+  if(!DW_TOUCH) return;
+  (root || document).querySelectorAll('input[type=date],input[type=month]').forEach(inp=>{
+    if(inp._dwT){ dwSet(inp); return; }
+    if(!inp.isConnected || !inp.getClientRects().length) return;   // 숨은 칸(탭 뒤 등)은 보일 때 감쌈 — 숨은 채로 감싸면 칸 폭이 틀어짐
+    const cs = getComputedStyle(inp), par = inp.parentElement; if(!par) return;
+    const pcs = getComputedStyle(par), flexItem = /flex/.test(pcs.display);
+    const w = document.createElement('span'); w.className = 'dWrap';
+    if(flexItem){ w.style.flex = cs.flex; w.style.minWidth = cs.minWidth==='auto' ? '0' : cs.minWidth; w.style.maxWidth = cs.maxWidth; w.style.alignSelf = cs.alignSelf; w.style.display = 'flex'; }
+    else if(cs.display==='block' || cs.width === pcs.width){ w.style.display = 'block'; }
+    w.style.margin = cs.margin;
+    par.insertBefore(w, inp); w.appendChild(inp);
+    if(flexItem || w.style.display==='block'){ inp.style.width = '100%'; inp.style.maxWidth = 'none'; inp.style.margin = '0'; if(flexItem) inp.style.flex = '1 1 auto'; }
+    else inp.style.margin = '0';
+    const t = document.createElement('span'); t.className = 'dwTxt';
+    t.style.fontSize = cs.fontSize; t.style.fontWeight = cs.fontWeight; t.style.color = cs.color;
+    w.appendChild(t); inp._dwT = t; inp.classList.add('dwOn');
+    dwSet(inp);
+  });
+}
+if(DW_TOUCH){
+  document.addEventListener('input', ev=>{ const x = ev.target; if(x && x._dwT) dwSet(x); }, true);
+  document.addEventListener('change', ev=>{ const x = ev.target; if(x && x._dwT) dwSet(x); }, true);
+  let dwQ = 0; const dwRun = ()=>{ dwQ = 0; try{ dwFix(); }catch(e){} };
+  try{ new MutationObserver(()=>{ if(!dwQ) dwQ = requestAnimationFrame(dwRun); }).observe(document.body, {childList:true, subtree:true}); }catch(e){}
+  window.addEventListener('resize', ()=>{ if(!dwQ) dwQ = requestAnimationFrame(dwRun); });
+  document.addEventListener('click', ()=>{ if(!dwQ) dwQ = requestAnimationFrame(dwRun); }, true);   // 탭 전환으로 숨어 있던 날짜 칸이 보일 때 글자 폭 다시 맞춤
+  setTimeout(dwRun, 0);
+}   // 화면이 바뀔 때 ◀ ▶ 화살표 보이기/숨기기
 /* ========================= 내비게이션/모바일 ========================= */
 if(SITE_UNION){   // SNCT UNION: 메뉴는 조합원 명부·양식·규약&규정·취업&업무만
   document.getElementById('nav').innerHTML = '<div class="navttl">SNCT UNION</div>' + WORK_SHEETS.map(([id,ic,l])=> `<a data-view="${id}" data-role-section="union"><span class="ic">${ic}</span>${l}</a>`).join('');
