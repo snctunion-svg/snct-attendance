@@ -6806,13 +6806,14 @@ function slipCalc(e, start, end){
       // 2026년 9월 명세서(전재필)와 대조한 규칙:
       //  · 근태코드가 D·N(근무 없는 날 다른 조 지원)인 날의 지원 OT → '타조지원'
       //  · 그 밖의 지원(DN·ND 연장 지원, SC 지원휴무 등) → 연장근로·평일야간에 포함
-      //  · SC(지원휴무) 지원일은 하루 8시간 × 시급을 '특근수당'으로 추가
       const code = effCode(rec, ds, String(e.name||'').trim());
       if(code==='D' || code==='N' || code==='DS' || code==='NS') supPrem += p.premium;
       else { wkNight += p.supNight; wkGroupPrem += p.premium; }
-      if(code==='SC') tkDays++;
     }
     meal += m; wkGroupPrem += m;
+    // 특근수당 = 명절연휴기간 근로수당(명세서 산출내역 기준): 설날·추석 연휴에 근무(본근무·지원)한 날 × 8시간 × 시급
+    //  (예전엔 SC 지원휴무일로 계산했지만, 김치수 9월 명세서는 SC 날이 있어도 특근수당 없음 → 명절 근무일로 바꿈)
+    if((c.valid || p.valid) && /추석|설날/.test(holidays[ds] || '')) tkDays++;
   }
   const real = wk + ho + sp + meal, guar = wk + Math.max(ho,60) + Math.max(sp,30) + meal;
   return {guar, diff: Math.max(guar-real,0), extHours: Math.max((wkGroupPrem - wkNight*0.5)/1.5, 0), wkNight, holWork, holOT, holNight, holExtra, supPrem, tkDays};
@@ -6834,7 +6835,7 @@ function slipAmounts(e, start, end){
     holN: r10(pc.holNight*rate*0.5),                      // 휴일야간근로수당
     etc: r10(pc.diff*rate),                               // 기타수당(보전 OT − 실 OT)
     sup: Math.ceil(pc.supPrem*rate/10)*10,                // 타조지원(D·N 지원일 OT) — 10원 올림(9월 명세서: 661,312.5 → 661,320)
-    tk: r10(pc.tkDays*8*hourly)                           // 특근수당(SC 지원휴무일 × 8시간 × 시급)
+    tk: r10(pc.tkDays*8*hourly)                           // 특근수당(명절연휴 근무일 × 8시간 × 시급)
   };
   // 기타수당 = 보전 OT 총액 − 다른 OT 수당 합계(10원 단위 차이를 기타수당에서 맞춤 — 9월 명세서와 같은 방식)
   if(pc.diff > 0) a.etc = Math.max(r10(pc.guar*rate) - (a.ext + a.night + a.hol + a.holOT + a.holN + a.sup), 0);
