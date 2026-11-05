@@ -3172,8 +3172,9 @@ function preSupportRec(rec, dateStr){
   if(toDec(rec.checkIn) > 14) return null;
   // 교육·노조업무처럼 주간 본근무로 인정되는 날(원본 엑셀은 근무 칸에 D 체크)은 선지원이 아님
   if(['E','UJ','EC'].includes(rec.statusCode)) return null;
-  if(rec.statusCode && (rec.workCode==='D' || rec.workCode==='DN')) return null;
-  { const sc = rec.statusCode || rec.attCode || ''; if(dateStr >= SUP_DSNS_FROM && (sc==='D' || sc==='DN' || sc==='N')) return null; }   // 10/12부터 선지원은 DS·NS로만 — 근태가 D(근무 바꿈)인 날은 본근무로 계산(지원 안 갔는데 지원으로 잡히던 문제)
+  // 근무표가 D·DN이라도 근태가 D·DN(근무 바꿈)이면 회사는 선지원으로 계산(유재현 10월 명세서 대조) — 그 밖의 근태(교육 등)만 본근무
+  if(rec.statusCode && !['D','DN'].includes(rec.statusCode) && (rec.workCode==='D' || rec.workCode==='DN')) return null;
+  // (10/29에 넣었던 '근태 D·DN이면 본근무' 예외는 되돌림 — 회사는 야간 편성자가 주간 출근한 날을 선지원으로 계산: 유재현 10월 명세서 대조)
   const sched = rec.baseShift || ((typeof empScheduled==='function' && rec.employeeId) ? empScheduled(rec.employeeId, dateStr) : '');
   if(sched !== 'N') return null;
   return Object.assign({}, rec, {supportIn: rec.checkIn, supportOut: rec.checkOut, checkIn: '', checkOut: ''});
@@ -6807,7 +6808,13 @@ function slipCalc(e, start, end){
       //  · 근태코드가 D·N(근무 없는 날 다른 조 지원)인 날의 지원 OT → '타조지원'
       //  · 그 밖의 지원(DN·ND 연장 지원, SC 지원휴무 등) → 연장근로·평일야간에 포함
       const code = effCode(rec, ds, String(e.name||'').trim());
-      if(code==='D' || code==='N' || code==='DS' || code==='NS') supPrem += p.premium;
+      const preD = !!preSupportRec(rec, ds) && (code==='D' || code==='DN'); // 근무 바꿈(근태 D·DN) 선지원 → 연장근로 칸(회사 명세서: 타조지원 아님)
+      if(!preD && (code==='D' || code==='N' || code==='DS' || code==='NS')) supPrem += p.premium;
+      else if(k==='SU' || k==='H'){
+        // 일요일·공휴일 지원(DN·ND·SC 등) → 회사 명세서처럼 휴일연장(×2)·휴일야간 칸으로. 본조보상(×1.5)만 연장근로 칸(금액 합계는 그대로)
+        const hj = (Number(rec.honjoComp)||0)*1.5;
+        holNight += p.supNight; holOT += Math.max((p.premium - p.supNight*0.5 - hj)/2, 0); wkGroupPrem += hj;
+      }
       else { wkNight += p.supNight; wkGroupPrem += p.premium; }
     }
     meal += m; wkGroupPrem += m;
