@@ -792,6 +792,8 @@ td.daycell.filled{border-color:rgba(255,255,255,.7);}
 .dWrap > input.dwOn::-webkit-calendar-picker-indicator{opacity:0;}
 .dwTxt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums;letter-spacing:-.2px;}
 .dwTxt.dwPh{opacity:.45;}
+.leaveGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
+@media (max-width:480px){ .leaveGrid{grid-template-columns:repeat(3,1fr);} }   /* 연간 누계(정기·연차·특별·근속·병가·휴직): 휴대폰은 3칸씩 두 줄 */
 .cmbPhTop input[type=date]{min-width:0;flex:1 1 0;max-width:118px;height:30px;padding:2px 4px;font-size:12px;border:1px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);box-sizing:border-box;}
 .cmbPhTop .phNav{padding:4px 7px !important;flex:0 0 auto;}
 .cmbPhTop .phV-month .phT{font-size:13px;}
@@ -2640,7 +2642,7 @@ const CODE_LABELS = {
   FC:'고정주휴', MC:'이동주휴', FCH:'고정주휴_공휴', MCH:'이동주휴_공휴', MCS:'이동주휴_일요',
   SC:'지원휴무', SP:'지원패스', VP:'휴무선택', VA:'휴가연차', UJ:'노조업무', E:'교육', EC:'기타',
   // 원본 근태코드표 기준 연가 코드 (TL=휴직)
-  RV:'정기휴가', AV:'연차휴가', LS:'장기근속', SL:'병가휴가', TL:'휴직'
+  RV:'정기휴가', AV:'연차휴가', VS:'특별휴가', LS:'장기근속', SL:'병가휴가', TL:'휴직'
 };
 const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 // 코드 색상 규칙: N,ND,NS,FCH,MCH,MCS,VP,VA는 빨간색, 나머지는 검은색
@@ -2650,7 +2652,7 @@ const STATUS_CODE_LIST = Object.keys(CODE_LABELS);
 //  · 노란 배경 + 검은 글씨: MC   · 파란 배경 + 흰 글씨: FC
 //  · 분홍 배경 + 빨간 글씨: SP   · 흐린 회색 배경 + 진한 회색 글씨: SC
 //  · 나머지(D·N·DN·ND·DS·UJ·E·EC·CK 등): 검은 글씨만
-const RED_CODES = new Set(['FCH','MCH','MCS','AV','RV','LS','SL','TL']);
+const RED_CODES = new Set(['FCH','MCH','MCS','AV','RV','VS','LS','SL','TL']);   // VS 특별휴가: 빨간 배경
 // 연장·선지원 코드(ND·DN·DS·NS)는 연한 청록색 배경(근태코드 화면의 색 설정보다 우선)
 const SUP_SKY_CODES = new Set(['ND','DN','DS','NS']);
 const SKY_CODES = new Set([]);
@@ -2681,7 +2683,7 @@ function codeGroup(code){
 const BLACK_ORDER = ['D','N','UJ','E','EC','CK','SV'];
 function codeSortKey(code){
   const gi = CODE_GROUPS.findIndex(g=>g.key===codeGroup(code));
-  const bi = BLACK_ORDER.indexOf(code), ri = ['FCH','MCH','MCS','AV','RV','LS','SL','TL'].indexOf(code), si = ['DN','ND','DS','NS'].indexOf(code);
+  const bi = BLACK_ORDER.indexOf(code), ri = ['FCH','MCH','MCS','AV','RV','VS','LS','SL','TL'].indexOf(code), si = ['DN','ND','DS','NS'].indexOf(code);
   return gi*1000 + (bi>=0 ? bi : ri>=0 ? ri : si>=0 ? si : 500);
 }
 function codeBadge(code){
@@ -2720,7 +2722,7 @@ function excelCode(ds, name){
 function excelSupportHas(ds, name){ return !!excelCode(ds, name); }
 const EXCEL_LEAVE = {"김성용": "251224:AV,260110:RV,260225:RV,260404:RV,260411:RV,260417:RV,260511:AV,260512:AV,260513:AV,260514:AV,260515:AV,260526:AV,260527:AV,260528:AV,260613:AV,260624:AV,260625:AV,260722:AV,260723:AV,260724:AV,260728:AV,260904:AV,260905:AV,260919:AV,260921:AV", "김치수": "251226:AV,251231:AV,260103:RV,260107:RV,260109:RV,260116:RV,260124:RV,260203:AV,260407:AV,260418:LS,260502:LS,260504:LS,260516:LS,260523:AV,260703:AV,260704:AV,260711:AV,260904:AV,260905:AV,260923:AV,260929:AV,260930:AV,261001:AV,261002:AV,261006:AV,261008:AV,261010:AV", "전재필": "251226:AV,260110:RV,260117:RV,260119:RV,260120:RV,260306:RV,260321:AV,260328:AV,260414:LS,260420:LS,260509:LS,260511:LS,260620:AV,260622:AV,260724:AV,260803:AV,260808:AV,260818:AV,260819:AV,260820:AV,260821:AV,260905:AV,260917:AV,260918:AV,261024:AV", "남궁영호": "251226:AV,260225:RV,260226:RV,260502:RV,260504:RV,260516:RV,260523:LS,260613:AV,260704:LS,260706:LS,260708:LS,260806:AV,260807:AV,260822:AV,260918:AV,261013:AV,261014:AV,261015:AV,261016:AV,261026:AV,261027:AV", "서인기": "251227:AV,260117:RV,260413:RV,260414:RV,260415:RV,260416:RV,260417:AV,260502:AV,260504:AV,260516:AV,260718:AV,260725:AV,260801:AV,260803:AV,260804:AV,260807:AV,260818:AV,260821:AV,260919:AV,261002:AV,261010:AV,261017:AV", "노인규": "251227:AV,251229:AV,251230:AV,251231:AV,260107:RV,260203:RV,260204:RV,260206:RV,260530:RV,260707:AV,260708:AV,260716:AV,260919:AV,261006:AV,261013:AV,261014:AV,261015:AV,261016:AV", "김기영": "251229:AV,251230:AV,260102:RV,260103:RV,260227:RV,260318:RV,260319:AV,260320:AV,260423:RV,260424:LS,260527:LS,260704:AV,260727:LS,260728:LS,260730:AV,260829:AV,261110:AV,261111:AV", "김의섭": "251231:AV,260220:RV,260321:RV,260325:RV,260331:RV,260425:RV,260508:AV,260707:AV,260731:AV,260801:LS,260803:LS,260804:LS,260805:LS,260820:AV,260821:AV,260910:AV,260911:AV", "김태화": "260102:RV,260124:RV,260131:RV,260321:RV,260411:RV,260421:AV,260424:AV,260509:AV,260620:LS,260627:LS,260804:LS,260814:LS,260912:AV,261002:AV", "김태석": "260107:RV,260108:RV,260317:RV,260321:RV,260418:RV,260509:LS,260620:LS,260622:LS,260701:LS,260805:AV,260806:AV,260807:AV,260818:AV,260819:AV,260907:AV,260908:AV,260919:AV", "최윤수": "260110:RV,260409:RV,260414:LS,260415:LS,260416:LS,260417:LS,260608:RV,260620:RV,260914:RV,261020:AV,261021:AV", "이동화": "260119:RV,260120:RV,260121:RV,260204:RV,260205:RV,260214:AV,260707:AV,260708:AV,260801:AV,260803:AV,260804:AV,260918:AV,260923:AV,261006:AV,261013:AV,261014:AV,261015:AV,261016:AV", "최두영": "260121:RV,260122:RV,260516:RV,260919:RV", "최현철": "260126:AV,260127:AV,260128:AV,260224:AV,260225:AV,260304:AV,260504:AV,260509:AV,260722:AV,260724:AV,260725:AV,260826:AV", "박무근": "260915:RV", "선종화": "260219:RV,260220:RV,260223:RV,260224:RV,260225:RV,260312:AV,260313:AV,260319:AV,260320:AV,260323:AV,260324:AV,260325:AV,260326:AV,260327:AV,260330:AV,260331:AV,260406:AV,260623:SV,260624:SV,260625:SV,260626:SV,260627:SV,260628:SV,260629:SV,260713:LS,260714:LS,260715:LS,260716:LS,260921:AV,260922:AV,260923:AV,261019:AV,261106:AV,261120:AV,261204:AV,261218:AV,261230:AV,261231:AV", "우창기": "260126:RV,260127:RV,260128:RV,260129:RV,260130:RV,260417:AV,260623:AV,260720:AV,260727:SV,260728:SV,260729:AV,260730:AV,260731:AV,260814:AV,260824:AV,260912:AV,260914:AV", "유재선": "260324:RV,260325:RV,260326:RV,260407:RV,260522:LS,260618:CK,260619:RV,260623:LS,260718:LS,260919:LS,261020:LS", "임성현": "260310:RV,260311:RV,260324:RV,260325:RV,260326:RV,260406:AV,260408:AV,260409:AV,260508:AV,260509:AV,260619:AV,260623:AV,260903:AV,260905:AV,260907:AV,260908:AV,260918:AV,261006:CK", "고훈희": "251231:AV,260103:RV,260131:RV,260214:RV,260227:RV,260228:RV,260314:AV,260323:AV,260328:AV,260409:AV,260411:AV,260425:AV,260504:AV,260507:AV,260509:AV,260519:AV,260522:AV,260605:AV,260616:AV,260620:AV,260704:AV,260718:AV,260731:LS,260801:LS,260813:LS,260814:LS,261007:AV,261008:AV,261107:AV,261119:AV,261121:AV,261204:AV,261218:AV,261231:AV", "강대정": "260224:RV,260225:RV,260226:RV,260227:RV,260228:RV,260423:CK,260512:AV,260513:AV,260514:AV,260515:AV,260825:AV,260826:AV,260827:AV,260828:AV,260829:AV,261202:AV,261203:AV,261204:AV", "김재천": "251231:AV,260123:RV,260127:RV,260128:RV,260129:RV,260130:RV,260131:AV,260211:AV,260214:AV,260225:AV,260304:AV,260418:LS,260427:LS,260511:LS,260601:AV,260602:AV,260623:AV,260625:LS,260704:AV,260706:AV,260713:AV,260803:AV,260814:AV,260907:AV", "윤성하": "260228:RV,260321:RV,260323:RV,260324:RV,260325:RV,260326:AV,260404:AV,260406:AV,260629:AV,260630:AV,260728:AV,260729:AV,260730:AV,260811:AV,260812:AV", "황대영": "251230:AV,251231:AV,260209:RV,260210:RV,260227:RV,260228:RV,260314:RV,260526:AV,260625:AV,260629:AV,260706:AV,260718:AV,260810:AV,260908:AV,260909:AV,260911:AV,260921:AV,260922:AV,261008:AV", "홍윤택": "260122:RV,260316:RV,260317:RV,260318:RV,260319:RV,260507:CK,260508:LS,260624:LS,260625:LS,260626:LS,260803:AV,261008:AV", "강위상": "260214:RV,260327:SV,260328:SV,260404:RV,260605:RV,260620:RV,260623:RV,260713:CK,260727:AV,260728:AV,260730:AV", "김세중": "260131:RV,260206:RV,260207:RV,260209:RV,260210:RV,260211:AV,260321:AV,260523:AV,260602:CK,260620:AV,260623:AV,260627:AV,260729:AV,260731:AV,260801:AV,260806:AV,260813:AV,260909:AV", "박종국": "251229:AV,251230:AV,251231:AV,260117:RV,260126:RV,260330:RV,260331:RV,260523:RV,260615:CK,260623:AV,260702:AV,260703:AV,260704:AV,260718:AV,260908:AV", "유재현": "251222:AV,260129:RV,260304:RV,260316:RV,260317:RV,260321:RV,260323:AV,260324:AV,260325:AV,260413:CK,260519:AV,260520:AV,260521:AV,260522:AV,260723:AV,260724:AV,261016:AV,261017:AV,261019:AV,261020:AV,261021:AV,261022:AV,261023:AV,261024:AV", "김성일": "260128:RV,260205:RV,260206:RV,260312:RV,260402:RV,260411:AV,260515:LS,260529:LS,260611:AV,260616:LS,260617:LS,260715:AV,260902:AV,260904:AV,260908:AV,260914:AV,260915:AV,260930:AV"};
 // 개인별 연가 누계(성명 클릭 팝업): 원본 '정기·연차·근속·병가' 표와 같은 방식(시작일부터 1년)
-const LEAVE_TYPES = [['RV','정기'],['AV','연차'],['LS','근속'],['SL','병가'],['TL','휴직']];
+const LEAVE_TYPES = [['RV','정기'],['AV','연차'],['VS','특별'],['LS','근속'],['SL','병가'],['TL','휴직']];
 const LEAVE_SET = new Set(LEAVE_TYPES.map(x=>x[0]));
 let _excelLeaveMap = null;
 function excelLeave(ds, name){
@@ -2941,7 +2943,7 @@ function renderLeaveModal(){
         <button class="btn ghost sm" id="leaveNextYear">▶</button>
         <span class="hint" style="margin:0;">${leaveYear}-01-01 ~ ${leaveYear}-12-31</span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">${cells}</div>
+      <div class="leaveGrid">${cells}</div>
     </div>
   </div>`;
 }
@@ -2996,6 +2998,9 @@ function excelAttRec(r, empId){
 // 마감·반영 표시만 있고 출퇴근·근태 내용이 없는 기록(예전 버전 조장 마감이 원본 엑셀 날짜에 만든 빈 기록) → 원본 내용을 밑에 깔아서 보여 줌
 const ATT_META = new Set(['date','employeeId','team','leaderLock','dayClosed','otHold','updatedAt']);
 const attBareDocs = {};
+const attRawDocs = {};   // 클라우드에 실제로 저장된 기록(빠진 칸 확인용)
+// 원본(엑셀) 날짜에 예전 버전이 일부 칸만 저장한 기록 → 저장 안 된(없는) 칸은 원본 값으로 채움. 지운 칸('' 저장)은 그대로 둠
+const ATT_EMB_FIELDS = ['checkIn','checkOut','supportIn','supportOut','honjoComp','tajoComp','jochul','seokchul','jungsik','yasik','extCode','manguen','attCode','baseShift','workCode','statusCode'];
 function attIsBare(d){ return !!d && Object.keys(d).every(k=> ATT_META.has(k) || !d[k] || (k==='workCode' && d[k]==='OFF')); }
 function mergeExcelAtt(ym){
   if(typeof employees==='undefined' || !employees.length) return;
@@ -3006,6 +3011,11 @@ function mergeExcelAtt(ym){
     const ds = '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6), key = ds+'_'+id;
     if(!attStore[key] || attStore[key]._emb) attStore[key] = normAtt(excelAttRec(r, id));
     else if(attBareDocs[key] && attIsBare(attStore[key])) attStore[key] = normAtt(Object.assign(excelAttRec(r, id), attBareDocs[key], {_emb:true}));   // 빈 기록 + 원본 → 원본 내용 살림(마감 표시는 그대로)
+    else if(attRawDocs[key]){   // 일부 칸만 있는 기록: 없는 칸만 원본으로 채움
+      const raw = attRawDocs[key], ex = excelAttRec(r, id), add = {};
+      ATT_EMB_FIELDS.forEach(f=>{ if(!(f in raw) && ex[f]!==undefined && ex[f]!=='' && ex[f]!==false) add[f] = ex[f]; });
+      if(Object.keys(add).length) attStore[key] = normAtt(Object.assign({}, attStore[key], add, {_fill:add}));
+    }
   });
 }
 function hasExcelAtt(ds, name){ const list = excelAttIndex().get(ds.slice(0,7)); return !!(list && list.some(([n, r])=> n===name && '20'+r[0].slice(0,2)+'-'+r[0].slice(2,4)+'-'+r[0].slice(4,6)===ds)); }
@@ -3123,7 +3133,7 @@ function quickTimeButtons(name, options, curVal){
 }
 // 토요일 만근 자동 판정 (원본 엑셀 규칙 — 864개 토요일 전부 대조 일치):
 // 그 주 월~금 5일이 모두 '출근(본출근 입력) · 공휴일 · 인정 근태코드' 중 하나면 만근 → 토요일 근무는 특근(SA)
-const MANGUEN_CODES = new Set(['VA','VP','E','FCH','MCH','UJ','LS','SV','CK','AV','RV']);
+const MANGUEN_CODES = new Set(['VA','VP','E','FCH','MCH','UJ','LS','SV','CK','AV','RV','VS']);   // VS 특별휴가도 만근 인정
 function autoManguen(dateStr, empId){
   if(!empId || typeof attStore==='undefined') return false;
   const [y,m,d] = dateStr.split('-').map(Number);
@@ -3173,7 +3183,6 @@ function preSupportRec(rec, dateStr){
   // 교육·노조업무처럼 주간 본근무로 인정되는 날(원본 엑셀은 근무 칸에 D 체크)은 선지원이 아님
   if(['E','UJ','EC'].includes(rec.statusCode)) return null;
   if(rec.statusCode && (rec.workCode==='D' || rec.workCode==='DN')) return null;
-  { const sc = rec.statusCode || rec.attCode || ''; if(dateStr >= SUP_DSNS_FROM && (sc==='D' || sc==='DN' || sc==='N')) return null; }   // 10/12부터 선지원은 DS·NS로만 — 근태가 D(근무 바꿈)인 날은 본근무로 계산(지원 안 갔는데 지원으로 잡히던 문제)
   const sched = rec.baseShift || ((typeof empScheduled==='function' && rec.employeeId) ? empScheduled(rec.employeeId, dateStr) : '');
   if(sched !== 'N') return null;
   return Object.assign({}, rec, {supportIn: rec.checkIn, supportOut: rec.checkOut, checkIn: '', checkOut: ''});
@@ -4151,7 +4160,7 @@ function ensureMonth(ym){
         if(delAt && now - delAt < 8000) return; // 방금 삭제한 기록은 잠깐 무시
         seen.add(d.id);
         const dd = d.data();
-        attStore[d.id] = normAtt(dd);
+        attStore[d.id] = normAtt(dd); attRawDocs[d.id] = dd;
         if(attIsBare(dd)) attBareDocs[d.id] = dd; else delete attBareDocs[d.id];
       });
       Object.keys(attStore).forEach(k=>{ if(k.startsWith(ym) && !seen.has(k)) delete attStore[k]; });
@@ -4547,8 +4556,9 @@ function dbErr(e){
 // 원본(내장) 기록을 처음 고칠 때는 원본 내용 전체를 함께 저장(고치지 않은 칸이 사라지지 않게)
 function withEmbedded(partial){
   const cur = attStore[partial.date+'_'+partial.employeeId];
+  if(cur && !cur._emb && cur._fill) return Object.assign({}, cur._fill, partial);   // 원본으로 채워 보여 주던 칸도 같이 저장(다음부터는 클라우드에 온전히 남음)
   if(!cur || !cur._emb) return partial;
-  const base = Object.assign({}, cur); delete base._emb;
+  const base = Object.assign({}, cur); delete base._emb; delete base._fill;
   return Object.assign(base, partial);
 }
 async function saveAttendance(partial){
@@ -6808,10 +6818,9 @@ function slipCalc(e, start, end){
       //  · 그 밖의 지원(DN·ND 연장 지원, SC 지원휴무 등) → 연장근로·평일야간에 포함
       const code = effCode(rec, ds, String(e.name||'').trim());
       if(code==='D' || code==='N' || code==='DS' || code==='NS') supPrem += p.premium;
-      else if(k==='SU' || k==='H'){
-        // 일요일·공휴일 지원(DN·ND·SC 등) → 회사 명세서처럼 휴일연장(×2)·휴일야간 칸으로. 본조보상(×1.5)만 연장근로 칸(금액 합계는 그대로)
-        const hj = (Number(rec.honjoComp)||0)*1.5;
-        holNight += p.supNight; holOT += Math.max((p.premium - p.supNight*0.5 - hj)/2, 0); wkGroupPrem += hj;
+      else if(k==='SU' || k==='H'){   // 일요일·공휴일 지원(DN·ND·SC 등) → 휴일연장(×2)·휴일야간 — 유재현 10월 명세서: 휴일 지원 8시간이 휴일연장으로 들어감
+        const hj = Number(rec.honjoComp)||0;
+        holOT += Math.max((p.premium - p.supNight*0.5 - hj*1.5) / 2, 0); holNight += p.supNight; wkGroupPrem += hj*1.5;
       }
       else { wkNight += p.supNight; wkGroupPrem += p.premium; }
     }
@@ -7181,7 +7190,7 @@ function fcaCranes(a0, z0){
 }
 // 급여월(전달 26일 ~ 이번 달 25일) 키
 function fcaPayKey(ds){ let [y,m,d] = ds.split('-').map(Number); if(d >= 26){ m++; if(m>12){ m=1; y++; } } return `${y}-${String(m).padStart(2,'0')}`; }
-const FCA_OFF = {AV:'연차', VP:'휴가', E:'교육', LS:'병가', UJ:'노조', SC:'지원휴무', RV:'예비군', CK:'건강검진', SV:'경조', MC:'유동휴무', MCH:'유동휴무', MCS:'유동휴무', FC:'고정휴무', FCH:'고정휴무'};
+const FCA_OFF = {AV:'연차', VP:'휴가', E:'교육', LS:'병가', UJ:'노조', SC:'지원휴무', RV:'예비군', VS:'특별휴가', CK:'건강검진', SV:'경조', MC:'유동휴무', MCH:'유동휴무', MCS:'유동휴무', FC:'고정휴무', FCH:'고정휴무'};
 // 2) 분석
 function fcaAnalyze(){
   const names = Object.keys(EXCEL_CODES);
