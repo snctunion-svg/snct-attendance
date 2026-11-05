@@ -9367,7 +9367,7 @@ function pageCodes(){
   }).join('');
   const wcRows = rows, scRows = '';
   const hiddenList = Array.from(hiddenCodes).filter(c=>!FORCED_HIDDEN.includes(c));
-  const hiddenRow = hiddenList.length ? `
+  const hiddenRow = false && hiddenList.length ? `   // 숨긴 코드 칸은 화면에 안 보이게(요청)
   <div class="panel">
     <h3>숨긴 코드 (${hiddenList.length}개)</h3>
     <p class="hint">삭제한 코드예요. 다시 쓰려면 복원하세요.</p>
