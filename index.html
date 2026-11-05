@@ -6798,6 +6798,14 @@ function renderPayPw(){
     <div class="pwBtns"><button class="pwOk" id="payPwOk" disabled>파일 열기</button><button class="pwNo" id="payPwNo">취소</button></div>
   </div></div>`;
 }
+// 보전수당(기타수당) — 관리팀 회신(2026-11-03, 김치수 9월) 기준
+//  휴일: (60 − 휴일 OT 가산시간) ÷ 1.5 → 소수점 둘째 자리 이하 버림(0.1시간 단위)   예) (60−9.5)÷1.5 = 33.66 → 33.6
+//  지원: (30 − 지원 OT 가산시간) ÷ 1.5 → 같은 방식으로 버림
+//  금액 = (휴일 보전시간 + 지원 보전시간) × 1.5 × 통상시급, 10원 미만 버림   예) 33.6 × 1.5 × 19,367 = 976,096.8 → 976,090
+//  식사연장은 보전 OT에 넣지 않음
+function guarCut(gap){ return gap > 0 ? Math.floor(gap / 1.5 * 10 + 1e-7) / 10 : 0; }
+function guarHours(ho, sp){ return guarCut(60 - ho) + guarCut(30 - sp); }
+function guarAmount(ho, sp, rate){ const h = guarHours(ho, sp); return h > 0 && rate ? Math.floor(h * 1.5 * rate / 10 + 1e-7) * 10 : 0; }
 // 기존에 2023년 2월 명세서로 대조 확인한 계산(payCalc)과 같은 방식 — 월별 OT현황에 불러온 기록을 사용
 function slipCalc(e, start, end){
   let wk=0, ho=0, sp=0, meal=0, holWork=0, holOT=0, holNight=0, holExtra=0, wkNight=0, wkGroupPrem=0, supPrem=0, tkDays=0;
@@ -6837,7 +6845,7 @@ function slipCalc(e, start, end){
       if(computeDaily(rec, ds).valid || computeSupportDaily(rec, ds).valid) tkDays++;
     } }
   const real = wk + ho + sp + meal, guar = wk + Math.max(ho,60) + Math.max(sp,30) + meal;
-  return {guar, diff: Math.max(guar-real,0), extHours: Math.max((wkGroupPrem - wkNight*0.5)/1.5, 0), wkNight, holWork, holOT, holNight, holExtra, supPrem, tkDays};
+  return {guar, diff: Math.max(guar-real,0), ho, sp, guarH: guarHours(ho, sp), extHours: Math.max((wkGroupPrem - wkNight*0.5)/1.5, 0), wkNight, holWork, holOT, holNight, holExtra, supPrem, tkDays};
 }
 // 한 사람의 한 달(근무기간 start~end) 급여 계산 — 급여명세서·장비 급여 관리가 같이 씀
 function slipAmounts(e, start, end){
@@ -6854,12 +6862,11 @@ function slipAmounts(e, start, end){
     hol: r10((pc.holWork*1.5 + pc.holExtra)*rate),        // 휴일근로수당
     holOT: r10(pc.holOT*rate*2),                          // 휴일연장근로수당
     holN: r10(pc.holNight*rate*0.5),                      // 휴일야간근로수당
-    etc: r10(pc.diff*rate),                               // 기타수당(보전 OT − 실 OT)
+    etc: guarAmount(pc.ho, pc.sp, rate),                  // 기타수당(보전수당) — 관리팀 회신 규칙(0.1시간 버림·10원 버림)
     sup: Math.ceil(pc.supPrem*rate/10)*10,                // 타조지원(D·N 지원일 OT) — 10원 올림(9월 명세서: 661,312.5 → 661,320)
     tk: r10(pc.tkDays*8*hourly)                           // 특근수당(명절연휴 근무일 × 8시간 × 시급)
   };
   // 기타수당 = 보전 OT 총액 − 다른 OT 수당 합계(10원 단위 차이를 기타수당에서 맞춤 — 9월 명세서와 같은 방식)
-  if(pc.diff > 0) a.etc = Math.max(r10(pc.guar*rate) - (a.ext + a.night + a.hol + a.holOT + a.holN + a.sup), 0);
   a.pos = Number(p.posAllow)||0; a.tech = Number(p.techAllow)||0; // 급여관리의 직책수당·기술수당(매달 정액)
   const total = a.base + a.tenure + a.pos + a.tech + a.ext + a.night + a.hol + a.holOT + a.holN + a.etc + a.sup + a.tk;
   const ded = {}; PAY_DED.forEach(([k])=>{ ded[k] = dedAmount(payDedRates[k], total); });
@@ -11588,7 +11595,7 @@ function payAmounts(e, start, end){
     hol: rate ? round10((pc.holWork*1.5 + pc.holExtra)*rate) : 0,
     holOT: rate ? round10(pc.holOT*rate*2) : 0,
     holN: rate ? round10(pc.holNight*rate*0.5) : 0,
-    etc: rate ? round10(pc.diff*rate) : 0
+    etc: guarAmount(pc.ho, pc.sp, rate)   // 보전수당: 관리팀 회신 규칙
   };
   a.ot = a.ext + a.night + a.hol + a.holOT + a.holN + a.etc;
   const fixed = PAY_FIXED.reduce((x,[k])=> x + (Number(info.p[k])||0), 0);
@@ -11657,7 +11664,7 @@ function payCalc(e, start, end){
   const real = wk + ho + sp + meal;
   const guar = wk + Math.max(ho,60) + Math.max(sp,30) + meal;
   const extHours = Math.max((wkGroupPrem - wkNight*0.5) / 1.5, 0);
-  return {real, guar, diff: Math.max(guar-real,0), extHours, wkNight, holWork, holOT, holNight, holExtra};
+  return {real, guar, diff: Math.max(guar-real,0), ho, sp, extHours, wkNight, holWork, holOT, holNight, holExtra};
 }
 function pagePay(){
   if(!payYm){
