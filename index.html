@@ -158,6 +158,18 @@ p.pgsub{margin:0 0 18px;color:var(--text-muted);font-size:12.5px;}
 .pwCell{display:flex;align-items:center;gap:6px;justify-content:center;white-space:nowrap;}
 .pwSt{font-size:12px;font-weight:700;color:var(--text-muted);}
 .pwSt.on{color:#047857;}
+#memberGate{position:fixed;inset:0;z-index:850;background:var(--bg,#f1f5f9);display:flex;align-items:center;justify-content:center;padding:16px;}
+html.mgLocked body{overflow:hidden;}
+#memberGate .mgBox{background:var(--surface,#fff);color:var(--text);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:24px 20px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px;}
+#memberGate .mgLogo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:22px;}
+#memberGate .mgLogo svg{height:30px;width:auto;}
+#memberGate .mgWait{text-align:center;color:var(--muted,#64748b);}
+#memberGate form{display:flex;flex-direction:column;gap:8px;}
+#memberGate label{font-weight:800;color:#be185d;}
+#memberGate input[type=password]{height:44px;font-size:16px;border:1px solid var(--line,#cbd5e1);border-radius:10px;padding:0 12px;}
+#memberGate #mgSubmit{height:44px;font-size:16px;background:#db2777;border-color:#db2777;}
+#memberGate .mgErr{color:var(--warn,#dc2626);font-size:13px;min-height:16px;}
+#memberGate .mgOther{display:flex;gap:8px;justify-content:center;margin-top:4px;}
 .pwHdrBtn{background:#fff !important;color:#be185d !important;border:1px solid #f9a8d4 !important;}
 @media (max-width:700px){ .acctPwBtn .acctLbl{display:none;} } /* 휴대폰: 조장 로그인 비번 단추는 🔑만 */
 .pwDlg{max-width:360px;width:92%;}
@@ -3567,6 +3579,10 @@ const LEADER_TEAM_EMAILS = {'leader1@snct-d40ed.firebaseapp.com':'1', 'leader2@s
 const LEADER_EMAILS = ['snctunion@gmail.com', ...Object.keys(LEADER_TEAM_EMAILS)];   // snctunion@gmail.com = 예전 공용 조장 계정(두 조 모두)
 const UNION_EMAILS = ['union@snct-d40ed.firebaseapp.com'];
 const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
+// 조원(일반모드) 로그인: 비밀번호를 알아야 앱을 볼 수 있음. 권한은 보기 전용과 같음(수정 불가)
+//  Firebase 콘솔 → Authentication → 사용자 추가: member@snct-d40ed.firebaseapp.com / 조원 비밀번호(6자 이상)
+const MEMBER_EMAILS = ['member@snct-d40ed.firebaseapp.com'];
+function isMemberUser(){ return !!currentUser && MEMBER_EMAILS.some(x=> x.toLowerCase()===String(currentUser.email||'').toLowerCase()); }
 const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','pwchange','accident']; // 근태관리 구역 = 배포용(누구나). 근태코드는 조장관리 구역이라 조장·UNION만 // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident','berth','vessel','team','holidays','leaderhub'];
 const UNION_VIEWS  = ['unionhub','workhub','uwmem','uwform','uwregs','uwjobs','unana','settle','uwemp','uwwork','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
@@ -3728,7 +3744,9 @@ function updateStatusBar(){
   if(db && authResolved){
     authHtml = userRole
       ? `<span style="color:${userRole==='union' ? '#be185d' : '#be185d'};font-weight:800;">${userRole==='union' ? '🛡 UNION 모드' : leaderTeam ? `✏️ ${leaderTeam}조 조장` : '✏️ 조장모드'}</span>${userRole==='leader' ? `<button type="button" class="btn sm pwHdrBtn acctPwBtn" id="acctPwBtn" title="조장 로그인 비밀번호 바꾸기">🔑<span class="acctLbl"> 로그인 비번</span></button>` : ''}<button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
-      : (currentUser
+      : (isMemberUser()
+          ? `<span>👥 조원</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#be185d;border-color:#be185d;">UNION</button><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+        : currentUser
           ? `<span style="color:var(--warn);">권한 없는 계정</span><button type="button" class="btn ghost sm" id="logoutBtn">로그아웃</button>`
           : SITE_UNION ? `<button type="button" class="btn sm" id="loginUnionBtn" style="background:#be185d;border-color:#be185d;">UNION 로그인</button>`
           : `<span>👁 보기 전용</span><button type="button" class="btn sm pwHdrBtn" id="pwHdrBtn">비번</button><button type="button" class="btn sm" id="loginLeaderBtn">조장관리</button><button type="button" class="btn sm" id="loginUnionBtn" style="background:#be185d;border-color:#be185d;">UNION</button>`);
@@ -3739,7 +3757,50 @@ function updateStatusBar(){
   const pb = document.getElementById('pwHdrBtn'); if(pb) pb.onclick = ()=> openPwDialog();
   const ab = document.getElementById('acctPwBtn'); if(ab) ab.onclick = ()=> openAcctPwDialog();
   if(lu) lu.onclick = ()=> openLoginDialog('union');
-  if(lo) lo.onclick = ()=> appConfirm('로그아웃할까요? 로그아웃하면 보기 전용이 됩니다.', ()=> fb.authM.signOut(fb.auth));
+  if(lo) lo.onclick = ()=> appConfirm(isMemberUser() ? '로그아웃할까요? 다시 보려면 조원 비밀번호를 넣어야 해요.' : '로그아웃할까요? 로그아웃하면 조원 로그인 화면으로 돌아가요.', ()=> fb.authM.signOut(fb.auth));
+  memberGateUpdate();
+}
+// ===== 조원 로그인 화면: 로그인하지 않으면 앱을 가림(조원·조장관리·UNION 중 하나로 로그인해야 보임) =====
+//  한 번 로그인하면 그 기기에서는 로그아웃할 때까지 계속 로그인 상태
+function memberGateUpdate(){
+  const need = !SITE_UNION && !demoMode && !!db && !currentUser;
+  let g = document.getElementById('memberGate');
+  if(!need){ if(g) g.remove(); document.documentElement.classList.remove('mgLocked'); return; }
+  document.documentElement.classList.add('mgLocked');
+  if(g){ g.querySelector('.mgWait').style.display = authResolved ? 'none' : ''; g.querySelector('form').style.display = authResolved ? '' : 'none'; return; }
+  g = document.createElement('div'); g.id = 'memberGate';
+  g.innerHTML = `<div class="mgBox">
+    <div class="mgLogo">${(document.querySelector('h1 .appLogo')||{}).outerHTML || ''}<b>장비관리</b></div>
+    <div class="mgWait">확인 중…</div>
+    <form id="mgForm" autocomplete="on" style="display:none;">
+      <input type="hidden" name="email" autocomplete="username" value="${esc(MEMBER_EMAILS[0])}">
+      <label for="mgPw">조원 비밀번호</label>
+      <input type="password" id="mgPw" name="pw" autocomplete="current-password" inputmode="numeric" placeholder="비밀번호">
+      <div class="mgErr" id="mgErr"></div>
+      <button type="submit" class="btn" id="mgSubmit">조원 로그인</button>
+      <div class="mgOther"><button type="button" class="btn ghost sm" id="mgLeader">조장관리</button><button type="button" class="btn ghost sm" id="mgUnion">UNION</button></div>
+    </form></div>`;
+  document.body.appendChild(g);
+  g.querySelector('.mgWait').style.display = authResolved ? 'none' : '';
+  g.querySelector('form').style.display = authResolved ? '' : 'none';
+  g.querySelector('#mgLeader').onclick = ()=> openLoginDialog('leader');
+  g.querySelector('#mgUnion').onclick = ()=> openLoginDialog('union');
+  const form = g.querySelector('#mgForm');
+  form.onsubmit = async ev=>{
+    ev.preventDefault();
+    const btn = form.querySelector('#mgSubmit'), err = form.querySelector('#mgErr'), pw = form.querySelector('#mgPw').value;
+    if(!pw){ err.textContent = '비밀번호를 넣으세요.'; return; }
+    btn.disabled = true; err.textContent = '';
+    try{ await fb.authM.signInWithEmailAndPassword(fb.auth, MEMBER_EMAILS[0], pw); showToast('조원으로 로그인했어요.'); }
+    catch(e){
+      const c = e && e.code || '';
+      err.textContent = (c.includes('invalid') || c.includes('wrong-password') || c.includes('user-not-found')) ? '비밀번호가 맞지 않아요.'
+        : c.includes('too-many-requests') ? '시도가 너무 많아요. 잠시 후 다시 해 보세요.'
+        : c.includes('network') ? '인터넷 연결을 확인하세요.' : '로그인 실패: ' + c;
+      btn.disabled = false;
+    }
+  };
+  if(authResolved) setTimeout(()=>{ const p = g.querySelector('#mgPw'); if(p) p.focus(); }, 50);
 }
 // 조장 로그인 비밀번호 바꾸기(급여 명세서 비번과는 별개): 현재 비번 확인 → 새 비번으로 변경. 바꾼 뒤에도 로그인 상태 유지
 function openAcctPwDialog(){
