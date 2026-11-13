@@ -1150,6 +1150,8 @@ body[class*="printing"] .colNav{display:none !important;}
 #dpTable .dpWhoCell input:disabled,#dpTable .dpWhoCell input[readonly]{pointer-events:none;}   /* 보기 전용: 지원자 이름 칸을 눌러도 배차 팝업·음성이 나오게 */
 #dpTable .dpWhoCell{cursor:pointer;}
 #dpTable input.dpSupRO{cursor:pointer;caret-color:transparent;}
+#dpTable input[data-dispatch-sup],#dpTable input[data-dispatch-sup]:disabled{color:#000 !important;-webkit-text-fill-color:#000 !important;opacity:1 !important;}   /* 지원자 이름 검은 글씨(보기 전용·휴대폰도 흐리게 안 보이게) */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) #dpTable input[data-dispatch-sup]{color:#f1f5f9 !important;-webkit-text-fill-color:#f1f5f9 !important;} }
 /* 월별 OT현황 → 이름(두 번째) 누르면: 회사 'OT 발생현황' 화면 양식 팝업 */
 .oeBox{max-width:980px;width:100%;max-height:94vh;margin:0;display:flex;flex-direction:column;padding:0 !important;overflow:hidden;background:#eef2f6 !important;}
 .oeTop{display:flex;align-items:center;gap:8px;padding:10px 12px 0;}
