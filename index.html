@@ -1149,6 +1149,7 @@ body[class*="printing"] .colNav{display:none !important;}
 .otNoBtn{color:var(--accent) !important;text-decoration:underline dotted;}
 #dpTable .dpWhoCell input:disabled,#dpTable .dpWhoCell input[readonly]{pointer-events:none;}   /* 보기 전용: 지원자 이름 칸을 눌러도 배차 팝업·음성이 나오게 */
 #dpTable .dpWhoCell{cursor:pointer;}
+#dpTable input.dpSupRO{cursor:pointer;caret-color:transparent;}
 /* 월별 OT현황 → 이름(두 번째) 누르면: 회사 'OT 발생현황' 화면 양식 팝업 */
 .oeBox{max-width:980px;width:100%;max-height:94vh;margin:0;display:flex;flex-direction:column;padding:0 !important;overflow:hidden;background:#eef2f6 !important;}
 .oeTop{display:flex;align-items:center;gap:8px;padding:10px 12px 0;}
@@ -1974,7 +1975,7 @@ function renderDpWho(){
       <table class="tbl" style="width:100%;font-size:13px;"><tbody>${body}</tbody></table>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;">
         <b style="font-size:14px;">승무 ${fmtH(work)}h${duty ? ` <span style="font-weight:600;color:var(--text-muted);">· 당직 ${fmtH(duty)}h</span>` : ''}${shuttle ? ` <span style="font-weight:600;color:var(--text-muted);">· 셔틀 ${fmtH(shuttle)}h</span>` : ''}</b>
-        <span style="display:flex;gap:6px;align-items:center;">${ttsOk ? `<button class="btn ghost sm" id="dpWhoSpeak" title="이 사람 배차를 소리로 읽어 줘요">🔊 듣기</button>` : ''}<button class="btn ghost sm" id="dpWhoClose">닫기</button></span>
+        <span style="display:flex;gap:6px;align-items:center;">${ttsOk ? `<button class="btn ghost sm" id="dpWhoSpeak" title="이 사람 배차를 소리로 읽어 줘요">🔊 듣기</button>` : ''}${canEdit && document.querySelector('#dpTable input[data-dispatch-sup="'+String(dpWho).replace(/"/g,'')+'"]') ? `<button class="btn ghost sm" id="dpWhoEditName" title="지원자 이름 고치기">✎ 이름</button>` : ''}<button class="btn ghost sm" id="dpWhoClose">닫기</button></span>
       </div>
       ${ttsOk ? `<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="dpWhoAuto"${dpTtsAuto() ? ' checked' : ''}> 이름을 누르면 자동으로 읽기</label>` : ''}
     </div></div>`;
@@ -9731,7 +9732,7 @@ function pageDispatch(){
     return `<tr>
       ${supLabel}
       <td class="dpI dpI2${supName ? ' dpWhoCell' : ''}"${supName ? ` data-dp-who="${esc(supId)}"` : ''}><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름"${auto ? ` data-auto="1" title="근태 ${esc(auto.c)} · 지원 순번 ${supRankOf[auto.e.id] ?? '-'} (자동)"` : ''} style="width:66px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:${auto ? '#0f766e' : 'var(--text)'};"></td>
-      <td class="dpI dpI3${supName ? ' dpWhoCell' : ''}"${supName ? ` data-dp-who="${esc(supId)}"` : ''}>${auto ? codeBadge(auto.c) : ''}</td><td class="dpI dpI4"></td><td class="dpI dpI5${supName ? ' dpWhoCell' : ''}"${supName ? ` data-dp-who="${esc(supId)}"` : ''} data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
+      <td class="dpI dpI3">${auto ? codeBadge(auto.c) : ''}</td><td class="dpI dpI4"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
       ${cells}
     </tr>`;
   }).join('');
@@ -11613,6 +11614,7 @@ function afterRender(){
     const sp = document.getElementById('dpWhoSpeak'); if(sp) sp.onclick = ()=> dpSpeak(window._dpWhoSpeech);
     const au = document.getElementById('dpWhoAuto'); if(au) au.onchange = ()=>{ try{ localStorage.setItem('snct_dp_tts', au.checked ? '1' : '0'); }catch(e){} if(!au.checked) dpSpeakStop(); };
     const cw = document.getElementById('dpWhoClose'); if(cw) cw.onclick = closeW;
+    const en = document.getElementById('dpWhoEditName'); if(en) en.onclick = ()=>{ const id = dpWho; closeW(); const x = document.querySelector('#dpTable input[data-dispatch-sup="'+String(id).replace(/"/g,'')+'"]'); if(x){ x.readOnly = false; x.classList.remove('dpSupRO'); x.focus(); try{ x.select(); }catch(e){} } };
     const sw = document.getElementById('dpWhoScrim'); if(sw) sw.onclick = (ev)=>{ if(ev.target.id==='dpWhoScrim') closeW(); };
   }
   if(dpPop){
@@ -11636,6 +11638,9 @@ function afterRender(){
     x.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); x.blur(); } };
   });
   el.querySelectorAll('[data-dispatch-sup]').forEach(x=>{
+    // 이름이 있는 지원자 칸: 누르면 배차 팝업·음성(이름 고치기는 팝업의 [✎ 이름]). 빈 칸은 바로 입력
+    if(x.value.trim() && !x.disabled){ x.readOnly = true; x.classList.add('dpSupRO'); }
+    x.addEventListener('blur', ()=>{ if(x.value.trim() && !x.disabled){ x.readOnly = true; x.classList.add('dpSupRO'); } });
     x.onblur = ()=>{ if(x.dataset.auto && x.value.trim()===String(x.defaultValue||'').trim()) return; saveDispatchSupportName(dispatchDate, dispatchShift, x.dataset.dispatchSup, x.value.trim()); }; // 자동 이름을 그대로 두면 저장 안 함
   });
 
