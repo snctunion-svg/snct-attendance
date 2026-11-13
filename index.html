@@ -1150,6 +1150,8 @@ body[class*="printing"] .colNav{display:none !important;}
 #dpTable .dpWhoCell input:disabled,#dpTable .dpWhoCell input[readonly]{pointer-events:none;}   /* 보기 전용: 지원자 이름 칸을 눌러도 배차 팝업·음성이 나오게 */
 #dpTable .dpWhoCell{cursor:pointer;}
 #dpTable input.dpSupRO{cursor:pointer;caret-color:transparent;}
+#dpTable td.dpSupCode{color:#000;font-weight:700;background:transparent;}   /* 지원자 근태코드: 색 칠하지 않고 검은 글씨 */
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) #dpTable td.dpSupCode{color:#f1f5f9;} }
 #dpTable input[data-dispatch-sup],#dpTable input[data-dispatch-sup]:disabled{color:#000 !important;-webkit-text-fill-color:#000 !important;opacity:1 !important;}   /* 지원자 이름 검은 글씨(보기 전용·휴대폰도 흐리게 안 보이게) */
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) #dpTable input[data-dispatch-sup]{color:#f1f5f9 !important;-webkit-text-fill-color:#f1f5f9 !important;} }
 /* 월별 OT현황 → 이름(두 번째) 누르면: 회사 'OT 발생현황' 화면 양식 팝업 */
@@ -9734,7 +9736,7 @@ function pageDispatch(){
     return `<tr>
       ${supLabel}
       <td class="dpI dpI2${supName ? ' dpWhoCell' : ''}"${supName ? ` data-dp-who="${esc(supId)}"` : ''}><input type="text" data-dispatch-sup="${esc(supId)}" value="${esc(supName)}" placeholder="이름"${auto ? ` data-auto="1" title="근태 ${esc(auto.c)} · 지원 순번 ${supRankOf[auto.e.id] ?? '-'} (자동)"` : ''} style="width:66px;border:1px solid var(--border);border-radius:5px;padding:3px 5px;background:var(--bg);color:${auto ? '#0f766e' : 'var(--text)'};"></td>
-      <td class="dpI dpI3">${auto ? codeBadge(auto.c) : ''}</td><td class="dpI dpI4"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
+      <td class="dpI dpI3 dpSupCode">${auto ? esc(auto.c) : ''}</td><td class="dpI dpI4"></td><td class="dpI dpI5" data-dispatch-suwu="${esc(supId)}">${supPainted?fmtH(supPainted*0.5):''}</td>
       ${cells}
     </tr>`;
   }).join('');
