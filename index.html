@@ -1153,7 +1153,7 @@ body[class*="printing"] .colNav{display:none !important;}
 .oeBox{max-width:980px;width:100%;max-height:94vh;margin:0;display:flex;flex-direction:column;padding:0 !important;overflow:hidden;background:#eef2f6 !important;}
 .oeTop{display:flex;align-items:center;gap:8px;padding:10px 12px 0;}
 .oeTop h3{margin:0;font-size:15px;}
-.oeCards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px;}
+.oeCards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px;}
 .oeCard{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;min-width:0;}
 .oeCard small{display:block;color:#64748b;font-size:11px;}
 .oeCard b{display:block;font-size:18px;color:#0f172a;font-variant-numeric:tabular-nums;white-space:nowrap;}
@@ -1179,7 +1179,7 @@ body[class*="printing"] .colNav{display:none !important;}
 .oeTbl tfoot td{position:sticky;bottom:0;background:#fff7ed;font-weight:800;border-top:2px solid #fdba74;}
 .oeTbl i{font-style:normal;} .oeTbl .oeDS{display:none;}
 .oeNote{padding:0 14px 10px;color:#64748b;font-size:11px;}
-@media (max-width:700px){ .oeCards{grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 8px;} .oeCard{padding:5px 6px;} .oeCard small{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .oeCard b{font-size:13px;white-space:normal;line-height:1.15;} .oeCard b.oeNeed,.oeCard b.oeDone{font-size:11.5px;} .oeTabs{display:none;} .oeNote{font-size:10px;padding:0 10px 6px;} .oeBar{padding:6px 8px;gap:4px;} .oeBar button.oeArr,.oeBar .oeMon{height:28px;} .oeBar{margin:8px 8px 0;} .oeWrap{margin:8px;} .oeTbl{font-size:11.5px;} .oeTbl td,.oeTbl th{padding:5px 6px;} .oeTbl .oeDL{display:none;} .oeTbl .oeDS{display:inline;} .oeTabs{padding:0 10px;} .oeTop{padding:8px 10px 0;} }
+@media (max-width:700px){ .oeCards{grid-template-columns:repeat(3,1fr);gap:4px;padding:6px 8px;} .oeCard{padding:5px 6px;} .oeCard small{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .oeCard b{font-size:13px;white-space:normal;line-height:1.15;} .oeCard b.oeNeed,.oeCard b.oeDone{font-size:11.5px;} .oeTabs{display:none;} .oeNote{font-size:10px;padding:0 10px 6px;} .oeBar{padding:6px 8px;gap:4px;} .oeBar button.oeArr,.oeBar .oeMon{height:28px;} .oeBar{margin:8px 8px 0;} .oeWrap{margin:8px;} .oeTbl{font-size:11.5px;} .oeTbl td,.oeTbl th{padding:5px 6px;} .oeTbl .oeDL{display:none;} .oeTbl .oeDS{display:inline;} .oeTabs{padding:0 10px;} .oeTop{padding:8px 10px 0;} }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .oeBox{background:#0b1220 !important;} :root:not([data-theme="light"]) .oeCard,:root:not([data-theme="light"]) .oeBar,:root:not([data-theme="light"]) .oeWrap,:root:not([data-theme="light"]) .oeTbl td,:root:not([data-theme="light"]) .oeBar .oeMon,:root:not([data-theme="light"]) .oeBar button.oeArr{background:#111827;color:#e5e7eb;border-color:#334155;} :root:not([data-theme="light"]) .oeCard b{color:#f1f5f9;} :root:not([data-theme="light"]) .oeTbl th{background:#1e293b;color:#e2e8f0;border-color:#334155;} :root:not([data-theme="light"]) .oeTbl tr.oeSun td{background:#1a2333;} :root:not([data-theme="light"]) .oeTbl tr.oeToday td{background:#3f3a12;} :root:not([data-theme="light"]) .oeTbl tfoot td{background:#3b2a12;} }
 .otpScrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:12px;}
 .otpBox{max-width:720px;width:100%;max-height:92vh;margin:0;display:flex;flex-direction:column;padding:14px !important;}
@@ -1691,33 +1691,31 @@ function renderOtErpPop(){
     let wk = 0, ho = 0, sp = 0, n = 0;
     if(c.valid){ if(c.category==='평일' || c.category==='토요일') wk = c.premium; else ho = c.premium; }
     if(su.valid){ const cat = dayCategory(ds, recManguen(rec, ds), e.id); if(cat==='SU' || cat==='H') ho += su.premium; else sp = su.premium; if(su.supTotal > 0) n = 1; }
-    const all = wk + ho + sp + meal + dam, ex = all - meal;
+    const all = wk + ho + sp + meal, ex = all - meal;   // 담당은 OT에 안 더함(따로 표시)
     T.all += all; T.sp += sp; T.ho += ho; T.wk += wk; T.n += n; T.meal += meal; T.dam += dam; T.ex += ex;
     const [y,m,d] = ds.split('-').map(Number), w = new Date(y, m-1, d).getDay();
     const col = (w===0 || holidays[ds]) ? '#dc2626' : w===6 ? '#2563eb' : 'inherit';
     const code = gridCode(rec0, ds, nm);
     rows += `<tr class="${w===0 ? 'oeSun' : ''}${ds===today ? ' oeToday' : ''}"><td style="color:${col};"><i class="oeDL">${ds} </i><i class="oeDS">${m}/${d}</i>(${weekdayKr(y,m,d)})</td>
       <td style="color:#dc2626;">${esc(isHolidayFor(ds, e.id) ? (holidays[ds] || '') : '')}</td>
-      <td>${code ? esc(statusLabel(code)) : ''}${excl ? ' <small style="color:#b45309;">(반영 전)</small>' : ''}</td>
+      <td>${code ? esc(code) : ''}${excl ? ' <small style="color:#b45309;">(반영 전)</small>' : ''}</td>
       <td class="${zc(all)}">${z(all)}</td><td class="${zc(sp)}">${z(sp)}</td><td class="${zc(ho)}">${z(ho)}</td><td class="${zc(n)}">${n}</td>
-      <td class="${zc(ex)}">${z(ex)}</td><td class="${zc(meal)}">${z(meal)}</td><td class="n z">0</td></tr>`;
+      <td class="${zc(ex)}">${z(ex)}</td><td class="${zc(meal)}">${z(meal)}</td><td class="${zc(dam)}">${z(dam)}</td></tr>`;
   }
-  const guar = T.wk + Math.max(T.sp, 30) + Math.max(T.ho, 60) + T.meal + T.dam;
+  const guar = T.wk + Math.max(T.sp, 30) + Math.max(T.ho, 60) + T.meal;
   return `<div id="otErpScrim" class="otpScrim"><div class="oeBox panel" role="dialog" aria-label="OT 발생현황">
     <div class="oeTop"><h3>${esc((e.team ? e.team+'조 ' : '') + e.name)} · OT 발생현황</h3><span style="flex:1"></span><button type="button" class="btn ghost sm" id="otErpClose">닫기</button></div>
     <div class="oeCards">
       <div class="oeCard"><small>◷ 이번 달 OT</small><b>${z(T.all)}</b></div>
       <div class="oeCard"><small>⚖ 보전 반영 OT</small><b>${z(guar)}</b></div>
       <div class="oeCard"><small>⇄ 지원 / 휴일 OT</small><b>${z(T.sp)} / ${z(T.ho)}</b></div>
-      <div class="oeCard"><small>◉ OT 확인</small>${pending ? `<b class="oeNeed">반영 전 ${pending}일</b>` : `<b class="oeDone">확인 완료</b>`}</div>
     </div>
-    <div class="oeTabs"><span>▦ 종합</span><span class="on">◷ OT 발생현황</span></div>
+    <div class="oeTabs"><span class="on">◷ OT 발생현황</span></div>
     <div class="oeBar"><span>조회 월</span><button type="button" class="oeArr" id="oePrev" aria-label="이전 달">‹</button><span class="oeMon">${P.y}년 ${P.m}월</span><button type="button" class="oeArr" id="oeNext" aria-label="다음 달">›</button>
-      <span class="oeRange">근무월 ${esc(st)} ~ ${esc(en.slice(5))}</span><span class="oeStat ${pending ? 'need' : 'done'}">${pending ? '● 미확인' : '● 확인'}</span></div>
-    <div class="oeWrap"><table class="oeTbl"><thead><tr><th>근무일</th><th>휴일정보</th><th>근태사항</th><th class="n">OT계</th><th class="n">지원OT</th><th class="n">휴일OT</th><th class="n">개수</th><th class="n">OT계(식연제외)</th><th class="n">식사연장</th><th class="n">비상출동</th></tr></thead>
+      <span class="oeRange">근무월 ${esc(st)} ~ ${esc(en.slice(5))}</span></div>
+    <div class="oeWrap"><table class="oeTbl"><thead><tr><th>근무일</th><th>휴일정보</th><th>근태사항</th><th class="n">OT계</th><th class="n">지원OT</th><th class="n">휴일OT</th><th class="n">개수</th><th class="n">OT계(식연제외)</th><th class="n">식사연장</th><th class="n">담당</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td>합계</td><td></td><td></td><td class="n">${z(T.all)}</td><td class="n">${z(T.sp)}</td><td class="n">${z(T.ho)}</td><td class="n">${T.n}</td><td class="n">${z(T.ex)}</td><td class="n">${z(T.meal)}</td><td class="n">0</td></tr></tfoot></table></div>
-    <div class="oeNote">개수 = 지원근무한 날 수 · 식사연장 = 조출·중식·석출·야식 · 비상출동은 앱에 기록이 없어 0으로 표시 · (반영 전) = 아직 OT 반영 안 된 날</div>
+      <tfoot><tr><td>합계</td><td></td><td></td><td class="n">${z(T.all)}</td><td class="n">${z(T.sp)}</td><td class="n">${z(T.ho)}</td><td class="n">${T.n}</td><td class="n">${z(T.ex)}</td><td class="n">${z(T.meal)}</td><td class="n">${z(T.dam)}</td></tr></tfoot></table></div>
   </div></div>`;
 }
 function renderOtEmpPop(){
