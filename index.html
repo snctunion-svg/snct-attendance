@@ -9721,7 +9721,7 @@ function regsSearch(q){
 function pageRegs(){
   if(!regsLoaded) regsLoad();
   const isU = userRole==='union' || userRole==='all';
-  const imp = isU ? `<label class="btn sm" style="cursor:pointer;">📥 가져오기<input type="file" id="regsFile" accept=".json,application/json" style="display:none;"></label>` : '';
+  const imp = isU && !regsData && regsLoaded && regsErr==='none' ? `<label class="btn sm" style="cursor:pointer;">📥 가져오기<input type="file" id="regsFile" accept=".json,application/json" style="display:none;"></label>` : '';
   let body;
   if(!regsData){
     const msg = !db ? '미리보기 모드라 클라우드 규정을 읽을 수 없어요. (UNION이 가져오기를 하면 여기서만 잠시 보여요)'
@@ -9746,7 +9746,7 @@ function pageRegs(){
     body = tabs + main + `<div class="hint" style="margin:6px 2px 0;">${esc(regsData.src || '')} 요약 · 규정 원문이 우선이며 애매하면 관리팀에 확인하세요.</div>`;
   }
   return `<div class="panel rgTop"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;">
-      <h2 style="margin:0;font-size:17px;">📘 규정</h2><span class="hint" style="margin:0;">로그인한 직원만 볼 수 있어요</span><span style="flex:1"></span>
+      <h2 style="margin:0;font-size:17px;">📘 규정</h2><span style="flex:1"></span>
       ${regsData ? `<input type="search" id="regsQ" class="rgQ" placeholder="🔍 찾기 (예: 경조, 출장, 500만)" value="${esc(regsQ)}">` : ''}${imp}
     </div></div>${body}`;
 }
