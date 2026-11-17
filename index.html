@@ -413,7 +413,12 @@ label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:
 /* 경위서 제목도 학자금처럼 테두리 없이, 같은 높이(96px) */
 .accTitleBox{position:relative;height:96px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 @media (min-width:701px){ .docFramed{aspect-ratio:auto;height:var(--docH,1103px);} }
-.hakBigBox{border:2px solid #111;border-top:1px solid #777;}
+.hakBigBox{border:2px solid #111;border-top:1px solid #777;position:relative;}
+.hakAtt{position:absolute;inset:6px;display:grid;gap:6px;grid-template-columns:repeat(var(--c),minmax(0,1fr));grid-template-rows:repeat(var(--r),minmax(0,1fr));}
+.hakAttC{min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.hakAttC img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;}
+.hakAttHint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#9ca3af;font-size:15px;line-height:1.6;}
+.hakLblRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 /* 사고경위서 */
 .accWrap{overflow-x:auto;padding-bottom:8px;}
 .accSheet{background:#fff;color:#111;width:100%;max-width:780px;min-width:560px;margin:0 auto;padding:18px 22px 26px;box-shadow:0 2px 12px rgba(0,0,0,.12);border-radius:4px;font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;}
@@ -8964,6 +8969,7 @@ function svBuildPrintHtml(pages){
     .pp > .docFramed{position:absolute !important;inset:0;aspect-ratio:auto !important;width:auto !important;height:auto !important;max-width:none !important;min-width:0 !important;margin:0 !important;padding:0 !important;box-shadow:none !important;border-radius:0 !important;}
     .docFramed .accTa{display:none !important;} .docFramed .accTaPrint{display:block !important;}
     .accIn::placeholder{color:transparent;}
+    .pp .accNoPrint,.pp .hakAttHint{display:none !important;}
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .hakAmtH,.hakAmt{-webkit-print-color-adjust:exact;print-color-adjust:exact;}`;
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>출력</title><style>${css}</style></head><body>${html}</body></html>`;
@@ -9193,7 +9199,7 @@ function hakSheetHtml(){
   const inp = (k, ph='', extra='') => `<input class="accIn" data-hak="${k}" value="${v(k)}" placeholder="${esc(ph)}" autocomplete="off" ${extra}>`;
   const kinds = ['유치원','고등','대학','대학교'];
   const box = k => `<label class="hakKind"><span>${k}</span><input type="checkbox" data-hak-kind="${k}" ${f.kind===k?'checked':''}><i>${f.kind===k?'■':'□'}</i></label>`;
-  return `<div class="accWrap"><div class="docLabel accNoPrint">🎓 학자금 지급신청서</div><div class="accSheet hakSheet docFramed" id="hakSheet">
+  return `<div class="accWrap"><div class="docLabel accNoPrint hakLblRow">🎓 학자금 지급신청서 <label class="btn ghost sm dmFileBtn">📎 영수증·재원증명서 넣기<input type="file" multiple accept="image/*,application/pdf" data-dm-file="hak" hidden></label>${docMail.hak.files.length ? `<button type="button" class="btn ghost sm warn" id="hakAttClr">사진 모두 빼기</button>` : ''}</div><div class="accSheet hakSheet docFramed" id="hakSheet">
     <div class="accTop">&nbsp;</div>
     <div class="hakTitle">학 자 금 지 급 신 청 서</div>
     <table class="accTbl hakTbl">
@@ -9205,11 +9211,38 @@ function hakSheetHtml(){
       <tr class="hakNoteRow"><th>비 &nbsp; 고</th><td colspan="2">${inp('note')}</td><th class="hakAmtH">승인금액</th><td class="hakAmt">${inp('amount','','inputmode="numeric"')}</td></tr>
       <tr class="hakGap"><td colspan="5"></td></tr>
     </table>
-    <div class="hakBigBox docGrow"></div>
+    <div class="hakBigBox docGrow">${hakAttHtml()}</div>
     <div class="docFoot">선광신컨테이너터미널㈜</div>
   </div></div>`;
 }
+// 학자금 아래 큰 칸 = 영수증 붙이는 자리: 첨부한 사진(또는 PDF 쪽)을 칸에 맞춰 나란히 → A4 한 장으로 출력
+function hakAttHtml(){
+  const pv = docMail.hak.files.flatMap(f=> f.pv || []);
+  if(!pv.length) return `<div class="hakAttHint accNoPrint">📎 위 [영수증·재원증명서 넣기]로 사진이나 PDF를 고르면<br>이 칸에 맞춰 들어가고 한 장으로 출력돼요.</div>`;
+  const n = pv.length, c = n===1 ? 1 : n<=4 ? 2 : 3, r = Math.ceil(n / c);
+  return `<div class="hakAtt" style="--c:${c};--r:${r};">${pv.map(u=>`<div class="hakAttC"><img src="${u}" alt=""></div>`).join('')}</div>`;
+}
+async function hakMakePreview(f, dataB64){   // 사진은 1600px로 줄여서, PDF는 쪽마다(최대 6쪽) 그림으로
+  const shrink = (src)=> new Promise(res=>{ const im = new Image(); im.onload = ()=>{ const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight)); const cv = document.createElement('canvas'); cv.width = Math.round(im.naturalWidth*k); cv.height = Math.round(im.naturalHeight*k); const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(im,0,0,cv.width,cv.height); res(cv.toDataURL('image/jpeg', 0.85)); }; im.onerror = ()=> res(null); im.src = src; });
+  if(/^image\//.test(f.type)){ const u = await shrink(`data:${f.type};base64,${dataB64}`); return u ? [u] : []; }
+  if(f.type==='application/pdf' || /\.pdf$/i.test(f.name)){
+    try{
+      const {lib} = await uwLoadPdfjs();
+      const pdf = await lib.getDocument({data: Uint8Array.from(atob(dataB64), c=> c.charCodeAt(0)), verbosity:0}).promise;
+      const out = [];
+      for(let i=1; i<=Math.min(pdf.numPages, 6); i++){
+        const pg = await pdf.getPage(i), vp0 = pg.getViewport({scale:1}), sc = 1600 / Math.max(vp0.width, vp0.height), vp = pg.getViewport({scale:sc});
+        const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+        const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0,0,cv.width,cv.height);
+        await pg.render({canvasContext: cx, viewport: vp}).promise; out.push(cv.toDataURL('image/jpeg', 0.85));
+      }
+      return out;
+    }catch(e){ showToast(`${f.name}: PDF를 그림으로 바꾸지 못했어요(메일 첨부는 돼요).`); return []; }
+  }
+  return [];
+}
 function bindHak(el){
+  const clr = el.querySelector('#hakAttClr'); if(clr) clr.onclick = ()=>{ docMail.hak.files = []; render(); };
   const sheet = el.querySelector('#hakSheet'); if(!sheet) return;
   sheet.querySelectorAll('[data-hak]').forEach(x=> x.oninput = ()=>{
     let val = x.value;
@@ -9321,7 +9354,9 @@ function bindDocMail(el){
       if(total + f.size > DOC_MAIL_MAX_BYTES){ showToast(`첨부 파일은 모두 합쳐 15MB까지예요. (${f.name} 빠짐)`); continue; }
       try{
         const data = await new Promise((res, rej)=>{ const fr = new FileReader(); fr.onload = ()=> res(String(fr.result).split(',')[1] || ''); fr.onerror = rej; fr.readAsDataURL(f); });
-        docMail[k].files.push({name:f.name, type:f.type || 'application/octet-stream', size:f.size, data}); total += f.size;
+        const item = {name:f.name, type:f.type || 'application/octet-stream', size:f.size, data};
+        if(k==='hak'){ item.pv = await hakMakePreview(item, data); if(!item.pv.length && !/pdf/i.test(item.type)) showToast(`${f.name}: 칸에 넣을 수 없는 파일이에요(메일 첨부만 돼요).`); }
+        docMail[k].files.push(item); total += f.size;
       }catch(e){ showToast(`${f.name} 파일을 읽지 못했어요.`); }
     }
     render();
