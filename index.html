@@ -372,6 +372,34 @@ label.chk{display:inline-flex;align-items:center;gap:5px;font-weight:700;cursor:
 .hakTbl .hakGap td{height:28px;}
 .hakTbl .hakBig td{height:520px;}
 @media print{ body.printing-acc .hakTbl .hakBig td{height:560px !important;} body.printing-acc .hakTbl tr:not(.hakBig):not(.hakGap):not(.hakKindRow):not(.hakNoteRow) > *{height:34px !important;} }
+/* 양식: 퇴직금 중간정산 신청서 · 유류 신청서 · 사직서 */
+.fmSheet .hakTitle{height:84px;}
+.fmH{font-weight:800;font-size:14px;margin:12px 0 4px;}
+.fmTbl td{text-align:left;} .fmTbl .accIn{font-weight:600;}
+.fmTbl td.fmL{padding:2px 8px;white-space:nowrap;}
+.fmTbl .fmL .accIn,.fmDate .accIn,.fmSign .accIn,.fmDocs .accIn,.fmBody .accIn,.fmRep .accIn{display:inline-block;width:auto;border-bottom:1px solid #bbb;text-align:center;}
+.accIn.fmY{width:56px !important;} .accIn.fmM{width:36px !important;} .accIn.fmW{width:150px !important;} .accIn.fmWide{width:300px !important;} .accIn.fmQ{width:110px !important;}
+.fmTbl .fmTaCell{padding:0;} .fmTaBox{display:flex;height:150px;} .fmTa{--lines:4;}
+.fmDocs{display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:14px;padding:6px 4px;border:2px solid #111;}
+.fmChk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;} .fmChk input{position:absolute;opacity:0;width:1px;height:1px;} .fmChk i{font-style:normal;}
+.fmStmt{font-size:14px;font-weight:700;margin:16px 4px 10px;}
+.fmConf{display:flex;justify-content:flex-end;} .fmConf table,.fmAppr table{border-collapse:collapse;}
+.fmConf th,.fmConf td,.fmAppr th,.fmAppr td{border:1px solid #111;font-size:13px;text-align:center;padding:2px 10px;}
+.fmConf td,.fmAppr td{height:56px;min-width:70px;} .fmConf .lbl{width:24px;padding:4px;line-height:1.3;}
+.fmDate{text-align:center;font-size:15px;font-weight:700;margin:14px 0 6px;}
+.fmSign{text-align:right;font-size:15px;font-weight:700;margin:6px 20px 6px;}
+.fmTo{font-size:17px;font-weight:800;margin:10px 0 0 4px;}
+.fmAppr{display:flex;justify-content:flex-end;margin-top:4px;}
+.fmRep{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:14px;font-weight:700;margin:0 2px 6px;}
+.fmOil th,.fmOil td{height:30px;font-size:12.5px;padding:0 3px;} .fmOil .accIn{font-size:12.5px;text-align:center;}
+.fmOil .fmNum{text-align:right;} .fmOil .fmSel{appearance:none;-webkit-appearance:none;text-align:center;text-align-last:center;cursor:pointer;}
+.fmOil .fmSum th,.fmOil .fmSum td{background:#f3f4f6;font-weight:800;text-align:right;padding-right:6px;}
+.fmNote{font-size:12.5px;line-height:1.7;margin:10px 4px 0;}
+.fmList{display:flex;flex-direction:column;gap:14px;margin:30px 40px 10px;font-size:16px;font-weight:700;}
+.fmList > div{display:flex;align-items:center;} .fmList .k{width:120px;white-space:nowrap;} .fmList .accIn{flex:1;border-bottom:1px solid #bbb;font-size:16px;}
+.fmBody{font-size:16px;line-height:2.4;margin:30px 40px 0;}
+.fmGuide{margin:10px 2px 0;padding:10px 12px;border:1px solid #fbcfe8;background:#fdf2f8;border-radius:8px;font-size:13px;line-height:1.7;color:var(--text);}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .fmGuide{background:#3b0a24;border-color:#831843;} }
 /* 경위서·학자금 공통 틀: A4 비율 한 장, 맨 위(내,외부 겸용)·제목 높이·아래 끝선·꼬리말 위치를 두 장이 똑같이 */
 .docFramed{display:flex;flex-direction:column;aspect-ratio:1 / 1.4142;box-sizing:border-box;padding:18px 22px 14px !important;}
 .docFramed .accTop{flex:0 0 auto;height:16px;margin:0 0 3px;}
@@ -1637,9 +1665,9 @@ body[class*="printing"] .colNav{display:none !important;}
     <a data-view="combined"><span class="ic">📋</span>근태관리</a>
     <a data-view="ot"><span class="ic">🧮</span>월별 OT현황</a>
     <a data-view="splan"><span class="ic">📋</span>지원계획표</a>
-    <a data-view="accident"><span class="ic">📝</span>경위서&amp;학자금</a>
-    <div class="navttl" data-role-section="leader" style="margin-top:10px;">규정</div>
-    <a data-view="regs" data-role-section="leader"><span class="ic">📘</span>규정</a>
+    <a data-view="accident"><span class="ic">📝</span>양식</a>
+    <div class="navttl" style="margin-top:10px;">규정</div>
+    <a data-view="regs"><span class="ic">📘</span>규정</a>
     <a class="navttl navUnion" data-view="leaderhub" data-role-section="leader" style="margin-top:10px;">조장관리 <span class="navUnionArr">›</span></a>
   </nav>
   <main id="content"></main>
@@ -3693,7 +3721,7 @@ const EDITOR_EMAILS = [...UNION_EMAILS, ...LEADER_EMAILS];
 //  Firebase 콘솔 → Authentication → 사용자 추가: member@snct-d40ed.firebaseapp.com / 조원 비밀번호(6자 이상)
 const MEMBER_EMAILS = ['member@snct-d40ed.firebaseapp.com'];
 function isMemberUser(){ return !!currentUser && MEMBER_EMAILS.some(x=> x.toLowerCase()===String(currentUser.email||'').toLowerCase()); }
-const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','pwchange','accident']; // 근태관리 구역 = 배포용(누구나). 근태코드는 조장관리 구역이라 조장·UNION만 // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
+const VIEWER_VIEWS = ['input','combined','ot','dispatch','splan','pwchange','accident','regs']; // 근태관리 구역 = 배포용(누구나). 근태코드는 조장관리 구역이라 조장·UNION만 // 업무 메뉴 없앰: 선석 조회·본선작업 삭제, 경위서&학자금은 조장관리로 // codes: 누구나 보기(수정은 UNION만)
 const LEADER_VIEWS = ['input','combined','ot','dispatch','splan','grid','mail','safety','input2','accident','berth','vessel','team','holidays','leaderhub','regs'];
 const UNION_VIEWS  = ['regs','unionhub','workhub','uwmem','uwform','uwregs','uwjobs','unana','settle','uwemp','uwwork','uwrule','uwelect','uwlmc','berth','vessel','team','holidays','codes','backup','employees','codestats','payroll','eqpay','fcana','supcut','holguar','allcut','accident'];
 const LEADER_READONLY_VIEWS = ['codes']; // accident = 업무 > 사고&학자금(누구나 작성·출력) // 조장관리·배포(보기전용)는 보기만(근태코드 수정은 UNION만)
@@ -8511,10 +8539,10 @@ function pageAccident(){
   const inp = (k, ph='', extra='') => `<input class="accIn" data-acc="${k}" value="${v(k)}" placeholder="${esc(ph)}" autocomplete="off" ${extra}>`;
   const names = employees.slice().sort((a,b)=> String(a.name).localeCompare(String(b.name),'ko')).map(e=>`<option value="${esc(e.name)}">`).join('');
   return `
-  <h2 class="pgttl accNoPrint">경위서&amp;학자금</h2>
+  <h2 class="pgttl accNoPrint">양식</h2>
   <div class="row accNoPrint" style="margin-bottom:12px;align-items:center;">
     <span style="font-weight:800;">서류 선택</span>
-    <select id="docSel" class="docSel"><option value="acc"${docPrintSel.hak?'':' selected'}>📝 사고경위서</option><option value="hak"${docPrintSel.hak?' selected':''}>🎓 학자금 지급신청서</option></select>
+    <select id="docSel" class="docSel">${DOC_LIST.map(([k,l])=>`<option value="${k}"${docPrintSel[k]?' selected':''}>${l}</option>`).join('')}</select>
     <button class="btn" id="accPrint">🖨️ 출력 (인쇄 · PDF 저장)</button>
     <button class="btn warn ghost" id="accReset">새로 작성</button>
   </div>
@@ -8551,7 +8579,9 @@ function pageAccident(){
     <div class="docFoot">선광신컨테이너터미널㈜</div>
   </div></div>` : ''}
   ${docPrintSel.hak ? hakSheetHtml(names) : ''}
+  ${docPrintSel.mid ? fmMidHtml() : ''}${docPrintSel.oil ? fmOilHtml() : ''}${docPrintSel.quit ? fmQuitHtml() : ''}
   </div>
+  ${docPrintSel.mid || docPrintSel.oil || docPrintSel.quit ? `<div class="fmGuide accNoPrint">${FM_GUIDE[docPrintSel.mid ? 'mid' : docPrintSel.oil ? 'oil' : 'quit']}</div>` : ''}
   ${(docPrintSel.acc || docPrintSel.hak) ? `<div class="docMailRow accNoPrint">${docPrintSel.acc ? docMailBox('acc') : ''}${docPrintSel.hak ? docMailBox('hak') : ''}</div>` : ''}
   </div>`;
 }
@@ -8903,6 +8933,7 @@ function pageSafety(){
 function svBuildPrintDoc(ids){
   // 입력한 값을 HTML에 옮겨 적음(복사본에도 글자가 남도록)
   document.querySelectorAll('.svPages input, .docGrid input').forEach(x=>{ if(x.type==='checkbox'){ if(x.checked) x.setAttribute('checked',''); else x.removeAttribute('checked'); } else x.setAttribute('value', x.value); });
+  document.querySelectorAll('.docGrid select').forEach(x=> Array.from(x.options).forEach(o=> o.toggleAttribute('selected', o.selected)));
   document.querySelectorAll('.svPages textarea, .docGrid textarea').forEach(x=>{ x.textContent = x.value; const pr = x.parentElement.querySelector('.svIssuePrint, .accTaPrint'); if(pr) pr.textContent = x.value; });
   // 장마다 A4 한 장 크기의 빈 상자(.pp)로 감싸고, 그 안에 틀을 꽉 채움(여러 장 인쇄 때 크롬이 틀 높이를 줄이는 문제 방지)
   return svBuildPrintHtml(ids.map(id=>{ const n = document.getElementById(id); return n ? n.outerHTML : ''; }));
@@ -9041,7 +9072,120 @@ function bindSafety(el){
 }
 
 /* ---------- 학자금 지급신청서(엑셀 '학자금지급신청서' 양식) ---------- */
-let hakForm = null, docPrintSel = {acc:true, hak:false}; // 한 번에 서류 하나만(목록에서 선택)
+let hakForm = null, docPrintSel = {acc:true, hak:false, mid:false, oil:false, quit:false}; // 한 번에 서류 하나만(목록에서 선택)
+const DOC_LIST = [['acc','📝 사고경위서'],['hak','🎓 학자금 지급신청서'],['mid','💰 퇴직금 중간정산 신청서'],['oil','⛽ 유류 신청서'],['quit','✉️ 사직서']];
+const DOC_SHEET = {acc:'accSheet', hak:'hakSheet', mid:'midSheet', oil:'oilSheet', quit:'quitSheet'};
+/* ---------- 규정 안내 v2.0.0의 종이 양식(회사 양식 원본 기준): 퇴직금 중간정산 신청서 · 유류 신청서 · 사직서 ----------
+   입력 내용은 이 기기 화면에만 있고 저장하지 않음(주민번호·계좌 같은 개인정보) */
+let fmForm = {mid:{}, oil:{}, quit:{}};
+function fmV(f, k){ return esc((fmForm[f]||{})[k] || ''); }
+function fmIn(f, k, ph='', cls='', extra=''){ return `<input class="accIn ${cls}" data-fm="${f}:${k}" value="${fmV(f,k)}" placeholder="${esc(ph)}" autocomplete="off" ${extra}>`; }
+function fmChk(f, k, label){ const on = !!(fmForm[f]||{})[k]; return `<label class="fmChk"><input type="checkbox" data-fm="${f}:${k}" ${on?'checked':''}><i>${on?'■':'□'}</i> ${label}</label>`; }
+function fmTa(f, k, ph=''){ const v = fmV(f,k); return `<textarea class="accTa accTaGrow fmTa" data-fm="${f}:${k}" placeholder="${esc(ph)}">${v}</textarea><div class="accTaPrint accTaGrow fmTa">${v}</div>`; }
+function fmMidHtml(){
+  const f = 'mid', I = (k,ph,c,x)=> fmIn(f,k,ph,c,x);
+  const ymd = (a,b,c,sfx='')=> `${I(a,'','fmY','inputmode="numeric"')}년${I(b,'','fmM','inputmode="numeric"')}월${I(c,'','fmM','inputmode="numeric"')}일${sfx}`;
+  return `<div class="accWrap"><div class="docLabel accNoPrint">💰 퇴직금 중간정산 신청서</div><div class="accSheet hakSheet docFramed fmSheet" id="midSheet">
+    <div class="accTop">&nbsp;</div>
+    <div class="hakTitle">퇴직금 중간정산 신청서</div>
+    <div class="fmH">1. 인적사항</div>
+    <table class="accTbl fmTbl"><colgroup><col style="width:16%"><col style="width:34%"><col style="width:16%"><col style="width:34%"></colgroup>
+      <tr><th>소 &nbsp; 속</th><td>${I('dept','관리팀')}</td><th>직 &nbsp; 위</th><td>${I('rank')}</td></tr>
+      <tr><th>성 &nbsp; 명</th><td>${I('name')}</td><th>주민등록번호</th><td>${I('rrn','000000-0000000','','inputmode="numeric" maxlength="14"')}</td></tr>
+      <tr><th>주 &nbsp; 소</th><td colspan="3">${I('addr')}</td></tr>
+    </table>
+    <div class="fmH">2. 퇴직금 중간정산 신청내용</div>
+    <table class="accTbl fmTbl"><colgroup><col style="width:16%"><col style="width:84%"></colgroup>
+      <tr><th rowspan="2">퇴직금<br>중간정산일</th><td class="fmL">(퇴 정 일) ${ymd('ty','tm','td')}</td></tr>
+      <tr><td class="fmL">(정산희망일자) ${ymd('fy','fm','fd','부터')} ~ ${ymd('ey','em','ed','까지')}</td></tr>
+      <tr class="fmGrowRow"><th>퇴직금 중간정산<br>신 청 사 유</th><td class="fmTaCell"><div class="fmTaBox">${fmTa(f,'why','(구체적으로 기술)')}</div></td></tr>
+      <tr><th rowspan="2">수령계좌번호</th><td class="fmL">은 행 명 : ${I('bank','','fmW')} (예금주) ${I('owner','','fmW')}</td></tr>
+      <tr><td class="fmL">계좌번호 : ${I('acc','','fmWide')}</td></tr>
+    </table>
+    <div class="fmH">3. 제출서류</div>
+    <div class="fmDocs">${fmChk(f,'d1','계 약 서')}${fmChk(f,'d2','부채증명원')}${fmChk(f,'d3','기타관련서류 :')}${I('d3t','','fmW')}</div>
+    <div class="fmStmt">상기 본인은 근로자퇴직급여 보장법이 정한 바에 따라 퇴직금 중간 정산 신청서를 제출합니다.</div>
+    <div class="fmConf"><table><tr><th rowspan="2" class="lbl">확 인 란</th><th>팀 &nbsp; 장</th></tr><tr><td></td></tr></table></div>
+    <div class="fmDate">${ymd('y','m','d')}</div>
+    <div class="fmSign">(신청인) ${I('sign','','fmW')} (인)</div>
+    <div class="fmTo">선광신컨테이너터미널(주) &nbsp; &nbsp; 귀 중</div>
+  </div></div>`;
+}
+function fmOilHtml(){
+  const f = 'oil', o = fmForm.oil;
+  let rows = '', km = 0, l = 0;
+  for(let i=1;i<=12;i++){
+    const g = o['g'+i] || '10', kmi = parseFloat(String(o['k'+i]||'').replace(/,/g,'')) || 0;
+    const auto = kmi ? Math.round(kmi / Number(g) * 10) / 10 : '';
+    const li = o['l'+i]!==undefined && o['l'+i]!=='' ? o['l'+i] : (auto==='' ? '' : String(auto));
+    km += kmi; l += parseFloat(li) || 0;
+    rows += `<tr><td>${fmIn(f,'d'+i)}</td><td>${fmIn(f,'n'+i)}</td><td><select class="accIn fmSel" data-fm="${f}:g${i}"><option value="10"${g==='10'?' selected':''}>출장</option><option value="8"${g==='8'?' selected':''}>외근</option></select></td><td>${fmIn(f,'p'+i)}</td><td>${fmIn(f,'t'+i)}</td><td>${fmIn(f,'k'+i,'','fmNum','inputmode="decimal"')}</td><td><input class="accIn fmNum" data-fm="${f}:l${i}" data-oil-auto="${auto}" value="${esc(li)}" inputmode="decimal" autocomplete="off"></td></tr>`;
+  }
+  const r1 = v=> (Math.round(v*10)/10).toLocaleString('ko-KR');
+  return `<div class="accWrap"><div class="docLabel accNoPrint">⛽ 유류 신청서</div><div class="accSheet hakSheet docFramed fmSheet" id="oilSheet">
+    <div class="fmAppr"><table><tr><th>담 &nbsp; 당</th><th>팀 &nbsp; 장</th><th>임 &nbsp; 원</th></tr><tr><td></td><td></td><td></td></tr></table></div>
+    <div class="hakTitle" style="height:70px;">유 류 신 청 서</div>
+    <div class="fmRep"><span>보 고 자 : ${fmIn(f,'rep','소속 성명','fmW')}</span><span>기 &nbsp; 간 : ${fmIn(f,'from','YYYY.MM.DD','fmQ')} ~ ${fmIn(f,'to','YYYY.MM.DD','fmQ')}</span></div>
+    <table class="accTbl fmTbl fmOil"><colgroup><col style="width:13%"><col style="width:11%"><col style="width:9%"><col style="width:16%"><col><col style="width:12%"><col style="width:11%"></colgroup>
+      <tr><th>일 &nbsp; 자</th><th>직원명</th><th>구분</th><th>방문지</th><th>내 &nbsp; 역</th><th>거리<br>(왕복km)</th><th>소요량<br>(L)</th></tr>
+      ${rows}
+      <tr class="fmSum"><th colspan="5">합 &nbsp; 계</th><td id="oilKm">${r1(km)}</td><td id="oilL">${r1(l)}</td></tr>
+    </table>
+    <div class="fmNote"><b>※ 유의사항</b><div>① 업무차량 우선 사용, 불가피한 경우에만 개인차량 사용</div><div>② 외근시 : 연비 8Km/L 적용</div><div>③ 출장시 : 연비 10Km/L 적용</div><div>④ 지정 주유소 : 인천대교주유소 (관리팀에서 유종별 출장 전용 주유카드를 받아 주유하고 카드는 반납)</div></div>
+    <div class="docGrow"></div>
+    <div class="docFoot">선광신컨테이너터미널㈜</div>
+  </div></div>`;
+}
+function fmQuitHtml(){
+  const f = 'quit', I = (k,ph,c,x)=> fmIn(f,k,ph,c,x);
+  return `<div class="accWrap"><div class="docLabel accNoPrint">✉️ 사직서</div><div class="accSheet hakSheet docFramed fmSheet" id="quitSheet">
+    <div class="accTop">&nbsp;</div>
+    <div class="hakTitle" style="font-size:30px;letter-spacing:14px;">사 직 서</div>
+    <div class="fmList">
+      <div><span class="k">■ 소 &nbsp; &nbsp; &nbsp; 속 :</span>${I('dept','SNCT 관리팀')}</div>
+      <div><span class="k">■ 성 &nbsp; &nbsp; &nbsp; 명 :</span>${I('name')}</div>
+      <div><span class="k">■ 직 &nbsp; &nbsp; &nbsp; 위 :</span>${I('rank')}</div>
+      <div><span class="k">■ 입사일자 :</span>${I('join','SNCT 입사일')}</div>
+    </div>
+    <div class="fmBody">상기 본인은 ${I('why','개인사정','fmW')}으로 인하여 ${I('oy','','fmY','inputmode="numeric"')}년 ${I('om','','fmM','inputmode="numeric"')}월 ${I('od','','fmM','inputmode="numeric"')}일부로 사직코자 이에 사직서를 제출합니다.</div>
+    <div class="docGrow"></div>
+    <div class="fmDate">${I('y','','fmY','inputmode="numeric"')}년 ${I('m','','fmM','inputmode="numeric"')}월 ${I('d','','fmM','inputmode="numeric"')}일</div>
+    <div class="fmSign" style="margin-bottom:60px;">제출인 : ${I('sign','','fmW')} (서명)</div>
+    <div class="docFoot">선광신컨테이너터미널㈜</div>
+  </div></div>`;
+}
+const FM_GUIDE = {
+  mid:'<b>내는 곳</b> — 신청서와 사유를 증명하는 서류를 갖춰 <b>소속 팀장 확인</b>(확인란 도장)을 받은 뒤 <b>관리팀 급여담당자</b>에게. 팀장 확인이 없으면 접수되지 않아요.<br><b>정산 기간</b> — 입사일(또는 직전 정산일 다음 날) ~ 신청한 달 말일. <b>지급</b> — 다음 달 10일 전후.<br><b>수령계좌</b> — 본인 명의 <b>일반 계좌</b>(IRP 아님). 퇴직소득세를 떼고 들어와요.<br><b>중간정산 사유</b>(근로자퇴직급여 보장법 시행령 제3조) — 무주택자 주택 구입 · 무주택자 전세금·보증금(근속 중 1회) · 6개월 이상 요양 의료비(연간 임금총액 12.5% 초과) · 5년 내 파산선고 · 5년 내 개인회생 개시결정 · 임금피크 · 소정근로시간 단축 · 근로시간 단축입법 · 재난 피해',
+  oil:'<b>언제</b> — 출장·외근에 자기 차를 썼을 때(업무차량이 먼저). <b>소요량</b> = 왕복 거리 ÷ 연비 — 줄마다 <b>출장(10km/L)·외근(8km/L)</b>을 고르면 자동 계산되고 직접 고쳐도 돼요.<br><b>결재</b> — 담당 · 팀장 · 임원 → 결재 후 <b>관리팀 총무담당자</b>에게 제출.',
+  quit:'<b>내는 곳</b> — 사유를 적어 <b>소속 팀장</b>에게 제출하고, 결재를 마치면 <b>관리팀 인사담당자</b>에게(취업규칙 제29조).<br>퇴직은 <b>30일 전</b>에 신고하고 업무 인수인계(인계·인수서 3부, 7일 이내)를 해요(제30조). <b>입사일자</b>는 SNCT 입사일을 적어요.'
+};
+function bindFm(el){
+  el.querySelectorAll('[data-fm]').forEach(x=>{
+    const [f,k] = x.dataset.fm.split(':');
+    const save = ()=>{
+      if(x.type==='checkbox'){ fmForm[f][k] = x.checked; const i = x.nextElementSibling; if(i) i.textContent = x.checked ? '■' : '□'; return; }
+      let v = x.value;
+      if(f==='mid' && k==='rrn'){ const d = v.replace(/[^0-9]/g,'').slice(0,13); const nv = d.length > 6 ? d.slice(0,6)+'-'+d.slice(6) : d; if(nv!==v){ x.value = nv; v = nv; } }
+      fmForm[f][k] = v;
+      if(x.tagName==='TEXTAREA'){ const m = x.parentElement.querySelector('.accTaPrint'); if(m) m.textContent = v; }
+      if(x.tagName==='SELECT') Array.from(x.options).forEach(o=> o.toggleAttribute('selected', o.selected));
+      if(f==='oil' && /^[gkl]\d+$/.test(k)){ if(k[0]!=='l'){ delete fmForm.oil['l'+k.slice(1)]; } fmOilSum(el); }
+    };
+    if(x.tagName==='SELECT' || x.type==='checkbox') x.onchange = save; else x.oninput = save;
+  });
+}
+function fmOilSum(el){   // 거리·구분이 바뀌면 그 줄 소요량 자동, 합계 다시
+  const o = fmForm.oil; let km = 0, l = 0;
+  for(let i=1;i<=12;i++){
+    const kmi = parseFloat(String(o['k'+i]||'').replace(/,/g,'')) || 0, g = Number(o['g'+i] || 10);
+    const li = el.querySelector(`[data-fm="oil:l${i}"]`);
+    const auto = kmi ? String(Math.round(kmi / g * 10) / 10) : '';
+    if(li && (o['l'+i]===undefined)){ li.value = auto; }
+    km += kmi; l += parseFloat(li ? li.value : 0) || 0;
+  }
+  const r1 = v=> (Math.round(v*10)/10).toLocaleString('ko-KR');
+  const a = el.querySelector('#oilKm'), b = el.querySelector('#oilL'); if(a) a.textContent = r1(km); if(b) b.textContent = r1(l);
+}
 function hakDefault(){ return {applicant:'', dept:'운영팀', kid:'', age:'', kind:'', school:'', grade:'', term:'', note:'', amount:''}; }
 function hakSheetHtml(){
   if(!hakForm) hakForm = hakDefault();
@@ -9081,17 +9225,18 @@ function bindAccident(el){
   bindHak(el);
   bindDocMail(el);
   const ds = el.querySelector('#docSel');
-  if(ds) ds.onchange = ()=>{ docPrintSel = {acc: ds.value==='acc', hak: ds.value==='hak'}; render(); };   // 고른 서류 하나만 화면에
+  bindFm(el);
+  if(ds) ds.onchange = ()=>{ docPrintSel = {}; DOC_LIST.forEach(([k])=> docPrintSel[k] = ds.value===k); render(); };   // 고른 서류 하나만 화면에
   const p = el.querySelector('#accPrint');
   if(p) p.onclick = ()=>{
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    if(!docPrintSel.acc && !docPrintSel.hak){ showToast('출력할 서류를 고르세요.'); return; }
     // 관리감독자와 같은 방식: 고른 서류만 담은 출력 전용 문서를 A4 한 장씩 같은 틀로 인쇄
-    const ids = []; if(docPrintSel.acc) ids.push('accSheet'); if(docPrintSel.hak) ids.push('hakSheet');
+    const ids = DOC_LIST.filter(([k])=> docPrintSel[k]).map(([k])=> DOC_SHEET[k]);
+    if(!ids.length){ showToast('출력할 서류를 고르세요.'); return; }
     svPrintDocs(ids);
   };
   const r = el.querySelector('#accReset');
-  if(r) r.onclick = ()=> appConfirm('사고경위서와 학자금 신청서에 입력한 내용을 모두 지우고 새로 작성할까요? (첨부한 파일도 지워져요)', ()=>{ accForm = accDefault(); hakForm = hakDefault(); docMail.hak.files = []; render(); });
+  if(r) r.onclick = ()=> appConfirm('모든 양식에 입력한 내용을 지우고 새로 작성할까요? (첨부한 파일도 지워져요)', ()=>{ accForm = accDefault(); hakForm = hakDefault(); fmForm = {mid:{}, oil:{}, quit:{}}; docMail.hak.files = []; render(); });
   const sheet = el.querySelector('#accSheet'); if(!sheet) return;
   sheet.querySelectorAll('[data-acc]').forEach(x=>{
     x.oninput = ()=>{
@@ -9546,7 +9691,7 @@ function pageRegs(){
   if(!regsData){
     const msg = !db ? '미리보기 모드라 클라우드 규정을 읽을 수 없어요. (UNION이 가져오기를 하면 여기서만 잠시 보여요)'
       : regsLoading || !regsLoaded ? '규정을 불러오는 중…'
-      : regsErr==='perm' ? '규정을 읽을 권한이 없어요. 조장관리 또는 UNION으로 로그인하세요. (로그인했는데도 이러면 Firestore 규칙에 leaderPrivate 를 추가해야 해요)'
+      : regsErr==='perm' ? '규정을 읽을 권한이 없어요. 로그인했는데도 이러면 Firestore 규칙의 leaderPrivate 읽기를 「로그인한 사람」으로 바꿔야 해요.'
       : regsErr==='none' ? (isU ? '아직 올린 규정이 없어요. [📥 가져오기]로 「SNCT규정_요약」 파일을 올려 주세요.' : '아직 올린 규정이 없어요. UNION에서 규정 파일을 올리면 보여요.')
       : '규정을 불러오지 못했어요. 잠시 후 다시 열어 주세요.';
     body = `<div class="panel"><div class="hint" style="margin:0;">${esc(msg)}</div></div>`;
@@ -9566,7 +9711,7 @@ function pageRegs(){
     body = tabs + main + `<div class="hint" style="margin:6px 2px 0;">${esc(regsData.src || '')} 요약 · 규정 원문이 우선이며 애매하면 관리팀에 확인하세요.</div>`;
   }
   return `<div class="panel rgTop"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;">
-      <h2 style="margin:0;font-size:17px;">📘 규정</h2><span class="hint" style="margin:0;">조장·UNION 전용</span><span style="flex:1"></span>
+      <h2 style="margin:0;font-size:17px;">📘 규정</h2><span class="hint" style="margin:0;">로그인한 직원만 볼 수 있어요</span><span style="flex:1"></span>
       ${regsData ? `<input type="search" id="regsQ" class="rgQ" placeholder="🔍 찾기 (예: 경조, 출장, 500만)" value="${esc(regsQ)}">` : ''}${imp}
     </div></div>${body}`;
 }
@@ -9581,7 +9726,7 @@ function bindRegs(el){
       const d = JSON.parse(await file.text());
       if(!d || d.kind!=='snct-regs' || !Array.isArray(d.sections) || !d.sections.length) throw new Error('규정 요약 파일이 아니에요.');
       regsData = d; regsErr = ''; regsLoaded = true;
-      if(db){ await db.collection('leaderPrivate').doc('regs').set({json: JSON.stringify(d), at: Date.now()}); showToast(`규정 v${d.ver||''}을 올렸어요. 조장·UNION이 볼 수 있어요.`); }
+      if(db){ await db.collection('leaderPrivate').doc('regs').set({json: JSON.stringify(d), at: Date.now()}); showToast(`규정 v${d.ver||''}을 올렸어요. 로그인한 직원 모두 볼 수 있어요.`); }
       else showToast('미리보기 모드라 이 화면에만 보여요(저장 안 됨).');
     }catch(e){ showToast(e && e.code==='permission-denied' ? '저장 권한이 없어요. Firestore 규칙에 leaderPrivate 를 추가해 주세요.' : ('가져오기 실패: ' + (e && e.message || e))); }
     render();
